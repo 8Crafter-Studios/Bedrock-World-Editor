@@ -1,0 +1,30 @@
+{
+    "compilerOptions": {
+        "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+        "target": "esnext",
+        "lib": ["ESNext"],
+        "module": "ESNext",
+        "skipLibCheck": true,
+
+        /* Bundler mode */
+        "moduleResolution": "bundler",
+        "allowImportingTsExtensions": true,
+        "verbatimModuleSyntax": true,
+        "moduleDetection": "force",
+        "noEmit": true,
+
+        /* Linting */
+        "strict": true,
+        "noFallthroughCasesInSwitch": true,
+        "noUncheckedSideEffectImports": true,
+        "allowSyntheticDefaultImports": true,
+        "composite": true,
+        "forceConsistentCasingInFileNames": true,
+        "noUncheckedIndexedAccess": true,
+        "allowJs": true,
+        "checkJs": true,
+        "esModuleInterop": true
+    },
+    "include": ["vite.config.ts"],
+    "exclude": ["deprecated/*", "*.asar", "src/globalify_renderer_imports.ts"]
+}

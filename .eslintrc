@@ -1,0 +1,43 @@
+{
+    "env": {
+        "browser": true,
+        "es6": true,
+        "node": true
+    },
+    "extends": [
+        "eslint:recommended",
+        "plugin:@typescript-eslint/eslint-recommended",
+        "plugin:@typescript-eslint/recommended",
+        "plugin:import/recommended",
+        "plugin:import/electron",
+        "plugin:import/typescript"
+    ],
+    "parser": "@typescript-eslint/parser",
+    "rules": {
+        "eslint-plugin-import/no-unresolved": "off",
+        "@typescript-eslint/no-non-null-assertion": "off",
+        "@typescript-eslint/no-explicit-any": "off",
+        "@typescript-eslint/no-var-requires": "off",
+        "@typescript-eslint/no-namespace": "off",
+        "@typescript-eslint/no-unused-vars": "off",
+        "@typescript-eslint/no-inferrable-types": "off",
+        "@typescript-eslint/no-empty-function": "off",
+        "@typescript-eslint/no-empty-interface": "off",
+        "@typescript-eslint/ban-ts-comment": "off",
+        "@typescript-eslint/no-non-null-asserted-optional-chain": "off",
+        "@typescript-eslint/no-unnecessary-type-constraint": "off",
+        "import/no-unresolved": "off",
+        "no-inner-declarations": "off",
+        "prefer-const": "off",
+        "no-constant-condition": "off",
+        "no-var": "off",
+        "no-empty": "off",
+        "no-empty-function": "off",
+        "no-unused-vars": "off",
+        "no-debugger": "off",
+        "no-compare-neg-zero": "warn",
+        // Unnecessary as it is built in to TypeScript.
+        "no-fallthrough": "off"
+    }
+}
+

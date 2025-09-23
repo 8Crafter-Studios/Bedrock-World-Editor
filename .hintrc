@@ -1,0 +1,27 @@
+{
+    "extends": ["development"],
+    "hints": {
+        "highest-available-document-mode": "off",
+        "compat-api/css": [
+            "default",
+            {
+                "ignore": ["@container", "font-size-adjust", "-webkit-user-drag", "scrollbar-color"]
+            }
+        ],
+        "no-inline-styles": "off",
+        "compat-api/html": [
+            "default",
+            {
+                "ignore": ["textarea[autocapitalize]", "textarea[inputmode]"]
+            }
+        ],
+        "axe/keyboard": [
+            "default",
+            {
+                "nested-interactive": "off"
+            }
+        ]
+    },
+    "browserslist": ["defaults", "not ie 11", "not safari <= 18.2", "not ios_saf <= 15.8", "not samsung <= 27"]
+}
+

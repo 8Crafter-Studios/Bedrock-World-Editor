@@ -1,0 +1,148 @@
+.dark_theme {
+    --tree-editor-bg-color: #000f24;
+    --tree-editor-text-color: #fff;
+}
+
+.light_theme {
+    --tree-editor-bg-color: #dbeaff;
+    --tree-editor-text-color: #000;
+}
+
+.treeEditorOuterContainer {
+    display: contents;
+}
+
+.treeEditorOuterContainer * {
+    font-family: Consolas;
+}
+
+.treeEditorOuterContainer > .treeEditorTreeNode {
+    background-image: var(--alternating-bg-image);
+    min-width: fit-content;
+}
+
+.treeEditorTreeNode {
+    display: flex;
+    flex-direction: column;
+}
+
+.treeEditorTreeNodeHeader {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.treeEditorTreeNodeHeader:hover:not(:has(input:hover)):not(:has(.treeEditorTreeNodeHeaderName:hover)):not(:has(.treeEditorTreeNodeHeaderValue:hover)):not(
+        :has(.treeEditorTreeNodeHeaderNameTextBox.visible)
+    ):not(:has(.treeEditorTreeNodeHeaderValueTextBox.visible)),
+.treeEditorOuterContainer.treeEditorReadonly .treeEditorTreeNodeHeader {
+    background-color: var(--alternating-bg-hover-color);
+}
+
+.treeEditorTreeNodeHeader.selected:hover:not(:has(input:hover)):not(:has(.treeEditorTreeNodeHeaderName:hover)):not(:has(.treeEditorTreeNodeHeaderValue:hover)):not(
+        :has(.treeEditorTreeNodeHeaderNameTextBox.visible)
+    ):not(:has(.treeEditorTreeNodeHeaderValueTextBox.visible)),
+.treeEditorOuterContainer.treeEditorReadonly .treeEditorTreeNodeHeader.selected {
+    background-color: var(--alternating-bg-selected-hover-color);
+}
+
+.treeEditorTreeNodeHeader.selected {
+    background-color: var(--alternating-bg-selected-color);
+}
+
+.treeEditorTreeNodeHeaderExpanderIcon,
+.treeEditorTreeNodeHeaderExpander {
+    width: 32px;
+    height: 32px;
+    image-rendering: pixelated;
+}
+
+.treeEditorTreeNodeHeaderIcon {
+    width: 16px;
+    height: 32px;
+    image-rendering: pixelated;
+}
+
+.treeEditorTreeNodeHeaderExpanderIcon {
+    cursor: pointer;
+}
+
+.treeEditorTreeNodeHeaderIcon > img {
+    width: 16px;
+    height: 16px;
+    image-rendering: pixelated;
+    margin: 8px 0;
+}
+
+.treeEditorTreeNodeHeaderExpanderIcon > img {
+    width: 10px;
+    height: 10px;
+    image-rendering: pixelated;
+    margin: 11px;
+}
+
+.treeEditorTreeNodeHeaderIcon {
+    margin-right: 8px;
+}
+
+.treeEditorTreeNodeHeaderName,
+.treeEditorTreeNodeHeaderNameTextBoxSizeGetter,
+.treeEditorTreeNodeHeaderNameAndValueSeparator,
+.treeEditorTreeNodeHeaderValue,
+.treeEditorTreeNodeHeaderValueTextBoxSizeGetter,
+.treeEditorTreeNodeHeaderEntryCount {
+    white-space: pre;
+
+    -webkit-user-select: none;
+    /* Safari */
+    -ms-user-select: none;
+    -moz-user-select: none;
+    /* IE 10 and IE 11 */
+    user-select: none;
+    /* Standard syntax */
+    -webkit-user-drag: none;
+}
+
+.treeEditorOuterContainer:not(.treeEditorReadonly) .treeEditorTreeNodeHeaderName:hover,
+.treeEditorOuterContainer:not(.treeEditorReadonly) .treeEditorTreeNodeHeaderValue:hover {
+    background-color: #8882;
+}
+
+.treeEditorOuterContainer:not(.treeEditorReadonly) .treeEditorTreeNodeHeader.selected .treeEditorTreeNodeHeaderName:hover,
+.treeEditorOuterContainer:not(.treeEditorReadonly) .treeEditorTreeNodeHeader.selected .treeEditorTreeNodeHeaderValue:hover {
+    background-color: #FFF2;
+}
+
+.treeEditorTreeNodeHeaderNameTextBoxSizeGetter,
+.treeEditorTreeNodeHeaderValueTextBoxSizeGetter {
+    display: none;
+}
+
+.treeEditorTreeNodeHeaderNameTextBox.visible ~ .treeEditorTreeNodeHeaderNameAndValueSeparator {
+    opacity: 0;
+}
+
+.treeEditorTreeNodeHeaderName:has(+ .treeEditorTreeNodeHeaderNameTextBox.visible),
+.treeEditorTreeNodeHeaderValue:has(+ .treeEditorTreeNodeHeaderValueTextBox.visible) {
+    display: none;
+}
+
+.treeEditorTreeNodeHeaderNameTextBox:not(.visible),
+.treeEditorTreeNodeHeaderValueTextBox:not(.visible) {
+    display: none;
+}
+
+.treeEditorTreeNodeHeaderNameTextBox,
+.treeEditorTreeNodeHeaderValueTextBox {
+    margin: 0 -3px;
+    border: 1px solid #0ff;
+    background-color: var(--tree-editor-bg-color);
+    color: var(--tree-editor-text-color);
+    font: inherit;
+    outline: none;
+    line-height: 20px;
+}
+
+.treeEditorTreeNodeHeader {
+    min-width: fit-content;
+}

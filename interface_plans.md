@@ -1,0 +1,127 @@
+# Tabs
+
+-   World Settings
+    -   For editing:
+        -   `level.dat`
+        -   `world_icon.jpeg`
+-   Packs
+    -   For editing:
+        -   `world_behavior_pack_history.json`
+        -   `world_resource_pack_history.json`
+        -   `world_behavior_packs.json`
+        -   `world_resource_packs.json`
+        -   `behavior_packs/*`
+        -   `resource_packs/*`
+-   Players
+    -   For editing:
+        -   `db/~local_player`
+        -   `db/player_*`
+        -   `db/server_player_*`
+    -   Should have multiple view modes.
+        -   General
+            -   Should group `db/player_*` and `db/server_player_*` into one.
+            -   Should have a list of players with `~local_player` being the first one, followed by all the other players, listed by their IDs, with columns for Xbox XUID, local UUID, MsaId, SelfSignedId, and ServerId.
+        -   Raw
+            -   Should show each player-related db key separately.
+-   Entities
+    -   For editing:
+        -   `db/actorprefix*`
+    -   Should allow searching for entities by:
+        -   Local UUID
+        -   Name Tag
+        -   Type ID
+        -   Chunk Indices
+        -   Location
+        -   Dimension
+        -   Any other NBT tag on the entity.
+-   Structures
+    -   For editing:
+        -   `db/structuretemplate*`
+    -   Should allow importing and exporting structures.
+    -   Should have a list of all structures on the world.
+    -   Should allow double clicking on a structure to open an interactive editor with multiple modes:
+        -   3D Editor
+        -   2D Editor
+        -   Node Editor
+        -   Prismarine-NBT Formatted JSON Editor
+        -   SNBT Editor
+    -   Should allow easily cropping and expanding the structure in the 3D and 2D editor modes.
+-   World
+    -   For editing:
+        -   `db/*[\x2B-\x3B\x3D-\x41\x76]`
+        -   `db/BiomeData`
+        -   `db/Overworld`
+        -   `db/Nether`
+        -   `db/TheEnd`
+    -   Should have a toolbar on the top with the following options:
+        -   A tabbed selector for the view mode, should allow choosing one of:
+            -   Biomes
+            -   Blocks
+            -   Heightmap
+        -   A tabbed selector for the selection mode, should allow choosing one of:
+            -   Block
+            -   Chunk
+        -   Should have a more button with a dropdown with toggles for the following:
+            -   Show Structures
+            -   Show Entities
+            -   Show Chunk Grid
+            -   Show Structure Bounds
+            -   3D View
+        -   A dropdown for the dimension, should allow choosing one of:
+            -   Overworld
+            -   Nether
+            -   The End
+    -   Should have a search menu.
+        -   Should allow searching for biomes, structures, block types, entities, etc.
+    -   Should have a go to menu.
+        -   Should have a mode for go to block and go to chunk.
+            -   In chunk selection mode, select the chunk the block is in when using block mode.
+-   Maps
+    -   For editing:
+        -   `db/map_*`
+    -   Should allow uploading images to replace map data.
+    -   Should have an interface for adding [decorations](https://www.youtube.com/watch?v=fEXms1trxOc) to the map.
+    -   Should have options for the following:
+        -   locking/unlocking maps
+        -   changing map scale
+        -   editing map colors with an interface
+        -   toggling `unlimitedTracking`
+        -   changing `height` and `width`
+        -   changing location
+        -   changing dimension
+        -   toggling `fullyExplored`
+    -   Should allow searching for maps by:
+        -   Dimension
+        -   Location
+        -   Scale
+        -   Locked
+        -   Fully Explored
+        -   Unlimited Tracking
+        -   `parentMapId`
+        -   Decorations
+-   Dynamic Properties
+    -   For editing:
+        -   `db/DynamicProperties`
+    -   Should allow viewing all of them at once with headers separating each add-on, or viewing the ones for each add-on individually.
+    -   Should allow exporting/importing dynamic properties.
+-   Scoreboards
+    -   For editing:
+        -   `db/scoreboard`
+    -   SHould allow exporting/importing scoreboard data.
+-   Villages (Hidden in a "more..." button)
+    -   For editing:
+        -   `db/village*`
+-   Portals (Hidden in a "more..." button)
+    -   For editing:
+        -   `db/portals`
+-   Random Ticks (Hidden in a "more..." button)
+    -   For editing:
+        -   The `RandomTicks` category
+    -   Should have a button to clear it.
+-   SchedulerWT (Hidden in a "more..." button)
+    -   For editing:
+        -   The `SchedulerWT` category
+
+# Misc.
+
+-   All NBT editor pages should use Monaco Editor, with autocomplete based on the content type, and static error detection, and hover descriptions.

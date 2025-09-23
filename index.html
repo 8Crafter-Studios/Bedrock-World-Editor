@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html data-theme="light" lang="en" class="dark_theme">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <!-- The 'unsafe-eval' is only temporary for use of JSONB, once the other custom better JSON parser that doesn't use eval is done, remove 'unsafe-eval'. -->
+        <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' data: file: blob:;" />
+        <meta http-equiv="Cross-Origin-Resource-Policy" content="cross-origin" />
+        <meta http-equiv="Access-Control-Allow-Origin" content="*" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <title>Bedrock World Editor</title>
+        <!-- <link href="/app/index.css" rel="stylesheet" /> -->
+    </head>
+    <body>
+        <div id="app"></div>
+        <script type="module" src="/src/renderer.ts"></script>
+    </body>
+</html>

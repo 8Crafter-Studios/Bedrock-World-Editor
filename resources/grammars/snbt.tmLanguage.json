@@ -1,0 +1,360 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "$note": "Modified by 8Crafter.",
+    "name": "SNBT",
+    "patterns": [
+        {
+            "include": "#value"
+        }
+    ],
+    "repository": {
+        "value": {
+            "patterns": [
+                {
+                    "include": "#byte"
+                },
+                {
+                    "include": "#short"
+                },
+                {
+                    "include": "#long"
+                },
+                {
+                    "include": "#float"
+                },
+                {
+                    "include": "#double"
+                },
+                {
+                    "include": "#int"
+                },
+                {
+                    "include": "#string"
+                },
+                {
+                    "include": "#compound"
+                },
+                {
+                    "include": "#bytearray"
+                },
+                {
+                    "include": "#intarray"
+                },
+                {
+                    "include": "#longarray"
+                },
+                {
+                    "include": "#list"
+                }
+            ]
+        },
+        "boolean": {
+            "name": "constant.language.boolean.snbt",
+            "match": "\b(?:true|false)\b",
+            "patterns": [
+                {
+                    "match": "true",
+                    "name": "constant.language.boolean.true.snbt"
+                },
+                {
+                    "match": "false",
+                    "name": "constant.language.boolean.false.snbt"
+                }
+            ]
+        },
+        "byte": {
+            "name": "constant.numeric.byte",
+            "match": "-?[0-9]+[Bb]"
+        },
+        "short": {
+            "name": "constant.numeric.short",
+            "match": "-?[0-9]+[Ss]"
+        },
+        "int": {
+            "name": "constant.numeric.int",
+            "match": "-?[0-9]+[Ii]?"
+        },
+        "long": {
+            "name": "constant.numeric.long",
+            "match": "-?[0-9]+[Ll]"
+        },
+        "float": {
+            "name": "constant.numeric.float",
+            "match": "-?[0-9](?:\\.[0-9]+)?[Ff]"
+        },
+        "double": {
+            "name": "constant.numeric.double",
+            "match": "-?[0-9](?:\\.[0-9]+[Dd]?|[Dd])"
+        },
+        "bytearray": {
+            "begin": "\\[B;",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.definition.array.begin.snbt"
+                }
+            },
+            "end": "\\]",
+            "endCaptures": {
+                "0": {
+                    "name": "punctuation.definition.array.end.snbt"
+                }
+            },
+            "name": "meta.structure.array.bytearray.snbt",
+            "patterns": [
+                {
+                    "include": "#byte"
+                },
+                {
+                    "match": ",",
+                    "name": "punctuation.separator.array.snbt"
+                },
+                {
+                    "match": "[^\\s\\]]",
+                    "name": "invalid.illegal.expected-array-separator.snbt"
+                }
+            ]
+        },
+        "intarray": {
+            "begin": "\\[I;",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.definition.array.begin.snbt"
+                }
+            },
+            "end": "\\]",
+            "endCaptures": {
+                "0": {
+                    "name": "punctuation.definition.array.end.snbt"
+                }
+            },
+            "name": "meta.structure.array.intarray.snbt",
+            "patterns": [
+                {
+                    "include": "#byte"
+                },
+                {
+                    "include": "#short"
+                },
+                {
+                    "include": "#int"
+                },
+                {
+                    "match": ",",
+                    "name": "punctuation.separator.array.snbt"
+                },
+                {
+                    "match": "[^\\s\\]]",
+                    "name": "invalid.illegal.expected-array-separator.snbt"
+                }
+            ]
+        },
+        "longarray": {
+            "begin": "\\[L;",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.definition.array.begin.snbt"
+                }
+            },
+            "end": "\\]",
+            "endCaptures": {
+                "0": {
+                    "name": "punctuation.definition.array.end.snbt"
+                }
+            },
+            "name": "meta.structure.array.longarray.snbt",
+            "patterns": [
+                {
+                    "include": "#byte"
+                },
+                {
+                    "include": "#short"
+                },
+                {
+                    "include": "#int"
+                },
+                {
+                    "include": "#long"
+                },
+                {
+                    "match": ",",
+                    "name": "punctuation.separator.array.snbt"
+                },
+                {
+                    "match": "[^\\s\\]]",
+                    "name": "invalid.illegal.expected-array-separator.snbt"
+                }
+            ]
+        },
+        "list": {
+            "begin": "\\[",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.definition.array.begin.snbt"
+                }
+            },
+            "end": "\\]",
+            "endCaptures": {
+                "0": {
+                    "name": "punctuation.definition.array.end.snbt"
+                }
+            },
+            "name": "meta.structure.array.list.snbt",
+            "patterns": [
+                {
+                    "include": "#value"
+                },
+                {
+                    "match": ",",
+                    "name": "punctuation.separator.array.snbt"
+                },
+                {
+                    "match": "[^\\s\\]]",
+                    "name": "invalid.illegal.expected-array-separator.snbt"
+                }
+            ]
+        },
+        "compound": {
+            "name": "meta.structure.dictionary.snbt",
+            "begin": "\\{",
+            "end": "\\}",
+            "patterns": [
+                {
+                    "include": "#compoundkey"
+                },
+                {
+                    "begin": ":",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.separator.dictionary.key-value.snbt"
+                        }
+                    },
+                    "end": "(,)|(?=\\})",
+                    "endCaptures": {
+                        "1": {
+                            "name": "punctuation.separator.dictionary.pair.snbt"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "#value"
+                        },
+                        {
+                            "include": "[^\\s,]"
+                        }
+                    ]
+                }
+            ]
+        },
+        "string": {
+            "name": "string.snbt",
+            "patterns": [
+                {
+                    "include": "#unquotedstring"
+                },
+                {
+                    "include": "#singlequotedstring"
+                },
+                {
+                    "include": "#doublequotedstring"
+                }
+            ]
+        },
+        "unquotedstring": {
+            "name": "string.unquoted.snbt",
+            "match": "[_\\-.+0-9A-Za-z]"
+        },
+        "singlequotedstring": {
+            "begin": "'",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.definition.string.begin.snbt"
+                }
+            },
+            "end": "'",
+            "endCaptures": {
+                "0": {
+                    "name": "punctuation.definition.string.end.snbt"
+                }
+            },
+            "name": "string.quoted.single.snbt",
+            "patterns": [
+                {
+                    "name": "constant.character.escape.json",
+                    "match": "\\\\(?:['\\\\/bfnrt])"
+                }
+            ]
+        },
+        "doublequotedstring": {
+            "begin": "\"",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.definition.string.begin.snbt"
+                }
+            },
+            "end": "\"",
+            "endCaptures": {
+                "0": {
+                    "name": "punctuation.definition.string.end.snbt"
+                }
+            },
+            "name": "string.quoted.double.snbt",
+            "patterns": [
+                {
+                    "name": "constant.character.escape.json",
+                    "match": "\\\\(?:[\"\\\\/bfnrt])"
+                }
+            ]
+        },
+        "compoundkey": {
+            "patterns": [
+                {
+                    "name": "support.type.property-name.unquoted.snbt",
+                    "match": "[_\\-.+0-9A-Za-z]"
+                },
+                {
+                    "begin": "'",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.begin.snbt"
+                        }
+                    },
+                    "end": "'",
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.end.snbt"
+                        }
+                    },
+                    "name": "support.type.property-name.singlequoted.snbt",
+                    "patterns": [
+                        {
+                            "name": "constant.character.escape.json",
+                            "match": "\\\\(?:['\\\\/bfnrt])"
+                        }
+                    ]
+                },
+                {
+                    "begin": "\"",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.begin.snbt"
+                        }
+                    },
+                    "end": "\"",
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.end.snbt"
+                        }
+                    },
+                    "name": "support.type.property-name.doublequoted.snbt",
+                    "patterns": [
+                        {
+                            "name": "constant.character.escape.json",
+                            "match": "\\\\(?:[\"\\\\/bfnrt])"
+                        }
+                    ]
+                }
+            ]
+        }
+    },
+    "scopeName": "source.snbt"
+}

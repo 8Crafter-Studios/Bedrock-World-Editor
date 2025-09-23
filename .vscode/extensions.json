@@ -1,0 +1,23 @@
+{
+    "recommendations": [
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "ms-edgedevtools.vscode-edge-devtools",
+        "EditorConfig.EditorConfig",
+        "ms-vscode.hexeditor",
+        "Misodee.vscode-nbt",
+        "Tnze.snbt",
+        "Tyriar.luna-paint",
+        "fabiospampinato.vscode-highlight",
+        "MarkosTh09.color-picker",
+        "github.vscode-github-actions",
+        "Codeium.codeium"
+    ],
+    "unwantedRecommendations": [
+        "golang.Go",
+        "firefox-devtools.vscode-firefox-debug",
+        "ms-dotnettools.csdevkit",
+        "donjayamanne.githistory",
+        "christian-kohler.npm-intellisense"
+    ]
+}
