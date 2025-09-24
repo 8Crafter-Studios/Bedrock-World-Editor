@@ -84,6 +84,9 @@
         "update-electron-app": "^3.1.1",
         "vscode-oniguruma": "^2.0.1",
         "vscode-textmate": "^9.2.0"
+    },
+    "optionalDependencies": {
+        "electron-installer-redhat": "^3.2.0"
     }
 }
 
