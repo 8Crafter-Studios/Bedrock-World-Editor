@@ -2,7 +2,7 @@ import { type ConfigEnv, defineConfig } from "vite";
 import path from "node:path";
 import commonjsExternals from "vite-plugin-commonjs-externals";
 
-const externals: (string | RegExp)[] = [/^node:.+$/, /^module:.+$/, "@electron/remote", "path"];
+const externals: (string | RegExp)[] = [/^node:.+$/, /^module:.+$/, "@electron/remote", "path" /* , "leveldb-zlib" */];
 
 // https://vitejs.dev/config
 export default defineConfig((env: ConfigEnv) => ({
@@ -17,8 +17,8 @@ export default defineConfig((env: ConfigEnv) => ({
         rollupOptions: {
             treeshake: false,
             external: [
-                "leveldb-zlib", // mark native module as external
-                // path.resolve(__dirname, "build/node-leveldb.node"), // native binary
+                // "leveldb-zlib", // mark native module as external
+                path.resolve(__dirname, "build/node-leveldb.node"), // native binary
             ],
         },
     },

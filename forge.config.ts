@@ -105,16 +105,18 @@ const config: ForgeConfig = {
     hooks: {
         packageAfterPrune: async (config: ResolvedForgeConfig, build_path: string): Promise<void> => {
             const vite_config = await import("./vite.main.config.ts");
-            const external: Exclude<NonNullable<NonNullable<ReturnType<typeof vite_config.default>["build"]>["rollupOptions"]>["external"], undefined> | [] =
+            let external: Exclude<NonNullable<NonNullable<ReturnType<typeof vite_config.default>["build"]>["rollupOptions"]>["external"], undefined> | [] =
                 vite_config?.default({ command: "build", mode: "production" } as any)?.build?.rollupOptions?.external || [];
             const commands: string[] = [
                 "install",
                 "--no-package-lock",
                 "--no-save",
                 ...(typeof external === "string"
-                    ? [external]
+                    ? external.endsWith(".node")
+                        ? []
+                        : [external]
                     : external instanceof Array
-                    ? external.filter((external: string | RegExp): external is string => typeof external === "string")
+                    ? external.filter((external: string | RegExp): external is string => typeof external === "string" && !external.endsWith(".node"))
                     : []),
             ];
 
