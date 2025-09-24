@@ -39,7 +39,7 @@ const config: ForgeConfig = {
                 icon: "resources/icon.png",
                 mimeType: ["x-scheme-handler/bedrock-world-editor"],
             },
-        }),
+        }, ["linux"]),
         new MakerDeb({
             options: {
                 icon: "resources/icon.png",

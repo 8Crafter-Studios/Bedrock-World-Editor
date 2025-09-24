@@ -54,8 +54,8 @@ jobs:
             - name: Publish to GitHub Releases
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              run: npm run publish -- --arch="${{ matrix.arch }}"
+              run: NODE_OPTIONS=--max-old-space-size=4096 npm run publish -- --arch="${{ matrix.arch }}"
 
             - name: Debug
-              if: always()
+              if: always() && matrix.os == 'windows-latest'
               run: dir -r out
