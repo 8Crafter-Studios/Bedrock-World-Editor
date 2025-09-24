@@ -51,11 +51,18 @@ jobs:
 
             # - name: Make distributables
             #   run: npm run make -- --dry-run --arch="${{ matrix.arch }}"
+            - name: Increase Node heap limit
+              run: echo "NODE_OPTIONS=--max-old-space-size=4096" >> $GITHUB_ENV
+
             - name: Publish to GitHub Releases
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              run: NODE_OPTIONS=--max-old-space-size=4096 npm run publish -- --arch="${{ matrix.arch }}"
+              run: npm run publish -- --arch="${{ matrix.arch }}"
 
-            - name: Debug
+            - name: Debug 1
+              if: always() && matrix.os == 'windows-latest'
+              run: dir -r node_modules/leveldb-zlib
+
+            - name: Debug 2
               if: always() && matrix.os == 'windows-latest'
               run: dir -r out

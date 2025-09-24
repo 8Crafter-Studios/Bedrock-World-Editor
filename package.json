@@ -46,7 +46,7 @@
         "@types/winreg": "^1.2.36",
         "@typescript-eslint/eslint-plugin": "^5.62.0",
         "@typescript-eslint/parser": "^5.62.0",
-        "electron": "^37.5.1",
+        "electron": "37.2.1",
         "eslint": "^8.57.1",
         "eslint-plugin-import": "^2.32.0",
         "ts-node": "^10.9.2",
