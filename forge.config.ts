@@ -11,7 +11,7 @@ import { type ChildProcess, spawn } from "node:child_process";
 const config: ForgeConfig = {
     packagerConfig: {
         asar: {
-            unpack: "**/*.{node,dll}",
+            unpack: "**/leveldb-zlib/**",
         },
         name: "Bedrock World Editor",
         executableName: "bedrock-world-editor",
