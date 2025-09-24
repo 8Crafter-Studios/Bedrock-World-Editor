@@ -25,7 +25,7 @@ const config: ForgeConfig = {
         overwrite: true,
         extraResource: ["./resources"],
     },
-    rebuildConfig: { extraModules: ["@electron/remote", "leveldb-zlib"], disablePreGypCopy: false },
+    rebuildConfig: { extraModules: ["@electron/remote"], disablePreGypCopy: false },
     makers: [
         new MakerSquirrel((arch: string) => ({
             setupIcon: "resources/icon.ico",

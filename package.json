@@ -23,7 +23,7 @@
     "homepage": "https://github.com/8Crafter-Studios/Bedrock-World-Editor",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/8Crafter-Studios/Bedrock-World-Editor.git"
+        "url": "https://github.com/8Crafter-Studios/Bedrock-World-Editor.git"
     },
     "private": true,
     "devDependencies": {

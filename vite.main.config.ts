@@ -14,7 +14,7 @@ export default defineConfig((env: ConfigEnv) => ({
         manifest: true,
         sourcemap: true,
         rollupOptions: {
-            external: ["about-window", "leveldb-zlib"],
+            external: ["about-window"],
             treeshake: false,
         },
     } /* 
