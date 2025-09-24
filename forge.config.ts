@@ -1,12 +1,14 @@
-import type { ForgeConfig, ResolvedForgeConfig } from "@electron-forge/shared-types";
-import { MakerSquirrel } from "@electron-forge/maker-squirrel";
-import { MakerZIP } from "@electron-forge/maker-zip";
 import { MakerDeb } from "@electron-forge/maker-deb";
 import { MakerRpm } from "@electron-forge/maker-rpm";
-import { VitePlugin } from "@electron-forge/plugin-vite";
+import { MakerSquirrel } from "@electron-forge/maker-squirrel";
+import { MakerZIP } from "@electron-forge/maker-zip";
 import { FusesPlugin } from "@electron-forge/plugin-fuses";
+import { VitePlugin } from "@electron-forge/plugin-vite";
+import type { ForgeConfig, ResolvedForgeConfig } from "@electron-forge/shared-types";
 import { FuseV1Options, FuseVersion } from "@electron/fuses";
 import { type ChildProcess, spawn } from "node:child_process";
+import { cpSync, existsSync, rmSync } from "node:fs";
+import path from "node:path";
 
 const config: ForgeConfig = {
     packagerConfig: {
@@ -34,12 +36,15 @@ const config: ForgeConfig = {
             iconUrl: "https://raw.githubusercontent.com/8Crafter-Studios/Bedrock-World-Editor/refs/heads/main/resources/icon.ico",
         })),
         new MakerZIP({}, ["darwin"]),
-        new MakerRpm({
-            options: {
-                icon: "resources/icon.png",
-                mimeType: ["x-scheme-handler/bedrock-world-editor"],
+        new MakerRpm(
+            {
+                options: {
+                    icon: "resources/icon.png",
+                    mimeType: ["x-scheme-handler/bedrock-world-editor"],
+                },
             },
-        }, ["linux"]),
+            ["linux"]
+        ),
         new MakerDeb({
             options: {
                 icon: "resources/icon.png",
@@ -165,6 +170,26 @@ if (!bindings) {
 module.exports = bindings
 `
                         ); */
+                        const cleanedModulePath: string = path.resolve(__dirname, "node_modules", "leveldb-zlib");
+                        const targetModulePath: string = path.join(build_path, "node_modules", "leveldb-zlib");
+
+                        try {
+                            if (existsSync(cleanedModulePath)) {
+                                console.log(`Replacing leveldb-zlib with cleaned version...`);
+
+                                // Remove the bloated version
+                                rmSync(targetModulePath, { recursive: true, force: true });
+
+                                // Copy the cleaned version
+                                cpSync(cleanedModulePath, targetModulePath, { recursive: true });
+
+                                console.log(`✔ leveldb-zlib replaced successfully`);
+                            } else {
+                                console.warn(`⚠ Cleaned module not found at ${cleanedModulePath}`);
+                            }
+                        } catch (err) {
+                            console.error(`❌ Failed to replace leveldb-zlib:`, err);
+                        }
                         resolve();
                         return;
                     }
