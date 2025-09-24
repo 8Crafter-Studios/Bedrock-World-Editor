@@ -55,3 +55,6 @@ jobs:
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: npm run publish -- --arch="${{ matrix.arch }}"
+
+            - name: Debug
+              run: dir -r out
