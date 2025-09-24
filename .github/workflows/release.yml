@@ -18,18 +18,28 @@ jobs:
                 include:
                     - os: ubuntu-latest
                       arch: x64
+                    - os: ubuntu-latest
+                      arch: ia32
+                    - os: ubuntu-latest
+                      arch: arm64
+                    - os: ubuntu-latest
+                      arch: armv7l
                     - os: macos-latest
                       arch: x64
+                    - os: macos-latest
+                      arch: ia32
                     - os: macos-latest
                       arch: arm64
-                    # - os: macos-latest
-                    #   arch: ia32
+                    - os: macos-latest
+                      arch: armv7l
                     - os: windows-latest
                       arch: x64
-                    # - os: windows-latest
-                    #   arch: arm64
                     - os: windows-latest
                       arch: ia32
+                    - os: windows-latest
+                      arch: arm64
+                    - os: windows-latest
+                      arch: armv7l
         runs-on: ${{ matrix.os }}
         name: Build ${{ matrix.os }} (${{ matrix.arch }})
         permissions: write-all

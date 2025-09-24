@@ -35,7 +35,7 @@ const config: ForgeConfig = {
             // setupMsi: `bedrock-world-editor_${arch}_${(require("./package.json") as typeof import("./package.json")).version} Setup.msi`,
             iconUrl: "https://raw.githubusercontent.com/8Crafter-Studios/Bedrock-World-Editor/refs/heads/main/resources/icon.ico",
         })),
-        new MakerZIP({}, ["darwin"]),
+        new MakerZIP({}),
         new MakerRpm(
             {
                 options: {
