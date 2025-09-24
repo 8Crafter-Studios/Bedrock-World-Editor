@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { readFileSync, rmSync, write, writeFileSync } from "node:fs";
 
 console.log("Fixing leveldb-zlib CMakeLists...");
 
@@ -11,6 +11,13 @@ writeFileSync(
     )
 );
 
+console.log("Removing install script from leveldb-zlib package.json...");
+
+writeFileSync(
+    "./node_modules/leveldb-zlib/package.json",
+    readFileSync("./node_modules/leveldb-zlib/package.json", "utf-8").replace('"install": "node buildChecks.js",', "")
+);
+
 if (process.platform === "win32") {
     console.log("Building leveldb-zlib helper...");
 
@@ -19,7 +26,7 @@ if (process.platform === "win32") {
 
 console.log("Building leveldb-zlib...");
 
-execSync("cd ./node_modules/leveldb-zlib && npm run install");
+execSync("cd ./node_modules/leveldb-zlib && npm run checkEnv");
 
 console.log("Cleaning leveldb-zlib...");
 
@@ -37,6 +44,9 @@ rmSync("./node_modules/leveldb-zlib/helpers/win-vcpkg-export_unzipped.tar", { fo
 
 console.log("Removing ./node_modules/leveldb-zlib/helpers/win-vcpkg-export.tar.gz...");
 rmSync("./node_modules/leveldb-zlib/helpers/win-vcpkg-export.tar.gz", { force: true, recursive: true });
+
+console.log("Removing ./node_modules/leveldb-zlib/helpers/vcpkg-export...");
+rmSync("./node_modules/leveldb-zlib/helpers/vcpkg-export", { force: true, recursive: true });
 
 console.log("Removing ./node_modules/leveldb-zlib/helpers/win-build.bat...");
 rmSync("./node_modules/leveldb-zlib/helpers/win-build.bat", { force: true, recursive: true });
