@@ -42,7 +42,11 @@ jobs:
                   node-version: "24.x"
 
             - name: Install dependencies
-              run: npm install
+              # Add `--ignore-scripts` because leveldb-zlib's install script is broken, so it is ignored and then fixed with the next step before being run.
+              run: npm install --ignore-scripts
+
+            - name: Build leveldb-zlib binaries
+              run: npm run build-leveldb-zlib
 
             # - name: Make distributables
             #   run: npm run make -- --dry-run --arch="${{ matrix.arch }}"
