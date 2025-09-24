@@ -197,19 +197,22 @@ module.exports = bindings
                         ]) {
                             const target: string = path.join(
                                 build_path,
-                                "resources",
-                                "app.asar.unpacked",
                                 "node_modules",
                                 "@8crafter",
                                 "leveldb-zlib",
                                 "prebuilds",
                                 dir
                             );
+                            console.log(`Attempting to remove ${target}...`);
                             if (existsSync(target)) {
+                                console.log(`Found ${target}...`);
                                 rmSync(target, { recursive: true, force: true });
-                                console.log(`Removed other prebuilds from package.`);
+                                console.log(`Removed ${target}...`);
+                            } else {
+                                console.log(`Did not find ${target}...`);
                             }
                         }
+                        console.log(`Removed other prebuilds from package.`);
                         resolve();
                         return;
                     }
