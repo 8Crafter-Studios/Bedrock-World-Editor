@@ -16,7 +16,7 @@ import {
 } from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
 import type { TreeEditorDataStorageObject } from "../../app/components/TreeEditor";
-import { LevelDB } from "leveldb-zlib";
+import { LevelDB } from "@8crafter/leveldb-zlib";
 import path from "node:path";
 import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync } from "node:fs";
 import { copyFile, cp, readFile, rm, writeFile } from "node:fs/promises";

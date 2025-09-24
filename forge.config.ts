@@ -27,7 +27,7 @@ const config: ForgeConfig = {
         overwrite: true,
         extraResource: ["./resources"],
     },
-    rebuildConfig: { extraModules: ["@electron/remote"], ignoreModules: ["leveldb-zlib"], disablePreGypCopy: false },
+    rebuildConfig: { extraModules: ["@electron/remote"] /* , ignoreModules: ["@8crafter/leveldb-zlib"] */, disablePreGypCopy: false },
     makers: [
         new MakerSquirrel((arch: string) => ({
             setupIcon: "resources/icon.ico",
@@ -170,26 +170,26 @@ if (!bindings) {
 module.exports = bindings
 `
                         ); */
-                        const cleanedModulePath: string = path.resolve(__dirname, "node_modules", "leveldb-zlib");
-                        const targetModulePath: string = path.join(build_path, "node_modules", "leveldb-zlib");
+                        // const cleanedModulePath: string = path.resolve(__dirname, "node_modules", "@8crafter/leveldb-zlib");
+                        // const targetModulePath: string = path.join(build_path, "node_modules", "@8crafter/leveldb-zlib");
 
-                        try {
-                            if (existsSync(cleanedModulePath)) {
-                                console.log(`Replacing leveldb-zlib with cleaned version...`);
+                        // try {
+                        //     if (existsSync(cleanedModulePath)) {
+                        //         console.log(`Replacing leveldb-zlib with cleaned version...`);
 
-                                // Remove the bloated version
-                                rmSync(targetModulePath, { recursive: true, force: true });
+                        //         // Remove the bloated version
+                        //         rmSync(targetModulePath, { recursive: true, force: true });
 
-                                // Copy the cleaned version
-                                cpSync(cleanedModulePath, targetModulePath, { recursive: true });
+                        //         // Copy the cleaned version
+                        //         cpSync(cleanedModulePath, targetModulePath, { recursive: true });
 
-                                console.log(`✔ leveldb-zlib replaced successfully`);
-                            } else {
-                                console.warn(`⚠ Cleaned module not found at ${cleanedModulePath}`);
-                            }
-                        } catch (err) {
-                            console.error(`❌ Failed to replace leveldb-zlib:`, err);
-                        }
+                        //         console.log(`✔ leveldb-zlib replaced successfully`);
+                        //     } else {
+                        //         console.warn(`⚠ Cleaned module not found at ${cleanedModulePath}`);
+                        //     }
+                        // } catch (err) {
+                        //     console.error(`❌ Failed to replace leveldb-zlib:`, err);
+                        // }
                         resolve();
                         return;
                     }
