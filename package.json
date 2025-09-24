@@ -49,6 +49,7 @@
         "electron": "37.2.1",
         "eslint": "^8.57.1",
         "eslint-plugin-import": "^2.32.0",
+        "leveldb-zlib": "^1.2.0",
         "ts-node": "^10.9.2",
         "typescript": "^5.9.2",
         "vite": "^5.0.0",
@@ -70,7 +71,6 @@
         "jquery": "^3.7.1",
         "jquery-ui": "^1.14.1",
         "json5": "^2.2.3",
-        "leveldb-zlib": "^1.2.0",
         "mcbe-leveldb": "^1.1.0",
         "merge-refs": "^2.0.0",
         "mime-types": "^3.0.1",
@@ -86,3 +86,4 @@
         "vscode-textmate": "^9.2.0"
     }
 }
+
