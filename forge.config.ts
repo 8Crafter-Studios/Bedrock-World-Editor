@@ -190,6 +190,26 @@ module.exports = bindings
                         // } catch (err) {
                         //     console.error(`❌ Failed to replace leveldb-zlib:`, err);
                         // }
+                        for (const dir of [
+                            ...(process.platform !== "win32" ? ["win32-10-x64"] : []),
+                            ...(process.platform !== "darwin" ? ["darwin-24-arm64"] : []),
+                            ...(process.platform !== "linux" ? ["linux-6-x64"] : []),
+                        ]) {
+                            const target: string = path.join(
+                                build_path,
+                                "resources",
+                                "app.asar.unpacked",
+                                "node_modules",
+                                "@8crafter",
+                                "leveldb-zlib",
+                                "prebuilds",
+                                dir
+                            );
+                            if (existsSync(target)) {
+                                rmSync(target, { recursive: true, force: true });
+                                console.log(`Removed other prebuilds from package.`);
+                            }
+                        }
                         resolve();
                         return;
                     }
