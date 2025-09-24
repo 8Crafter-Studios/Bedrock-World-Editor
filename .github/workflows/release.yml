@@ -68,10 +68,10 @@ jobs:
                   NODE_OPTIONS: --max-old-space-size=4096
               run: npm run publish -- --arch="${{ matrix.arch }}"
 
-            - name: Debug 1
-              if: always() && matrix.os == 'windows-latest'
-              run: dir -r node_modules/leveldb-zlib
-
-            - name: Debug 2
+            - name: Debug (Windows)
               if: always() && matrix.os == 'windows-latest'
               run: dir -r out
+
+            - name: Debug (Non-Windows)
+              if: always() && matrix.os != 'windows-latest'
+              run: find out
