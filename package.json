@@ -86,6 +86,7 @@
         "vscode-textmate": "^9.2.0"
     },
     "optionalDependencies": {
+        "electron-installer-debian": "^3.2.0",
         "electron-installer-redhat": "^3.2.0"
     }
 }
