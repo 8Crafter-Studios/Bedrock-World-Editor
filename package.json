@@ -11,7 +11,7 @@
         "make": "electron-forge make",
         "publish": "electron-forge publish",
         "lint": "eslint --ext .ts,.tsx .",
-        "build-leveldb-zlib": "node buildLevelDBZlib.mts && cd ./node_modules/leveldb-zlib && npm run install"
+        "build-leveldb-zlib": "node buildLevelDBZlib.mts"
     },
     "keywords": [],
     "author": {

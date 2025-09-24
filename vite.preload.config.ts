@@ -2,7 +2,7 @@ import path from "node:path";
 import { type ConfigEnv, defineConfig } from "vite";
 import commonjsExternals from "vite-plugin-commonjs-externals";
 
-const externals: (string | RegExp)[] = [/^node:.+$/, "@electron/remote", "path" /* , "leveldb-zlib" */];
+const externals: (string | RegExp)[] = [/^node:.+$/, "@electron/remote", "path", "leveldb-zlib"];
 
 // https://vitejs.dev/config
 export default defineConfig((env: ConfigEnv) => ({
