@@ -57,4 +57,5 @@ jobs:
               run: npm run publish -- --arch="${{ matrix.arch }}"
 
             - name: Debug
+              if: always()
               run: dir -r out
