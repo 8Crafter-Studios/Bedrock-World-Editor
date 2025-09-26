@@ -36,8 +36,9 @@ jobs:
                       arch: x64
                     - os: windows-latest
                       arch: ia32
-                    - os: windows-latest
-                      arch: arm64
+                      node-version: 22.x
+                    # - os: windows-11-arm # Disabled because Windows arm64 can run x64 apps.
+                    #   arch: arm64
                     # - os: windows-latest # BUG: This one doesn't work.
                     #   arch: armv7l
         runs-on: ${{ matrix.os }}
@@ -50,11 +51,13 @@ jobs:
             - name: Setup Node.js
               uses: actions/setup-node@v3
               with:
-                  node-version: "24.x"
+                  node-version: ${{ matrix.node-version || '24.x' }}
 
             - name: Install dependencies
               # Add `--ignore-scripts` because leveldb-zlib's install script is broken, so it is ignored and then fixed with the next step before being run.
               run: npm install # --ignore-scripts
+              env:
+                  LEVELDB_ZLIB_ARCH_OVERRIDE: ${{ matrix.arch }}
 
             # - name: Build leveldb-zlib binaries
             #   run: npm run build-leveldb-zlib
@@ -66,6 +69,7 @@ jobs:
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   NODE_OPTIONS: --max-old-space-size=4096
+                  LEVELDB_ZLIB_ARCH_OVERRIDE: ${{ matrix.arch }}
               run: npm run publish -- --arch="${{ matrix.arch }}"
 
             - name: Debug (Windows)

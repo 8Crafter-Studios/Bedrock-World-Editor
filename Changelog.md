@@ -1,3 +1,13 @@
+# v1.0.0-beta.3
+
+## Changes
+
+-   Removed `package-lock.json` from `.gitignore`.
+
+## Fixes
+
+-   Fixed the macOS build and a few other builds that had their native `node-leveldb.node` binary missing or in the wrong location.
+
 # v1.0.0-beta.2
 
 ## Additions

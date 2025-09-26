@@ -90,6 +90,3 @@ typings/
 
 # Electron-Forge
 out/
-
-# NPM
-package-lock.json
