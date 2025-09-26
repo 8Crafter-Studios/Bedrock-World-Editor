@@ -1,7 +1,7 @@
 {
     "name": "bedrock-world-editor",
     "productName": "bedrock-world-editor",
-    "version": "1.0.0-beta.1",
+    "version": "1.0.0-beta.2",
     "description": "An NBT editor for Minecraft Bedrock Edition.",
     "main": ".vite/build/main.js",
     "type": "commonjs",

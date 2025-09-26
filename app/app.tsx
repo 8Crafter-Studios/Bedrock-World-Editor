@@ -22,6 +22,7 @@ import { app, dialog } from "@electron/remote";
 import type { MessageBoxReturnValue } from "electron";
 import MapEditorTab from "./tabs/mapNBTEditor";
 import NoneTab from "./tabs/none";
+import TickingAreasTab from "./tabs/tickingAreas";
 const mime = require("mime-types") as typeof import("mime-types");
 
 monaco.languages.register({ id: "snbt", extensions: [".snbt"] });
@@ -500,6 +501,8 @@ export function WorldEditorTabRenderer(props: {
                 return <EntitiesTab tab={props.parentTab} />;
             case "maps":
                 return <MapsTab tab={props.parentTab} />;
+            case "ticking-areas":
+                return <TickingAreasTab tab={props.parentTab} />;
             case "view-files":
                 return <ViewFilesTab tab={props.parentTab} />;
             case "repair-forced-world-corruption":

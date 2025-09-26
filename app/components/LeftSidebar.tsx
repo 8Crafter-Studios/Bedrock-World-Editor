@@ -93,7 +93,7 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.SpecificElemen
             { icon: "resource://images/ui/glyphs/timer.png", id: "ticking-areas", name: "Ticking Areas", resolution: 11 },
             { icon: "resource://images/ui/glyphs/Slash-Command.png", id: "schedulerwt", name: "SchedulerWT", resolution: 12 },
             { icon: "resource://images/ui/glyphs/Folder-Closed.png", id: "view-files", name: "View Files", resolution: 12 },
-            { icon: "resource://images/ui/glyphs/magnifyingGlass.png", id: "search", name: "Search", resolution: 12 },
+            // { icon: "resource://images/ui/glyphs/magnifyingGlass.png", id: "search", name: "Search", resolution: 12 },
             (props.tab.cachedDBKeys?.ForcedWorldCorruption?.length ?? 0) > 0 && {
                 icon: "resource://images/ui/glyphs/anvil-hammer.png",
                 id: "repair-forced-world-corruption",

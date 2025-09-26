@@ -5,6 +5,27 @@
 import * as monaco from "monaco-editor";
 type Monaco = typeof monaco;
 
+// monaco.editor.registerCommand("paste", (accessor) => {
+//     console.log(accessor);
+//     // accessor.get(monaco.editor.IEditorService).getFocusedCodeEditor();
+//     // const text = require("electron").clipboard.readText();
+//     // monaco.editor.trigger("keyboard", "type", { text });
+// });
+
+// monaco.editor.addKeybindingRule({
+//     keybinding: monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyV,
+//     command: "paste",
+//     when: "editorTextFocus",
+// });
+
+// import { StandaloneServices } from 'monaco-editor/esm/vs/editor/standalone/browser/standaloneServices';
+// import { IProductService } from 'monaco-editor/esm/vs/platform/product/common/productService';
+
+// Register the missing service
+// StandaloneServices.initialize({
+//   ["productService"]: IProductService,
+// });
+
 import type { IGrammar, IRawGrammar, IRawTheme, IOnigLib, StateStack } from "vscode-textmate";
 
 import { INITIAL, Registry, parseRawGrammar } from "vscode-textmate";

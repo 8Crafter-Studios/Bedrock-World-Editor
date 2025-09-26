@@ -514,6 +514,18 @@ namespace exports {
                                 target: { type: "LevelDBEntry", key: Buffer.from("DynamicProperties") },
                             });
                         break;
+                    case "portals":
+                        tab =
+                            this.openTabs.find((tab) => tab.specialTabID === "portals") ??
+                            this.openTab({
+                                contentType: "Portals",
+                                icon: "auto",
+                                name: "portals",
+                                parentTab: this,
+                                specialTabID: "portals",
+                                target: { type: "LevelDBEntry", key: Buffer.from("portals") },
+                            });
+                        break;
                     case "schedulerwt":
                         tab =
                             this.openTabs.find((tab) => tab.specialTabID === "schedulerwt") ??

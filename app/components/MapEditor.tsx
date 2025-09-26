@@ -194,7 +194,7 @@ export function MapEditor(props: MapRendererProps): JSX.Element {
                             const result: string[] | undefined = dialog.showOpenDialogSync({
                                 buttonLabel: "Replace",
                                 // TO-DO: Add support for other image types.
-                                filters: [{ name: "Image", extensions: ["*.png", "*.jpg", "*.jpeg", "*.webp"] }],
+                                filters: [{ name: "Image", extensions: ["png", "jpg", "jpeg", "webp"] }],
                                 properties: ["openFile", "treatPackageAsDirectory", "showHiddenFiles"],
                                 message: "Select an image to replace this map.",
                                 title: "Replace Map Image",
@@ -207,7 +207,7 @@ export function MapEditor(props: MapRendererProps): JSX.Element {
                             const context: CanvasRenderingContext2D = canvasRef.current!.getContext("2d")!;
                             context.drawImage(imageElement, 0, 0, 128, 128);
                             // TO-DO: Make this convert the bytes from unsigned bytes to signed bytes.
-                            data.value.colors.value = Array.from(context.getImageData(0, 0, 128, 128).data);
+                            data.value.colors.value = Array.from(context.getImageData(0, 0, 128, 128).data).map((value: number): number => (value << 24) >> 24);
                             markTabAsModified();
                             updateMap();
                         }}

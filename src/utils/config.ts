@@ -132,7 +132,12 @@ namespace exports {
                 modeSettings: {
                     simple: {},
                 },
-            }
+            },
+            tickingAreas: {
+                modeSettings: {
+                    simple: {},
+                },
+            },
         },
     } as const satisfies DeepSubConfigKeyStructureOfConfig<Config>;
     /**
@@ -196,6 +201,14 @@ namespace exports {
                     modeSettings: {
                         simple: {
                             columns: ["Preview", "DBKey", "ID", "Scale", "FullyExplored", "Location", "Height", "ParentMapID"],
+                        },
+                    },
+                },
+                tickingAreas: {
+                    mode: "simple",
+                    modeSettings: {
+                        simple: {
+                            columns: ["DBKey", "Name", "Dimension", "From", "To", "IsCircle", "EntityID", "MaxDistToPlayers"],
                         },
                     },
                 },
@@ -980,6 +993,94 @@ namespace exports {
                 return MapsViewConfig_ModeSettings;
             })())(this);
         })(this);
+        public readonly tickingAreas = new (class TickingAreasViewConfig extends DeepSubConfig<ViewsConfig> {
+            public get mode(): ConfigConstants.views.TickingAreas.TickingAreasTabMode {
+                return this[DeepSubConfig_configSymbol].#config.getConfigData().views?.tickingAreas?.mode ?? Config.defaults.views.tickingAreas.mode;
+            }
+            public set mode(value: ConfigConstants.views.TickingAreas.TickingAreasTabMode | undefined) {
+                this[DeepSubConfig_configSymbol].#config.saveChanges({ views: { tickingAreas: { mode: value ?? Config.defaults.views.tickingAreas.mode } } });
+            }
+            public readonly modeSettings = new ((() => {
+                const subConfigClassSymbol: unique symbol = Symbol.for("TickingAreasViewConfig_ModeSettings_subConfig");
+                class TickingAreasViewConfig_ModeSettings
+                    extends DeepSubConfig<TickingAreasViewConfig>
+                    implements Record<ConfigConstants.views.TickingAreas.TickingAreasTabMode, (typeof subConfigValueClasses)[number]["prototype"]>
+                {
+                    public static readonly __subConfigClassSymbol__: symbol = subConfigClassSymbol;
+                    public static readonly [subConfigClassSymbol] = (() => {
+                        abstract class TickingAreasViewConfig_ModeSettings_SubConfig<
+                            T extends ConfigConstants.views.TickingAreas.TickingAreasTabMode,
+                            M extends (typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToSectionIDs)[T] = (typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToSectionIDs)[T],
+                            HasNullSection extends null extends M[number] ? true : false = null extends M[number] ? true : false,
+                            HasNonNullSection extends Extract<M[number], string> extends never ? false : true = Extract<M[number], string> extends never
+                                ? false
+                                : true
+                        > extends DeepSubConfig<TickingAreasViewConfig_ModeSettings> {
+                            public readonly modes: M;
+                            public constructor(config: TickingAreasViewConfig_ModeSettings, public readonly mode: T) {
+                                super(config);
+                                this.modes = ConfigConstants.views.TickingAreas.tickingAreasTabModeToSectionIDs[mode] as M;
+                            }
+                            public get columns(): HasNullSection extends true
+                                ? (typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToColumnIDs)[Extract<
+                                      ConfigConstants.views.TickingAreas.TickingAreasTabSectionModeFromTickingAreasTabModeAndSectionID<T, M[number]>,
+                                      keyof typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToColumnIDs
+                                  >][number][]
+                                : never {
+                                if ((this.modes as M[number][]).includes(null)) {
+                                    return ((
+                                        this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views
+                                            ?.tickingAreas?.modeSettings?.[this.mode] as any
+                                    )?.columns ??
+                                        (
+                                            Config.defaults.views.tickingAreas.modeSettings[this.mode] as unknown as Extract<
+                                                (typeof Config)["defaults"]["views"]["tickingAreas"]["modeSettings"][T],
+                                                { columns: any }
+                                            >
+                                        ).columns) as any;
+                                } else {
+                                    return void 0 as never;
+                                }
+                            }
+                            public set columns(
+                                value: HasNullSection extends true
+                                    ? (typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToColumnIDs)[Extract<
+                                          ConfigConstants.views.TickingAreas.TickingAreasTabSectionModeFromTickingAreasTabModeAndSectionID<T, M[number]>,
+                                          keyof typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToColumnIDs
+                                      >][number][]
+                                    : never
+                            ) {
+                                if ((this.modes as M[number][]).includes(null)) {
+                                    this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                        views: { tickingAreas: { modeSettings: { [this.mode]: { columns: value } } } },
+                                    });
+                                }
+                            }
+                            public abstract readonly sections: HasNonNullSection extends true
+                                ? DeepSubConfig<any> & {
+                                      [K in NonNullable<M[number]>]: DeepSubConfig<any> & {
+                                          columns: (typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToColumnIDs)[Extract<
+                                              ConfigConstants.views.TickingAreas.TickingAreasTabSectionModeFromTickingAreasTabModeAndSectionID<
+                                                  T,
+                                                  NonNullable<M[number]>
+                                              >,
+                                              keyof typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToColumnIDs
+                                          >][number][];
+                                      };
+                                  }
+                                : never;
+                        }
+                        return TickingAreasViewConfig_ModeSettings_SubConfig;
+                    })();
+                    public readonly simple = new (class TickingAreasViewConfig_ModeSettings_simple extends TickingAreasViewConfig_ModeSettings[
+                        subConfigClassSymbol
+                    ]<"simple"> {
+                        public declare readonly sections: never;
+                    })(this, "simple");
+                }
+                return TickingAreasViewConfig_ModeSettings;
+            })())(this);
+        })(this);
     }
     const DeepSubConfig_configSymbol: unique symbol = Symbol.for("DeepSubConfig_sourceConfig");
     class DeepSubConfig<T extends Config | (typeof subConfigValueClasses)[number]["prototype"] = Config> {
@@ -1203,6 +1304,54 @@ namespace exports {
                       }[MapsTabMode];
 
                 export type MapsTabModeToColumnType = { [key in MapsTabSectionMode]: (typeof mapsTabModeToColumnIDs)[key][number] };
+            }
+            export namespace TickingAreas {
+                export const columnIDToDisplayName = {
+                    DBKey: "DB Key",
+                    Dimension: "Dimension",
+                    From: "From",
+                    To: "To",
+                    EntityID: "Entity ID",
+                    Name: "Name",
+                    MaxDistToPlayers: "MaxDistToPlayers",
+                    IsCircle: "Is Circle",
+                } as const satisfies {
+                    [key in TickingAreasTabModeToColumnType[TickingAreasTabSectionMode]]: string | { optionLabel: string; headerLabel: string };
+                };
+
+                export const tickingAreasTabModeToSectionIDs = {
+                    simple: [null],
+                } as const satisfies { [key in TickingAreasTabMode]: (string | null)[] };
+
+                export const tickingAreasTabModeSectionHeaderNames = {
+                    simple: [null],
+                } as const satisfies { [key in TickingAreasTabMode]: (string | null)[] };
+
+                export const tickingAreasTabModeToColumnIDs = {
+                    simple: ["DBKey", "Name", "Dimension", "From", "To", "IsCircle", "EntityID", "MaxDistToPlayers"],
+                } as const;
+
+                export type TickingAreasTabMode = "simple";
+
+                export type TickingAreasTabSectionModeFromTickingAreasTabModeAndSectionID<
+                    M extends TickingAreasTabMode,
+                    S extends (typeof tickingAreasTabModeToSectionIDs)[M][number]
+                > = Extract<
+                    S extends null ? M : null extends S ? M | `${M}_${NonNullable<S>}` : `${M}_${NonNullable<S>}`,
+                    keyof typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToColumnIDs
+                >;
+
+                export type TickingAreasTabSectionMode =
+                    | {
+                          [key in TickingAreasTabMode]: null extends (typeof tickingAreasTabModeToSectionIDs)[key][number] ? key : never;
+                      }[TickingAreasTabMode]
+                    | {
+                          [key in TickingAreasTabMode]: Exclude<(typeof tickingAreasTabModeToSectionIDs)[key][number], null> extends string
+                              ? `${key}_${Exclude<(typeof tickingAreasTabModeToSectionIDs)[key][number], null>}`
+                              : never;
+                      }[TickingAreasTabMode];
+
+                export type TickingAreasTabModeToColumnType = { [key in TickingAreasTabSectionMode]: (typeof tickingAreasTabModeToColumnIDs)[key][number] };
             }
             export namespace ViewFiles {
                 export const columnIDToDisplayName = {
