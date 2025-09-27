@@ -138,6 +138,11 @@ namespace exports {
                     simple: {},
                 },
             },
+            structures: {
+                modeSettings: {
+                    simple: {},
+                },
+            },
         },
     } as const satisfies DeepSubConfigKeyStructureOfConfig<Config>;
     /**
@@ -209,6 +214,14 @@ namespace exports {
                     modeSettings: {
                         simple: {
                             columns: ["DBKey", "Name", "Dimension", "From", "To", "IsCircle", "EntityID", "MaxDistToPlayers"],
+                        },
+                    },
+                },
+                structures: {
+                    mode: "simple",
+                    modeSettings: {
+                        simple: {
+                            columns: ["DBKey", "ID", "Size", "Entities", "BlockEntities", "WorldOrigin"],
                         },
                     },
                 },
@@ -1081,6 +1094,94 @@ namespace exports {
                 return TickingAreasViewConfig_ModeSettings;
             })())(this);
         })(this);
+        public readonly structures = new (class StructuresViewConfig extends DeepSubConfig<ViewsConfig> {
+            public get mode(): ConfigConstants.views.Structures.StructuresTabMode {
+                return this[DeepSubConfig_configSymbol].#config.getConfigData().views?.structures?.mode ?? Config.defaults.views.structures.mode;
+            }
+            public set mode(value: ConfigConstants.views.Structures.StructuresTabMode | undefined) {
+                this[DeepSubConfig_configSymbol].#config.saveChanges({ views: { structures: { mode: value ?? Config.defaults.views.structures.mode } } });
+            }
+            public readonly modeSettings = new ((() => {
+                const subConfigClassSymbol: unique symbol = Symbol.for("StructuresViewConfig_ModeSettings_subConfig");
+                class StructuresViewConfig_ModeSettings
+                    extends DeepSubConfig<StructuresViewConfig>
+                    implements Record<ConfigConstants.views.Structures.StructuresTabMode, (typeof subConfigValueClasses)[number]["prototype"]>
+                {
+                    public static readonly __subConfigClassSymbol__: symbol = subConfigClassSymbol;
+                    public static readonly [subConfigClassSymbol] = (() => {
+                        abstract class StructuresViewConfig_ModeSettings_SubConfig<
+                            T extends ConfigConstants.views.Structures.StructuresTabMode,
+                            M extends (typeof ConfigConstants.views.Structures.structuresTabModeToSectionIDs)[T] = (typeof ConfigConstants.views.Structures.structuresTabModeToSectionIDs)[T],
+                            HasNullSection extends null extends M[number] ? true : false = null extends M[number] ? true : false,
+                            HasNonNullSection extends Extract<M[number], string> extends never ? false : true = Extract<M[number], string> extends never
+                                ? false
+                                : true
+                        > extends DeepSubConfig<StructuresViewConfig_ModeSettings> {
+                            public readonly modes: M;
+                            public constructor(config: StructuresViewConfig_ModeSettings, public readonly mode: T) {
+                                super(config);
+                                this.modes = ConfigConstants.views.Structures.structuresTabModeToSectionIDs[mode] as M;
+                            }
+                            public get columns(): HasNullSection extends true
+                                ? (typeof ConfigConstants.views.Structures.structuresTabModeToColumnIDs)[Extract<
+                                      ConfigConstants.views.Structures.StructuresTabSectionModeFromStructuresTabModeAndSectionID<T, M[number]>,
+                                      keyof typeof ConfigConstants.views.Structures.structuresTabModeToColumnIDs
+                                  >][number][]
+                                : never {
+                                if ((this.modes as M[number][]).includes(null)) {
+                                    return ((
+                                        this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views
+                                            ?.structures?.modeSettings?.[this.mode] as any
+                                    )?.columns ??
+                                        (
+                                            Config.defaults.views.structures.modeSettings[this.mode] as unknown as Extract<
+                                                (typeof Config)["defaults"]["views"]["structures"]["modeSettings"][T],
+                                                { columns: any }
+                                            >
+                                        ).columns) as any;
+                                } else {
+                                    return void 0 as never;
+                                }
+                            }
+                            public set columns(
+                                value: HasNullSection extends true
+                                    ? (typeof ConfigConstants.views.Structures.structuresTabModeToColumnIDs)[Extract<
+                                          ConfigConstants.views.Structures.StructuresTabSectionModeFromStructuresTabModeAndSectionID<T, M[number]>,
+                                          keyof typeof ConfigConstants.views.Structures.structuresTabModeToColumnIDs
+                                      >][number][]
+                                    : never
+                            ) {
+                                if ((this.modes as M[number][]).includes(null)) {
+                                    this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                        views: { structures: { modeSettings: { [this.mode]: { columns: value } } } },
+                                    });
+                                }
+                            }
+                            public abstract readonly sections: HasNonNullSection extends true
+                                ? DeepSubConfig<any> & {
+                                      [K in NonNullable<M[number]>]: DeepSubConfig<any> & {
+                                          columns: (typeof ConfigConstants.views.Structures.structuresTabModeToColumnIDs)[Extract<
+                                              ConfigConstants.views.Structures.StructuresTabSectionModeFromStructuresTabModeAndSectionID<
+                                                  T,
+                                                  NonNullable<M[number]>
+                                              >,
+                                              keyof typeof ConfigConstants.views.Structures.structuresTabModeToColumnIDs
+                                          >][number][];
+                                      };
+                                  }
+                                : never;
+                        }
+                        return StructuresViewConfig_ModeSettings_SubConfig;
+                    })();
+                    public readonly simple = new (class StructuresViewConfig_ModeSettings_simple extends StructuresViewConfig_ModeSettings[
+                        subConfigClassSymbol
+                    ]<"simple"> {
+                        public declare readonly sections: never;
+                    })(this, "simple");
+                }
+                return StructuresViewConfig_ModeSettings;
+            })())(this);
+        })(this);
     }
     const DeepSubConfig_configSymbol: unique symbol = Symbol.for("DeepSubConfig_sourceConfig");
     class DeepSubConfig<T extends Config | (typeof subConfigValueClasses)[number]["prototype"] = Config> {
@@ -1352,6 +1453,52 @@ namespace exports {
                       }[TickingAreasTabMode];
 
                 export type TickingAreasTabModeToColumnType = { [key in TickingAreasTabSectionMode]: (typeof tickingAreasTabModeToColumnIDs)[key][number] };
+            }
+            export namespace Structures {
+                export const columnIDToDisplayName = {
+                    DBKey: "DB Key",
+                    ID: "ID",
+                    Size: "Size",
+                    Entities: "Entities",
+                    BlockEntities: "Block Entities",
+                    WorldOrigin: "World Origin",
+                } as const satisfies {
+                    [key in StructuresTabModeToColumnType[StructuresTabSectionMode]]: string | { optionLabel: string; headerLabel: string };
+                };
+
+                export const structuresTabModeToSectionIDs = {
+                    simple: [null],
+                } as const satisfies { [key in StructuresTabMode]: (string | null)[] };
+
+                export const structuresTabModeSectionHeaderNames = {
+                    simple: [null],
+                } as const satisfies { [key in StructuresTabMode]: (string | null)[] };
+
+                export const structuresTabModeToColumnIDs = {
+                    simple: ["DBKey", "ID", "Size", "Entities", "BlockEntities", "WorldOrigin"],
+                } as const;
+
+                export type StructuresTabMode = "simple";
+
+                export type StructuresTabSectionModeFromStructuresTabModeAndSectionID<
+                    M extends StructuresTabMode,
+                    S extends (typeof structuresTabModeToSectionIDs)[M][number]
+                > = Extract<
+                    S extends null ? M : null extends S ? M | `${M}_${NonNullable<S>}` : `${M}_${NonNullable<S>}`,
+                    keyof typeof ConfigConstants.views.Structures.structuresTabModeToColumnIDs
+                >;
+
+                export type StructuresTabSectionMode =
+                    | {
+                          [key in StructuresTabMode]: null extends (typeof structuresTabModeToSectionIDs)[key][number] ? key : never;
+                      }[StructuresTabMode]
+                    | {
+                          [key in StructuresTabMode]: Exclude<(typeof structuresTabModeToSectionIDs)[key][number], null> extends string
+                              ? `${key}_${Exclude<(typeof structuresTabModeToSectionIDs)[key][number], null>}`
+                              : never;
+                      }[StructuresTabMode];
+
+                export type StructuresTabModeToColumnType = { [key in StructuresTabSectionMode]: (typeof structuresTabModeToColumnIDs)[key][number] };
             }
             export namespace ViewFiles {
                 export const columnIDToDisplayName = {
