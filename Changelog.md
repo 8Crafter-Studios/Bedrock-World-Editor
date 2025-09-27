@@ -1,3 +1,9 @@
+# v1.0.0-beta.4
+
+## Additions
+
+-   Added the structures tab.
+
 # v1.0.0-beta.3
 
 ## Changes
