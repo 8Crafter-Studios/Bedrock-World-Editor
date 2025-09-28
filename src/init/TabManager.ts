@@ -22,6 +22,7 @@ import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync } from "node:f
 import { copyFile, cp, readFile, rm, writeFile } from "node:fs/promises";
 import { APP_DATA_FOLDER_PATH } from "../utils/URLs";
 import type { MapEditorDataStorageObject } from "../../app/components/MapEditor";
+import { app, dialog } from "@electron/remote";
 
 namespace exports {
     type DefaultEventMap = [never];
@@ -196,6 +197,7 @@ namespace exports {
             this.openTabs.push(tab);
             this.emit("openTab", { tab });
             this.switchTab(tab);
+            if (tab.path) app.addRecentDocument(tab.path);
             return tab;
         }
         public switchTab(tab: TabManagerTab | TabManagerGenericTabID | null): void {
@@ -466,8 +468,8 @@ namespace exports {
                 successful = false;
                 error = e;
                 progressBar._window?.setClosable(true);
-                progressBar.setProgressBarMode("error");
-                progressBar.text = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+                progressBar.close();
+                dialog.showErrorBox("Error Saving", e instanceof Error ? `${e.name}: ${e.message}` : String(e));
                 // progressBar.maxValue = 100;
                 // progressBar.value = 100;
                 throw e;

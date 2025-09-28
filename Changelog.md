@@ -1,3 +1,16 @@
+# v1.0.0-beta.5
+
+## Additions
+
+-   Made the search bar on the players tab functional.
+-   The app now notifies you when opened if an update is available.
+-   On Windows, right clicking the app in the taskbar now has "New Window" task option.
+-   When opening a world, that world is now added to the app's recent documents list.
+
+## Changes
+
+-   When an error occurs while saving a world, it is now opened in an actual error dialog instead of the progress bar window to make it actually readable.
+
 # v1.0.0-beta.4
 
 ## Additions

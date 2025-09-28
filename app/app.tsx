@@ -24,6 +24,7 @@ import MapEditorTab from "./tabs/mapNBTEditor";
 import NoneTab from "./tabs/none";
 import TickingAreasTab from "./tabs/tickingAreas";
 import StructuresTab from "./tabs/structures";
+import { Renderer3D } from "./3DRendererV1/3DRenderer";
 const mime = require("mime-types") as typeof import("mime-types");
 
 monaco.languages.register({ id: "snbt", extensions: [".snbt"] });
@@ -480,7 +481,9 @@ export function WorldEditor(props: WorldEditorProps): JSX.SpecificElement<"div">
 export function WorldEditorStartTab(): JSX.SpecificElement<"div"> {
     return (
         <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
-            <div style="flex: 1; overflow: auto;"><NoneTab /></div>
+            <div style="flex: 1; overflow: auto;">
+                <NoneTab />
+            </div>
         </div>
     );
 }

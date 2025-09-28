@@ -1,7 +1,7 @@
 {
     "name": "bedrock-world-editor",
     "productName": "bedrock-world-editor",
-    "version": "1.0.0-beta.4",
+    "version": "1.0.0-beta.5",
     "description": "An NBT editor for Minecraft Bedrock Edition.",
     "main": ".vite/build/main.js",
     "type": "commonjs",
@@ -81,6 +81,7 @@
         "prismarine-nbt": "^2.7.0",
         "search-string": "^4.1.0",
         "semver": "^7.7.2",
+        "three": "^0.180.0",
         "update-electron-app": "^3.1.1",
         "vscode-oniguruma": "^2.0.1",
         "vscode-textmate": "^9.2.0"

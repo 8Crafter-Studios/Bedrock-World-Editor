@@ -587,7 +587,23 @@ async function getPlayersTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                     </div>
                 </div>
                 <div class="search-controls-container" ref={searchRefs.searchAreaContainer}>
-                    <input type="search" class="search-text-input" placeholder="Search... (COMING SOON!)" disabled ref={searchRefs.searchTextBox} />
+                    <input
+                        type="search"
+                        class="search-text-input"
+                        placeholder="Search..."
+                        autocomplete="off"
+                        autocorrect="off"
+                        autocapitalize="off"
+                        spellcheck={false}
+                        onKeyDown={(event: JSX.TargetedKeyboardEvent<HTMLInputElement>): void => {
+                            if (!searchRefs.searchButton.current) return;
+                            if (event.key === "Enter" && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
+                                event.preventDefault();
+                                searchRefs.searchButton.current.click();
+                            }
+                        }}
+                        ref={searchRefs.searchTextBox}
+                    />
                     <button
                         type="button"
                         class="search-button"

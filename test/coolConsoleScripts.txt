@@ -1,0 +1,41 @@
+// Makes every 16x16x16 subchunk in the world have a random biome.
+
+const tab = tabManager.selectedTab;
+const bd = require("mcbe-leveldb").BiomeData;
+const bs = Object.values(bd.int_map);
+const nbt = require("prismarine-nbt");
+const mcbe = require("mcbe-leveldb");
+let i = 0;
+const l = tab.cachedDBKeys.Data3D.length;
+for (const key of tab.cachedDBKeys.Data3D) {
+    const data = await mcbe.entryContentTypeToFormatMap.Data3D.parse(await tab.db.get(key));
+    for (const biomeSubChunk of data.value.biomes.value.value) {
+        biomeSubChunk.palette.value.value = biomeSubChunk.palette.value.value.map(()=>bs[Math.floor(Math.random() * bs.length)]);
+    }
+    tab.db.put(key, mcbe.entryContentTypeToFormatMap.Data3D.serialize(data))
+    i++;
+    console.log(`${i}/${l}`);
+}
+
+// Generates an SNBT object for generating a ton of different map markers.
+
+let a = [];
+for (let x = 0; x < 20; x++) {
+    for (let y = 0; y < 16; y++) {
+        a.push({
+            data: {
+                rot: y % 16,
+                type: (x % 20) + 1,
+                x: (x * 12) - 127,
+                y: (y * 12) - 127
+            },
+            key: {
+                blockX: -384 - 64 + x * 4,
+                blockY: 68,
+                blockZ: 128 - 64 + y * 4,
+                type: 1
+            }
+        })
+    }
+}
+a;

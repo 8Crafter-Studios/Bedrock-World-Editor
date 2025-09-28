@@ -26,6 +26,8 @@ import "./utils/version.ts";
 import { APP_DATA_FOLDER_PATH } from "./utils/URLs.ts";
 import { updateElectronApp } from "update-electron-app";
 import CommentJSON from "comment-json";
+import { Octokit } from "@octokit/rest";
+import semver from "semver";
 // import { setupTitlebar, attachTitlebarToWindow } from "custom-electron-titlebar/main";
 const openAboutWindow_function = require("about-window").default as typeof import("about-window").default;
 function openAboutWindow(parentWindow?: BrowserWindow): BrowserWindow {
@@ -854,7 +856,7 @@ if (!startup && !started) {
                 try {
                     if (existsSync(filePath) && statSync(filePath).isDirectory()) {
                         lastFocusedMainWindows.at(-1)?.webContents.send<1>("open-world-folder", filePath);
-                    }else if (/^\.(?:mcworld|mcstructure|mcaddon|json|nbt|bin|hex|snbt|dat|schem|schematic)$/i.test(path.extname(filePath).toLowerCase())) {
+                    } else if (/^\.(?:mcworld|mcstructure|mcaddon|json|nbt|bin|hex|snbt|dat|schem|schematic)$/i.test(path.extname(filePath).toLowerCase())) {
                         lastFocusedMainWindows.at(-1)?.webContents.send<1>("open-file", filePath);
                     } else {
                         dialog.showMessageBox({
@@ -938,6 +940,58 @@ if (!startup && !started) {
             app.quit();
         }
     });
+
+    if (!isSecondInstance) {
+        if (!isDev)
+            app.setUserTasks([
+                {
+                    program: process.execPath,
+                    arguments: "--new-window",
+                    iconPath: process.execPath,
+                    iconIndex: 0,
+                    title: "New Window",
+                    description: "Create a new window",
+                },
+            ]);
+        new Octokit({}).repos.listReleases({ owner: "8Crafter-Studios", repo: "Bedrock-World-Editor" }).then(
+            (releases): void => {
+                const latestRelease: (typeof releases.data)[number] | null = releases.data
+                    .filter(
+                        (release: (typeof releases.data)[number]): boolean =>
+                            !!semver.valid(release.tag_name) &&
+                            // TO-DO: Add an option to allow showing draft releases.
+                            !release.draft /* && config.notifyForPrereleaseUpdates ? true : !release.prerelease */
+                    )
+                    .reduce(
+                        (a: (typeof releases.data)[number] | null, b: (typeof releases.data)[number]): (typeof releases.data)[number] | null =>
+                            a ? (semver.compareBuild(a.tag_name, b.tag_name) < 0 ? b : a) : b ?? null,
+                        null
+                    );
+                if (!latestRelease) return;
+                if (semver.compareBuild(app.getVersion(), latestRelease.tag_name) < 0) {
+                    dialog
+                        .showMessageBox({
+                            type: "info",
+                            title: "Update Available",
+                            message: `A new version of Bedrock World Editor is available.\n\nCurrent Version: ${app.getVersion()}\nLatest Version: ${
+                                latestRelease.tag_name
+                            }`,
+                            detail: latestRelease.body ? `Release Notes:\n${latestRelease.body}` : undefined,
+                            buttons: ["Open", "Cancel"],
+                            noLink: true,
+                            cancelId: 1,
+                            defaultId: 0,
+                        })
+                        .then((result: Electron.MessageBoxReturnValue): void => {
+                            if (result.response === 0) {
+                                shell.openExternal(latestRelease.html_url);
+                            }
+                        });
+                }
+            },
+            (): void => {}
+        );
+    }
 
     // In this file you can include the rest of your app's specific main process
     // code. You can also put them in separate files and import them here.
