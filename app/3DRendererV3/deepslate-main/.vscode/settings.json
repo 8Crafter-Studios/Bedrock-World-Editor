@@ -1,0 +1,23 @@
+{
+	"[typescript]": {
+		"editor.codeActionsOnSave": {
+			"source.organizeImports": "explicit",
+			"source.fixAll.eslint": "explicit"
+		}
+	},
+	"[typescriptreact]": {
+		"editor.codeActionsOnSave": {
+			"source.organizeImports": "explicit",
+			"source.fixAll.eslint": "explicit"
+		}
+	},
+	"[javascript]": {
+		"editor.codeActionsOnSave": {
+			"source.organizeImports": "explicit",
+			"source.fixAll.eslint": "explicit"
+		}
+	},
+	"editor.insertSpaces": false,
+	"javascript.format.semicolons": "remove",
+	"typescript.format.semicolons": "remove",
+}

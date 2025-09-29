@@ -19,7 +19,7 @@ import "./api/main.ts";
 import { initialize as initializeRemote, enable as enableRemoteForWebContents } from "@electron/remote/main";
 import isDev from "electron-is-dev";
 import { ProgId, Regedit, ShellOption } from "electron-regedit-fixed";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, exists, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 // import "./utils/ProgressBar.ts";
 import "./utils/config.ts";
 import "./utils/version.ts";
@@ -313,6 +313,10 @@ if (!startup) {
             privileges: { bypassCSP: true, secure: true, standard: true, supportFetchAPI: true },
         },
         {
+            scheme: "resource-image",
+            privileges: { bypassCSP: true, secure: true, standard: true, supportFetchAPI: true },
+        },
+        {
             scheme: "module",
             privileges: { bypassCSP: true, secure: true, standard: true, supportFetchAPI: true },
         },
@@ -355,6 +359,7 @@ function createWindow(): void {
             contextIsolation: false,
             nodeIntegration: true,
             // webSecurity: false,
+            nodeIntegrationInWorker: true,
         },
         resizable: true,
         darkTheme: nativeTheme.shouldUseDarkColorsForSystemIntegratedUI,
@@ -744,6 +749,58 @@ if (!startup && !started) {
                 window.webContents.send<1, "log">("console-action", "log", path.join(__dirname, "../", "resources", url.hostname, url.pathname));
             }); */
                 return new Response(readFileSync(path.join(__dirname, "../../../", "resources", url.hostname, url.pathname)));
+            }
+        });
+        protocol.handle("resource-image", async (request: GlobalRequest): Promise<GlobalResponse> => {
+            const url: URL = new URL(request.url);
+            if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+                let imagePath: string = path.join(__dirname, "../../", "resources", url.hostname, url.pathname).replace(/[/\\]$/, "");
+                if (!/\.[a-zA-Z]+$/.test(imagePath)) {
+                    if (existsSync(imagePath + ".tga")) {
+                        imagePath += ".tga";
+                    } else if (existsSync(imagePath + ".png")) {
+                        imagePath += ".png";
+                    } else if (existsSync(imagePath + ".jpg")) {
+                        imagePath += ".jpg";
+                    } else if (existsSync(imagePath + ".jpeg")) {
+                        imagePath += ".jpeg";
+                    } else if (existsSync(imagePath + ".gif")) {
+                        imagePath += ".gif";
+                    }
+                }
+                try {
+                    return new Response(readFileSync(imagePath));
+                } catch (e) {
+                    console.error(e);
+                    if (url.searchParams.get("use_missing_texture") !== "false") {
+                        return new Response(readFileSync(path.join(__dirname, "../../", "resources", "mc/textures/misc/missing_texture.png")));
+                    }
+                    return new Response(`Image not found. ${e}`, { status: 404 });
+                }
+            } else {
+                let imagePath: string = path.join(__dirname, "../../../", "resources", url.hostname, url.pathname).replace(/[/\\]$/, "");
+                if (!/\.[a-zA-Z]+$/.test(imagePath)) {
+                    if (existsSync(imagePath + ".tga")) {
+                        imagePath += ".tga";
+                    } else if (existsSync(imagePath + ".png")) {
+                        imagePath += ".png";
+                    } else if (existsSync(imagePath + ".jpg")) {
+                        imagePath += ".jpg";
+                    } else if (existsSync(imagePath + ".jpeg")) {
+                        imagePath += ".jpeg";
+                    } else if (existsSync(imagePath + ".gif")) {
+                        imagePath += ".gif";
+                    }
+                }
+                try {
+                    return new Response(readFileSync(imagePath));
+                } catch (e) {
+                    console.error(e);
+                    if (url.searchParams.get("use_missing_texture") !== "false") {
+                        return new Response(readFileSync(path.join(__dirname, "../../../", "resources", "mc/textures/misc/missing_texture.png")));
+                    }
+                    return new Response(`Image not found. ${e}`, { status: 404 });
+                }
             }
         });
         protocol.handle("module", async (request: GlobalRequest): Promise<GlobalResponse> => {

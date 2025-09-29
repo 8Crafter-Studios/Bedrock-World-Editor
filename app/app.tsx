@@ -24,8 +24,12 @@ import MapEditorTab from "./tabs/mapNBTEditor";
 import NoneTab from "./tabs/none";
 import TickingAreasTab from "./tabs/tickingAreas";
 import StructuresTab from "./tabs/structures";
-import { Renderer3D } from "./3DRendererV1/3DRenderer";
+import StructureEditorTab from "./tabs/structureNBTEditor";
+// import { Renderer3D } from "./3DRendererV1/3DRenderer";
+// import { Game } from "./3DRendererV2/src/main.ts";
 const mime = require("mime-types") as typeof import("mime-types");
+
+// globalThis.Game = Game;
 
 monaco.languages.register({ id: "snbt", extensions: [".snbt"] });
 
@@ -530,6 +534,8 @@ export function WorldEditorTabRenderer(props: {
                 return <GenericNBTEditorTab tab={props.tab} />;
             case "Map":
                 return <MapEditorTab tab={props.tab} />;
+            case "StructureTemplate":
+                return <StructureEditorTab tab={props.tab} />;
             default: {
                 const format = entryContentTypeToFormatMap[props.tab.contentType];
                 switch (format.type) {
@@ -618,7 +624,7 @@ tabManager.on("switchTab", ({ previousTab, newTab }: TabManagerSwitchTabEvent): 
 
 window.addEventListener("keydown", (event: KeyboardEvent): void => {
     switch (true) {
-        case document.activeElement === document.body && event.code === "KeyS" && !event.shiftKey && event.ctrlKey && !event.altKey: {
+        case document.activeElement === document.body && !document.pointerLockElement && event.code === "KeyS" && !event.shiftKey && event.ctrlKey && !event.altKey: {
             event.preventDefault();
             const currentTab = tabManager.selectedTab;
             if (currentTab instanceof TabManagerTab) {

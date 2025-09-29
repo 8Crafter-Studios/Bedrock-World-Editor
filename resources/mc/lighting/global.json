@@ -1,0 +1,218 @@
+{
+  "format_version": [
+    1,
+    0,
+    0
+  ],
+  "directional_lights": {
+    "sun": {
+      "illuminance": {
+        "0.0": 0.0, // Midnight
+        "0.10": 0.0, // Pre-dawn
+        "0.15": 17, // Dawn
+        "0.25": 18, // Morning
+        "0.32": 44, // Late Morning
+        "0.50": 77, // Noon
+        "0.68": 44, // Afternoon
+        "0.72": 35, // Late Afternoon
+        "0.75": 15, // Late Afternoon
+        "0.78": 12 // Dusk
+      }, //[ 240, 161, 101, 225 ]
+      "color": {
+        "0.0": [
+          0,
+          0,
+          0,
+          225
+        ], // Vibrant Sunrise
+        "0.15": [
+          0,
+          0,
+          0,
+          225
+        ], // Vibrant Morning
+        "0.25": [
+          255,
+          113,
+          25,
+          225
+        ], // Vibrant Sunrise
+        "0.30": [
+          255,
+          113,
+          25,
+          100
+        ], // Vibrant Morning
+        "0.33": [
+          255,
+          216,
+          173,
+          225
+        ], // Vibrant Daylight
+        "0.39": [
+          255,
+          255,
+          255,
+          225
+        ], // White Daylight
+        "0.47": [
+          255,
+          253,
+          245,
+          225
+        ], // Pale Yellow Afternoon
+        "0.55": [
+          250,
+          242,
+          232,
+          225
+        ], // Warm Yellow Late Afternoon
+        "0.57": [
+          255,
+          244,
+          219,
+          225
+        ], // Warm Yellow Late Afternoon
+        "0.66": [
+          255,
+          226,
+          184,
+          225
+        ],
+        "0.69": [
+          255,
+          195,
+          143,
+          225
+        ], // Vibrant Afternoon
+        "0.71": [
+          255,
+          113,
+          25,
+          225
+        ],
+        "0.72": [
+          255,
+          112,
+          41,
+          225
+        ],
+        "0.83": [
+          0,
+          0,
+          0,
+          225
+        ]
+      }
+    },
+    "moon": {
+      "illuminance": {
+        "0.0": 150,
+        "0.25": 17.15,
+        "0.35": 17.15,
+        "0.5": 17.15,
+        "0.65": 17.15,
+        "0.75": 17.15,
+        "0.85": 150,
+        "1.0": 150
+      },
+      "color": [
+        13,
+        85,
+        255,
+        225
+      ]
+    }, //32.0
+    "orbital_offset_degrees": 15
+  },
+  "pbr": {
+    "blocks": {
+      "global_metalness_emissive_roughness": [
+        1,
+        0,
+        255
+      ]
+    },
+    "actors": {
+      "global_metalness_emissive_roughness": [
+        0,
+        0,
+        225
+      ]
+    },
+    "items": {
+      "global_metalness_emissive_roughness": [
+        0,
+        0,
+        225
+      ]
+    }
+  },
+  "point_lights": {
+    "colors": {
+      "minecraft:ochre_froglight": "#b58d51",
+      "minecraft:campfire": "#d9631e",
+      "minecraft:lit_smoker": "#d9631e",
+      "minecraft:lit_furnace": "#d9631e",
+      "minecraft:soul_campfire": "#00FFFF",
+      "minecraft:pearlescent_froglight": "#ff639a",
+      "minecraft:lit_pumpkin": "#f5a856",
+      "minecraft:copper_bulb": "#f5a856",
+      "minecraft:exposed_copper_bulb": "#f5a856",
+      "minecraft:waxed_copper_bulb": "#f5a856",
+      "minecraft:oxidized_copper_bulb": "#f5a856",
+      "minecraft:waxed_exposed_copper_bulb": "#f5a856",
+      "minecraft:waxed_oxidized_copper_bulb": "#f5a856",
+      "minecraft:waxed_weathered_copper_bulb": "#f5a856",
+      "minecraft:weathered_copper_bulb": "#f5a856",
+      "minecraft:magma": "#f5a856",
+      //"minecraft:lava": "#ff5500",
+      //"minecraft:flowing_lava": "#ff5500",
+      "minecraft:sea_pickle": "#ebffbd",
+      "minecraft:torch": "#EFE39D",
+      "minecraft:light_block": "#EFE39D",
+      "minecraft:ender_chest": "#7f2ff7",
+      "minecraft:colored_torch_blue": "#0000FF",
+      "minecraft:colored_torch_purple": "#FF00FF",
+      "minecraft:colored_torch_red": "#FF0000",
+      "minecraft:colored_torch_green": "#00FF00",
+      "minecraft:redstone_torch": "#FF0000",
+      "minecraft:end_rod": "#FFFFFF",
+      "minecraft:enchanting_table": "#5490cc",
+      "minecraft:lantern": "#ff852e",
+      "minecraft:cave_vines_body_with_berries": "#EFE39D",
+      "minecraft:cave_vines_head_with_berries": "#EFE39D",
+      "minecraft:portal": "#5d17ff",
+      "minecraft:end_portal": "#5d17ff",
+      "minecraft:soul_lantern": "#00FFFF",
+      //"minecraft:shroomlight": "#b89567",
+      //"minecraft:glowstone": "#b89567",
+      "minecraft:lit_redstone_lamp": "#b89567",
+      "minecraft:redstone_lamp": "#b89567",
+      "minecraft:redstone_lamp_lit": "#b89567",
+      "minecraft:beacon": "#5490cc",
+      "minecraft:black_candle": "#454545",
+      "minecraft:red_candle": "#ff4242",
+      "minecraft:green_candle": "#2e752d",
+      "minecraft:cyan_candle": "#00aba6",
+      "minecraft:candle": "#ffcd8c",
+      "minecraft:white_candle": "#ffffff",
+      "minecraft:orange_candle": "#ff8940",
+      "minecraft:magenta_candle": "#b239bf",
+      "minecraft:brown_candle": "#45301e",
+      "minecraft:light_blue_candle": "#2c81d1",
+      "minecraft:yellow_candle": "#ffea00",
+      "minecraft:lime_candle": "#7cff54",
+      "minecraft:pink_candle": "#ff7dcd",
+      "minecraft:gray_candle": "#454545",
+      "minecraft:light_gray_candle": "#454545",
+      "minecraft:purple_candle": "#7f2ff7",
+      "minecraft:blue_candle": "#3149d4",
+      "minecraft:sea_lantern": "#8899fc",
+      "minecraft:soul_fire": "#00FFFF",
+      "minecraft:fire": "#d9631e",
+      "minecraft:respawn_anchor": "#d9631e",
+      "better_on_bedrock:waystone": "#7f2ff7"
+    }
+  }
+}

@@ -1,0 +1,49 @@
+---
+title: Noise
+---
+import { ImprovedNoiseExample, PerlinNoiseExample, NormalNoiseExample, BlendedNoiseExample, SimplexNoiseExample, PerlinSimplexNoiseExample } from '@site/src/components/examples/Noise'
+
+## ImprovedNoise
+
+```ts
+const noise = new ImprovedNoise(new LegacyRandom(BigInt(6203)))
+const value = noise.sample(x / 32, y / 32, 0)
+```
+
+<ImprovedNoiseExample />
+
+## PerlinNoise
+
+```ts
+const noise = new PerlinNoise(new LegacyRandom(BigInt(6203)), -6, [1, 1])
+const value = noise.sample(x, y, 0)
+```
+
+<PerlinNoiseExample />
+
+## NormalNoise
+
+```ts
+const params = { firstOctave: -6, amplitudes: [1, 1] }
+const noise = new NormalNoise(new LegacyRandom(BigInt(6203)), params)
+const value = noise.sample(x, y, 0)
+```
+
+<NormalNoiseExample />
+
+## BlendedNoise
+
+```ts
+const noise = new BlendedNoise(new LegacyRandom(BigInt(6203)), 1, 1, 80, 160, 4)
+const value = noise.sample(x, y, 0)
+```
+
+<BlendedNoiseExample />
+
+## SimplexNoise
+
+<SimplexNoiseExample />
+
+## PerlinSimplexNoise
+
+<PerlinSimplexNoiseExample />

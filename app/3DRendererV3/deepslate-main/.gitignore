@@ -1,0 +1,6 @@
+.rollup.cache/
+dist/
+lib/
+node_modules/
+*.tsbuildinfo
+.nyc_output

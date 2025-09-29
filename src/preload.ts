@@ -224,7 +224,7 @@ const menu = Menu.buildFromTemplate([
             { role: "togglefullscreen" },
         ],
     },
-    { role: "windowMenu" },
+    { role: "windowMenu", submenu: [{ role: "minimize", accelerator: "" }, { role: "zoom" }, { role: "close", accelerator: "" }] },
     {
         role: "help",
         type: "submenu",

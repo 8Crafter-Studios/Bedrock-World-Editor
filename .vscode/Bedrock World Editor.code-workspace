@@ -77,7 +77,8 @@
             "package.json": "json",
             "tsconfig*.json": "jsonc",
             ".*rc": "jsonc"
-        }
+        },
+        "vscode-edge-devtools.headless": false
     }
 }
 

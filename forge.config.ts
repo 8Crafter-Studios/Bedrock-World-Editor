@@ -79,7 +79,7 @@ const config: ForgeConfig = {
                 },
                 {
                     entry: "src/preload.ts",
-                    config: "vite.preload.config.ts",
+                    config: "vite.preload.config.mts",
                     target: "preload",
                 },
                 { entry: "node_modules/monaco-editor/esm/vs/editor/editor.worker.js", config: "vite.misc.worker.config.ts" },
@@ -91,7 +91,7 @@ const config: ForgeConfig = {
             renderer: [
                 {
                     name: "main_window",
-                    config: "vite.renderer.config.ts",
+                    config: "vite.renderer.config.mts",
                 },
             ],
         }),

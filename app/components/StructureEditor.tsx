@@ -1,0 +1,310 @@
+import { Editor, type Monaco } from "@monaco-editor/react";
+import {
+    chunkBlockIndexToOffset,
+    parseSNBTCompoundString,
+    prettyPrintSNBT,
+    prismarineToSNBT,
+    type DBEntryContentType,
+    type NBTSchemas,
+    type Vector3,
+} from "mcbe-leveldb";
+import * as monaco from "monaco-editor";
+import type { JSX, RefObject } from "preact";
+import { LoadingScreenContents } from "../app";
+import { useEffect, useRef } from "preact/compat";
+import * as NBT from "prismarine-nbt";
+import { mat4 } from "gl-matrix";
+import type { ItemRendererResources, ItemRenderingContext, NbtTag, Resources, Voxel } from "../3DRendererV3/deepslate-main/src/index.ts";
+import {
+    BlockDefinition,
+    BlockModel,
+    Identifier,
+    ItemRenderer,
+    ItemStack,
+    NormalNoise,
+    Structure,
+    StructureRenderer,
+    TextureAtlas,
+    VoxelRenderer,
+    XoroshiroRandom,
+    jsonToNbt,
+    upperPowerOfTwo,
+} from "../3DRendererV3/deepslate-main/src/index.ts";
+import { ItemModel } from "../3DRendererV3/deepslate-main/src/render/ItemModel.ts";
+
+// HACK: This needs to be completely redone.
+
+export interface StructureEditorProps {
+    /**
+     * The tab associated with this editor.
+     */
+    tab: TabManagerSubTab;
+    dataStorageObject: GenericDataStorageObject;
+    contentType?: DBEntryContentType;
+    /**
+     * A callback function that is called when a value is changed in the tree editor.
+     *
+     * @param dataStorageObject The current value of the data storage object (it is a reference to the original data storage object).
+     * @param cause The cause of the change, or `undefined`.
+     * @returns `true` to prevent the tree editor from refreshing, `false` or `undefined` to allow the tree editor to refresh.
+     */
+    onValueChange?(
+        dataStorageObject: GenericDataStorageObject,
+        cause?: {
+            newValue: string;
+            type: "changeContents";
+        }
+    ): boolean | undefined;
+    /**
+     * Whether the structure editor should be read-only.
+     *
+     * @default false
+     */
+    readonly?: boolean;
+}
+
+export default function StructureEditor(props: StructureEditorProps): JSX.Element {
+    if (props.dataStorageObject.dataType === "JSON") return <p style="color: red;">JSON is not supported.</p>;
+    const structureDisplayRef: RefObject<HTMLCanvasElement> = useRef<HTMLCanvasElement>(null);
+    useEffect((): void => {
+        if (structureDisplayRef.current) {
+            class InteractiveCanvas {
+                private xRotation = 0.8;
+                private yRotation = 0.5;
+
+                constructor(
+                    canvas: HTMLCanvasElement,
+                    private readonly onRender: (view: mat4) => void,
+                    private readonly center?: [number, number, number],
+                    private viewDist = 4
+                ) {
+                    let dragPos: null | [number, number] = null;
+                    canvas.addEventListener("mousedown", (evt) => {
+                        if (evt.button === 0) {
+                            dragPos = [evt.clientX, evt.clientY];
+                        }
+                    });
+                    canvas.addEventListener("mousemove", (evt) => {
+                        if (dragPos) {
+                            this.yRotation += (evt.clientX - dragPos[0]) / 100;
+                            this.xRotation += (evt.clientY - dragPos[1]) / 100;
+                            dragPos = [evt.clientX, evt.clientY];
+                            this.redraw();
+                        }
+                    });
+                    canvas.addEventListener("mouseup", () => {
+                        dragPos = null;
+                    });
+                    canvas.addEventListener("wheel", (evt) => {
+                        evt.preventDefault();
+                        this.viewDist += evt.deltaY / 100;
+                        this.redraw();
+                    });
+
+                    this.redraw();
+                }
+
+                public redraw() {
+                    requestAnimationFrame(() => this.renderImmediately());
+                }
+
+                private renderImmediately() {
+                    this.yRotation = this.yRotation % (Math.PI * 2);
+                    this.xRotation = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.xRotation));
+                    this.viewDist = Math.max(1, this.viewDist);
+
+                    const view = mat4.create();
+                    mat4.translate(view, view, [0, 0, -this.viewDist]);
+                    mat4.rotate(view, view, this.xRotation, [1, 0, 0]);
+                    mat4.rotate(view, view, this.yRotation, [0, 1, 0]);
+                    if (this.center) {
+                        mat4.translate(view, view, [-this.center[0], -this.center[1], -this.center[2]]);
+                    }
+
+                    this.onRender(view);
+                }
+            }
+
+            const MCMETA = "https://raw.githubusercontent.com/misode/mcmeta/";
+
+            Promise.all([
+                fetch(`${MCMETA}registries/item/data.min.json`).then((r) => r.json()),
+                fetch(`${MCMETA}summary/assets/block_definition/data.min.json`).then((r) => r.json()),
+                fetch(`${MCMETA}summary/assets/model/data.min.json`).then((r) => r.json()),
+                fetch(`${MCMETA}summary/assets/item_definition/data.min.json`).then((r) => r.json()),
+                fetch(`${MCMETA}summary/item_components/data.min.json`).then((r) => r.json()),
+                fetch(`${MCMETA}atlas/all/data.min.json`).then((r) => r.json()),
+                new Promise<HTMLImageElement>((res) => {
+                    const image = new Image();
+                    image.onload = (): void => res(image);
+                    image.crossOrigin = "Anonymous";
+                    image.src = `${MCMETA}atlas/all/atlas.png`;
+                }),
+            ]).then(async ([items, blockstates, models, item_models, item_components, uvMap, atlas]) => {
+                if (!structureDisplayRef.current) return;
+                // === Prepare assets for item and structure rendering ===
+
+                // const itemList = document.createElement("datalist");
+                // itemList.id = "item-list";
+                // items.forEach((item: string) => {
+                //     const option = document.createElement("option");
+                //     option.textContent = item;
+                //     itemList.append(option);
+                // });
+                // document.getElementById("item-input")?.after(itemList);
+
+                const blockDefinitions: Record<string, BlockDefinition> = {};
+                Object.keys(blockstates).forEach((id) => {
+                    blockDefinitions["minecraft:" + id] = BlockDefinition.fromJson(blockstates[id]);
+                });
+
+                const blockModels: Record<string, BlockModel> = {};
+                Object.keys(models).forEach((id) => {
+                    blockModels["minecraft:" + id] = BlockModel.fromJson(models[id]);
+                });
+                Object.values(blockModels).forEach((m: any) => m.flatten({ getBlockModel: (id: string): BlockModel | undefined => blockModels[id] }));
+
+                const itemModels: Record<string, ItemModel> = {};
+                Object.keys(item_models).forEach((id) => {
+                    itemModels["minecraft:" + id] = ItemModel.fromJson(item_models[id].model);
+                });
+
+                const itemComponents: Record<string, Map<string, NbtTag>> = {};
+                Object.keys(item_components).forEach((id) => {
+                    const components = new Map<string, NbtTag>();
+                    Object.keys(item_components[id]).forEach((c_id) => {
+                        components.set(c_id, jsonToNbt(item_components[id][c_id]));
+                    });
+                    itemComponents["minecraft:" + id] = components;
+                });
+
+                const atlasCanvas = document.createElement("canvas");
+                const atlasSize = upperPowerOfTwo(Math.max(atlas.width, atlas.height));
+                atlasCanvas.width = atlasSize;
+                atlasCanvas.height = atlasSize;
+                const atlasCtx = atlasCanvas.getContext("2d")!;
+                atlasCtx.drawImage(atlas, 0, 0);
+                const atlasData = atlasCtx.getImageData(0, 0, atlasSize, atlasSize);
+                const idMap = {};
+                Object.keys(uvMap).forEach((id) => {
+                    const [u, v, du, dv] = uvMap[id];
+                    const dv2 = du !== dv && id.startsWith("block/") ? du : dv;
+                    (idMap[Identifier.create(id).toString() as keyof typeof idMap] as any) = [
+                        u / atlasSize,
+                        v / atlasSize,
+                        (u + du) / atlasSize,
+                        (v + dv2) / atlasSize,
+                    ];
+                });
+                const textureAtlas = new TextureAtlas(atlasData, idMap);
+
+                const resources: Resources & ItemRendererResources = {
+                    getBlockDefinition(id) {
+                        return blockDefinitions[id.toString()]!;
+                    },
+                    getBlockModel(id) {
+                        return blockModels[id.toString()]!;
+                    },
+                    getTextureUV(id) {
+                        return textureAtlas.getTextureUV(id);
+                    },
+                    getTextureAtlas() {
+                        return textureAtlas.getTextureAtlas();
+                    },
+                    getPixelSize() {
+                        return textureAtlas.getPixelSize();
+                    },
+                    getBlockFlags(id) {
+                        return { opaque: false };
+                    },
+                    getBlockProperties(id) {
+                        return null;
+                    },
+                    getDefaultBlockProperties(id) {
+                        return null;
+                    },
+                    getItemModel(id) {
+                        return itemModels[id.toString()]!;
+                    },
+                    getItemComponents(id) {
+                        return itemComponents[id.toString()]!;
+                    },
+                };
+
+                // === Structure rendering ===
+
+                const data: NBTSchemas.NBTSchemaTypes.StructureTemplate | undefined = (
+                    props.dataStorageObject.dataType === "NBT"
+                        ? props.dataStorageObject.data.parsed
+                        : props.dataStorageObject.dataType === "NBTCompound"
+                        ? props.dataStorageObject.data
+                        : undefined
+                ) as any;
+                if (!data) return;
+
+                const structure = new Structure(data.value.size.value.value);
+                const size = structure.getSize();
+
+                data.value.structure.value.block_indices.value.value[0].value.forEach((block, i) => {
+                    const location: Vector3 = chunkBlockIndexToOffset(i);
+                    const blockType: NBTSchemas.NBTSchemaTypes.Block["value"] | undefined =
+                        data.value.structure.value.palette.value.default.value.block_palette.value.value[block];
+                    if (blockType) {
+                        structure.addBlock(
+                            [location.x, location.y, location.z],
+                            blockType.name.value,
+                            Object.entries(blockType.states.value).reduce<Record<string, string>>(
+                                (acc, [key, value]) => ({ ...acc, [key]: String(value.value) }),
+                                {}
+                            )
+                        );
+                    }
+                });
+
+                const structureCanvas = structureDisplayRef.current;
+                const structureGl = structureCanvas.getContext("webgl")!;
+                const structureRenderer = new StructureRenderer(structureGl, structure, resources);
+
+                new InteractiveCanvas(
+                    structureCanvas,
+                    (view) => {
+                        structureRenderer.drawStructure(view);
+                    },
+                    [size[0] / 2, size[1] / 2, size[2] / 2]
+                );
+
+                // === Voxel rendering ===
+
+                // const voxelCanvas = document.getElementById("voxel-display") as HTMLCanvasElement;
+                // const voxelCtx = voxelCanvas.getContext("webgl")!;
+                // const voxelRenderer = new VoxelRenderer(voxelCtx);
+
+                // const voxels: Voxel[] = [];
+                // const random = XoroshiroRandom.create(BigInt(123));
+                // const noise = new NormalNoise(random, { firstOctave: -5, amplitudes: [1, 1, 1] });
+                // const sampleRegion = 50;
+                // for (let x = -sampleRegion; x <= sampleRegion; x += 1) {
+                //     for (let y = -sampleRegion; y <= sampleRegion; y += 1) {
+                //         for (let z = -sampleRegion; z <= sampleRegion; z += 1) {
+                //             const d = noise.sample(x, y, z);
+                //             if (d > 0) {
+                //                 voxels.push({ x, y, z, color: [200, 200, 200] });
+                //             }
+                //         }
+                //     }
+                // }
+                // voxelRenderer.setVoxels(voxels);
+
+                // new InteractiveCanvas(
+                //     voxelCanvas,
+                //     (view) => {
+                //         voxelRenderer.draw(view);
+                //     },
+                //     [0, 0, 0],
+                //     sampleRegion * 3
+                // );
+            });
+        }
+    });
+    return <canvas width="600" height="400" ref={structureDisplayRef}></canvas>;
+}

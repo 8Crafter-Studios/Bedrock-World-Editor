@@ -11,11 +11,11 @@ import PrismarineNBTEditor from "../components/PrismarineNBTEditor";
 import EditorWidgetOverlayBar, { type EditorWidgetOverlayBarWidgetRegistry } from "../components/EditorWidgetOverlayBar";
 import { MapEditor } from "../components/MapEditor";
 
-export interface GenericNBTEditorTabProps {
+export interface MapNBTEditorTabProps {
     tab: TabManagerSubTab;
 }
 
-export default function MapEditorTab(props: GenericNBTEditorTabProps): JSX.SpecificElement<"div"> {
+export default function MapEditorTab(props: MapNBTEditorTabProps): JSX.SpecificElement<"div"> {
     const containerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     const viewOptionsRefs = {
         viewOptionsContainer: useRef<HTMLDivElement>(null),
@@ -82,8 +82,8 @@ export default function MapEditorTab(props: GenericNBTEditorTabProps): JSX.Speci
         // containerRef.current.replaceChildren(...tempElement.children);
     }
     function Contents(props: {
-        props: GenericNBTEditorTabProps;
-        options: Extract<GenericNBTEditorTabProps["tab"]["currentState"]["options"], { viewMode?: any }>;
+        props: MapNBTEditorTabProps;
+        options: Extract<MapNBTEditorTabProps["tab"]["currentState"]["options"], { viewMode?: any }>;
     }): JSX.Element {
         switch (props.options.viewMode) {
             case "map":

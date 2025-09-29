@@ -1,0 +1,35 @@
+---
+title: Splines
+---
+import { CubicSpline } from 'deepslate'
+import { SplinePlot } from '@site/src/components/Plot'
+import { SimpleExample, NestedExample } from '@site/src/components/examples/Splines'
+
+export const WIDTH = 300
+export const HEIGHT = 200
+
+## Simple
+
+```ts
+const spline = new CubicSpline.MultiPoint<number>({ compute: x => x })
+	.addPoint(0, 0)
+	.addPoint(1, 1)
+
+const value = spline.compute(0.4)
+```
+
+<SimpleExample />
+
+## Nested
+
+```ts
+const spline = new CubicSpline.MultiPoint({ compute: x => x })
+	.addPoint(0, 0)
+	.addPoint(0.4, new CubicSpline.MultiPoint({ compute: x => 2 * x - x * x })
+		.addPoint(0.2, -1)
+		.addPoint(1, 1))
+
+const value = spline.compute(0.4)
+```
+
+<NestedExample />

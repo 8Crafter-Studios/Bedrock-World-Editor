@@ -1,0 +1,29 @@
+---
+title: Chunk Generator
+---
+import { Examples } from '@site/src/components/examples/ChunkGenerator'
+
+```ts
+const fooNoise = WorldgenRegistries.NOISE.register(Identifier.parse('test:foo'),
+	{ firstOctave: -5, amplitudes: [1, 1] })
+const noiseSettings = NoiseSettings.create({ minY: 0, height: 256 })
+const settings = NoiseGeneratorSettings.create({
+	defaultBlock: BlockState.STONE,
+	defaultFluid: BlockState.WATER,
+	seaLevel: 63,
+	noise: noiseSettings,
+	noiseRouter: NoiseRouter.create({
+		finalDensity: new DensityFunction.Ap2('add',
+			new DensityFunction.YClampedGradient(0, 256, 1, -1),
+			new DensityFunction.Noise(1, 1, fooNoise)
+		),
+	}),
+})
+
+const randomState = new RandomState(settings, BigInt(125))
+const generator = new NoiseChunkGenerator(null, settings)
+const chunk = new Chunk(noiseSettings.minY, noiseSettings.height, ChunkPos.create(0, 0))
+generator.fill(randomState, chunk)
+```
+
+<Examples />
