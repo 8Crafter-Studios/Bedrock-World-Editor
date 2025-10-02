@@ -109,7 +109,7 @@ namespace exports {
             ? DeepSubConfigKeyStructureOfConfig<T[key]>
             : never;
     }>;
-    const subConfigKeyStructure = {
+    export const subConfigKeyStructure = {
         volume: {},
         views: {
             players: {
@@ -169,6 +169,7 @@ namespace exports {
             GUIScaleOverride: null,
             theme: "auto",
             debugHUD: "none",
+            debugHUDDropShadow: false,
             panorama: "off",
             panoramaPerspective: 400,
             panoramaRotateDirection: "counterclockwise",
@@ -255,14 +256,14 @@ namespace exports {
                 let data = { ...oldData, ...newData };
 
                 for (const [key, value] of Object.entries(data) as [EndPath & keyof typeof data, any][]) {
-                    console.log(0, path, key, value, oldData, newData, data);
+                    // console.log(0, path, key, value, oldData, newData, data);
                     if (key in (getPropertyAtPath(Config.defaults, path) ?? {}) && getPropertyAtPath(subConfigKeyStructure, [...(path as Path), key])) {
-                        console.log(0.1, path, key, value);
+                        // console.log(0.1, path, key, value);
                         if (data[key] !== undefined && (typeof data[key] !== "object" || data[key] === null)) {
                             continue;
                         }
                         if (newData[key as keyof typeof newData] !== undefined) {
-                            console.log(1, path, key, data[key], data);
+                            // console.log(1, path, key, data[key], data);
                             if (oldData[key as keyof typeof oldData] !== undefined) {
                                 data[key] = mergeConfigData(oldData[key as keyof typeof oldData]!, newData[key as keyof typeof newData]!, [
                                     ...path,
@@ -271,15 +272,15 @@ namespace exports {
                             } else {
                                 data[key] = newData[key as keyof typeof newData]! as any;
                             }
-                            console.log(2, path, key, data[key], data);
+                            // console.log(2, path, key, data[key], data);
                             // return data[key];
                         } else if (key in data) {
-                            console.log(3, path, key, data[key], data);
+                            // console.log(3, path, key, data[key], data);
                             // return data[key];
                         } else {
-                            console.log(4, path, key, data[key], data);
+                            // console.log(4, path, key, data[key], data);
                             data[key] = getPropertyAtPath(existingData, [...path, key]) ?? getPropertyAtPath(Config.defaults, [...path, key]) ?? ({} as any);
-                            console.log(5, path, key, data[key], data);
+                            // console.log(5, path, key, data[key], data);
                             // return data[key];
                         }
                     }
@@ -550,6 +551,12 @@ namespace exports {
         }
         public set debugHUD(value: (typeof ConfigConstants.debugOverlayModeList)[number] | undefined) {
             this.saveChanges({ debugHUD: value ?? Config.defaults.debugHUD });
+        }
+        public get debugHUDDropShadow(): boolean {
+            return this.getConfigData().debugHUDDropShadow ?? Config.defaults.debugHUDDropShadow;
+        }
+        public set debugHUDDropShadow(value: boolean | undefined) {
+            this.saveChanges({ debugHUDDropShadow: value ?? Config.defaults.debugHUDDropShadow });
         }
         public get panorama(): (typeof ConfigConstants.panoramaList)[number] {
             return this.getConfigData().panorama ?? Config.defaults.panorama;
@@ -1203,12 +1210,14 @@ namespace exports {
     const subConfigValueClasses = [VolumeConfig, ViewsConfig, DeepSubConfig] as const;
 
     export namespace ConfigConstants {
-        export const debugOverlayModeList = ["none", "top", "basic", "config"] as const;
+        export const debugOverlayModeList = ["none", "top", "basic", "config", "config_views", "tab"] as const;
         export const debugOverlayModes = {
             none: "Off",
             top: "Top",
             basic: "Basic",
             config: "Config",
+            config_views: "Config (Views)",
+            tab: "Tab",
         } as const satisfies { [key in (typeof config)["debugHUD"]]: string };
         export const panoramaList = [
             "off",
@@ -1556,6 +1565,7 @@ globalThis.volumeCategories = exports.volumeCategories;
 globalThis.volumeCategoryDisplayMapping = exports.volumeCategoryDisplayMapping;
 globalThis.config = config;
 globalThis.ConfigConstants = exports.ConfigConstants;
+globalThis.subConfigKeyStructure = exports.subConfigKeyStructure;
 
 declare global {
     export import volumeCategories = exports.volumeCategories;
@@ -1564,4 +1574,5 @@ declare global {
     export import ConfigConstants = exports.ConfigConstants;
     export import ConfigEventMap = exports.ConfigEventMap;
     export import ConfigJSON = exports.ConfigJSON;
+    export import subConfigKeyStructure = exports.subConfigKeyStructure;
 }

@@ -1,3 +1,20 @@
+# v1.0.0-beta.8
+
+## Additions
+
+-   Added two new debug overlay modes:
+    -   `Config (Views)`
+    -   `Tab`
+-   Added a new config option (`config.debugHUDDropShadow`) to add a drop shadow to the debug overlay to make it more readable.
+
+## Changes
+
+-   Updated several debug overlay modes.
+
+## Fixes
+
+-   Fixed the font for the debug overlay.
+
 # v1.0.0-beta.7
 
 ## Additions
