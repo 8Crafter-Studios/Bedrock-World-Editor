@@ -1,7 +1,7 @@
 import type { JSX, RefObject } from "preact";
 import _React, { render, useRef } from "preact/compat";
 import TreeEditor from "../components/TreeEditor";
-import { entryContentTypeToFormatMap, getKeyDisplayName, type EntryContentTypeFormatData } from "mcbe-leveldb";
+import { entryContentTypeToFormatMap, getContentTypeFromDBKey, getKeyDisplayName, type EntryContentTypeFormatData } from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -30,6 +30,7 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
     if (!props.tab.currentState.options.dataStorageObject) {
         const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[props.tab.contentType] as EntryContentTypeFormatData;
         async function loadData(): Promise<void> {
+            if (!props.tab.parentTab.db?.isOpen()) await props.tab.parentTab.awaitDBOpen;
             formatTypeSwitch: switch (format.type) {
                 case "NBT": {
                     // props.tab.currentState.options.dataStorageObject = {
@@ -107,12 +108,56 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
             },
             (reason: any): void => {
                 if (containerRef.current) {
+                    if (reason instanceof Error && reason.message === "The LevelDB key associated with this sub-tab does not exist.") {
+                        render(null, containerRef.current);
+                        render(
+                            <div>
+                                <h2>The LevelDB key associated with this sub-tab does not exist.</h2>
+                                {((): boolean => {
+                                    if (props.tab.target.type === "File") return false;
+                                    const contentType = getContentTypeFromDBKey(props.tab.target.key);
+                                    const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[contentType];
+                                    if (format.type === "NBT" /*  || (format.type === "custom" && format.resultType === "JSONNBT") */) return true;
+                                    return false;
+                                })() && (
+                                    <button
+                                        type="button"
+                                        onClick={(): void => {
+                                            if (props.tab.target.type === "File") return;
+                                            const contentType = getContentTypeFromDBKey(props.tab.target.key);
+                                            const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[contentType];
+                                            if (!((format.type === "NBT") /*  || (format.type === "custom" && format.resultType === "JSONNBT") */)) return;
+                                            // TO-DO: Make this determine the default values dynamically so as not to insert invalid data.
+                                            props.tab.parentTab.db!.put(
+                                                props.tab.target.key,
+                                                NBT.writeUncompressed(
+                                                    {
+                                                        name: "",
+                                                        type: "compound",
+                                                        value: {},
+                                                    },
+                                                    format.type === "NBT"
+                                                        ? ({ BE: "big", LE: "little", LEV: "littleVarint" } as const)[format.format ?? "LE"]
+                                                        : "little"
+                                                ),
+                                            );
+                                        }}
+                                    >
+                                        Create LevelDB Entry
+                                    </button>
+                                )}
+                            </div>,
+                            containerRef.current
+                        );
+                        return;
+                    }
                     const errorElement: HTMLDivElement = document.createElement("div");
                     errorElement.style.color = "red";
                     errorElement.style.fontFamily = "monospace";
                     errorElement.style.whiteSpace = "pre";
                     errorElement.textContent =
                         reason instanceof Error ? (reason.stack?.startsWith(reason.toString()) ? reason.stack : reason.toString() + reason.stack) : reason;
+                    render(null, containerRef.current);
                     containerRef.current.replaceChildren("Failed to load data:", errorElement);
                 }
                 console.error(reason);

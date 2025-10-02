@@ -16,6 +16,7 @@ export default function TabBar(): JSX.Element {
             if (tabContainerRef.current === null) return;
             const element: HTMLUListElement = document.createElement("ul");
             render(<RenderTabs />, element);
+            render(null, tabContainerRef.current);
             tabContainerRef.current.replaceChildren(...element.children);
         }
         function hideAddTabPopup(event: MouseEvent): void {
@@ -221,7 +222,16 @@ export default function TabBar(): JSX.Element {
                             style="margin-left: 0.5em; width: 18px; height: 18px; vertical-align: middle;"
                         />
                     )}
-                    <div style={{ display: props.tab.isModified() ? undefined : "none" }} ref={unsavedBulletPointRef}>
+                    <div
+                        style={{
+                            display: props.tab.isModified() ? undefined : "none",
+                            marginLeft: "0.25em",
+                            marginRight: "-0.125em",
+                            fontSize: "2em",
+                            lineHeight: "0.5em",
+                        }}
+                        ref={unsavedBulletPointRef}
+                    >
                         •
                     </div>
                     <img

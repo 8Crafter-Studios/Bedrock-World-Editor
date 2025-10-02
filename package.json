@@ -1,7 +1,7 @@
 {
     "name": "bedrock-world-editor",
     "productName": "bedrock-world-editor",
-    "version": "1.0.0-beta.5",
+    "version": "1.0.0-beta.6",
     "description": "An NBT editor for Minecraft Bedrock Edition.",
     "main": ".vite/build/main.js",
     "type": "commonjs",
@@ -71,7 +71,7 @@
         "jquery": "^3.7.1",
         "jquery-ui": "^1.14.1",
         "json5": "^2.2.3",
-        "mcbe-leveldb": "^1.2.2",
+        "mcbe-leveldb": "^1.3.4",
         "merge-refs": "^2.0.0",
         "mime-types": "^3.0.1",
         "monaco-editor": "^0.53.0",

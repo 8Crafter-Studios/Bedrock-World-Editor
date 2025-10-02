@@ -24,7 +24,8 @@ import MapEditorTab from "./tabs/mapNBTEditor";
 import NoneTab from "./tabs/none";
 import TickingAreasTab from "./tabs/tickingAreas";
 import StructuresTab from "./tabs/structures";
-import { Renderer3D } from "./3DRendererV1/3DRenderer";
+import FunTab from "./tabs/fun";
+// import { Renderer3D } from "./3DRendererV1/3DRenderer";
 const mime = require("mime-types") as typeof import("mime-types");
 
 monaco.languages.register({ id: "snbt", extensions: [".snbt"] });
@@ -495,24 +496,22 @@ export function WorldEditorTabRenderer(props: {
     if (props.tab === null) return <WorldEditorStartTab />;
     if (typeof props.tab === "string") {
         switch (props.tab) {
-            // case "world-settings": {
-            //     const newTab: TabManagerSub
-            //     return <WorldSettingsTab />;
-            // }
             case "players":
                 return <PlayersTab tab={props.parentTab} />;
             case "entities":
                 return <EntitiesTab tab={props.parentTab} />;
+            case "fun":
+                return <FunTab tab={props.parentTab} />;
             case "maps":
                 return <MapsTab tab={props.parentTab} />;
+            case "repair-forced-world-corruption":
+                return <RepairForcedWorldCorruptionTab tab={props.parentTab} />;
             case "structures":
                 return <StructuresTab tab={props.parentTab} />;
             case "ticking-areas":
                 return <TickingAreasTab tab={props.parentTab} />;
             case "view-files":
                 return <ViewFilesTab tab={props.parentTab} />;
-            case "repair-forced-world-corruption":
-                return <RepairForcedWorldCorruptionTab tab={props.parentTab} />;
             default:
                 return <h2>The {props.tab} tab has not been implemented yet.</h2>;
         }
@@ -528,6 +527,8 @@ export function WorldEditorTabRenderer(props: {
             case "Scoreboard":
             case "SchedulerWT":
                 return <GenericNBTEditorTab tab={props.tab} />;
+            case "LevelDat":
+                return <WorldSettingsTab tab={props.tab} />;
             case "Map":
                 return <MapEditorTab tab={props.tab} />;
             default: {

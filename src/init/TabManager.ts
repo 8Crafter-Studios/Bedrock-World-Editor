@@ -18,7 +18,7 @@ import NBT from "prismarine-nbt";
 import type { TreeEditorDataStorageObject } from "../../app/components/TreeEditor";
 import { LevelDB } from "@8crafter/leveldb-zlib";
 import path from "node:path";
-import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { copyFile, cp, readFile, rm, writeFile } from "node:fs/promises";
 import { APP_DATA_FOLDER_PATH } from "../utils/URLs";
 import type { MapEditorDataStorageObject } from "../../app/components/MapEditor";
@@ -241,7 +241,7 @@ namespace exports {
         | "ticks"
         | "schedulerwt"
         | "view-files"
-        | "search"
+        | "fun"
         | "repair-forced-world-corruption";
 
     /**
@@ -276,14 +276,59 @@ namespace exports {
         Copy = "copy",
     }
 
+    type PinnedSubTabsJSONData = {
+        [type in "world" | "leveldb"]?: {
+            [worldPath: string]: {
+                target: TabManagerSubTab["target"];
+                contentType: DBEntryContentType;
+                name: string;
+                icon?: string;
+                specialTabID?: TabManagerTabGenericSubTabID;
+                /**
+                 * Whether the tab should be set as the active tab upon opening.
+                 *
+                 * @default false
+                 */
+                active?: boolean;
+            }[];
+        };
+    };
+
+    /**
+     * Represents a tab in the tab manager.
+     */
     export class TabManagerTab extends EventEmitter<TabManagerTabEventMap> {
+        /**
+         * The last ID used for a tab.
+         */
         public static lastID: bigint = 0n;
+        /**
+         * The tab manager that this tab belongs to.
+         */
         public tabManager: TabManager;
+        /**
+         * The sub-tabs that are open in this tab.
+         */
         public openTabs: TabManagerSubTab[] = [];
+        /**
+         * The sub-tab that is currently selected.
+         */
         public selectedTab: TabManagerSubTab | TabManagerTabGenericSubTabID | null = null;
+        /**
+         * The path of the file or folder that this tab represents.
+         */
         public path: string;
+        /**
+         * The database that this tab represents.
+         */
         public db?: LevelDB;
+        /**
+         * The search object that is used to search the database.
+         */
         public dbSearch?: TabManagerTab_LevelDBSearch;
+        /**
+         * The keys of the database that are cached.
+         */
         public cachedDBKeys?: {
             [key in DBEntryContentType]: Buffer[];
         };
@@ -299,12 +344,21 @@ namespace exports {
          * It resolves with `true` if it was loaded successfully and `false` if an error occurred.
          */
         public awaitCachedDBKeys?: Promise<boolean>;
+        /**
+         * The display name of the tab.
+         */
         public name: string;
         /**
          * The file path or URI of the icon.
          */
         public icon: string;
+        /**
+         * The type of the tab.
+         */
         public type: "world" | "leveldb" | "nbt" | "json" | "other";
+        /**
+         * The mode of the tab.
+         */
         public mode: TabManagerTabMode = TabManagerTabMode.Direct;
         /**
          * The path of the temporary copy of the source files, only used for {@link TabManagerTabMode.Readonly}, {@link TabManagerTabMode.CopyUntilSave}, and {@link TabManagerTabMode.Copy} modes.
@@ -314,8 +368,17 @@ namespace exports {
          * The same as {@link tempPath} if {@link type} is `world` or `leveldb`, otherwise the path to the copied file within the {@link tempPath} directory.
          */
         public tempFilePath?: string;
+        /**
+         * Whether the tab is read-only.
+         */
         public readonly readonly: boolean = false;
+        /**
+         * Whether saving is enabled for the tab.
+         */
         public readonly saveEnabled: boolean = true;
+        /**
+         * The files that have been modified in the tab.
+         */
         public modifiedFiles: {
             files: string[];
             leveldb: boolean;
@@ -323,8 +386,17 @@ namespace exports {
             files: [],
             leveldb: false,
         };
+        /**
+         * Whether the tab is currently saving.
+         */
         public isSaving: boolean = false;
+        /**
+         * The ID of the tab.
+         */
         public readonly id: bigint = TabManagerTab.lastID++;
+        /**
+         * Whether the tab is valid.
+         */
         public isValid: boolean = true;
         public constructor(props: {
             tabManager: TabManager;
@@ -352,6 +424,9 @@ namespace exports {
                     break;
             }
             this.initAccess(props.mode ?? TabManagerTabMode.CopyUntilSave);
+            this.getPinnedTabs().forEach((tab, i, a) =>
+                this.openTab({ ...tab, isPinned: true }, tab.active || (!a.some((tab) => tab.active) && i === a.length - 1))
+            );
         }
         public get hasTabBar(): boolean {
             return this.type === "world" || this.type === "leveldb";
@@ -402,6 +477,43 @@ namespace exports {
                 this.dbSearch = new TabManagerTab_LevelDBSearch(this);
                 this.awaitDBOpen = this.db.open().then();
             }
+        }
+        public getPinnedTabs(): NonNullable<PinnedSubTabsJSONData[keyof PinnedSubTabsJSONData]>[string][number][] {
+            if (this.type !== "world" && this.type !== "leveldb") return [];
+            if (!existsSync(path.join(APP_DATA_FOLDER_PATH, "pinned_subtabs.json"))) return [];
+            try {
+                const pinnedTabsData: PinnedSubTabsJSONData = JSON.parse(
+                    readFileSync(path.join(APP_DATA_FOLDER_PATH, "pinned_subtabs.json"), "utf-8"),
+                    (_key: string, value: any): any => {
+                        if (typeof value === "object" && "type" in value && value.type === "Buffer" && "data" in value && Array.isArray(value.data)) {
+                            return Buffer.from(value.data);
+                        }
+                        return value;
+                    }
+                );
+                return pinnedTabsData[this.type]?.[this.path] ? pinnedTabsData[this.type]![this.path]! : [];
+            } catch (e) {
+                console.error(e);
+                return [];
+            }
+        }
+        public savePinnedTabsList(): void {
+            if (this.type !== "world" && this.type !== "leveldb") return;
+            let pinnedTabsData: PinnedSubTabsJSONData = {};
+            if (existsSync(path.join(APP_DATA_FOLDER_PATH, "pinned_subtabs.json")))
+                pinnedTabsData = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "pinned_subtabs.json"), "utf-8"));
+            pinnedTabsData[this.type] ??= {};
+            pinnedTabsData[this.type]![this.path] = this.openTabs
+                .filter((tab): boolean => tab.isPinned)
+                .map((tab): NonNullable<PinnedSubTabsJSONData[keyof PinnedSubTabsJSONData]>[string][number] => ({
+                    target: tab.target,
+                    contentType: tab.contentType,
+                    name: tab.name,
+                    icon: tab.icon,
+                    specialTabID: tab.specialTabID,
+                    active: this.selectedTab === tab || undefined,
+                }));
+            writeFileSync(path.join(APP_DATA_FOLDER_PATH, "pinned_subtabs.json"), JSON.stringify(pinnedTabsData));
         }
         public isModified(): boolean {
             return this.modifiedFiles.files.length > 0 || this.modifiedFiles.leveldb;
@@ -459,16 +571,20 @@ namespace exports {
                 } else {
                     await copyFile(this.tempFilePath, this.path);
                 }
-                this.modifiedFiles.files.length = 0;
-                this.modifiedFiles.leveldb = false;
-                progressBar._window?.setClosable(true);
-                progressBar.close();
+                setTimeout((): void => {
+                    this.modifiedFiles.files.length = 0;
+                    this.modifiedFiles.leveldb = false;
+                    progressBar._window?.setClosable(true);
+                    progressBar.close();
+                }, 1);
                 this.emit("modificationStatusChanged", { tab: this, isModified: false });
             } catch (e) {
                 successful = false;
                 error = e;
-                progressBar._window?.setClosable(true);
-                progressBar.close();
+                setTimeout((): void => {
+                    progressBar._window?.setClosable(true);
+                    progressBar.close();
+                }, 1);
                 dialog.showErrorBox("Error Saving", e instanceof Error ? `${e.name}: ${e.message}` : String(e));
                 // progressBar.maxValue = 100;
                 // progressBar.value = 100;
@@ -779,6 +895,7 @@ namespace exports {
 
     export class TabManagerSubTab<ContentType extends DBEntryContentType = DBEntryContentType> {
         #hasUnsavedChanges: boolean = false;
+        #isPinned: boolean = false;
         public static lastID: bigint = 0n;
         public readonly parentTab: TabManagerTab;
         public name: string;
@@ -818,6 +935,7 @@ namespace exports {
             contentType: ContentType;
             target: TabManagerSubTab<ContentType>["target"];
             specialTabID?: TabManagerTabGenericSubTabID;
+            isPinned?: boolean;
         }) {
             this.parentTab = props.parentTab;
             this.name = props.name;
@@ -831,6 +949,21 @@ namespace exports {
                     type: props.contentType,
                 } as DBEntryContentTypeToTabManagerSubTabCurrentStateOptions[ContentType],
             };
+            this.#isPinned = props.isPinned ?? false;
+        }
+        public get isPinned(): boolean {
+            return this.#isPinned;
+        }
+        public set isPinned(value: boolean) {
+            this.#isPinned = value;
+            if (value) {
+                const firstUnpinnedIndex: number = this.parentTab.openTabs.findIndex((tab) => tab.isPinned);
+                if (firstUnpinnedIndex !== -1 && this.parentTab.openTabs.indexOf(this) > firstUnpinnedIndex) {
+                    this.parentTab.openTabs.splice(this.parentTab.openTabs.indexOf(this), 1);
+                    this.parentTab.openTabs.splice(firstUnpinnedIndex, 0, this);
+                }
+            }
+            this.parentTab.savePinnedTabsList();
         }
         public get hasUnsavedChanges(): boolean {
             return this.#hasUnsavedChanges;
@@ -838,7 +971,7 @@ namespace exports {
         public set hasUnsavedChanges(value: boolean) {
             const wasModified: boolean = this.isModified();
             this.#hasUnsavedChanges = value;
-            if (wasModified !== this.isModified()) this.parentTab.emit("modificationStatusChanged", { tab: this.parentTab, isModified: this.isModified() });
+            if (wasModified !== this.isModified()) this.parentTab.emit("subTabModificationStatusChanged", { tab: this, isModified: this.isModified() });
             if (this.target.type === "File") this.parentTab.setFileAsModified(this.target.path);
         }
         public isModified(): boolean {
@@ -1804,7 +1937,8 @@ namespace exports {
             if (this.parentTab.openTabs.includes(this)) {
                 this.parentTab.openTabs.splice(this.parentTab.openTabs.indexOf(this), 1);
             }
-            this.parentTab.switchTab(index === -1 ? null : this.parentTab.openTabs[index - 1] ?? this.parentTab.openTabs[0] ?? null);
+            if (this.parentTab.selectedTab === this)
+                this.parentTab.switchTab(index === -1 ? null : this.parentTab.openTabs[index - 1] ?? this.parentTab.openTabs[0] ?? null);
             this.parentTab.emit("closeTab", { tab: this });
         }
     }

@@ -29,6 +29,7 @@ export default function RepairForcedWorldCorruptionTab(props: RepairForcedWorldC
                 for (const key of props.tab.cachedDBKeys!.ForcedWorldCorruption) {
                     await props.tab.db!.delete(key);
                 }
+                props.tab.setLevelDBIsModified(true);
                 if (!containerRef.current) return;
                 render(null, containerRef.current);
                 render(

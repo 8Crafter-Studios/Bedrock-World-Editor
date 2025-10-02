@@ -8,12 +8,14 @@ This app is still in beta, so please report any issues to you find [here](https:
 
 This app supports Windows, Linux, and macOS (Darwin).
 
+[Changelog](https://github.com/8Crafter-Studios/Bedrock-World-Editor/blob/main/Changelog.md)
+
 ## Important
 
 Here are some important bugs to note:
 
 -   The Node editor currently only allows renaming, editing, and deleting tags, but not adding them (the buttons in the top right for it do not do anything yet).
--   The SNBT and Prismaine-NBT JSON editors do not support pasting (for some reason monaco editor throws an error about the productService being unknown).
+-   For the SNBT and Prismaine-NBT JSON editors, you have to do `CTRL+SHIFT+V` instead of `CTRL+V` to paste.
 
 ## Supported Add-Ons for Detecting Player Names
 
@@ -29,8 +31,8 @@ If you want to build the app locally, do the following:
 
 1.  Clone this repository.
 2.  Run `npm i`.
-4.  Run `npm run make`.
-5.  Look in the `out/make` directory for the installer.
+3.  Run `npm run make`.
+4.  Look in the `out/make` directory for the installer.
 
 ## Testing Locally
 

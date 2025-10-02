@@ -928,7 +928,7 @@ async function getMapsTabContentsRows(data: {
                                         );
                                     case "Preview":
                                         return (
-                                            <td style={{minWidth: "128px"}}>
+                                            <td style={{width: "128px"}}>
                                                 {
                                                     <MapEditor
                                                         dataStorageObject={{

@@ -197,6 +197,18 @@ img {
     --table-header-bg-color: hsl(0, 0%, 30%);
     --table-header-text-color: var(--text-color);
     --table-outline-color: hsl(0, 0%, 40%);
+    --generic-button-bg-color: hsl(0, 0%, 30%);
+    --generic-button-text-color: hsl(0, 0%, 100%);
+    --generic-button-hover-bg-color: hsl(0, 0%, 40%);
+    --generic-button-hover-text-color: hsl(0, 0%, 100%);
+    --generic-button-pressed-bg-color: hsl(0, 0%, 50%);
+    --generic-button-pressed-text-color: hsl(0, 0%, 100%);
+    --generic-button-selected-bg-color: hsl(0, 0%, 40%);
+    --generic-button-selected-text-color: hsl(0, 0%, 100%);
+    --generic-button-selected-hover-bg-color: hsl(0, 0%, 50%);
+    --generic-button-selected-hover-text-color: hsl(0, 0%, 100%);
+    --generic-button-selected-pressed-bg-color: hsl(0, 0%, 60%);
+    --generic-button-selected-pressed-text-color: hsl(0, 0%, 100%);
 }
 
 .light_theme {
@@ -231,6 +243,22 @@ img {
     --tabbed-selector-option-button-selected-hover-text-color: hsl(0, 0%, 0%);
     --tabbed-selector-option-button-selected-pressed-bg-color: hsl(0, 0%, 100%);
     --tabbed-selector-option-button-selected-pressed-text-color: hsl(0, 0%, 0%);
+    --table-bg-color: hsl(0, 0%, 80%);
+    --table-header-bg-color: hsl(0, 0%, 70%);
+    --table-header-text-color: var(--text-color);
+    --table-outline-color: hsl(0, 0%, 60%);
+    --generic-button-bg-color: hsl(0, 0%, 70%);
+    --generic-button-text-color: hsl(0, 0%, 0%);
+    --generic-button-hover-bg-color: hsl(0, 0%, 80%);
+    --generic-button-hover-text-color: hsl(0, 0%, 0%);
+    --generic-button-pressed-bg-color: hsl(0, 0%, 90%);
+    --generic-button-pressed-text-color: hsl(0, 0%, 0%);
+    --generic-button-selected-bg-color: hsl(0, 0%, 80%);
+    --generic-button-selected-text-color: hsl(0, 0%, 0%);
+    --generic-button-selected-hover-bg-color: hsl(0, 0%, 90%);
+    --generic-button-selected-hover-text-color: hsl(0, 0%, 0%);
+    --generic-button-selected-pressed-bg-color: hsl(0, 0%, 100%);
+    --generic-button-selected-pressed-text-color: hsl(0, 0%, 0%);
 }
 
 only_visible_dark_theme {
@@ -1027,6 +1055,20 @@ div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
     color: white;
 }
 
+.unpinbtn {
+    padding: 1px;
+    vertical-align: middle;
+    margin: -2px;
+}
+
+.unpinbtn:hover:not(:active) {
+    background-color: hsl(64, 90%, 58%);
+}
+
+.unpinbtn:active {
+    background-color: hsl(64, 100%, 50%);
+}
+
 [data-bg-color] {
     background-color: attr(data-bg-color type(<color>));
 }
@@ -1124,7 +1166,7 @@ div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
 
 .tabbed-selector > button.selected {
     background-color: var(--tabbed-selector-option-button-selected-bg-color);
-    color: var(--tabbed-selector-selected-option-button-text-color);
+    color: var(--tabbed-selector-option-button-selected-text-color);
 }
 
 .tabbed-selector:not(.radio-tabbed-selector) > button.selected {
@@ -1227,5 +1269,58 @@ div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
     -webkit-backdrop-filter: blur(5px);
     backdrop-filter: blur(5px);
     z-index: 1000;
+}
+
+.funTabButton {
+    padding: 10px;
+    background-color: var(--generic-button-bg-color);
+    color: var(--generic-button-text-color);
+    border: none;
+    border-radius: 5px;
+    margin: 5px;
+    cursor: pointer;
+
+    -webkit-user-select: none;
+    /* Safari */
+    -ms-user-select: none;
+    -moz-user-select: none;
+    /* IE 10 and IE 11 */
+    user-select: none;
+    /* Standard syntax */
+    -webkit-user-drag: none;
+}
+
+.funTabButton:not(:first-of-type) {
+    margin-top: 0;
+}
+
+.funTabButton:not(:disabled):active {
+    background-color: var(--generic-button-pressed-bg-color);
+    color: var(--generic-button-pressed-text-color);
+}
+
+.funTabButton:not(:disabled):hover:not(:active) {
+    background-color: var(--generic-button-hover-bg-color);
+    color: var(--generic-button-hover-text-color);
+}
+
+.funTabButton.selected {
+    background-color: var(--generic-button-selected-bg-color);
+    color: var(--generic-option-button-text-color);
+}
+
+.funTabButton:not(:disabled).selected:active {
+    background-color: var(--generic-option-selected-pressed-bg-color);
+    color: var(--generic-option-selected-pressed-text-color);
+}
+
+.funTabButton:not(:disabled).selected:hover:not(:active) {
+    background-color: var(--generic-option-selected-hover-bg-color);
+    color: var(--generic-option-selected-hover-text-color);
+}
+
+.funTabButton:disabled {
+    filter: contrast(0.5) brightness(0.5);
+    cursor: not-allowed;
 }
 

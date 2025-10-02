@@ -47,7 +47,7 @@ export interface PrismarineNBTEditorProps {
 }
 
 export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JSX.Element {
-    if (props.dataStorageObject.dataType === "JSON") return <p style="color: red;">JSON is not supported.</p>;
+    if (props.dataStorageObject?.dataType === "JSON") return <p style="color: red;">JSON is not supported.</p>;
     const editorRef = useRef<typeof Editor>(null);
     function handleEditorDidMount(editor: monaco.editor.IStandaloneCodeEditor, monaco: Monaco): void {
         // editor.getid
@@ -57,8 +57,8 @@ export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JS
     let lastChangeTime: number = Date.now() - 1000;
     let lastChangeStartTime: number = Date.now() - 1000;
     function handleEditorValueChanged(value: string | undefined, ev: monaco.editor.IModelContentChangedEvent): void {
+        if (value === undefined || !dataLoaded) return;
         const currentChangeTime: number = Date.now();
-        if (value === undefined) return;
         editorValue = value;
         if (currentChangeTime - lastChangeStartTime < 500 && lastChangeTime >= lastChangeStartTime) {
             lastChangeStartTime = currentChangeTime;
@@ -92,6 +92,7 @@ export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JS
             }
         }
     }
+    let dataLoaded: boolean = props.dataStorageObject?.data !== undefined;
     const editorParams = new URLSearchParams({ contentType: props.contentType ?? "Unknown" });
     return (
         <Editor
@@ -103,18 +104,22 @@ export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JS
             }
             onChange={handleEditorValueChanged}
             language="json"
-            value={JSON.stringify(
-                props.dataStorageObject.data.type === "compound" ? props.dataStorageObject.data.value : props.dataStorageObject.data.parsed.value,
-                null,
-                4
-            )}
+            value={
+                dataLoaded
+                    ? JSON.stringify(
+                          props.dataStorageObject.data.type === "compound" ? props.dataStorageObject.data.value : props.dataStorageObject.data.parsed.value,
+                          null,
+                          4
+                      )
+                    : "Data is not loaded."
+            }
             // overrideServices={{
             //     productService: IProductService,
             // }}
             onMount={handleEditorDidMount}
             options={{
-                readOnly: props.readonly,
-                readOnlyMessage: props.readonly ? props.readonlyMessage : undefined,
+                readOnly: props.readonly || !dataLoaded,
+                readOnlyMessage: props.readonly ? props.readonlyMessage : !dataLoaded ? { value: "Data is not loaded." } : undefined,
                 tabSize: 4,
                 bracketPairColorization: { enabled: true },
                 automaticLayout: true,
@@ -132,5 +137,3 @@ export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JS
         />
     );
 }
-
-monaco
