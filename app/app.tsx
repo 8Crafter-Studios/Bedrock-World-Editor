@@ -4,7 +4,7 @@ import LeftSidebar from "./components/LeftSidebar";
 import DebugOverlay from "./components/DebugOverlay";
 import TabBar from "./components/TabBar";
 import { entryContentTypeToFormatMap, toLong } from "mcbe-leveldb";
-import { Dirent, existsSync, globSync, read, readdirSync, readFileSync } from "node:fs";
+import { Dirent, existsSync, globSync, read, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import NBT from "prismarine-nbt";
 import { useEffect, useRef, useState } from "preact/hooks";
@@ -25,6 +25,8 @@ import NoneTab from "./tabs/none";
 import TickingAreasTab from "./tabs/tickingAreas";
 import StructuresTab from "./tabs/structures";
 import FunTab from "./tabs/fun";
+import { ControlledMenu, MenuDivider, MenuItem } from "@szhsin/react-menu";
+import { APP_DATA_FOLDER_PATH } from "../src/utils/URLs";
 // import { Renderer3D } from "./3DRendererV1/3DRenderer";
 const mime = require("mime-types") as typeof import("mime-types");
 
@@ -226,7 +228,10 @@ export interface MinecraftWorldDisplayDetails {
     thumbnailPath?: string;
     lastOpenedWithVerison: `v${string}` | null;
     lastPlayed: Date | null;
+    favorited: boolean;
 }
+
+type FavoritedWorldsJSONData = string[];
 
 export async function getMinecraftWorlds(all: boolean = false): Promise<MinecraftWorldDisplayDetails[]> {
     return (
@@ -257,6 +262,21 @@ export async function getMinecraftWorlds(all: boolean = false): Promise<Minecraf
                                 ? `v${(levelDat.value.lastOpenedWithVersion as NBT.List<NBT.TagType.Int>).value.value.join(".")}`
                                 : null,
                             lastPlayed: levelDat.value.LastPlayed ? new Date(Number(toLong((levelDat.value.LastPlayed as NBT.Long).value) * 1000n)) : null,
+                            favorited: existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"))
+                                ? ((): boolean => {
+                                      try {
+                                          const favoritedWorldsData: FavoritedWorldsJSONData = JSON.parse(
+                                              readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8")
+                                          );
+                                          if (favoritedWorldsData.includes(folderPath)) {
+                                              return true;
+                                          }
+                                      } catch (e) {
+                                          console.error(e);
+                                      }
+                                      return false;
+                                  })()
+                                : false,
                         };
                     } catch (e) {
                         console.error(e);
@@ -268,84 +288,215 @@ export async function getMinecraftWorlds(all: boolean = false): Promise<Minecraf
 }
 
 export function WorldSelector(): JSX.SpecificElement<"div"> {
+    const renderWorldsContainerRef: RefObject<HTMLDivElement> = useRef(null);
     const viewMode: "compact" | "detailed" | "grid" = "detailed";
     let [data, updateData] = useState<MinecraftWorldDisplayDetails[]>([]);
     useEffect((): void => void getMinecraftWorlds().then(updateData), []);
     function RenderWorlds(): JSX.SpecificElement<"div">[] {
-        return data.map(
-            (world: MinecraftWorldDisplayDetails, index: number): JSX.SpecificElement<"div"> => (
-                <div
-                    title={`${world.name}\nLast Opened With: ${world.lastOpenedWithVerison}\nLast Played: ${
-                        world.lastPlayed?.toLocaleString() ?? "null"
-                    }\nPath: ${world.path}`}
-                    class="nsel ndrg"
-                    style={{
-                        display: "flex",
-                        flexDirection: "row",
-                        alignItems: "center",
-                        cursor: "pointer",
-                        paddingRight: "5px",
-                    }}
-                    data-hover-bg-color="var(--alternating-bg-hover-color)"
-                    data-bg-color={`var(--alternating-bg-color-${(index % 2) + 1})`}
-                    onClick={(): void => {
-                        tabManager.switchTab("loading");
-                        setTimeout((): void => void tabManager.openTab({ path: world.path, name: world.name, type: "world", icon: world.thumbnailPath! }), 10);
-                    }}
-                >
-                    <img
-                        aria-hidden="true"
-                        src={
-                            world.thumbnailPath
-                                ? `data:${mime.lookup(path.extname(world.thumbnailPath))};base64,${readFileSync(world.thumbnailPath, {
-                                      encoding: "base64",
-                                  })}`
-                                : "resource://images/ui/misc/CreateNewWorld.png"
-                        }
-                        style={`margin: 4px; width: ${viewMode === "compact" ? 32 : viewMode === "detailed" ? 64 : 128}px; aspect-ratio: 16 / 9;`}
-                    />
+        return data
+            .toSorted((a: MinecraftWorldDisplayDetails, b: MinecraftWorldDisplayDetails): number =>
+                a.favorited && !b.favorited ? -1 : b.favorited && !a.favorited ? 1 : b.lastPlayed!.getTime() - a.lastPlayed!.getTime()
+            )
+            .map((world: MinecraftWorldDisplayDetails, index: number): JSX.SpecificElement<"div"> => {
+                const [worldContextMenu_isOpen, worldContextMenu_setOpen] = useState(false);
+                const [worldContextMenu_anchorPoint, worldContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
+                function onWorldRightClick(event: JSX.TargetedMouseEvent<HTMLDivElement>): void {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const clickPosition: { x: number; y: number } = {
+                        x: event.clientX,
+                        y: event.clientY,
+                    };
+                    console.log(clickPosition);
+
+                    worldContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
+                    worldContextMenu_setOpen(true);
+                }
+                return (
                     <div
+                        title={`${world.name}\nLast Opened With: ${world.lastOpenedWithVerison}\nLast Played: ${
+                            world.lastPlayed?.toLocaleString() ?? "null"
+                        }\nPath: ${world.path}`}
+                        class="nsel ndrg"
                         style={{
-                            flex: 1,
-                            minWidth: 0,
                             display: "flex",
-                            flexDirection: "column",
-                            alignItems: "left",
+                            flexDirection: "row",
+                            alignItems: "center",
                             cursor: "pointer",
+                            paddingRight: "5px",
                         }}
+                        data-hover-bg-color="var(--alternating-bg-hover-color)"
+                        data-bg-color={`var(--alternating-bg-color-${(index % 2) + 1})`}
+                        onClick={(event: JSX.TargetedMouseEvent<HTMLDivElement>): void => {
+                            if (
+                                event.target instanceof Node &&
+                                $(event.currentTarget)
+                                    .find<HTMLDivElement>(".szh-menu-container")
+                                    .toArray()
+                                    .some((element: HTMLDivElement): boolean => element.contains(event.target as Node))
+                            )
+                                return;
+                            tabManager.switchTab("loading");
+                            setTimeout(
+                                (): void => void tabManager.openTab({ path: world.path, name: world.name, type: "world", icon: world.thumbnailPath! }),
+                                10
+                            );
+                        }}
+                        onAuxClick={(event: JSX.TargetedMouseEvent<HTMLDivElement>): void => void (event.button === 2 && onWorldRightClick(event))}
                     >
-                        <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{world.name}</div>
-                        {viewMode === "detailed" && (
-                            <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: gray">{world.path}</div>
-                        )}
-                    </div>
-                    {viewMode === "detailed" && (
+                        <img
+                            aria-hidden="true"
+                            src={
+                                world.thumbnailPath
+                                    ? `data:${mime.lookup(path.extname(world.thumbnailPath))};base64,${readFileSync(world.thumbnailPath, {
+                                          encoding: "base64",
+                                      })}`
+                                    : "resource://images/ui/misc/CreateNewWorld.png"
+                            }
+                            style={`margin: 4px; width: ${viewMode === "compact" ? 32 : viewMode === "detailed" ? 64 : 128}px; aspect-ratio: 16 / 9;`}
+                        />
                         <div
                             style={{
-                                flex: 0,
-                                textAlign: "right",
+                                flex: 1,
+                                minWidth: 0,
                                 display: "flex",
                                 flexDirection: "column",
-                                alignItems: "right",
+                                alignItems: "left",
                                 cursor: "pointer",
                             }}
                         >
-                            <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                {world.lastPlayed?.toLocaleString() ?? <span style="color: red;">null</span>}
-                            </div>
-                            <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                {world.lastOpenedWithVerison ?? <span style="color: red;">null</span>}
-                            </div>
+                            <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{world.name}</div>
+                            {viewMode === "detailed" && (
+                                <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: gray">{world.path}</div>
+                            )}
                         </div>
-                    )}
-                </div>
-            )
-        );
+                        {viewMode === "detailed" && (
+                            <div
+                                style={{
+                                    flex: 0,
+                                    textAlign: "right",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "right",
+                                    cursor: "pointer",
+                                }}
+                            >
+                                <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    {world.lastPlayed?.toLocaleString() ?? <span style="color: red;">null</span>}
+                                </div>
+                                <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    {world.lastOpenedWithVerison ?? <span style="color: red;">null</span>}
+                                </div>
+                            </div>
+                        )}
+                        <ControlledMenu
+                            anchorPoint={worldContextMenu_anchorPoint}
+                            state={worldContextMenu_isOpen ? "open" : "closed"}
+                            direction="right"
+                            onClose={(): void => void worldContextMenu_setOpen(false)}
+                        >
+                            <MenuItem
+                                onClick={async (): Promise<void> => {
+                                    tabManager.switchTab("loading");
+                                    setTimeout(
+                                        (): void => void tabManager.openTab({ path: world.path, name: world.name, type: "world", icon: world.thumbnailPath! }),
+                                        10
+                                    );
+                                }}
+                            >
+                                Open World
+                            </MenuItem>
+                            <MenuItem
+                                onClick={async (): Promise<void> => {
+                                    tabManager.switchTab("loading");
+                                    setTimeout(
+                                        (): void =>
+                                            void tabManager.openTab({
+                                                path: world.path,
+                                                name: world.name,
+                                                type: "world",
+                                                icon: world.thumbnailPath!,
+                                                mode: TabManagerTabMode.Readonly,
+                                            }),
+                                        10
+                                    );
+                                }}
+                            >
+                                Open in Read-Only Mode
+                            </MenuItem>
+                            <MenuItem
+                                onClick={(): void => {
+                                    tabManager.switchTab("loading");
+                                    setTimeout(
+                                        (): void =>
+                                            void tabManager.openTab({
+                                                path: world.path,
+                                                name: world.name,
+                                                type: "world",
+                                                icon: world.thumbnailPath!,
+                                                mode: TabManagerTabMode.Direct,
+                                            }),
+                                        10
+                                    );
+                                }}
+                            >
+                                Open in Direct Mode (Unsafe)
+                            </MenuItem>
+                            <MenuDivider />
+                            {world.favorited ? (
+                                <MenuItem
+                                    onClick={(): void => {
+                                        if (!existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"))) return;
+                                        try {
+                                            const favoritedWorldsData: FavoritedWorldsJSONData = JSON.parse(
+                                                readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8")
+                                            );
+                                            if (favoritedWorldsData.includes(world.path)) {
+                                                favoritedWorldsData.splice(favoritedWorldsData.indexOf(world.path), 1);
+                                                writeFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), JSON.stringify(favoritedWorldsData));
+                                                world.favorited = false;
+                                            }
+                                        } catch (e) {
+                                            console.error(e);
+                                        }
+                                    }}
+                                >
+                                    Unfavorite
+                                </MenuItem>
+                            ) : (
+                                <MenuItem
+                                    onClick={(): void => {
+                                        try {
+                                            let favoritedWorldsData: FavoritedWorldsJSONData = [];
+                                            if (existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json")))
+                                                favoritedWorldsData = JSON.parse(
+                                                    readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8")
+                                                );
+                                            if (!favoritedWorldsData.includes(world.path)) {
+                                                favoritedWorldsData.push(world.path);
+                                                writeFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), JSON.stringify(favoritedWorldsData));
+                                                world.favorited = true;
+                                            }
+                                        } catch (e) {
+                                            console.error(e);
+                                        }
+                                    }}
+                                >
+                                    Favorite
+                                </MenuItem>
+                            )}
+                        </ControlledMenu>
+                        {/* TO-DO: Add a star icon for favorited tabs. */}
+                    </div>
+                );
+            });
     }
     let showingMore: boolean = false;
     return (
         <div style="display: flex; flex-direction: column; overflow: auto;">
-            <RenderWorlds />
+            <div style={{ display: "contents" }} ref={renderWorldsContainerRef}>
+                <RenderWorlds />
+            </div>
             <div
                 class="nsel ndrg"
                 style={{

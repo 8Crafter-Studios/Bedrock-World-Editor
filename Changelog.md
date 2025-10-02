@@ -1,3 +1,26 @@
+# v1.0.0-beta.7
+
+## Additions
+
+-   Added a context menu to the worlds on the main menu of the app.
+    -   The context menu has options for:
+        -   "Open World" (opens the world in the app)
+        -   "Open in Read-Only Mode" (opens the world in a mode where changes cannot be made)
+        -   "Open in Direct Mode" (opens the world directly, operating on the actual world files, instead of operating on a copy and replacing the original world with the modified copy upon saving, this mode also has the side effect of changes being applied immediately, and if something goes wrong, it affects the original world (so it is HIGHLY recommended to make a backup before using this mode), this mode also cannot be used while the world is open in Minecraft)
+        -   "Favorite"/"Unfavorite" (allows for marking a world as a favorite, which will make it appear at the top of the worlds list)
+
+## Changes
+
+-   The worlds list on the main menu of the app is now sorted in descending order of when they were last opened in Minecraft.
+
+## Fixes
+
+-   Fixed a bug where reordering sub-tabs was broken and would put the sub-tab at the wrong index.
+
+## Performance Improvements
+
+-   The tree editor now loads the NBT tag type icons as data URIs, which allows them to load instantly.
+
 # v1.0.0-beta.6
 
 ## Critical Fixes

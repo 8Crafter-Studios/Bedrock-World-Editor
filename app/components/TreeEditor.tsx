@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from "preact/compat";
 import NBT from "prismarine-nbt";
 import "./treeEditor.css";
 import type { EditorWidgetOverlayBarWidgetRegistry } from "./EditorWidgetOverlayBar";
+const mime = require("mime-types") as typeof import("mime-types");
 
 export interface TreeEditorDataStorageObjectExpansionData {
     [key: string]: { data?: TreeEditorDataStorageObjectExpansionData; value?: boolean };
@@ -101,11 +102,11 @@ export const treeEditorIcons = {
         longArray: "resource://images/ui/icons/nbt/longArray.png",
     },
     JSON: {
-        list: "resource://images/ui/icons/json/list.png",
-        object: "resource://images/ui/icons/json/object.png",
-        number: "resource://images/ui/icons/json/number.png",
-        string: "resource://images/ui/icons/json/string.png",
-        boolean: "resource://images/ui/icons/json/boolean.png",
+        list: "resource://images/ui/icons/nbt/list.png",
+        object: "resource://images/ui/icons/nbt/compound.png",
+        number: "resource://images/ui/icons/nbt/double.png",
+        string: "resource://images/ui/icons/nbt/string.png",
+        boolean: "resource://images/ui/icons/nbt/boolean.png",
     },
     generic: {
         arrowCollapsed: "resource://images/ui/glyphs/Chevron-Right.png",
@@ -118,6 +119,20 @@ export const treeEditorIcons = {
     JSON: Record<"list" | "object" | "number" | "string" | "boolean", string>;
     generic: Record<"arrowCollapsed" | "arrowExpanded", string>;
 };
+
+Object.entries(treeEditorIcons).forEach(([key, value]) => {
+    Object.entries(value).forEach(([key2, value2]) => {
+        fetch(value2)
+            .then((response: Response): Promise<Blob> => response.blob())
+            .then(
+                async (blob: Blob): Promise<void> =>
+                    void ((treeEditorIcons[key as keyof typeof treeEditorIcons][
+                        key2 as keyof (typeof treeEditorIcons)[keyof typeof treeEditorIcons]
+                    ] as any) = `data:${mime.lookup(blob.type)};base64,${Buffer.from(await blob.arrayBuffer()).toString("base64")}`)
+            )
+            .catch((): void => {});
+    });
+});
 
 type NBTTreeNodeValue = NBT.Tags[NBT.TagType] | NBT.Tags[NBT.TagType.List]["value"]["value"];
 type JSONTreeNodeValue = { [key: string | number]: JSONTreeNodeValue } | string | number | boolean | null | JSONTreeNodeValue[];

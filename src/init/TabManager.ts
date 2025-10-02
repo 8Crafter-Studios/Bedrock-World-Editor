@@ -519,10 +519,11 @@ namespace exports {
             return this.modifiedFiles.files.length > 0 || this.modifiedFiles.leveldb;
         }
         public setModifications(modifications: typeof this.modifiedFiles): void {
+            if (this.readonly) return;
             this.modifiedFiles = modifications;
         }
         public setFileAsModified(file: string, isModified: boolean = true): void {
-            if ((this.modifiedFiles.files.includes(file) && isModified) || (!this.modifiedFiles.files.includes(file) && !isModified)) return;
+            if (this.readonly || (this.modifiedFiles.files.includes(file) && isModified) || (!this.modifiedFiles.files.includes(file) && !isModified)) return;
             const wasModified: boolean = this.isModified();
             if (isModified) {
                 this.modifiedFiles.files.push(file);
@@ -532,7 +533,7 @@ namespace exports {
             if (wasModified !== this.isModified()) this.emit("modificationStatusChanged", { tab: this, isModified: this.isModified() });
         }
         public setLevelDBIsModified(isModified: boolean = true): void {
-            if (this.modifiedFiles.leveldb === isModified) return;
+            if (this.readonly || this.modifiedFiles.leveldb === isModified) return;
             const wasModified: boolean = this.isModified();
             this.modifiedFiles.leveldb = isModified;
             if (wasModified !== this.isModified()) this.emit("modificationStatusChanged", { tab: this, isModified: this.isModified() });
@@ -599,7 +600,21 @@ namespace exports {
                 Partial<Pick<ConstructorParameters<typeof TabManagerSubTab>[0], "parentTab">>,
             switchToTab: boolean = true
         ): TabManagerSubTab {
-            const tab = new TabManagerSubTab({ parentTab: this, ...props });
+            const alreadyOpenEquivalentTab: TabManagerSubTab | undefined = this.openTabs.find(
+                (tab: TabManagerSubTab): boolean =>
+                    tab.specialTabID === props.specialTabID ||
+                    (!tab.specialTabID &&
+                        !props.specialTabID &&
+                        tab.target.type === props.target.type &&
+                        (tab.target.type === "File" && props.target.type === "File"
+                            ? tab.target.path === props.target.path
+                            : tab.target.type === "LevelDBEntry" && props.target.type === "LevelDBEntry" && tab.target.key.equals(props.target.key)))
+            );
+            if (alreadyOpenEquivalentTab) {
+                if (switchToTab && this.selectedTab !== alreadyOpenEquivalentTab) this.switchTab(alreadyOpenEquivalentTab);
+                return alreadyOpenEquivalentTab;
+            }
+            const tab = new TabManagerSubTab({ parentTab: this, readonly: this.readonly, ...props });
             this.openTabs.push(tab);
             this.emit("openTab", { tab });
             if (switchToTab) this.switchTab(tab);
@@ -922,9 +937,6 @@ namespace exports {
         public activeChanges: TabManagerSubTabChange[] = [];
         public currentState: TabManagerSubTabCurrentState<ContentType>;
         public specialTabID?: TabManagerTabGenericSubTabID;
-        /**
-         * @todo
-         */
         public readonly readonly: boolean = false;
         public readonly id: bigint = TabManagerSubTab.lastID++;
         public isValid: boolean = true;
@@ -936,6 +948,7 @@ namespace exports {
             target: TabManagerSubTab<ContentType>["target"];
             specialTabID?: TabManagerTabGenericSubTabID;
             isPinned?: boolean;
+            readonly?: boolean;
         }) {
             this.parentTab = props.parentTab;
             this.name = props.name;
@@ -950,6 +963,7 @@ namespace exports {
                 } as DBEntryContentTypeToTabManagerSubTabCurrentStateOptions[ContentType],
             };
             this.#isPinned = props.isPinned ?? false;
+            this.readonly = props.readonly ?? false;
         }
         public get isPinned(): boolean {
             return this.#isPinned;
@@ -969,6 +983,7 @@ namespace exports {
             return this.#hasUnsavedChanges;
         }
         public set hasUnsavedChanges(value: boolean) {
+            if (this.readonly) return;
             const wasModified: boolean = this.isModified();
             this.#hasUnsavedChanges = value;
             if (wasModified !== this.isModified()) this.parentTab.emit("subTabModificationStatusChanged", { tab: this, isModified: this.isModified() });
@@ -2530,6 +2545,12 @@ Object.defineProperties(globalThis, {
         enumerable: true,
         writable: false,
     },
+    TabManagerTabMode: {
+        value: exports.TabManagerTabMode,
+        configurable: true,
+        enumerable: true,
+        writable: false,
+    },
 });
 
 declare global {
@@ -2558,4 +2579,5 @@ declare global {
     export import TabManagerTab_LevelDBSearchQuery = exports.TabManagerTab_LevelDBSearchQuery;
     export import TabManagerTab_LevelDBSearchResult = exports.TabManagerTab_LevelDBSearchResult;
     export import TabManagerTab_LevelDBSearch = exports.TabManagerTab_LevelDBSearch;
+    export import TabManagerTabMode = exports.TabManagerTabMode;
 }

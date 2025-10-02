@@ -202,83 +202,83 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
         }
         return (
             <>
-                <ControlledMenu
-                    anchorPoint={tabContextMenu_anchorPoint}
-                    state={tabContextMenu_isOpen ? "open" : "closed"}
-                    direction="right"
-                    onClose={(): void => void tabContextMenu_setOpen(false)}
-                >
-                    {props.tab.isModified() ? (
-                        <>
-                            <MenuItem
-                                onClick={async (): Promise<void> => {
-                                    await props.tab.save();
-                                }}
-                            >
-                                Save Tab
-                            </MenuItem>
-                            <MenuItem
-                                onClick={async (): Promise<void> => {
-                                    await props.tab.save();
-                                    props.tab.close();
-                                }}
-                            >
-                                Save & Close Tab
-                            </MenuItem>
-                            <MenuItem
-                                onClick={(): void => {
-                                    props.tab.close();
-                                }}
-                            >
-                                Close Tab Without Saving
-                            </MenuItem>
-                            <MenuItem
-                                onClick={(): void => {
-                                    props.tab.currentState.scrollTop = 0;
-                                    delete props.tab.currentState.options.dataStorageObject;
-                                    props.tab.activeChanges = [];
-                                    props.tab.hasUnsavedChanges = false;
-                                    props.tab.loadData();
-                                }}
-                            >
-                                Reset Tab
-                            </MenuItem>
-                        </>
-                    ) : (
-                        <MenuItem
-                            onClick={(): void => {
-                                props.tab.close();
-                            }}
-                        >
-                            Close Tab
-                        </MenuItem>
-                    )}
-                    <MenuDivider />
-                    {props.tab.isPinned ? (
-                        <MenuItem
-                            onClick={(): void => {
-                                props.tab.isPinned = false;
-                                triggerUpdate?.();
-                            }}
-                        >
-                            Unpin Tab
-                        </MenuItem>
-                    ) : (
-                        <MenuItem
-                            onClick={(): void => {
-                                props.tab.isPinned = true;
-                                triggerUpdate?.();
-                            }}
-                        >
-                            Pin Tab
-                        </MenuItem>
-                    )}
-                </ControlledMenu>
                 <li
                     class={props.tab === tab.selectedTab ? "active" : ""}
                     onAuxClick={(event: JSX.TargetedMouseEvent<HTMLLIElement>): void => void (event.button === 2 && onTabRightClick(event))}
                     ref={containerRef}
                 >
+                    <ControlledMenu
+                        anchorPoint={tabContextMenu_anchorPoint}
+                        state={tabContextMenu_isOpen ? "open" : "closed"}
+                        direction="right"
+                        onClose={(): void => void tabContextMenu_setOpen(false)}
+                    >
+                        {props.tab.isModified() ? (
+                            <>
+                                <MenuItem
+                                    onClick={async (): Promise<void> => {
+                                        await props.tab.save();
+                                    }}
+                                >
+                                    Save Tab
+                                </MenuItem>
+                                <MenuItem
+                                    onClick={async (): Promise<void> => {
+                                        await props.tab.save();
+                                        props.tab.close();
+                                    }}
+                                >
+                                    Save & Close Tab
+                                </MenuItem>
+                                <MenuItem
+                                    onClick={(): void => {
+                                        props.tab.close();
+                                    }}
+                                >
+                                    Close Tab Without Saving
+                                </MenuItem>
+                                <MenuItem
+                                    onClick={(): void => {
+                                        props.tab.currentState.scrollTop = 0;
+                                        delete props.tab.currentState.options.dataStorageObject;
+                                        props.tab.activeChanges = [];
+                                        props.tab.hasUnsavedChanges = false;
+                                        props.tab.loadData();
+                                    }}
+                                >
+                                    Reset Tab
+                                </MenuItem>
+                            </>
+                        ) : (
+                            <MenuItem
+                                onClick={(): void => {
+                                    props.tab.close();
+                                }}
+                            >
+                                Close Tab
+                            </MenuItem>
+                        )}
+                        <MenuDivider />
+                        {props.tab.isPinned ? (
+                            <MenuItem
+                                onClick={(): void => {
+                                    props.tab.isPinned = false;
+                                    triggerUpdate?.();
+                                }}
+                            >
+                                Unpin Tab
+                            </MenuItem>
+                        ) : (
+                            <MenuItem
+                                onClick={(): void => {
+                                    props.tab.isPinned = true;
+                                    triggerUpdate?.();
+                                }}
+                            >
+                                Pin Tab
+                            </MenuItem>
+                        )}
+                    </ControlledMenu>
                     <a
                         title={props.tab.name}
                         onMouseDown={(event: JSX.TargetedMouseEvent<HTMLAnchorElement>): void => {
