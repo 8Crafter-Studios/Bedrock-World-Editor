@@ -110,7 +110,7 @@ const fileMenu: Electron.Menu = Menu.buildFromTemplate([
                     const result: Electron.OpenDialogReturnValue = await dialog.showOpenDialog(currentWindow, {
                         buttonLabel: "Open",
                         filters: [
-                            { name: "Config", extensions: ["nbt", "mcstructure", "schem", "schematic", "bin", "snbt", "hex", "dat"] },
+                            { name: "NBT", extensions: ["nbt", "mcstructure", "schem", "schematic", "bin", "snbt", "hex", "dat"] },
                             { name: "All", extensions: ["*"] },
                         ],
                         message: "Select NBT files to open",

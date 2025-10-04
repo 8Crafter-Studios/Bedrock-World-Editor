@@ -330,7 +330,7 @@ async function getViewFilesTabContents(tab: TabManagerTab): Promise<JSX.Element>
         valueTypeSwitcher: switch (key.valueType?.type) {
             case "ASCII": {
                 try {
-                    const data = await tab.db!.get(key.rawKey, { sync: false });
+                    const data = await tab.db!.get(key.rawKey);
                     key.value = data?.toString("utf-8");
                 } catch (e) {
                     console.error(e);
@@ -343,7 +343,7 @@ async function getViewFilesTabContents(tab: TabManagerTab): Promise<JSX.Element>
             }
             case "int": {
                 try {
-                    const data = await tab.db!.get(key.rawKey, { sync: false });
+                    const data = await tab.db!.get(key.rawKey);
                     key.value = data !== null ? BigInt("0x" + data.slice(0, key.valueType.bytes).toString("hex")).toString(10) : null;
                 } catch (e) {
                     console.error(e);
@@ -526,7 +526,7 @@ async function getViewFilesTabContents(tab: TabManagerTab): Promise<JSX.Element>
                             }
                             case "NBT": {
                                 try {
-                                    const data = await tab.db!.get(key.rawKey, { sync: false });
+                                    const data = await tab.db!.get(key.rawKey);
                                     key.value = data !== null ? await NBT.parse(data) : null;
                                 } catch (e) {
                                     console.error(e);
@@ -541,7 +541,7 @@ async function getViewFilesTabContents(tab: TabManagerTab): Promise<JSX.Element>
                                 switch (key.valueType.resultType) {
                                     case "JSONNBT": {
                                         try {
-                                            const data = await tab.db!.get(key.rawKey, { sync: false });
+                                            const data = await tab.db!.get(key.rawKey);
                                             key.value = data !== null ? await key.valueType.parse(data) : null;
                                         } catch (e) {
                                             console.error(e);
@@ -607,7 +607,7 @@ async function getViewFilesTabContents(tab: TabManagerTab): Promise<JSX.Element>
                 tablesContents = await Promise.all(
                     ConfigConstants.views.ViewFiles.viewFilesTabModeToSectionIDs["simple"].map(
                         async (sectionID: (typeof ConfigConstants.views.ViewFiles.viewFilesTabModeToSectionIDs)["simple"][number]): Promise<JSX.Element[]> =>
-                            await getViewFilesTabContentsRows({
+                            getViewFilesTabContentsRows({
                                 tab,
                                 keys:
                                     Object.keys(query).length > 1

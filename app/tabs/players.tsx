@@ -233,7 +233,7 @@ async function getPlayersTabContents(tab: TabManagerTab): Promise<JSX.Element> {
     tab.cachedDBKeys || (await tab.awaitCachedDBKeys);
     const keys = {
         client: tab.cachedDBKeys!.PlayerClient,
-        server: tab.cachedDBKeys!.Player,
+        server: tab.cachedDBKeys!.Player.toSorted((a: Buffer, b: Buffer): number => (a.equals(Buffer.from("~local_player", "utf-8")) ? -1 : 0)),
     };
     const clientKeys: ClientKeyData[] = await Promise.all(
         keys.client.map(

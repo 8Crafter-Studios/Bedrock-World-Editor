@@ -70,39 +70,6 @@ const tickingAreasTabSearchSyntax: SearchSyntaxHelpInfo = {
         dbkey: {
             description: "Searches the human-readable LevelDB key (the one displayed in the DB Key column) for the text.",
         },
-        typeid: {
-            description: "Searches for tickingAreas by the namespaced ID (the one displayed in the Type ID column).",
-            extendedDescription: (
-                <>
-                    <p>Searches for tickingAreas by the namespaced ID (the one displayed in the Type ID column).</p>
-                    <p>
-                        Supported prefix operators:
-                        <ul>
-                            <li>"|" - Any Of</li>
-                            <li>"-" - None Of</li>
-                            <li>"^" - One Of</li>
-                            <li>"&" - All Of</li>
-                        </ul>
-                    </p>
-                </>
-            ),
-            examples: [
-                <p>
-                    <code>typeid:minecraft:sheep</code> - Searches for tickingAreas with a namespaced ID of <code>minecraft:sheep</code>.
-                </p>,
-                <p>
-                    <code>|typeid:minecraft:sheep</code> - Searches for tickingAreas with a namespaced ID of <code>minecraft:sheep</code>.
-                </p>,
-                <p>
-                    <code>typeid:minecraft:sheep typeid:minecraft:item</code> - Searches for tickingAreas with a namespaced ID of <code>minecraft:sheep</code>{" "}
-                    or <code>minecraft:item</code>.
-                </p>,
-                <p>
-                    <code>-typeid:minecraft:sheep -typeid:minecraft:item</code> - Searches for tickingAreas that do not have a namespaced ID of{" "}
-                    <code>minecraft:sheep</code> or <code>minecraft:item</code>.
-                </p>,
-            ],
-        },
         uuid: {
             description: "Searches for tickingAreas by their UUID (the one displayed in the UUID column).",
             extendedDescription: (
@@ -121,26 +88,26 @@ const tickingAreasTabSearchSyntax: SearchSyntaxHelpInfo = {
             ),
             examples: [
                 <p>
-                    <code>typeid:-42949666731</code> - Searches for tickingAreas with a UUID <code>-42949666731</code>.
+                    <code>uuid:-42949666731</code> - Searches for tickingAreas with a UUID <code>-42949666731</code>.
                 </p>,
                 <p>
-                    <code>|typeid:-180388626396</code> - Searches for tickingAreas with a UUID <code>-180388626396</code>.
+                    <code>|uuid:-180388626396</code> - Searches for tickingAreas with a UUID <code>-180388626396</code>.
                 </p>,
                 <p>
-                    <code>typeid:-42949666731 typeid:-180388626396</code> - Searches for tickingAreas with a UUID <code>-42949666731</code> or{" "}
+                    <code>uuid:-42949666731 uuid:-180388626396</code> - Searches for tickingAreas with a UUID <code>-42949666731</code> or{" "}
                     <code>-180388626396</code>.
                 </p>,
                 <p>
-                    <code>-typeid:-42949666731 -typeid:-180388626396</code> - Searches for tickingAreas that do not have a UUID <code>-42949666731</code> or{" "}
+                    <code>-uuid:-42949666731 -uuid:-180388626396</code> - Searches for tickingAreas that do not have a UUID <code>-42949666731</code> or{" "}
                     <code>-180388626396</code>.
                 </p>,
             ],
         },
         name: {
-            description: "Searches for tickingAreas by their name tag (the one displayed in the Name column).",
+            description: "Searches for tickingAreas by their name (the one displayed in the Name column).",
             extendedDescription: (
                 <>
-                    <p>Searches for tickingAreas by their name tag (the one displayed in the Name column).</p>
+                    <p>Searches for tickingAreas by their name (the one displayed in the Name column).</p>
                     <p>
                         Supported prefix operators:
                         <ul>
@@ -154,16 +121,16 @@ const tickingAreasTabSearchSyntax: SearchSyntaxHelpInfo = {
             ),
             examples: [
                 <p>
-                    <code>name:Jeff</code> - Searches for tickingAreas with a name tag of "Jeff".
+                    <code>name:Base</code> - Searches for tickingAreas with a name of "Base".
                 </p>,
                 <p>
-                    <code>|name:Joey</code> - Searches for tickingAreas with a name tag of "Joey".
+                    <code>|name:MainEndIsland</code> - Searches for tickingAreas with a name of "MainEndIsland".
                 </p>,
                 <p>
-                    <code>name:Maria name:Joey</code> - Searches for tickingAreas with a name tag of "Maria" or "Joey".
+                    <code>name:CommandBlockArea name:TradingHall</code> - Searches for tickingAreas with a name of "CommandBlockArea" or "TradingHall".
                 </p>,
                 <p>
-                    <code>-name:Doggo -name:Fluffy</code> - Searches for tickingAreas that do not have a name tag of "Doggo" or "Fluffy".
+                    <code>-name:TestingArea2 -name:TestingArea1</code> - Searches for tickingAreas that do not have a name of "TestingArea2" or "TestingArea1".
                 </p>,
             ],
         },

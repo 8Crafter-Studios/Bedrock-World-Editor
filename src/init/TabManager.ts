@@ -185,6 +185,9 @@ namespace exports {
 
     export type TabManagerGenericTabID = "loading";
 
+    /**
+     * Represents a tab manager.
+     */
     export class TabManager extends EventEmitter<TabManagerEventMap> {
         public openTabs: TabManagerTab[] = [];
         public selectedTab: TabManagerTab | TabManagerGenericTabID | null = null;
@@ -203,6 +206,10 @@ namespace exports {
         public switchTab(tab: TabManagerTab | TabManagerGenericTabID | null): void {
             console.log(new Error().stack);
             if (tab === this.selectedTab) return;
+            if (tab === null || tab === "loading") getCurrentWindow().setTitle("Bedrock World Editor");
+            else if (typeof tab === "string") getCurrentWindow().setTitle(tab);
+            // IDEA: Add a config option to change the template string for the window title, like how it is done in VSCode.
+            else getCurrentWindow().setTitle(tab.name);
             const previousTab: TabManagerTab | TabManagerGenericTabID | null = this.selectedTab;
             this.selectedTab = tab;
             this.emit("switchTab", { previousTab, newTab: tab });
@@ -222,8 +229,14 @@ namespace exports {
         }
     }
 
+    /**
+     * The global tab manager for this window.
+     */
     export const tabManager = new TabManager();
 
+    /**
+     * An ID that corresponds to a specific sub-tab (these sub-tab types are ususally accessed directly from the left sidebar).
+     */
     export type TabManagerTabGenericSubTabID =
         | "world-settings"
         | "packs"
@@ -358,8 +371,10 @@ namespace exports {
         public type: "world" | "leveldb" | "nbt" | "json" | "other";
         /**
          * The mode of the tab.
+         *
+         * @default `TabManagerTabMode.CopyUntilSave`
          */
-        public mode: TabManagerTabMode = TabManagerTabMode.Direct;
+        public mode: TabManagerTabMode = TabManagerTabMode.CopyUntilSave;
         /**
          * The path of the temporary copy of the source files, only used for {@link TabManagerTabMode.Readonly}, {@link TabManagerTabMode.CopyUntilSave}, and {@link TabManagerTabMode.Copy} modes.
          */
@@ -477,6 +492,22 @@ namespace exports {
                 this.dbSearch = new TabManagerTab_LevelDBSearch(this);
                 this.awaitDBOpen = this.db.open().then();
             }
+        }
+        public async refreshCachedDBKeys(): Promise<boolean | void> {
+            if (!this.db) return;
+            this.cachedDBKeys = undefined;
+            return (this.awaitCachedDBKeys = getKeysOfTypes(this.db!, DBEntryContentTypes).then(
+                (keys: Record<DBEntryContentType, Buffer[]>): true => {
+                    this.cachedDBKeys = keys;
+                    return true;
+                },
+                (err: unknown): false => {
+                    if (!(err instanceof Error && err.name === "Error" && err.message === "iterator has ended")) {
+                        console.error(err);
+                    }
+                    return false;
+                }
+            ));
         }
         public getPinnedTabs(): NonNullable<PinnedSubTabsJSONData[keyof PinnedSubTabsJSONData]>[string][number][] {
             if (this.type !== "world" && this.type !== "leveldb") return [];

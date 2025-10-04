@@ -128,7 +128,7 @@ Object.entries(treeEditorIcons).forEach(([key, value]) => {
                 async (blob: Blob): Promise<void> =>
                     void ((treeEditorIcons[key as keyof typeof treeEditorIcons][
                         key2 as keyof (typeof treeEditorIcons)[keyof typeof treeEditorIcons]
-                    ] as any) = `data:${mime.lookup(blob.type)};base64,${Buffer.from(await blob.arrayBuffer()).toString("base64")}`)
+                    ] as any) = `data:${mime.lookup(value2)};base64,${Buffer.from(await blob.arrayBuffer()).toString("base64")}`)
             )
             .catch((): void => {});
     });

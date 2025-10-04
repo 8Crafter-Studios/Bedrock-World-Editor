@@ -43,7 +43,7 @@ export default function FunTab(props: FunTabProps): JSX.SpecificElement<"center"
                     forceCorruptWorldButtonRef.current.disabled = true;
                     try {
                         await props.tab.db.put("DedicatedServerForcedCorruption", "true");
-                        props.tab.setLevelDBIsModified(true);
+                        props.tab.setLevelDBIsModified();
                     } catch (e) {
                         console.error(e);
                     }

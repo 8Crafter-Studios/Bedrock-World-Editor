@@ -1,6 +1,7 @@
 import { Dirent, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import * as path from "node:path";
 import "../libs/zip.js";
+import { readdir } from "node:fs/promises";
 
 /**
  * Recursively add the contents of the zip folder to a destination folder.
@@ -46,4 +47,32 @@ export function addFolderContents(directoryEntry: zip.ZipDirectoryEntry, basePat
             addFolderContents(directoryEntry.addDirectory(item.name), basePath, path.join(folder, item.name));
         }
     }
+}
+
+/**
+ * The same as `readdir(dir, { withFileTypes: true, recursive: true })` but it avoids directories that it does not have permission to access.
+ *
+ * @param dir The directory.
+ * @param results The current results.
+ * @returns The results.
+ */
+export async function readdirRecursiveSafe(dir: string, results: Dirent[] = []): Promise<Dirent[]> {
+    let entries: Dirent[];
+
+    try {
+        entries = await readdir(dir, { withFileTypes: true });
+    } catch (err: any) {
+        if (err.code === "EACCES" || err.code === "EPERM") {
+            return results;
+        }
+        throw err;
+    }
+
+    results.push(...entries);
+
+    const subdirs = entries.filter((entry) => entry.isDirectory()).map((entry) => path.join(dir, entry.name));
+
+    await Promise.all(subdirs.map((subdir) => readdirRecursiveSafe(subdir, results)));
+
+    return results;
 }

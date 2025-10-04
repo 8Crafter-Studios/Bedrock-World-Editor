@@ -16,7 +16,7 @@ import {
     type Vector3,
 } from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
-import { readFileSync } from "node:fs";
+import { existsSync, type Dirent } from "node:fs";
 import path from "node:path";
 import { testForObjectExtension } from "../../src/utils/miscUtils";
 import { ControlledMenu, MenuItem } from "@szhsin/react-menu";
@@ -26,6 +26,12 @@ import { PageNavigation } from "../components/PageNavigation";
 import type { SearchSyntaxHelpInfo } from "../components/SearchSyntaxHelpMenu";
 import SearchSyntaxHelpMenu from "../components/SearchSyntaxHelpMenu";
 import { viewFilesTabSearchSyntax } from "./viewFiles";
+import EditorWidgetOverlayBar from "../components/EditorWidgetOverlayBar";
+import { dialog } from "@electron/remote";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { readdirRecursiveSafe } from "../../src/utils/folderContentsUtils";
+import type { ShowSelectOpenTabDialogResult } from "../components/SelectOpenTabDialog";
+import showSelectOpenTabDialog from "../components/SelectOpenTabDialog";
 
 export interface StructuresTabProps {
     tab: TabManagerTab;
@@ -70,70 +76,7 @@ const structuresTabSearchSyntax: SearchSyntaxHelpInfo = {
         dbkey: {
             description: "Searches the human-readable LevelDB key (the one displayed in the DB Key column) for the text.",
         },
-        id: {
-            description: "Searches for structures by their UUID (the one displayed in the UUID column).",
-            extendedDescription: (
-                <>
-                    <p>Searches for structures by their UUID (the one displayed in the UUID column).</p>
-                    <p>
-                        Supported prefix operators:
-                        <ul>
-                            <li>"|" - Any Of</li>
-                            <li>"-" - None Of</li>
-                            <li>"^" - One Of</li>
-                            <li>"&" - All Of</li>
-                        </ul>
-                    </p>
-                </>
-            ),
-            examples: [
-                <p>
-                    <code>typeid:-42949666731</code> - Searches for structures with a UUID <code>-42949666731</code>.
-                </p>,
-                <p>
-                    <code>|typeid:-180388626396</code> - Searches for structures with a UUID <code>-180388626396</code>.
-                </p>,
-                <p>
-                    <code>typeid:-42949666731 typeid:-180388626396</code> - Searches for structures with a UUID <code>-42949666731</code> or{" "}
-                    <code>-180388626396</code>.
-                </p>,
-                <p>
-                    <code>-typeid:-42949666731 -typeid:-180388626396</code> - Searches for structures that do not have a UUID <code>-42949666731</code> or{" "}
-                    <code>-180388626396</code>.
-                </p>,
-            ],
-        },
-        name: {
-            description: "Searches for structures by their name tag (the one displayed in the Name column).",
-            extendedDescription: (
-                <>
-                    <p>Searches for structures by their name tag (the one displayed in the Name column).</p>
-                    <p>
-                        Supported prefix operators:
-                        <ul>
-                            <li>"|" - Any Of</li>
-                            <li>"-" - None Of</li>
-                            <li>"^" - One Of</li>
-                            <li>"&" - All Of</li>
-                        </ul>
-                    </p>
-                </>
-            ),
-            examples: [
-                <p>
-                    <code>name:Jeff</code> - Searches for structures with a name tag of "Jeff".
-                </p>,
-                <p>
-                    <code>|name:Joey</code> - Searches for structures with a name tag of "Joey".
-                </p>,
-                <p>
-                    <code>name:Maria name:Joey</code> - Searches for structures with a name tag of "Maria" or "Joey".
-                </p>,
-                <p>
-                    <code>-name:Doggo -name:Fluffy</code> - Searches for structures that do not have a name tag of "Doggo" or "Fluffy".
-                </p>,
-            ],
-        },
+        // TO-DO
         contents: {
             description: "Searches the LevelDB entry value as SNBT.",
         },
@@ -145,7 +88,7 @@ export default function StructuresTab(props: StructuresTabProps): JSX.SpecificEl
     if (!props.tab.db) return <div>The structures sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
     const containerRef: RefObject<HTMLTableElement> = useRef<HTMLTableElement>(null);
     getStructuresTabContents(props.tab).then(
-        async (element: JSX.Element): Promise<void> => {
+        (element: JSX.Element): void => {
             if (!containerRef.current) return;
             render(null, containerRef.current);
             render(element, containerRef.current);
@@ -182,7 +125,7 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
     tab.db.isOpen() || (await tab.awaitDBOpen!);
     tab.cachedDBKeys || (await tab.awaitCachedDBKeys);
     const rawKeys: Buffer[] = tab.cachedDBKeys!.StructureTemplate;
-    const keys: KeyData[] = await Promise.all(
+    let keys: KeyData[] = await Promise.all(
         rawKeys.map(
             async (key: Buffer): Promise<KeyData> => ({
                 rawKey: key,
@@ -202,8 +145,8 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
     let mode: ConfigConstants.views.Structures.StructuresTabMode = config.views.structures.mode;
     let tablesContents: JSX.Element[][] = await Promise.all(
         ConfigConstants.views.Structures.structuresTabModeToSectionIDs[mode].map(
-            async (sectionID: (typeof ConfigConstants.views.Structures.structuresTabModeToSectionIDs)[typeof mode][number]): Promise<JSX.Element[]> =>
-                await getStructuresTabContentsRows({
+            (sectionID: (typeof ConfigConstants.views.Structures.structuresTabModeToSectionIDs)[typeof mode][number]): Promise<JSX.Element[]> =>
+                getStructuresTabContentsRows({
                     tab,
                     keys,
                     dynamicProperties,
@@ -324,7 +267,7 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                 valueType: {
                     readonly type: "NBT";
                 };
-                contentType: "ActorPrefix";
+                contentType: "StructureTemplate";
                 data: KeyData;
                 searchableContents: string[];
             }[];
@@ -335,8 +278,8 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                         key: key.rawKey,
                         displayKey: key.displayKey,
                         value: key.data,
-                        valueType: entryContentTypeToFormatMap.ActorPrefix,
-                        contentType: "ActorPrefix",
+                        valueType: entryContentTypeToFormatMap.StructureTemplate,
+                        contentType: "StructureTemplate",
                         data: key,
                         searchableContents: [
                             key.displayKey,
@@ -369,10 +312,8 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                 console.log(query);
                 tablesContents = await Promise.all(
                     ConfigConstants.views.Structures.structuresTabModeToSectionIDs[mode].map(
-                        async (
-                            sectionID: (typeof ConfigConstants.views.Structures.structuresTabModeToSectionIDs)[typeof mode][number]
-                        ): Promise<JSX.Element[]> =>
-                            await getStructuresTabContentsRows({
+                        (sectionID: (typeof ConfigConstants.views.Structures.structuresTabModeToSectionIDs)[typeof mode][number]): Promise<JSX.Element[]> =>
+                            getStructuresTabContentsRows({
                                 tab,
                                 keys:
                                     Object.keys(query).length > 1
@@ -429,6 +370,379 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                         </button>
                     </div>
                 </div> */}
+                <EditorWidgetOverlayBar>
+                    <div class="widget-overlay tabbed-selector">
+                        <button
+                            type="button"
+                            title="Import Structures"
+                            onClick={async (): Promise<void> => {
+                                const result: Electron.OpenDialogReturnValue = await dialog.showOpenDialog(getCurrentWindow(), {
+                                    title: "Import Structures",
+                                    buttonLabel: "Import",
+                                    filters: [
+                                        { name: "mcstructure", extensions: ["mcstructure"] },
+                                        // { name: "Java Structure", extensions: ["nbt", "schem", "schematic"] }, // TO-DO
+                                        { name: "All", extensions: ["*"] },
+                                    ],
+                                    message: "Select the structure files to import.",
+                                    properties: ["openFile", "multiSelections", "showHiddenFiles", "treatPackageAsDirectory"],
+                                });
+                                if (result.canceled) return;
+                                let failedImports: [filePath: string, error?: any][] = [];
+                                let importPromises: Promise<void>[] = [];
+                                for (const filePath of result.filePaths) {
+                                    try {
+                                        const fileData: Buffer = await readFile(filePath);
+                                        const structureData = await NBT.parse(fileData);
+                                        if (structureData.type === "little") {
+                                            function checkIsBedrock_mcstructure(): boolean {
+                                                let structure: NBTSchemas.NBTSchemaTypes.StructureTemplate = structureData.parsed as any;
+                                                if (!structure) return false;
+                                                if (structure.type !== "compound") return false;
+                                                if (typeof structure.value !== "object") return false;
+                                                if (structure.value.format_version?.value !== 1) return false;
+                                                if (structure.value.size?.type !== "list") return false;
+                                                if (structure.value.size.value.value?.length !== 3) return false;
+                                                if (!structure.value.structure?.value) return false;
+                                                return true;
+                                            }
+                                            if (checkIsBedrock_mcstructure()) {
+                                                const key: Buffer<ArrayBuffer> = Buffer.from(
+                                                    `structuretemplate_mystructure:${path.parse(filePath).name}`,
+                                                    "binary"
+                                                );
+                                                importPromises.push(
+                                                    tab
+                                                        .db!.put(key, fileData)
+                                                        .then((success: boolean): void => {
+                                                            if (success) {
+                                                                tab.cachedDBKeys?.StructureTemplate?.push(key);
+                                                                tab.setLevelDBIsModified();
+                                                            }
+                                                        })
+                                                        .catch((e: any): void => void failedImports.push([filePath, e]))
+                                                );
+                                            } else {
+                                                failedImports.push([filePath, new Error("Unsupported Structure Format")]);
+                                            }
+                                        } else {
+                                            dialog.showErrorBox(
+                                                "Unsupported Structure Format",
+                                                `The structure format of the file at ${filePath} is not supported yet.`
+                                            );
+                                        }
+                                    } catch (e) {
+                                        failedImports.push([filePath, e]);
+                                    }
+                                }
+                                await Promise.all(importPromises);
+                                if (failedImports.length > 0) {
+                                    console.error("Failed to import some structures:", failedImports);
+                                    dialog
+                                        .showMessageBox(getCurrentWindow(), {
+                                            type: "error",
+                                            title: "Failed to Import Some Structures",
+                                            message: `Failed to import ${failedImports.length} structure(s).`,
+                                            buttons: ["OK", "Details"],
+                                            noLink: true,
+                                            cancelId: 0,
+                                            defaultId: 0,
+                                        })
+                                        .then((result: Electron.MessageBoxReturnValue): void => {
+                                            if (result.response === 1) {
+                                                dialog.showErrorBox("Failed to Import Structures", failedImports.map((f) => `${f[0]}\n\n${f[1]}`).join("\n\n"));
+                                            }
+                                        });
+                                }
+                            }}
+                        >
+                            <img
+                                src="resource://images/ui/glyphs/upload_glyph.png"
+                                style={{ width: "16px", imageRendering: "pixelated", margin: "-3.5px 5px -3.5px 0" }}
+                                aria-hidden="true"
+                            />
+                            Import Structures
+                        </button>
+                    </div>
+                    <div class="widget-overlay tabbed-selector">
+                        <button
+                            type="button"
+                            title="Import Structure Folders"
+                            onClick={async (): Promise<void> => {
+                                const fileExtensionFilterEnabled: boolean = true;
+                                const result: Electron.OpenDialogReturnValue = await dialog.showOpenDialog(getCurrentWindow(), {
+                                    title: "Import Structure Folders",
+                                    buttonLabel: "Import",
+                                    message: "Select the structure files to import.",
+                                    properties: ["openDirectory", "multiSelections", "showHiddenFiles", "treatPackageAsDirectory"],
+                                });
+                                if (result.canceled) return;
+                                let failedImports: [filePath: string, error?: any][] = [];
+                                let importPromises: Promise<void>[] = [];
+                                for (const folderPath of result.filePaths) {
+                                    if (!existsSync(folderPath)) continue;
+                                    importPromises.push(
+                                        (async function importStructuresFromFolder(): Promise<void> {
+                                            let innerImportPromises: Promise<void>[] = [];
+                                            const filePaths: Dirent[] = await readdirRecursiveSafe(folderPath);
+                                            for (const filePathDirent of filePaths) {
+                                                if (!filePathDirent.isFile()) continue;
+                                                if (
+                                                    fileExtensionFilterEnabled &&
+                                                    !["mcstructure" /* , "nbt", "schem", "schematic" */].includes(
+                                                        path.extname(filePathDirent.name).toLowerCase().slice(1)
+                                                    )
+                                                )
+                                                    continue;
+                                                const filePath: string = path.join(filePathDirent.parentPath, filePathDirent.name);
+                                                const relativePath: string = path.relative(folderPath, filePath).replaceAll("\\", "/");
+                                                const structureID: string = `structuretemplate_${
+                                                    relativePath.includes("/") ? relativePath.split("/")[0] : "mystructure"
+                                                }:${relativePath.includes("/") ? relativePath.split("/").slice(1).join("/") : relativePath}`.replace(
+                                                    /\.[^.\\/]+$/,
+                                                    ""
+                                                );
+                                                try {
+                                                    const fileData: Buffer = await readFile(filePath);
+                                                    const structureData = await NBT.parse(fileData);
+                                                    if (structureData.type === "little") {
+                                                        function checkIsBedrock_mcstructure(): boolean {
+                                                            let structure: NBTSchemas.NBTSchemaTypes.StructureTemplate = structureData.parsed as any;
+                                                            if (!structure) return false;
+                                                            if (structure.type !== "compound") return false;
+                                                            if (typeof structure.value !== "object") return false;
+                                                            if (structure.value.format_version?.value !== 1) return false;
+                                                            if (structure.value.size?.type !== "list") return false;
+                                                            if (structure.value.size.value.value?.length !== 3) return false;
+                                                            if (!structure.value.structure?.value) return false;
+                                                            return true;
+                                                        }
+                                                        if (checkIsBedrock_mcstructure()) {
+                                                            const key: Buffer<ArrayBuffer> = Buffer.from(structureID, "binary");
+                                                            innerImportPromises.push(
+                                                                tab
+                                                                    .db!.put(key, fileData)
+                                                                    .then((success: boolean): void => {
+                                                                        if (success) {
+                                                                            tab.cachedDBKeys?.StructureTemplate?.push(key);
+                                                                            tab.setLevelDBIsModified();
+                                                                        }
+                                                                    })
+                                                                    .catch((e: any): void => void failedImports.push([filePath, e]))
+                                                            );
+                                                        } else {
+                                                            failedImports.push([filePath, new Error("Unsupported Structure Format")]);
+                                                        }
+                                                    } else {
+                                                        failedImports.push([filePath, new Error("Unsupported Structure Format")]);
+                                                    }
+                                                } catch (e) {
+                                                    failedImports.push([filePath, e]);
+                                                }
+                                            }
+                                            await Promise.all(innerImportPromises);
+                                        })()
+                                    );
+                                }
+                                await Promise.all(importPromises);
+                                if (failedImports.length > 0) {
+                                    console.error("Failed to import some structures:", failedImports);
+                                    dialog
+                                        .showMessageBox(getCurrentWindow(), {
+                                            type: "error",
+                                            title: "Failed to Import Some Structures",
+                                            message: `Failed to import ${failedImports.length} structure(s).`,
+                                            buttons: ["OK", "Details"],
+                                            noLink: true,
+                                            cancelId: 0,
+                                            defaultId: 0,
+                                        })
+                                        .then((result: Electron.MessageBoxReturnValue): void => {
+                                            if (result.response === 1) {
+                                                dialog.showErrorBox(
+                                                    "Failed to Import Some Structures",
+                                                    failedImports.map((f) => `${f[0]}\n\n${f[1]}`).join("\n\n")
+                                                );
+                                            }
+                                        });
+                                } else {
+                                    console.log("Successfully imported all structures.");
+                                }
+                            }}
+                        >
+                            <img
+                                src="resource://images/ui/glyphs/upload_glyph.png"
+                                style={{ width: "16px", imageRendering: "pixelated", margin: "-3.5px 5px -3.5px 0" }}
+                                aria-hidden="true"
+                            />
+                            Import Structure Folders
+                        </button>
+                    </div>
+                    <div class="widget-overlay tabbed-selector">
+                        <button
+                            type="button"
+                            title="Export Structures"
+                            onClick={async (): Promise<void> => {
+                                const result: Electron.OpenDialogReturnValue = await dialog.showOpenDialog(getCurrentWindow(), {
+                                    title: "Export Structures",
+                                    buttonLabel: "Export",
+                                    message: "Select a folder to export the structures to.",
+                                    properties: ["openDirectory", "showHiddenFiles", "treatPackageAsDirectory"],
+                                });
+                                if (result.canceled) return;
+                                if (!existsSync(result.filePaths[0]!)) await mkdir(result.filePaths[0]!, { recursive: true });
+                                // TO-DO: Add an option to toggle this.
+                                const filterExportsBySearchQuery: boolean = true;
+                                // TO-DO: Add an option to toggle this.
+                                const refreshBeforeExporting: boolean = false;
+                                if (refreshBeforeExporting) {
+                                    await tab.refreshCachedDBKeys();
+                                    keys = await Promise.all(
+                                        rawKeys.map(
+                                            async (key: Buffer): Promise<KeyData> => ({
+                                                rawKey: key,
+                                                displayKey: getKeyDisplayName(key),
+                                                data: (await NBT.parse((await tab.db!.get(key))!)) as any,
+                                            })
+                                        )
+                                    );
+                                }
+                                const structureKeys: KeyData[] =
+                                    filterExportsBySearchQuery && Object.keys(query).length > 1
+                                        ? tab
+                                              .dbSearch!.serach(query)
+                                              .toArray()
+                                              .map((key): KeyData => key.originalObject.data)
+                                        : keys;
+                                let failedExports: [filePath: string, error?: any][] = [];
+                                await Promise.all(
+                                    structureKeys.map(async function exportStructureToFile(key: KeyData): Promise<void> {
+                                        try {
+                                            const stringKey: string = key.rawKey.toString("utf-8");
+                                            const destinationPath: string = `${
+                                                stringKey.startsWith("structuretemplate_mystructure:")
+                                                    ? ""
+                                                    : stringKey.replace(/^structuretemplate_/, "").split(":")[0] + "/"
+                                            }${stringKey.replace(/^structuretemplate_[^:]*:/, "")}.mcstructure`.replace(
+                                                /[:*?"<>|\x00-\x1F]/g,
+                                                (char: string): string => {
+                                                    return "%" + char.charCodeAt(0).toString(16).padStart(2, "0");
+                                                }
+                                            );
+                                            if (!existsSync(path.dirname(path.join(result.filePaths[0]!, destinationPath))))
+                                                await mkdir(path.join(result.filePaths[0]!, path.dirname(destinationPath)), { recursive: true });
+                                            const data: Buffer | null = await tab.db!.get(key.rawKey)!;
+                                            if (!data) throw new ReferenceError(`Entry not found: ${stringKey}`);
+                                            await writeFile(path.join(result.filePaths[0]!, destinationPath), data);
+                                        } catch (e) {
+                                            failedExports.push([key.rawKey.toString("binary"), e]);
+                                        }
+                                    })
+                                );
+                                if (failedExports.length > 0) {
+                                    console.error("Failed to export some structures:", failedExports);
+                                    dialog
+                                        .showMessageBox(getCurrentWindow(), {
+                                            type: "error",
+                                            title: "Failed to Export Some Structures",
+                                            message: `Failed to export ${failedExports.length} structure(s).`,
+                                            buttons: ["OK", "Details"],
+                                            noLink: true,
+                                            cancelId: 0,
+                                            defaultId: 0,
+                                        })
+                                        .then((result: Electron.MessageBoxReturnValue): void => {
+                                            if (result.response === 1) {
+                                                dialog.showErrorBox(
+                                                    "Failed to Export Some Structures",
+                                                    failedExports.map((f) => `${f[0]}\n\n${f[1]}`).join("\n\n")
+                                                );
+                                            }
+                                        });
+                                } else {
+                                    console.log("Successfully exported all structures.");
+                                }
+                            }}
+                        >
+                            <img
+                                src="resource://images/ui/glyphs/download_glyph.png"
+                                style={{ width: "16px", imageRendering: "pixelated", margin: "-3.5px 5px -3.5px 0" }}
+                                aria-hidden="true"
+                            />
+                            Export Structures
+                        </button>
+                    </div>
+                    <div class="widget-overlay tabbed-selector">
+                        <button
+                            type="button"
+                            title="Transfer Structures to Open Tab"
+                            onClick={async (): Promise<void> => {
+                                const result: ShowSelectOpenTabDialogResult = await showSelectOpenTabDialog({
+                                    excludedTabs: [{ windowID: getCurrentWindow().id, tabID: tab.id }],
+                                    message: "Select a tab to transfer structures to.",
+                                    tabTargetTypeFilter: ["world", "leveldb"],
+                                });
+                                if (result.canceled) return;
+                                // TO-DO: Add an option to toggle this.
+                                const filterExportsBySearchQuery: boolean = true;
+                                // TO-DO: Add an option to toggle this.
+                                const refreshBeforeExporting: boolean = false;
+                                if (refreshBeforeExporting) {
+                                    await tab.refreshCachedDBKeys();
+                                    keys = await Promise.all(
+                                        rawKeys.map(
+                                            async (key: Buffer): Promise<KeyData> => ({
+                                                rawKey: key,
+                                                displayKey: getKeyDisplayName(key),
+                                                data: (await NBT.parse((await tab.db!.get(key))!)) as any,
+                                            })
+                                        )
+                                    );
+                                }
+                                const structureKeys: KeyData[] =
+                                    filterExportsBySearchQuery && Object.keys(query).length > 1
+                                        ? tab
+                                              .dbSearch!.serach(query)
+                                              .toArray()
+                                              .map((key): KeyData => key.originalObject.data)
+                                        : keys;
+                                console.log(`Transferring ${structureKeys.length} structure(s) to tab ${result.tabID} in window ${result.window.id}.`);
+                                const errors: Error[] = (
+                                    await Promise.all(
+                                        structureKeys.map(async (key: KeyData): Promise<Error | void> => {
+                                            const data: readonly [key: Buffer, data: Buffer | null] = [key.rawKey, await tab.db!.get(key.rawKey)!] as const;
+                                            if (data[1] === null) return new ReferenceError(`Entry not found: ${key.displayKey}`);
+                                            await result.window.webContents.executeJavaScript(
+                                                `{/* This is to make sure the contents are different so that it works each time. */"${Date.now()}_${Math.floor(
+                                                    Math.random() * 1000000
+                                                )}"; const tab = tabManager.openTabs.find((tab) => tab.id === ${
+                                                    result.tabID
+                                                }n); if (tab) {const db = tab.db; if (db) {const [{data: key}, {data}] = ${JSON.stringify(
+                                                    data
+                                                )}; const keyBuffer = Buffer.from(key); db.put(keyBuffer, Buffer.from(data)).then((success)=>{if(!success) console.error("Failed to transfer structure:", keyBuffer); else if (!tab.cachedDBKeys.StructureTemplate.some(targetKey=> targetKey.equals(keyBuffer))) {tab.cachedDBKeys.StructureTemplate.push(keyBuffer); tab.setLevelDBIsModified();}});}} else console.log("Unable to find tab with ID:", ${
+                                                    result.tabID
+                                                }n);}`
+                                            );
+                                        })
+                                    )
+                                ).filter((error: void | Error): error is Error => error instanceof Error);
+                                if (errors.length > 0) {
+                                    dialog.showErrorBox(
+                                        "Failed to Transfer Some Structures",
+                                        errors.map((error: Error): string => `${error.message}\n\n${error.stack}`).join("\n\n")
+                                    );
+                                }
+                            }}
+                        >
+                            <img
+                                src="resource://images/ui/glyphs/export.png"
+                                style={{ width: "16px", imageRendering: "pixelated", margin: "-3.5px 5px -3.5px 0" }}
+                                aria-hidden="true"
+                            />
+                            Transfer Structures to Open Tab
+                        </button>
+                    </div>
+                </EditorWidgetOverlayBar>
                 <div class="search-controls-container" ref={searchRefs.searchAreaContainer}>
                     <input
                         type="search"

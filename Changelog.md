@@ -1,19 +1,34 @@
 # v1.0.0-beta.8
 
+## Critical Fixes
+
+-   Fixed a bug where the app would throw errors on startup for non-Windows platforms.
+
 ## Additions
 
 -   Added two new debug overlay modes:
     -   `Config (Views)`
     -   `Tab`
 -   Added a new config option (`config.debugHUDDropShadow`) to add a drop shadow to the debug overlay to make it more readable.
+-   Added a feature where the title of the window changes to display the name of the currently selected tab.
+-   Added the ability to import/export/transfer structures to the structures tab.
+    -   The structures tab now has 4 new buttons:
+        -   `Import Structures` - Opens a file picker to allow for selecting multiple structure files to import.
+        -   `Import Structure Folders` - Opens a file picker to allow for selecting multiple folders with structures in them to import, the namespace of the imported structures will be determined by the relative path of the folder to the structure file. If you were to select the `structures` folder of a behavior pack for example, it would import the structures with the exact same names as if you just added the behavior pack onto your world. You can even import every structure on your drive with this really quickly.
+        -   `Export Structures` - Opens a file picker to allow for selecting a folder to export the structures to.
+        -   `Transfer Structures to Open Tab` - Opens a dialog to select another tab currently open in the app to copy the structures to, you can select tabs in the same window and in other windows.
+
 
 ## Changes
 
 -   Updated several debug overlay modes.
+-   `~local_player` is now always the first player in the players tab (before it was always the last player).
+-   Updated the search query syntax documentation for a few of the tabs.
 
 ## Fixes
 
 -   Fixed the font for the debug overlay.
+-   Fixed a bug where the MIME type in the data URIs used for the NBT tag type icons in the tree editor was `false` instead of `image/png`.
 
 # v1.0.0-beta.7
 

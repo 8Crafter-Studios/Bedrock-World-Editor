@@ -184,7 +184,9 @@ function DebugOverlay_Top(): JSX.Element {
                     height: "100vh",
                     pointerEvents: "none",
                     zIndex: 1000000000000,
-                    filter: config.debugHUDDropShadow ? "drop-shadow(calc((round(up, var(--gui-scale), 2) / 2) * 1px) calc((round(up, var(--gui-scale), 2) / 2) * 1px) 0 #404040FF) drop-shadow(0px 0px 6px black) drop-shadow(0px 0px 6px black)" : "drop-shadow(calc((round(up, var(--gui-scale), 2) / 2) * 1px) calc((round(up, var(--gui-scale), 2) / 2) * 1px) 0 #404040FF)",
+                    filter: config.debugHUDDropShadow
+                        ? "drop-shadow(calc((round(up, var(--gui-scale), 2) / 2) * 1px) calc((round(up, var(--gui-scale), 2) / 2) * 1px) 0 #404040FF) drop-shadow(0px 0px 6px black) drop-shadow(0px 0px 6px black)"
+                        : "drop-shadow(calc((round(up, var(--gui-scale), 2) / 2) * 1px) calc((round(up, var(--gui-scale), 2) / 2) * 1px) 0 #404040FF)",
                     color: "rgba(255, 255, 255, 1)",
                     textAlign: "center",
                     fontSize: "calc((round(up, var(--gui-scale), 2) / 2) * 10px)",
@@ -447,7 +449,9 @@ function DebugOverlay_Basic(): JSX.Element {
                     height: "100vh",
                     pointerEvents: "none",
                     zIndex: 1000000000000,
-                    filter: config.debugHUDDropShadow ? "drop-shadow(calc((round(up, var(--gui-scale), 2) / 2) * 1px) calc((round(up, var(--gui-scale), 2) / 2) * 1px) 0 #404040FF) drop-shadow(0px 0px 6px black) drop-shadow(0px 0px 6px black)" : "drop-shadow(calc((round(up, var(--gui-scale), 2) / 2) * 1px) calc((round(up, var(--gui-scale), 2) / 2) * 1px) 0 #404040FF)",
+                    filter: config.debugHUDDropShadow
+                        ? "drop-shadow(calc((round(up, var(--gui-scale), 2) / 2) * 1px) calc((round(up, var(--gui-scale), 2) / 2) * 1px) 0 #404040FF) drop-shadow(0px 0px 6px black) drop-shadow(0px 0px 6px black)"
+                        : "drop-shadow(calc((round(up, var(--gui-scale), 2) / 2) * 1px) calc((round(up, var(--gui-scale), 2) / 2) * 1px) 0 #404040FF)",
                     color: "#FFFFFFFF",
                     textAlign: "left",
                     fontSize: "calc((round(up, var(--gui-scale), 2) / 2) * 10px)",
@@ -472,7 +476,9 @@ function DebugOverlay_Basic(): JSX.Element {
                     height: "100vh",
                     pointerEvents: "none",
                     zIndex: 1000000000000,
-                    filter: config.debugHUDDropShadow ? "drop-shadow(calc((round(up, var(--gui-scale), 2) / 2) * 1px) calc((round(up, var(--gui-scale), 2) / 2) * 1px) 0 #404040FF) drop-shadow(0px 0px 6px black) drop-shadow(0px 0px 6px black)" : "drop-shadow(calc((round(up, var(--gui-scale), 2) / 2) * 1px) calc((round(up, var(--gui-scale), 2) / 2) * 1px) 0 #404040FF)",
+                    filter: config.debugHUDDropShadow
+                        ? "drop-shadow(calc((round(up, var(--gui-scale), 2) / 2) * 1px) calc((round(up, var(--gui-scale), 2) / 2) * 1px) 0 #404040FF) drop-shadow(0px 0px 6px black) drop-shadow(0px 0px 6px black)"
+                        : "drop-shadow(calc((round(up, var(--gui-scale), 2) / 2) * 1px) calc((round(up, var(--gui-scale), 2) / 2) * 1px) 0 #404040FF)",
                     color: "#FFFFFFFF",
                     textAlign: "right",
                     fontSize: "calc((round(up, var(--gui-scale), 2) / 2) * 10px)",
@@ -567,9 +573,7 @@ function DebugOverlay_Config(): JSX.Element {
                     <CrispyDropShadowSpan class="debug-overlay-config-mode-item-label" data-color="#AAAAAAFF">
                         Debug HUD Drop Shadow:{" "}
                     </CrispyDropShadowSpan>
-                    <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value">
-                        {JSONB.stringify(configData.debugHUDDropShadow)}
-                    </CrispyDropShadowSpan>
+                    <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value">{JSONB.stringify(configData.debugHUDDropShadow)}</CrispyDropShadowSpan>
                 </span>
                 {/* <span
                     class="crispy"
@@ -1110,7 +1114,9 @@ function DebugOverlay_Tab(): JSX.Element {
                         display: "block",
                     }}
                 >
-                    Tab Name:{" "}
+                    <CrispyDropShadowSpan class="debug-overlay-config-mode-item-label" data-color="#AAAAAAFF">
+                        Tab Name:{" "}
+                    </CrispyDropShadowSpan>
                     {tab instanceof TabManagerTab ? (
                         <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value">{tab.name}</CrispyDropShadowSpan>
                     ) : tab ? (
@@ -1129,7 +1135,53 @@ function DebugOverlay_Tab(): JSX.Element {
                                 display: "block",
                             }}
                         >
-                            DB Status:{" "}
+                            <CrispyDropShadowSpan class="debug-overlay-config-mode-item-label" data-color="#AAAAAAFF">
+                                Tab Mode:{" "}
+                            </CrispyDropShadowSpan>
+                            <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value">{tab.mode}</CrispyDropShadowSpan>
+                        </span>
+                        {/* <span
+                            class="crispy"
+                            style={{
+                                display: "block",
+                            }}
+                        >
+                            <CrispyDropShadowSpan class="debug-overlay-config-mode-item-label" data-color="#AAAAAAFF">
+                                Path:{" "}
+                            </CrispyDropShadowSpan>
+                            <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value">{tab.path}</CrispyDropShadowSpan>
+                        </span>
+                        <span
+                            class="crispy"
+                            style={{
+                                display: "block",
+                            }}
+                        >
+                            <CrispyDropShadowSpan class="debug-overlay-config-mode-item-label" data-color="#AAAAAAFF">
+                                Temp Path:{" "}
+                            </CrispyDropShadowSpan>
+                            <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value">{tab.tempPath}</CrispyDropShadowSpan>
+                        </span>
+                        <span
+                            class="crispy"
+                            style={{
+                                display: "block",
+                            }}
+                        >
+                            <CrispyDropShadowSpan class="debug-overlay-config-mode-item-label" data-color="#AAAAAAFF">
+                                Temp File Path:{" "}
+                            </CrispyDropShadowSpan>
+                            <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value">{tab.tempFilePath}</CrispyDropShadowSpan>
+                        </span> */}
+                        <span
+                            class="crispy"
+                            style={{
+                                display: "block",
+                            }}
+                        >
+                            <CrispyDropShadowSpan class="debug-overlay-config-mode-item-label" data-color="#AAAAAAFF">
+                                DB Status:{" "}
+                            </CrispyDropShadowSpan>
                             {tab.db ? (
                                 tab.db.isOpen() ? (
                                     <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#55FF55FF">
@@ -1149,6 +1201,17 @@ function DebugOverlay_Tab(): JSX.Element {
                                     undefined
                                 </CrispyDropShadowSpan>
                             )}
+                        </span>
+                        <span
+                            class="crispy"
+                            style={{
+                                display: "block",
+                            }}
+                        >
+                            <CrispyDropShadowSpan class="debug-overlay-config-mode-item-label" data-color="#AAAAAAFF">
+                                Tab ID:{" "}
+                            </CrispyDropShadowSpan>
+                            <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value">{tab.id}</CrispyDropShadowSpan>
                         </span>
                         <span
                             class="crispy"
@@ -1236,7 +1299,7 @@ function DebugOverlay_Tab(): JSX.Element {
                 return;
             }
             render(<RightContents />, rightContainerRef.current);
-        }, 1000) as unknown as number;
+        }, 250) as unknown as number;
         return (): void => {
             clearInterval(intervalID);
         };
@@ -1265,7 +1328,7 @@ function DebugOverlay_Tab(): JSX.Element {
                     height: "100vh",
                     pointerEvents: "none",
                     zIndex: 1000000000000,
-                    filter: config.debugHUDDropShadow ? "drop-shadow(calc((round(up, var(--gui-scale), 2) / 2) * 1px) calc((round(up, var(--gui-scale), 2) / 2) * 1px) 0 #404040FF) drop-shadow(0px 0px 6px black) drop-shadow(0px 0px 6px black)" : "drop-shadow(calc((round(up, var(--gui-scale), 2) / 2) * 1px) calc((round(up, var(--gui-scale), 2) / 2) * 1px) 0 #404040FF)",
+                    filter: config.debugHUDDropShadow ? "drop-shadow(0px 0px 6px black) drop-shadow(0px 0px 6px black)" : "",
                     color: "#FFFFFFFF",
                     textAlign: "left",
                     fontSize: "calc((round(up, var(--gui-scale), 2) / 2) * 10px)",
@@ -1290,7 +1353,7 @@ function DebugOverlay_Tab(): JSX.Element {
                     height: "100vh",
                     pointerEvents: "none",
                     zIndex: 1000000000000,
-                    filter: config.debugHUDDropShadow ? "drop-shadow(calc((round(up, var(--gui-scale), 2) / 2) * 1px) calc((round(up, var(--gui-scale), 2) / 2) * 1px) 0 #404040FF) drop-shadow(0px 0px 6px black) drop-shadow(0px 0px 6px black)" : "drop-shadow(calc((round(up, var(--gui-scale), 2) / 2) * 1px) calc((round(up, var(--gui-scale), 2) / 2) * 1px) 0 #404040FF)",
+                    filter: config.debugHUDDropShadow ? "drop-shadow(0px 0px 6px black) drop-shadow(0px 0px 6px black)" : "",
                     color: "#FFFFFFFF",
                     textAlign: "right",
                     fontSize: "calc((round(up, var(--gui-scale), 2) / 2) * 10px)",
