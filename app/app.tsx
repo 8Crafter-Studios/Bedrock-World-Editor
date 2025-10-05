@@ -18,7 +18,7 @@ import EntitiesTab from "./tabs/entities";
 import ViewFilesTab from "./tabs/viewFiles";
 import RepairForcedWorldCorruptionTab from "./tabs/repairForcedWorldCorruption";
 import MapsTab from "./tabs/maps";
-import { app, dialog } from "@electron/remote";
+import { app, dialog, shell } from "@electron/remote";
 import type { MessageBoxReturnValue } from "electron";
 import MapEditorTab from "./tabs/mapNBTEditor";
 import NoneTab from "./tabs/none";
@@ -231,8 +231,6 @@ export interface MinecraftWorldDisplayDetails {
     favorited: boolean;
 }
 
-type FavoritedWorldsJSONData = string[];
-
 export async function getMinecraftWorlds(all: boolean = false): Promise<MinecraftWorldDisplayDetails[]> {
     return (
         await Promise.all(
@@ -265,7 +263,7 @@ export async function getMinecraftWorlds(all: boolean = false): Promise<Minecraf
                             favorited: existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"))
                                 ? ((): boolean => {
                                       try {
-                                          const favoritedWorldsData: FavoritedWorldsJSONData = JSON.parse(
+                                          const favoritedWorldsData: string[] = JSON.parse(
                                               readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8")
                                           );
                                           if (favoritedWorldsData.includes(folderPath)) {
@@ -307,7 +305,7 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                         x: event.clientX,
                         y: event.clientY,
                     };
-                    console.log(clickPosition);
+                    // console.log(clickPosition);
 
                     worldContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
                     worldContextMenu_setOpen(true);
@@ -389,103 +387,139 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                                 </div>
                             </div>
                         )}
-                        <ControlledMenu
-                            anchorPoint={worldContextMenu_anchorPoint}
-                            state={worldContextMenu_isOpen ? "open" : "closed"}
-                            direction="right"
-                            onClose={(): void => void worldContextMenu_setOpen(false)}
-                        >
-                            <MenuItem
-                                onClick={async (): Promise<void> => {
-                                    tabManager.switchTab("loading");
-                                    setTimeout(
-                                        (): void => void tabManager.openTab({ path: world.path, name: world.name, type: "world", icon: world.thumbnailPath! }),
-                                        10
-                                    );
-                                }}
+                        <div title="" style={{ display: "contents", cursor: "auto" }}>
+                            <ControlledMenu
+                                anchorPoint={worldContextMenu_anchorPoint}
+                                state={worldContextMenu_isOpen ? "open" : "closed"}
+                                direction="right"
+                                onClose={(): void => void worldContextMenu_setOpen(false)}
                             >
-                                Open World
-                            </MenuItem>
-                            <MenuItem
-                                onClick={async (): Promise<void> => {
-                                    tabManager.switchTab("loading");
-                                    setTimeout(
-                                        (): void =>
-                                            void tabManager.openTab({
-                                                path: world.path,
-                                                name: world.name,
-                                                type: "world",
-                                                icon: world.thumbnailPath!,
-                                                mode: TabManagerTabMode.Readonly,
-                                            }),
-                                        10
-                                    );
-                                }}
-                            >
-                                Open in Read-Only Mode
-                            </MenuItem>
-                            <MenuItem
-                                onClick={(): void => {
-                                    tabManager.switchTab("loading");
-                                    setTimeout(
-                                        (): void =>
-                                            void tabManager.openTab({
-                                                path: world.path,
-                                                name: world.name,
-                                                type: "world",
-                                                icon: world.thumbnailPath!,
-                                                mode: TabManagerTabMode.Direct,
-                                            }),
-                                        10
-                                    );
-                                }}
-                            >
-                                Open in Direct Mode (Unsafe)
-                            </MenuItem>
-                            <MenuDivider />
-                            {world.favorited ? (
                                 <MenuItem
-                                    onClick={(): void => {
-                                        if (!existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"))) return;
-                                        try {
-                                            const favoritedWorldsData: FavoritedWorldsJSONData = JSON.parse(
-                                                readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8")
-                                            );
-                                            if (favoritedWorldsData.includes(world.path)) {
-                                                favoritedWorldsData.splice(favoritedWorldsData.indexOf(world.path), 1);
-                                                writeFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), JSON.stringify(favoritedWorldsData));
-                                                world.favorited = false;
-                                            }
-                                        } catch (e) {
-                                            console.error(e);
-                                        }
+                                    onClick={async (): Promise<void> => {
+                                        tabManager.switchTab("loading");
+                                        setTimeout(
+                                            (): void =>
+                                                void tabManager.openTab({ path: world.path, name: world.name, type: "world", icon: world.thumbnailPath! }),
+                                            10
+                                        );
                                     }}
                                 >
-                                    Unfavorite
+                                    Open World
                                 </MenuItem>
-                            ) : (
+                                <MenuItem
+                                    onClick={async (): Promise<void> => {
+                                        tabManager.switchTab("loading");
+                                        setTimeout(
+                                            (): void =>
+                                                void tabManager.openTab({
+                                                    path: world.path,
+                                                    name: world.name,
+                                                    type: "world",
+                                                    icon: world.thumbnailPath!,
+                                                    mode: TabManagerTabMode.Readonly,
+                                                }),
+                                            10
+                                        );
+                                    }}
+                                >
+                                    Open in Read-Only Mode
+                                </MenuItem>
                                 <MenuItem
                                     onClick={(): void => {
-                                        try {
-                                            let favoritedWorldsData: FavoritedWorldsJSONData = [];
-                                            if (existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json")))
-                                                favoritedWorldsData = JSON.parse(
+                                        tabManager.switchTab("loading");
+                                        setTimeout(
+                                            (): void =>
+                                                void tabManager.openTab({
+                                                    path: world.path,
+                                                    name: world.name,
+                                                    type: "world",
+                                                    icon: world.thumbnailPath!,
+                                                    mode: TabManagerTabMode.Direct,
+                                                }),
+                                            10
+                                        );
+                                    }}
+                                >
+                                    Open in Direct Mode (Unsafe)
+                                </MenuItem>
+                                <MenuDivider />
+                                <MenuItem
+                                    onClick={(): void => {
+                                        shell.openPath(world.path);
+                                    }}
+                                >
+                                    Open World Folder in{" "}
+                                    {process.platform === "win32" ? "File Explorer" : process.platform === "darwin" ? "Finder" : "File Manager"}
+                                </MenuItem>
+                                {app.getApplicationNameForProtocol("minecraft:") && (
+                                    <MenuItem
+                                        onClick={async (): Promise<void> => {
+                                            shell.openExternal(`minecraft://?load=${encodeURIComponent(path.basename(world.path))}`);
+                                        }}
+                                    >
+                                        Open World in Minecraft
+                                    </MenuItem>
+                                )}
+                                {app.getApplicationNameForProtocol("minecraft-preview:") && (
+                                    <MenuItem
+                                        onClick={async (): Promise<void> => {
+                                            shell.openExternal(`minecraft-preview://?load=${encodeURIComponent(path.basename(world.path))}`);
+                                        }}
+                                    >
+                                        Open World in Minecraft Preview
+                                    </MenuItem>
+                                )}
+                                <MenuDivider />
+                                {world.favorited ? (
+                                    <MenuItem
+                                        onClick={(): void => {
+                                            if (!existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"))) return;
+                                            try {
+                                                const favoritedWorldsData: string[] = JSON.parse(
                                                     readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8")
                                                 );
-                                            if (!favoritedWorldsData.includes(world.path)) {
-                                                favoritedWorldsData.push(world.path);
-                                                writeFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), JSON.stringify(favoritedWorldsData));
-                                                world.favorited = true;
+                                                if (favoritedWorldsData.includes(world.path)) {
+                                                    favoritedWorldsData.splice(favoritedWorldsData.indexOf(world.path), 1);
+                                                    writeFileSync(
+                                                        path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"),
+                                                        JSON.stringify(favoritedWorldsData)
+                                                    );
+                                                    world.favorited = false;
+                                                }
+                                            } catch (e) {
+                                                console.error(e);
                                             }
-                                        } catch (e) {
-                                            console.error(e);
-                                        }
-                                    }}
-                                >
-                                    Favorite
-                                </MenuItem>
-                            )}
-                        </ControlledMenu>
+                                        }}
+                                    >
+                                        Unfavorite
+                                    </MenuItem>
+                                ) : (
+                                    <MenuItem
+                                        onClick={(): void => {
+                                            try {
+                                                let favoritedWorldsData: string[] = [];
+                                                if (existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json")))
+                                                    favoritedWorldsData = JSON.parse(
+                                                        readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8")
+                                                    );
+                                                if (!favoritedWorldsData.includes(world.path)) {
+                                                    favoritedWorldsData.push(world.path);
+                                                    writeFileSync(
+                                                        path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"),
+                                                        JSON.stringify(favoritedWorldsData)
+                                                    );
+                                                    world.favorited = true;
+                                                }
+                                            } catch (e) {
+                                                console.error(e);
+                                            }
+                                        }}
+                                    >
+                                        Favorite
+                                    </MenuItem>
+                                )}
+                            </ControlledMenu>
+                        </div>
                         {/* TO-DO: Add a star icon for favorited tabs. */}
                     </div>
                 );

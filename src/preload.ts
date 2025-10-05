@@ -1,6 +1,7 @@
 // See the Electron documentation for details on how to use preload scripts:
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
 
+import "./utils/version.ts";
 import "./init/sleep.ts";
 import "./init/JSONB.ts";
 import "./init/getCurrentWindow.ts";
@@ -8,7 +9,6 @@ import "./init/SoundEffects.ts";
 import "./init/TabManager.ts";
 import "./utils/ProgressBar.ts";
 import "./utils/config.ts";
-import "./utils/version.ts";
 import { app, autoUpdater, dialog, Menu, nativeTheme, shell } from "@electron/remote";
 import { APP_DATA_FOLDER_PATH } from "./utils/URLs.ts";
 /* import { Titlebar } from "custom-electron-titlebar";

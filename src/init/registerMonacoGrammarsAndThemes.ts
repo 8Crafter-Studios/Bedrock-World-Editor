@@ -695,11 +695,11 @@ async function main(language: LanguageId): Promise<void> {
             }
             mergedTokens.push(currentTokenMerge);
             const tokenAtCursor = mergedTokens.findLast((token) => token.startIndex < position.column - 1 && token.endIndex >= position.column - 1);
-            console.log(tokenAtCursor?.scopes);
-            console.log(tokenAtCursor);
-            console.log(tokens);
-            console.log(mergedTokens);
-            console.log(model, model.id, model.uri);
+            console.debug("[MonacoEditorAutoCompletionData]:", tokenAtCursor?.scopes);
+            console.debug("[MonacoEditorAutoCompletionData]:", tokenAtCursor);
+            console.debug("[MonacoEditorAutoCompletionData]:", tokens);
+            console.debug("[MonacoEditorAutoCompletionData]:", mergedTokens);
+            console.debug("[MonacoEditorAutoCompletionData]:", model, model.id, model.uri);
             const contentType: DBEntryContentType = (new URLSearchParams(model.uri.query).get("contentType") as DBEntryContentType | null) ?? "Unknown";
             if (tokenAtCursor) {
                 switch (true) {

@@ -1,12 +1,13 @@
 import { type JSX, type RefObject } from "preact";
-import _React, { render, useEffect, useRef } from "preact/compat";
+import _React, { render, useEffect, useRef, useState } from "preact/compat";
 import { checkIsURIOrPath } from "../../src/utils/pathUtils";
 const mime = require("mime-types") as typeof import("mime-types");
 import { readFileSync } from "node:fs";
 import type { Vector2 } from "mcbe-leveldb";
-import { dialog } from "@electron/remote";
+import { dialog, shell } from "@electron/remote";
 import { get } from "jquery";
 import type { MessageBoxReturnValue } from "electron";
+import { ControlledMenu, MenuDivider, MenuItem } from "@szhsin/react-menu";
 
 export default function TabBar(): JSX.Element {
     const tabContainerRef: RefObject<HTMLUListElement> = useRef(null);
@@ -167,7 +168,7 @@ export default function TabBar(): JSX.Element {
                     .filter((_index: number, element: HTMLLIElement): boolean => element !== elem)
                     .removeClass("left-highlight");
             }
-            console.log(newTabIndex);
+            // console.log(newTabIndex);
         }
         function onModificationStatusChanged(event: TabManagerTabModificationStatusChangedEvent): void {
             if (event.tab === props.tab) {
@@ -181,8 +182,134 @@ export default function TabBar(): JSX.Element {
                 props.tab.off("modificationStatusChanged", onModificationStatusChanged);
             };
         });
+        const [tabContextMenu_isOpen, tabContextMenu_setOpen] = useState(false);
+        const [tabContextMenu_anchorPoint, tabContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
+        function onTabRightClick(event: JSX.TargetedMouseEvent<HTMLLIElement>): void {
+            event.preventDefault();
+            event.stopPropagation();
+            const clickPosition: { x: number; y: number } = {
+                x: event.clientX,
+                y: event.clientY,
+            };
+            // console.log(clickPosition);
+
+            tabContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
+            tabContextMenu_setOpen(true);
+        }
         return (
-            <li class={props.tab === tabManager.selectedTab ? "active" : ""} ref={containerRef}>
+            <li
+                class={props.tab === tabManager.selectedTab ? "active" : ""}
+                onAuxClick={(event: JSX.TargetedMouseEvent<HTMLLIElement>): void => void (event.button === 2 && onTabRightClick(event))}
+                ref={containerRef}
+            >
+                <ControlledMenu
+                    anchorPoint={tabContextMenu_anchorPoint}
+                    state={tabContextMenu_isOpen ? "open" : "closed"}
+                    direction="right"
+                    onClose={(): void => void tabContextMenu_setOpen(false)}
+                >
+                    {props.tab.isModified() ? (
+                        <>
+                            <MenuItem
+                                onClick={async (): Promise<void> => {
+                                    await props.tab.save();
+                                }}
+                            >
+                                Save Tab
+                            </MenuItem>
+                            <MenuItem
+                                onClick={async (): Promise<void> => {
+                                    await props.tab.save();
+                                    props.tab.close();
+                                }}
+                            >
+                                Save & Close Tab
+                            </MenuItem>
+                            <MenuItem
+                                onClick={(): void => {
+                                    props.tab.close();
+                                }}
+                            >
+                                Close Tab Without Saving
+                            </MenuItem>
+                        </>
+                    ) : (
+                        <MenuItem
+                            onClick={(): void => {
+                                props.tab.close();
+                            }}
+                        >
+                            Close Tab
+                        </MenuItem>
+                    )}
+                    <MenuItem
+                        onClick={(): void => {
+                            tabManager.openTabs.forEach(async (tab: TabManagerTab): Promise<void> => {
+                                if (tab !== props.tab) {
+                                    await tab.save();
+                                    tab.close();
+                                }
+                            });
+                        }}
+                        disabled={tabManager.openTabs.length < 2}
+                    >
+                        Save & Close Others
+                    </MenuItem>
+                    <MenuItem
+                        onClick={(): void => {
+                            tabManager.openTabs.forEach((tab: TabManagerTab): void => {
+                                if (tab !== props.tab) tab.close();
+                            });
+                        }}
+                        disabled={tabManager.openTabs.length < 2}
+                    >
+                        Close Others
+                    </MenuItem>
+                    <MenuDivider />
+                    {props.tab.type === "world" || props.tab.type === "leveldb" ? (
+                        <MenuItem
+                            onClick={(): void => {
+                                shell.openPath(props.tab.path);
+                            }}
+                        >
+                            Open Folder in {process.platform === "win32" ? "File Explorer" : process.platform === "darwin" ? "Finder" : "File Manager"}
+                        </MenuItem>
+                    ) : (
+                        <MenuItem
+                            onClick={(): void => {
+                                shell.showItemInFolder(props.tab.path);
+                            }}
+                        >
+                            Reveal in {process.platform === "win32" ? "File Explorer" : process.platform === "darwin" ? "Finder" : "File Manager"}
+                        </MenuItem>
+                    )}
+                    {props.tab.type === "world" &&
+                        (config.parsedMinecraftDataFolders.some((folder: string): boolean =>
+                            props.tab.path.replaceAll("\\", "/").startsWith(folder.replaceAll("\\", "/").replace(/(?<!\/)$/, "/"))
+                        ) ||
+                            props.tab.isFavorited) && (
+                            <>
+                                <MenuDivider />
+                                {props.tab.isFavorited ? (
+                                    <MenuItem
+                                        onClick={(): void => {
+                                            props.tab.isFavorited = false;
+                                        }}
+                                    >
+                                        Unfavorite
+                                    </MenuItem>
+                                ) : (
+                                    <MenuItem
+                                        onClick={(): void => {
+                                            props.tab.isFavorited = true;
+                                        }}
+                                    >
+                                        Favorite
+                                    </MenuItem>
+                                )}
+                            </>
+                        )}
+                </ControlledMenu>
                 <a
                     title={props.tab.name}
                     onMouseDown={(event): void => {

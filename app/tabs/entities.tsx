@@ -393,7 +393,7 @@ async function getEntitiesTabContents(tab: TabManagerTab): Promise<JSX.Element> 
             if (!tablesContainerRef.current) return;
             if (reloadData) {
                 mode = config.views.entities.mode;
-                console.log(query);
+                console.debug(query);
                 tablesContents = await Promise.all(
                     ConfigConstants.views.Entities.entitiesTabModeToSectionIDs[mode].map(
                         async (sectionID: (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[typeof mode][number]): Promise<JSX.Element[]> =>
@@ -514,7 +514,7 @@ async function getEntitiesTabContents(tab: TabManagerTab): Promise<JSX.Element> 
                                     queryData[key].push(condition.value);
                                 }
                                 const textQueryData = searchString.getTextSegments();
-                                console.log(searchString, queryData, textQueryData);
+                                console.debug("Search query:", searchString, queryData, textQueryData);
                                 if (lastHideErrorPopupFunction) lastHideErrorPopupFunction();
                                 function showError(options: { message: string }): void {
                                     if (!searchRefs.searchTextBox.current || !searchRefs.searchTextBoxErrorPopup.current) return;

@@ -149,7 +149,7 @@ export function MapEditor(props: MapRendererProps): JSX.Element {
             x: event.clientX,
             y: event.clientY,
         };
-        console.log(clickPosition);
+        // console.log(clickPosition);
 
         mapEditorCanvasContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
         mapEditorCanvasContextMenu_setOpen(true);

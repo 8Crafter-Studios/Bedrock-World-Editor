@@ -503,7 +503,7 @@ export default class TreeEditor extends React.Component<
                 window.addEventListener("keydown", onKeyDown);
             }
             return (): void => {
-                console.log(5);
+                // console.log(5);
                 outerContainerElementRef.current?.parentElement?.removeEventListener("scroll", onScroll);
                 if (!editorIsReadonly) {
                     window.removeEventListener("keydown", onKeyDown);

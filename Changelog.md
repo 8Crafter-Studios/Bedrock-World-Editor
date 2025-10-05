@@ -1,3 +1,34 @@
+# v1.0.0-beta.9
+
+## Additions
+
+-   Added the paths to the world folder locations for the Minecraft Windows Preview GDK builds to the config.
+-   The config is now versioned.
+-   Added 3 new options to the context menu for the worlds on the main menu:
+    -   `Open World Folder in (File Explorer/Finder/File Manager)` (depending on the platform) - Opens the world folder in the file manager.
+    -   `Open World in Minecraft` - Opens the world in Minecraft.
+    -   `Open World in Minecraft Preview` - Opens the world in Minecraft Preview.
+-   Added a context menu to tabs, with the following options:
+    -   `Close Tab` (only visible when the tab has no unsaved changes) - Closes the tab.
+    -   `Save Tab` (only visible when the tab has unsaved changes) - Saves the tab.
+    -   `Save & Close Tab` (only visible when the tab has unsaved changes) - Saves the tab and closes it.
+    -   `Close Tab Without Saving` (only visible when the tab has unsaved changes) - Closes the tab without saving.
+    -   `Save & Close Others` - Saves the tab and closes all other tabs.
+    -   `Close Others` - Closes all other tabs.
+    -   `(Open Folder/Reveal) in (File Explorer/Finder/File Manager)` (depending on the platform and whether the tab targets a folder or not)
+    -   `Favorite` (only visible when the tab targets a world and is not favorited) - Marks the world as a favorite.
+    -   `Unfavorite` (only visible when the tab is favorited) - Unmarks the world as a favorite.
+
+## Fixes
+
+-   Fixed a bug where non-button areas of the context menu for the worlds on the main menu had a pointer cursor.
+-   Fixed a bug where the context menu for the worlds on the main menu had the hover title text of the world button the context menu corresponds to.
+-   Removed many unnecessary console logs.
+-   Switched the log type of the search query console log from `info` to `verbose`.
+-   The `Select a tab from the left sidebar to get started.` message can no longer be selected.
+-   The `File > New Window` menu bar option is now functional (before it did nothing).
+-   The `New Window` task button when right-clicking the app on Windows is now functional (before it could only open the app, but if the app was already open, it would not open a new window).
+
 # v1.0.0-beta.8
 
 ## Critical Fixes
@@ -17,7 +48,6 @@
         -   `Import Structure Folders` - Opens a file picker to allow for selecting multiple folders with structures in them to import, the namespace of the imported structures will be determined by the relative path of the folder to the structure file. If you were to select the `structures` folder of a behavior pack for example, it would import the structures with the exact same names as if you just added the behavior pack onto your world. You can even import every structure on your drive with this really quickly.
         -   `Export Structures` - Opens a file picker to allow for selecting a folder to export the structures to.
         -   `Transfer Structures to Open Tab` - Opens a dialog to select another tab currently open in the app to copy the structures to, you can select tabs in the same window and in other windows.
-
 
 ## Changes
 

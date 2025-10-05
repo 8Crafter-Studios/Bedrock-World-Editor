@@ -12,6 +12,7 @@ import { APP_DATA_FOLDER_PATH } from "./URLs";
 import process from "node:process";
 import { EventEmitter } from "node:events";
 import "../init/JSONB.ts";
+import semver from "semver";
 const nativeTheme =
     process.type === "browser"
         ? (require("electron") as typeof import("electron")).nativeTheme
@@ -159,6 +160,8 @@ namespace exports {
                 "Home/.var/app/io.mrarm.mcpelauncher/data/mcpelauncher/games/com.mojang",
                 "Home/.local/share/mcpelauncher/games/com.mojang",
                 "Home/Library/Application Support/mcpelauncher/games/com.mojang",
+                "%AppData%/Minecraft Bedrock Preview/Users/*/games/com.mojang",
+                "%AppData%/Minecraft Bedrock Preview/games/com.mojang",
             ],
             extraMinecraftDataFolders: [
                 "%appdata%/.minecraft_bedrock/installations/*/packageData",
@@ -227,6 +230,7 @@ namespace exports {
                     },
                 },
             },
+            version: VERSION,
         } as const satisfies ConfigJSON);
         /**
          * The currently loaded data from the config file.
@@ -240,6 +244,25 @@ namespace exports {
                     this.#currentlyLoadedData = this.readConfigFile() ?? this.#currentlyLoadedData;
                 }
             });
+            this.handleConfigVersionUpdate();
+        }
+        /**
+         * Updates the config when the app is updated.
+         */
+        public handleConfigVersionUpdate(): void {
+            const currentConfigVersion: string = this.version;
+            if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.9")) {
+                const currentMinecraftDataFolders: string[] = this.minecraftDataFolders;
+                const originalLength: number = currentMinecraftDataFolders.length;
+                if (!currentMinecraftDataFolders.includes("%AppData%/Minecraft Bedrock Preview/Users/*/games/com.mojang"))
+                    currentMinecraftDataFolders.push("%AppData%/Minecraft Bedrock Preview/Users/*/games/com.mojang");
+                if (!currentMinecraftDataFolders.includes("%AppData%/Minecraft Bedrock Preview/games/com.mojang"))
+                    currentMinecraftDataFolders.push("%AppData%/Minecraft Bedrock Preview/games/com.mojang");
+                if (currentMinecraftDataFolders.length !== originalLength) this.minecraftDataFolders = currentMinecraftDataFolders;
+            }
+            if (semver.compareBuild(currentConfigVersion, VERSION) < 0) {
+                this.version = VERSION;
+            }
         }
         /**
          * Saves changes to the config file.
@@ -255,7 +278,7 @@ namespace exports {
             >(oldData: GetJSONTypeOfConfig<T>, newData: GetJSONTypeOfConfig<T, true>, path: Path = [] as unknown as Path): GetJSONTypeOfConfig<T> {
                 let data = { ...oldData, ...newData };
 
-                for (const [key, value] of Object.entries(data) as [EndPath & keyof typeof data, any][]) {
+                for (const [key, _value] of Object.entries(data) as [EndPath & keyof typeof data, any][]) {
                     // console.log(0, path, key, value, oldData, newData, data);
                     if (key in (getPropertyAtPath(Config.defaults, path) ?? {}) && getPropertyAtPath(subConfigKeyStructure, [...(path as Path), key])) {
                         // console.log(0.1, path, key, value);
@@ -314,7 +337,7 @@ namespace exports {
                     if (getPropertyAtPath(Config.defaults, path as any)) {
                         success = true;
                         this.emit(`settingChanged:${fullKey}`, value as any);
-                        this.emit("settingChanged", fullKey, value as any);
+                        this.emit("settingChanged", fullKey as any, value as any);
                     }
                 }
                 return success;
@@ -349,6 +372,17 @@ namespace exports {
             return { ...Config.defaults, ...JSONB.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "./config.json"), { encoding: "utf-8" })) };
         }
         /**
+         * The newest version of the app that this config was used for.
+         *
+         * @default "0.0.0"
+         */
+        public get version(): string {
+            return this.getConfigData().version ?? "0.0.0";
+        }
+        public set version(value: string | undefined) {
+            this.saveChanges({ version: value ?? Config.defaults.version });
+        }
+        /**
          * The Minecraft data folders, should be globs.
          *
          * These are folders that will directly contain a `minecraftWorlds` folder containing all your Minecraft world folders.
@@ -363,6 +397,8 @@ namespace exports {
          *     "Home/.var/app/io.mrarm.mcpelauncher/data/mcpelauncher/games/com.mojang",
          *     "Home/.local/share/mcpelauncher/games/com.mojang",
          *     "Home/Library/Application Support/mcpelauncher/games/com.mojang",
+         *     "%AppData%/Minecraft Bedrock Preview/Users/*\/games/com.mojang",
+         *     "%AppData%/Minecraft Bedrock Preview/games/com.mojang",
          * ]
          * ```
          */

@@ -1,4 +1,14 @@
 import { BrowserWindow, ipcMain, ipcRenderer, type IpcMainEvent, type IpcMainInvokeEvent } from "electron";
+import { createWindow } from "../main";
+
+ipcMain.on("new-window", async (_event: IpcMainEvent): Promise<void> => {
+    try {
+        createWindow();
+        return void true;
+    } catch (e) {
+        return void false;
+    }
+});
 
 ipcMain.on("window-eval", (event: IpcMainEvent, script: string): void => {
     const sourceWindow: BrowserWindow = BrowserWindow.fromWebContents(event.sender)!;
@@ -755,6 +765,8 @@ ipcMain.handle("get-is-404-response", async (event: IpcMainInvokeEvent, uri: str
 declare global {
     namespace Electron {
         interface IpcRenderer {
+            send<_T extends 1>(channel: "new-window"): void;
+            sendSync<_T extends 1>(channel: "new-window"): boolean;
             sendSync<_T extends 1>(channel: "window-eval", script: string): any;
             sendSync<_T extends 1>(channel: "set-progress-bar", progress: number, options?: Electron.ProgressBarOptions): void;
             sendSync<_T extends 1>(channel: "center-window"): void;

@@ -172,7 +172,7 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                     .filter((_index: number, element: HTMLLIElement): boolean => element !== elem)
                     .removeClass("left-highlight");
             }
-            console.log(newTabIndex);
+            // console.log(newTabIndex);
         }
         function onModificationStatusChanged(event: TabManagerSubTabModificationStatusChangedEvent): void {
             if (event.tab === props.tab) {
@@ -195,7 +195,7 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                 x: event.clientX,
                 y: event.clientY,
             };
-            console.log(clickPosition);
+            // console.log(clickPosition);
 
             tabContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
             tabContextMenu_setOpen(true);

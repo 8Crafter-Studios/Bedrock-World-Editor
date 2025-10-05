@@ -646,7 +646,7 @@ async function getPlayersTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                                     queryData[key].push(condition.value);
                                 }
                                 const textQueryData = searchString.getTextSegments();
-                                console.log(searchString, queryData, textQueryData);
+                                console.debug("Search query:", searchString, queryData, textQueryData);
                                 if (lastHideErrorPopupFunction) lastHideErrorPopupFunction();
                                 function showError(options: { message: string }): void {
                                     if (!searchRefs.searchTextBox.current || !searchRefs.searchTextBoxErrorPopup.current) return;
@@ -951,7 +951,7 @@ async function getPlayersTabContentsRows(data: {
             const columns = config.views.players.modeSettings.simple.columns;
             return data.serverKeys.map((serverKey: ServerKeyData): JSX.Element => {
                 const clientKey: ClientKeyData | undefined = data.serverToClientKeyMap.get(serverKey.displayKey);
-                console.log(serverKey, clientKey);
+                // console.log(serverKey, clientKey);
                 // Add the ability to get the player's name from dynamic properties, it should be able to get it from both
                 // 8Crafter's Server Utilities & Debug Sticks, and a custom behavior pack advertised here that saved the
                 // player's name to a player dynamic property specifically for being accessed here.

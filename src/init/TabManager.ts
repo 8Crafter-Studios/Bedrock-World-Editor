@@ -204,7 +204,7 @@ namespace exports {
             return tab;
         }
         public switchTab(tab: TabManagerTab | TabManagerGenericTabID | null): void {
-            console.log(new Error().stack);
+            // console.log(new Error().stack);
             if (tab === this.selectedTab) return;
             if (tab === null || tab === "loading") getCurrentWindow().setTitle("Bedrock World Editor");
             else if (typeof tab === "string") getCurrentWindow().setTitle(tab);
@@ -446,6 +446,39 @@ namespace exports {
         public get hasTabBar(): boolean {
             return this.type === "world" || this.type === "leveldb";
         }
+        public get isFavorited(): boolean {
+            return existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"))
+                ? ((): boolean => {
+                      try {
+                          const favoritedWorldsData: string[] = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8"));
+                          if (favoritedWorldsData.includes(this.path)) {
+                              return true;
+                          }
+                      } catch (e) {
+                          console.error(e);
+                      }
+                      return false;
+                  })()
+                : false;
+        }
+        public set isFavorited(value: boolean) {
+            if (value) {
+                let favoritedWorldsData: string[] = [];
+                if (existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json")))
+                    favoritedWorldsData = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8"));
+                if (!favoritedWorldsData.includes(this.path)) {
+                    favoritedWorldsData.push(this.path);
+                    writeFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), JSON.stringify(favoritedWorldsData));
+                }
+            } else {
+                if (!existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"))) return;
+                const favoritedWorldsData: string[] = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8"));
+                if (favoritedWorldsData.includes(this.path)) {
+                    favoritedWorldsData.splice(favoritedWorldsData.indexOf(this.path), 1);
+                    writeFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), JSON.stringify(favoritedWorldsData));
+                }
+            }
+        }
         private initAccess(mode: TabManagerTabMode): void {
             switch (mode) {
                 case TabManagerTabMode.Readonly:
@@ -598,7 +631,7 @@ namespace exports {
                 }
                 progressBar.detail = `Copying modified files to ${this.type === "world" ? "world" : this.type === "leveldb" ? "LevelDB" : "source"}...`;
                 if (this.type === "world" || this.type === "leveldb") {
-                    console.log(this.tempPath, this.path);
+                    console.log(`Copying modified files from ${this.tempPath} to ${this.path}...`);
                     await cp(this.tempPath, this.path, { recursive: true, force: true, preserveTimestamps: true });
                 } else {
                     await copyFile(this.tempFilePath, this.path);
@@ -2322,7 +2355,7 @@ namespace exports {
                         !query.excludeContentTypes?.includes(contentType) && query.contentTypes ? query.contentTypes.includes(contentType) : true
                     )
                     .flatMap(([contentType, keys]) => keys.map((key) => ({ key, contentType, displayKey: getKeyDisplayName(key) })));
-            console.log(5);
+            // console.log(5);
             searchLoop: for (const searchTarget of searchTargets) {
                 const searchableContents: string[] = searchTarget.searchableContents ?? [searchTarget.displayKey];
                 if (query.displayKeyContents) {

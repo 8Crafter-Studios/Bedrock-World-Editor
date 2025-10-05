@@ -21,8 +21,8 @@ import isDev from "electron-is-dev";
 import { ProgId, Regedit, ShellOption } from "electron-regedit-fixed";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 // import "./utils/ProgressBar.ts";
-import "./utils/config.ts";
 import "./utils/version.ts";
+import "./utils/config.ts";
 import { APP_DATA_FOLDER_PATH } from "./utils/URLs.ts";
 import { updateElectronApp } from "update-electron-app";
 import CommentJSON from "comment-json";
@@ -337,7 +337,7 @@ let webContentsLoaded: boolean = false;
 
 const onWebContentsLoadedCallbacks: (() => void)[] = [];
 
-function createWindow(): void {
+export function createWindow(): number | void {
     if (isSecondInstance) return;
     // Create the browser window.
     const mainWindow = new BrowserWindow({
@@ -689,6 +689,7 @@ function createWindow(): void {
             onWebContentsLoadedCallbacks.length = 0;
         });
     }
+    return mainWindow.id;
 }
 
 if (!startup && !started) {
@@ -907,7 +908,11 @@ if (!startup && !started) {
     });
     function handleArgv(originalArgv: string[], secondInstance: boolean = false): void {
         const argv: string[] = originalArgv.slice(1 + +(originalArgv[1] === "--process-start-args"));
-        if (argv.filter((arg: string): boolean => arg !== "--allow-file-access-from-files").length === 0) {
+        const nonAllowFileAccessFromFilesParams: string[] = argv.filter((arg: string): boolean => arg !== "--allow-file-access-from-files");
+        if (
+            nonAllowFileAccessFromFilesParams.length === 0 ||
+            (nonAllowFileAccessFromFilesParams.length === 1 && nonAllowFileAccessFromFilesParams[0] === "--new-window")
+        ) {
             // (lastFocusedMainWindows.at(-1) ?? app)?.focus();
             if (secondInstance) createWindow();
             return;
@@ -956,7 +961,7 @@ if (!startup && !started) {
                 ]);
             }
         }
-        new Octokit({}).repos.listReleases({ owner: "8Crafter-Studios", repo: "Bedrock-World-Editor" }).then(
+        new Octokit().repos.listReleases({ owner: "8Crafter-Studios", repo: "Bedrock-World-Editor" }).then(
             (releases): void => {
                 const latestRelease: (typeof releases.data)[number] | null = releases.data
                     .filter(

@@ -495,7 +495,7 @@ async function getViewFilesTabContents(tab: TabManagerTab): Promise<JSX.Element>
         async function updateTablesContents(reloadData: boolean): Promise<void> {
             if (!tablesContainerRef.current) return;
             if (reloadData) {
-                console.log(query);
+                console.debug(query);
                 if (
                     !keyValuesLoaded &&
                     ((query.nbtTags?.allOf && query.nbtTags?.allOf.length > 0) ||
@@ -722,7 +722,7 @@ async function getViewFilesTabContents(tab: TabManagerTab): Promise<JSX.Element>
                                     queryData[key].push(condition.value);
                                 }
                                 const textQueryData = searchString.getTextSegments();
-                                console.log(searchString, queryData, textQueryData);
+                                console.debug("Search query:", searchString, queryData, textQueryData);
                                 if (lastHideErrorPopupFunction) lastHideErrorPopupFunction();
                                 function showError(options: { message: string }): void {
                                     if (!searchRefs.searchTextBox.current || !searchRefs.searchTextBoxErrorPopup.current) return;
