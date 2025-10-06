@@ -211,15 +211,15 @@ export default function TabBar(): JSX.Element {
                     {props.tab.isModified() ? (
                         <>
                             <MenuItem
-                                onClick={async (): Promise<void> => {
-                                    await props.tab.save();
+                                onClick={async (event: JSX.TargetedMouseEvent<HTMLDivElement>): Promise<void> => {
+                                    await props.tab.save(false, event.altKey);
                                 }}
                             >
                                 Save Tab
                             </MenuItem>
                             <MenuItem
-                                onClick={async (): Promise<void> => {
-                                    await props.tab.save();
+                                onClick={async (event: JSX.TargetedMouseEvent<HTMLDivElement>): Promise<void> => {
+                                    await props.tab.save(false, event.altKey);
                                     props.tab.close();
                                 }}
                             >
@@ -243,10 +243,10 @@ export default function TabBar(): JSX.Element {
                         </MenuItem>
                     )}
                     <MenuItem
-                        onClick={(): void => {
+                        onClick={(event: JSX.TargetedMouseEvent<HTMLDivElement>): void => {
                             tabManager.openTabs.forEach(async (tab: TabManagerTab): Promise<void> => {
                                 if (tab !== props.tab) {
-                                    await tab.save();
+                                    await tab.save(false, event.altKey);
                                     tab.close();
                                 }
                             });

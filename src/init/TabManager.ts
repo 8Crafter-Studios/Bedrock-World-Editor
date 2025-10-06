@@ -602,7 +602,14 @@ namespace exports {
             this.modifiedFiles.leveldb = isModified;
             if (wasModified !== this.isModified()) this.emit("modificationStatusChanged", { tab: this, isModified: this.isModified() });
         }
-        public async save(ignoreFailedTabSaves: boolean = false): Promise<void> {
+        /**
+         * Saves the tab.
+         *
+         * @param ignoreFailedTabSaves Allows the function to continue even when an error occurs while saving a sub-tab.
+         * @param unsafeMode Disables the protections that delete existing world files before saving, a side effect is that if a world is opened while this tab is open, data from before and after the save may be merged randomly.
+         * @returns A promise that resolves when the tab has been saved.
+         */
+        public async save(ignoreFailedTabSaves: boolean = false, unsafeMode: boolean = false): Promise<void> {
             if (this.isSaving || this.readonly || !this.saveEnabled || !this.tempPath || !this.tempFilePath) return;
             this.isSaving = true;
             this.emit("startedSaving", { tab: this });
@@ -632,6 +639,7 @@ namespace exports {
                 progressBar.detail = `Copying modified files to ${this.type === "world" ? "world" : this.type === "leveldb" ? "LevelDB" : "source"}...`;
                 if (this.type === "world" || this.type === "leveldb") {
                     console.log(`Copying modified files from ${this.tempPath} to ${this.path}...`);
+                    if (!unsafeMode && existsSync(this.path)) await rm(this.path, { recursive: true, force: true });
                     await cp(this.tempPath, this.path, { recursive: true, force: true, preserveTimestamps: true });
                 } else {
                     await copyFile(this.tempFilePath, this.path);
@@ -1362,7 +1370,7 @@ namespace exports {
                         case "NBTCompound": {
                             const data = this.currentState.options.dataStorageObject.data;
                             let rawData: Buffer;
-                            switch (format.type) {
+                            formatTypeSwitcher: switch (format.type) {
                                 case "NBT": {
                                     rawData = NBT.writeUncompressed(
                                         { name: "", ...data },
@@ -1445,7 +1453,7 @@ namespace exports {
                                     switch (format.resultType) {
                                         case "JSONNBT": {
                                             rawData = await format.serialize(data);
-                                            break targetTypeSwitcher;
+                                            break formatTypeSwitcher;
                                         }
                                         case "SNBT": {
                                             rawData = Buffer.from(prettyPrintSNBT(prismarineToSNBT(data), { indent: 0 }), "binary");
@@ -1460,7 +1468,7 @@ namespace exports {
                                                 this
                                             );
                                             rawData = await format.serialize(Buffer.from(prettyPrintSNBT(prismarineToSNBT(data), { indent: 0 }), "binary"));
-                                            break targetTypeSwitcher;
+                                            break formatTypeSwitcher;
                                         }
                                         case "unknown": {
                                             console.warn(
@@ -1471,7 +1479,7 @@ namespace exports {
                                                 this
                                             );
                                             rawData = await format.serialize(data);
-                                            break targetTypeSwitcher;
+                                            break formatTypeSwitcher;
                                         }
                                         default:
                                             throw new Error(
@@ -1491,7 +1499,7 @@ namespace exports {
                         case "NBT": {
                             const data = this.currentState.options.dataStorageObject.data;
                             let rawData: Buffer;
-                            switch (format.type) {
+                            formatTypeSwitcher: switch (format.type) {
                                 case "NBT": {
                                     if (format.format && data.type !== ({ LE: "little", BE: "big", LEV: "littleVarint" }[format.format] ?? format.format))
                                         console.warn(
@@ -1573,11 +1581,11 @@ namespace exports {
                                     switch (format.resultType) {
                                         case "JSONNBT": {
                                             rawData = await format.serialize(data.parsed);
-                                            break targetTypeSwitcher;
+                                            break formatTypeSwitcher;
                                         }
                                         case "SNBT": {
                                             rawData = Buffer.from(prettyPrintSNBT(prismarineToSNBT(data.parsed), { indent: 0 }), "binary");
-                                            break targetTypeSwitcher;
+                                            break formatTypeSwitcher;
                                         }
                                         case "buffer": {
                                             console.warn(
@@ -1590,7 +1598,7 @@ namespace exports {
                                             rawData = await format.serialize(
                                                 Buffer.from(prettyPrintSNBT(prismarineToSNBT(data.parsed), { indent: 0 }), "binary")
                                             );
-                                            break targetTypeSwitcher;
+                                            break formatTypeSwitcher;
                                         }
                                         case "unknown": {
                                             console.warn(
@@ -1601,7 +1609,7 @@ namespace exports {
                                                 this
                                             );
                                             rawData = await format.serialize(data);
-                                            break targetTypeSwitcher;
+                                            break formatTypeSwitcher;
                                         }
                                         default:
                                             throw new Error(
@@ -1690,7 +1698,7 @@ namespace exports {
                         case "NBTCompound": {
                             const data = this.currentState.options.dataStorageObject.data;
                             let rawData: Buffer;
-                            switch (format.type) {
+                            formatTypeSwitcher: switch (format.type) {
                                 case "NBT": {
                                     rawData = NBT.writeUncompressed(
                                         { name: "", ...data },
@@ -1773,11 +1781,11 @@ namespace exports {
                                     switch (format.resultType) {
                                         case "JSONNBT": {
                                             rawData = await format.serialize(data);
-                                            break targetTypeSwitcher;
+                                            break formatTypeSwitcher;
                                         }
                                         case "SNBT": {
                                             rawData = Buffer.from(prettyPrintSNBT(prismarineToSNBT(data), { indent: 0 }), "binary");
-                                            break targetTypeSwitcher;
+                                            break formatTypeSwitcher;
                                         }
                                         case "buffer": {
                                             console.warn(
@@ -1788,7 +1796,7 @@ namespace exports {
                                                 this
                                             );
                                             rawData = await format.serialize(Buffer.from(prettyPrintSNBT(prismarineToSNBT(data), { indent: 0 }), "binary"));
-                                            break targetTypeSwitcher;
+                                            break formatTypeSwitcher;
                                         }
                                         case "unknown": {
                                             console.warn(
@@ -1799,7 +1807,7 @@ namespace exports {
                                                 this
                                             );
                                             rawData = await format.serialize(data);
-                                            break targetTypeSwitcher;
+                                            break formatTypeSwitcher;
                                         }
                                         default:
                                             throw new Error(
@@ -1819,7 +1827,7 @@ namespace exports {
                         case "NBT": {
                             const data = this.currentState.options.dataStorageObject.data;
                             let rawData: Buffer;
-                            switch (format.type) {
+                            formatTypeSwitcher: switch (format.type) {
                                 case "NBT": {
                                     if (format.format && data.type !== ({ LE: "little", BE: "big", LEV: "littleVarint" }[format.format] ?? format.format))
                                         console.warn(
@@ -1901,11 +1909,11 @@ namespace exports {
                                     switch (format.resultType) {
                                         case "JSONNBT": {
                                             rawData = await format.serialize(data.parsed);
-                                            break targetTypeSwitcher;
+                                            break formatTypeSwitcher;
                                         }
                                         case "SNBT": {
                                             rawData = Buffer.from(prettyPrintSNBT(prismarineToSNBT(data.parsed), { indent: 0 }), "binary");
-                                            break targetTypeSwitcher;
+                                            break formatTypeSwitcher;
                                         }
                                         case "buffer": {
                                             console.warn(
@@ -1918,7 +1926,7 @@ namespace exports {
                                             rawData = await format.serialize(
                                                 Buffer.from(prettyPrintSNBT(prismarineToSNBT(data.parsed), { indent: 0 }), "binary")
                                             );
-                                            break targetTypeSwitcher;
+                                            break formatTypeSwitcher;
                                         }
                                         case "unknown": {
                                             console.warn(
@@ -1929,7 +1937,7 @@ namespace exports {
                                                 this
                                             );
                                             rawData = await format.serialize(data);
-                                            break targetTypeSwitcher;
+                                            break formatTypeSwitcher;
                                         }
                                         default:
                                             throw new Error(

@@ -16,7 +16,7 @@ const isDev: boolean = process.env.NODE_ENV === "development";
  *
  * It is in valid semver format.
  */
-const VERSION: string = require(path.join(__dirname, "../".repeat(/* +!isDev +  */2) + "package.json"))
+const VERSION: string = require(path.join(__dirname, "../".repeat(/* +!isDev +  */ 2) + "package.json"))
     .version as typeof import("../../package.json")["version"];
 
 globalThis.VERSION = VERSION;

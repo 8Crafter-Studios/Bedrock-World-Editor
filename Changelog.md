@@ -1,3 +1,15 @@
+# v1.0.0-beta.10
+
+## Critical Fixes
+
+-   Fixed a bug where when saving a world, the destination files were not deleted first, which caused really weird behavior when the world was open in Minecraft while open in the app, such as bits of data from the copy being edited in the app and the original world being intermixed (you can hold the `ALT` key while saving to use the old mode where it has the weird behavior).
+-   Fixed a bug where keys with a content type of `Data3D` or `SubChunkPrefix` were never saved.
+
+## Fixes
+
+-   Fixed a bug where non-button areas of the context menus had a pointer cursor.
+-   Fixed a bug where the context menus had the hover title text of the world button the context menu corresponds to.
+
 # v1.0.0-beta.9
 
 ## Additions

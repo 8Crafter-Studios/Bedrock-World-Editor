@@ -1324,3 +1324,7 @@ div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
     cursor: not-allowed;
 }
 
+.szh-menu-container {
+    cursor: auto;
+}
+

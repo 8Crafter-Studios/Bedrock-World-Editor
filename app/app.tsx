@@ -804,12 +804,12 @@ tabManager.on("switchTab", ({ previousTab, newTab }: TabManagerSwitchTabEvent): 
 
 window.addEventListener("keydown", (event: KeyboardEvent): void => {
     switch (true) {
-        case document.activeElement === document.body && event.code === "KeyS" && !event.shiftKey && event.ctrlKey && !event.altKey: {
+        case document.activeElement === document.body && event.code === "KeyS" && !event.shiftKey && event.ctrlKey: {
             event.preventDefault();
             const currentTab = tabManager.selectedTab;
             if (currentTab instanceof TabManagerTab) {
                 if (!currentTab.isSaving) {
-                    currentTab.save();
+                    currentTab.save(false, event.altKey);
                 }
             }
         }

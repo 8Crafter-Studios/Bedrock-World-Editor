@@ -17,6 +17,43 @@ for (const key of tab.cachedDBKeys.Data3D) {
     console.log(`${i}/${l}`);
 }
 
+// Regenerates chunks with biomes (v1).
+
+const tab = tabManager.selectedTab;
+const bd = require("mcbe-leveldb").BiomeData;
+const bs = Object.values(bd.int_map);
+const nbt = require("prismarine-nbt");
+const mcbe = require("mcbe-leveldb");
+let i = 0;
+const l = tab.cachedDBKeys.Data3D.length;
+for (const key of tab.cachedDBKeys.Data3D) {
+    try {
+        const biomeType = /* tab.cachedDBKeys.ActorDigestVersion.some(keyA=>mcbe.getKeyDisplayName(keyA) === mcbe.getKeyDisplayName(key).replace("Data3D", "ActorDigestVersion")) ? "minecraft:the_end" : */ tab.cachedDBKeys.Version.some(keyA=>keyA.equals(mcbe.generateChunkKeyFromIndices(mcbe.getChunkKeyIndices(key), "Version"))) ? "minecraft:deep_dark" : "minecraft:the_end";
+        const data = await mcbe.entryContentTypeToFormatMap.Data3D.parse(await tab.db.get(key));
+        for (const biomeSubChunk of data.value.biomes.value.value) {
+            biomeSubChunk.palette.value.value = biomeSubChunk.palette.value.value.map(()=>bd.int_map["minecraft:warped_forest"]);
+        }
+        tab.db.put(key, mcbe.entryContentTypeToFormatMap.Data3D.serialize(data));
+    } catch (e) {
+        console.error(e, i, mcbe.getKeyDisplayName(key));
+    } finally {
+        i++;
+        console.log(`${i}/${l}`);
+    }
+}
+(await Promise.all(tabManager.selectedTab.cachedDBKeys.BlendingBiomeHeight.map(k=>tabManager.selectedTab.db.delete(k))));
+(await Promise.all(tabManager.selectedTab.cachedDBKeys.BlendingData.map(k=>tabManager.selectedTab.db.delete(k))));
+(await Promise.all(tabManager.selectedTab.cachedDBKeys.BiomeState.map(k=>tabManager.selectedTab.db.delete(k))));
+(await Promise.all(tabManager.selectedTab.cachedDBKeys.BlockEntity.map(k=>tabManager.selectedTab.db.delete(k))));
+(await Promise.all(tabManager.selectedTab.cachedDBKeys.ActorDigestVersion.map(k=>tabManager.selectedTab.db.delete(k))));
+(await Promise.all(tabManager.selectedTab.cachedDBKeys.PendingTicks.map(k=>tabManager.selectedTab.db.delete(k))));
+(await Promise.all(tabManager.selectedTab.cachedDBKeys.RandomTicks.map(k=>tabManager.selectedTab.db.delete(k))));
+// (await Promise.all(tabManager.selectedTab.cachedDBKeys.SubChunkPrefix.map(k=>tabManager.selectedTab.db.delete(k))));
+(await Promise.all(tabManager.selectedTab.cachedDBKeys.Digest.map(k=>tabManager.selectedTab.db.delete(k))));
+(await Promise.all(tabManager.selectedTab.cachedDBKeys.AABBVolumes.map(k=>tabManager.selectedTab.db.delete(k))));
+// (await Promise.all(tabManager.selectedTab.cachedDBKeys.Version.map(k=>tabManager.selectedTab.db.delete(k))));
+(await Promise.all(tabManager.selectedTab.cachedDBKeys.FinalizedState.map(k=>tabManager.selectedTab.db.put(k, Buffer.from("00000000", "hex")))));
+
 // Generates an SNBT object for generating a ton of different map markers.
 
 let a = [];
