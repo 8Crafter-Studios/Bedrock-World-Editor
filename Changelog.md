@@ -1,3 +1,9 @@
+# v1.0.0-beta.11
+
+## Fixes
+
+-   Fixed a bug where sometimes when trying to open a sub-tab it would instead just switch to another already open sub-tab (it is only supposed to do that if the sub-tabs have the same target file or LevelDB key).
+
 # v1.0.0-beta.10
 
 ## Critical Fixes

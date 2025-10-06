@@ -674,7 +674,7 @@ namespace exports {
         ): TabManagerSubTab {
             const alreadyOpenEquivalentTab: TabManagerSubTab | undefined = this.openTabs.find(
                 (tab: TabManagerSubTab): boolean =>
-                    tab.specialTabID === props.specialTabID ||
+                    tab.specialTabID && tab.specialTabID === props.specialTabID ||
                     (!tab.specialTabID &&
                         !props.specialTabID &&
                         tab.target.type === props.target.type &&
