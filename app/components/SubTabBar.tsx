@@ -153,7 +153,8 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
             if (
                 !containerRef.current.parentElement!.children[newTabIndex] ||
                 containerRef.current.parentElement!.children[newTabIndex]?.hasAttribute("data-immovable") ||
-                (containerRef.current.parentElement!.children[newTabIndex] as HTMLLIElement).style?.opacity === "0"
+                (containerRef.current.parentElement!.children[newTabIndex] as HTMLLIElement).style?.opacity === "0" ||
+                (containerRef.current.parentElement!.children[newTabIndex] as HTMLLIElement).inert
             ) {
                 const elem: HTMLLIElement = containerRef.current.parentElement!.children[newTabIndex - 1] as HTMLLIElement;
                 if (!elem) return;

@@ -674,7 +674,7 @@ namespace exports {
         ): TabManagerSubTab {
             const alreadyOpenEquivalentTab: TabManagerSubTab | undefined = this.openTabs.find(
                 (tab: TabManagerSubTab): boolean =>
-                    tab.specialTabID && tab.specialTabID === props.specialTabID ||
+                    (tab.specialTabID && tab.specialTabID === props.specialTabID) ||
                     (!tab.specialTabID &&
                         !props.specialTabID &&
                         tab.target.type === props.target.type &&
@@ -2016,7 +2016,12 @@ namespace exports {
                 }
             }
             this.hasUnsavedChanges = false;
-            if (this.target.type === "File") this.parentTab.setFileAsModified(this.target.path, false);
+            if (
+                this.target.type === "File" &&
+                ![TabManagerTabMode.CopyUntilSave].includes(this.parentTab.mode) &&
+                ["world", "leveldb"].includes(this.parentTab.type)
+            )
+                this.parentTab.setFileAsModified(this.target.path, false);
         }
         public close(): void {
             this.isValid = false;
@@ -2026,6 +2031,9 @@ namespace exports {
             }
             if (this.parentTab.selectedTab === this)
                 this.parentTab.switchTab(index === -1 ? null : this.parentTab.openTabs[index - 1] ?? this.parentTab.openTabs[0] ?? null);
+            if (this.target.type === "File" && this.hasUnsavedChanges) {
+                this.parentTab.setFileAsModified(this.target.path, false);
+            }
             this.parentTab.emit("closeTab", { tab: this });
         }
     }

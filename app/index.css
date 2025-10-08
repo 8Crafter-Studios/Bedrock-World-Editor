@@ -640,16 +640,12 @@ ul.horizontal-nav.tab-bar {
         float: left;
         line-height: 20px;
         outline-offset: -1px;
-        background-color: #ffffff22;
-        clip-path: inset(1px);
-    }
-
-    & > li {
-        float: left;
-        line-height: 20px;
-        outline-offset: -1px;
-        background-color: #ffffff22;
-        clip-path: inset(1px);
+        background-repeat: no-repeat;
+        background-position: top, left, right, bottom, center;
+        background-size: 100% 1px, 1px 100%, 1px 100%, 100% 1px, calc(100% - 2px) calc(100% - 2px);
+        background-image: linear-gradient(transparent 1px, transparent 1px), linear-gradient(to right, transparent 1px, transparent 1px),
+            linear-gradient(to left, transparent 1px, transparent 1px), linear-gradient(to bottom, transparent 1px, transparent 1px),
+            linear-gradient(#ffffff22, #ffffff22);
     }
 
     & > li/* :not(:has(.navbar-dropdown))  */ {
@@ -698,7 +694,12 @@ ul.horizontal-nav.tab-bar {
     & > li:not(:has(.closebtn:hover)):not(:has(.closebtn:active)) a:hover:not(.active),
     & > li:not(:has(.closebtn:hover)):not(:has(.closebtn:active)) .navbar-dropdown:hover .navbar-dropbtn,
     & > li:not(:has(.closebtn:hover)):not(:has(.closebtn:active)) .navbar-dropdown:hover .navbar-dropdown-content a:hover {
-        background-color: #ffffff44;
+        background-repeat: no-repeat;
+        background-position: top, left, right, bottom, center;
+        background-size: 100% 1px, 1px 100%, 1px 100%, 100% 1px, calc(100% - 2px) calc(100% - 2px);
+        background-image: linear-gradient(transparent 1px, transparent 1px), linear-gradient(to right, transparent 1px, transparent 1px),
+            linear-gradient(to left, transparent 1px, transparent 1px), linear-gradient(to bottom, transparent 1px, transparent 1px),
+            linear-gradient(#ffffff44, #ffffff44);
         & > [name="cv"] {
             display: none;
         }
@@ -720,7 +721,6 @@ ul.horizontal-nav.tab-bar {
 
     .active {
         background-color: #00ffdcbb;
-        clip-path: none;
     }
 }
 
@@ -1326,5 +1326,17 @@ div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
 
 .szh-menu-container {
     cursor: auto;
+}
+
+.worldSelectorListItemWorldSize {
+    color: #888;
+}
+
+.worldSelectorListItemWorldVersion {
+    text-align: right;
+}
+
+.add-tab-popup-menu {
+    z-index: 100;
 }
 

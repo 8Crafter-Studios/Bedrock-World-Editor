@@ -1,3 +1,28 @@
+# v1.0.0-beta.12
+
+## Additions
+
+-   Added the "Ticks" tab.
+-   Added the `showWorldSizesOnWorldList` config option to show the world sizes on the world list on the main menu of the app.
+-   Added the `fileSizeUnits` config option to set whether to use binary (KiB, MiB, GiB, etc.) or metric (kB, MB, GB, etc.) file/folder size units.
+
+## Changes
+
+-   Changed two of the default paths for the `minecraftDataFolders` config option to use `%appdata%` instead of `%AppData%`.
+
+## Fixes
+
+-   Fixed a bug where when saving a sub-tab that targeted a file (ex. `level.dat`), it would mark the parent tab as saved if that file was the only modification of the parent tab even though it wasn't saved.
+-   Fixed a bug where when closing a sub-tab that targeted a file (ex. `level.dat`) without saving, if that file was the only modification of the parent tab, it would not mark the parent tab as having no unsaved changes.
+-   Fixed a bug where the loading screen messages could be selected.
+-   Fixed a bug where the context menus for inactive tabs and sub-tab were cut off by the edges of the tab or sub-tab.
+-   Fixed a bug where when reordering sub-tabs and dragging the sub-tab to the right of all of the other sub-tabs, the white border would be placed on the left of the sub-tab you were dragging instead of on the right of the rightmost sub-tab.
+-   Fixed a bug where the add tab popup menu was shown below the NBT tag type icons in the editor widget overlay bar in the tree editor.
+
+## Performance Improvements
+
+-   The default world icon on the world list on the main menu of the app is now a data URI, which allows it to load instantly.
+
 # v1.0.0-beta.11
 
 ## Fixes
@@ -147,7 +172,7 @@
 
 ## Additions
 
--   Added the structures tab.
+-   Added the "Structures" tab.
 
 # v1.0.0-beta.3
 
@@ -163,12 +188,12 @@
 
 ## Additions
 
--   Added the ticking areas tab.
--   Added the portals tab.
+-   Added the "Ticking Areas" tab.
+-   Added the "Portals" tab.
 
 ## Removals
 
--   Removed the search tab as there is already the view files tab which serves the same purpose.
+-   Removed the "Search" tab as there is already the view files tab which serves the same purpose.
 
 ## Fixes
 

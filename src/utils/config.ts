@@ -134,6 +134,16 @@ namespace exports {
                     simple: {},
                 },
             },
+            ticks: {
+                modeSettings: {
+                    simple: {
+                        sections: {
+                            randomTicks: {},
+                            pendingTicks: {},
+                        },
+                    },
+                },
+            },
             tickingAreas: {
                 modeSettings: {
                     simple: {},
@@ -160,8 +170,8 @@ namespace exports {
                 "Home/.var/app/io.mrarm.mcpelauncher/data/mcpelauncher/games/com.mojang",
                 "Home/.local/share/mcpelauncher/games/com.mojang",
                 "Home/Library/Application Support/mcpelauncher/games/com.mojang",
-                "%AppData%/Minecraft Bedrock Preview/Users/*/games/com.mojang",
-                "%AppData%/Minecraft Bedrock Preview/games/com.mojang",
+                "%appdata%/Minecraft Bedrock Preview/Users/*/games/com.mojang",
+                "%appdata%/Minecraft Bedrock Preview/games/com.mojang",
             ],
             extraMinecraftDataFolders: [
                 "%appdata%/.minecraft_bedrock/installations/*/packageData",
@@ -173,6 +183,8 @@ namespace exports {
             theme: "auto",
             debugHUD: "none",
             debugHUDDropShadow: false,
+            fileSizeUnits: "binary",
+            showWorldSizesOnWorldList: false,
             panorama: "off",
             panoramaPerspective: 400,
             panoramaRotateDirection: "counterclockwise",
@@ -210,6 +222,21 @@ namespace exports {
                     modeSettings: {
                         simple: {
                             columns: ["Preview", "DBKey", "ID", "Scale", "FullyExplored", "Location", "Height", "ParentMapID"],
+                        },
+                    },
+                },
+                ticks: {
+                    mode: "simple",
+                    modeSettings: {
+                        simple: {
+                            sections: {
+                                randomTicks: {
+                                    columns: ["DBKey"],
+                                },
+                                pendingTicks: {
+                                    columns: ["DBKey"],
+                                },
+                            },
                         },
                     },
                 },
@@ -254,11 +281,36 @@ namespace exports {
             if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.9")) {
                 const currentMinecraftDataFolders: string[] = this.minecraftDataFolders;
                 const originalLength: number = currentMinecraftDataFolders.length;
-                if (!currentMinecraftDataFolders.includes("%AppData%/Minecraft Bedrock Preview/Users/*/games/com.mojang"))
-                    currentMinecraftDataFolders.push("%AppData%/Minecraft Bedrock Preview/Users/*/games/com.mojang");
-                if (!currentMinecraftDataFolders.includes("%AppData%/Minecraft Bedrock Preview/games/com.mojang"))
-                    currentMinecraftDataFolders.push("%AppData%/Minecraft Bedrock Preview/games/com.mojang");
+                if (!currentMinecraftDataFolders.includes("%appdata%/Minecraft Bedrock Preview/Users/*/games/com.mojang"))
+                    currentMinecraftDataFolders.push("%appdata%/Minecraft Bedrock Preview/Users/*/games/com.mojang");
+                if (!currentMinecraftDataFolders.includes("%appdata%/Minecraft Bedrock Preview/games/com.mojang"))
+                    currentMinecraftDataFolders.push("%appdata%/Minecraft Bedrock Preview/games/com.mojang");
                 if (currentMinecraftDataFolders.length !== originalLength) this.minecraftDataFolders = currentMinecraftDataFolders;
+            }
+            if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.12")) {
+                const currentMinecraftDataFolders: string[] = this.minecraftDataFolders;
+                const originalItems: string[] = [...currentMinecraftDataFolders];
+                if (currentMinecraftDataFolders.includes("%AppData%/Minecraft Bedrock Preview/Users/*/games/com.mojang"))
+                    currentMinecraftDataFolders.splice(
+                        currentMinecraftDataFolders.indexOf("%AppData%/Minecraft Bedrock Preview/Users/*/games/com.mojang"),
+                        1,
+                        ...(currentMinecraftDataFolders.includes("%appdata%/Minecraft Bedrock Preview/Users/*/games/com.mojang")
+                            ? []
+                            : ["%appdata%/Minecraft Bedrock Preview/Users/*/games/com.mojang"])
+                    );
+                if (currentMinecraftDataFolders.includes("%AppData%/Minecraft Bedrock Preview/games/com.mojang"))
+                    currentMinecraftDataFolders.splice(
+                        currentMinecraftDataFolders.indexOf("%AppData%/Minecraft Bedrock Preview/games/com.mojang"),
+                        1,
+                        ...(currentMinecraftDataFolders.includes("%appdata%/Minecraft Bedrock Preview/games/com.mojang")
+                            ? []
+                            : ["%appdata%/Minecraft Bedrock Preview/games/com.mojang"])
+                    );
+                if (
+                    currentMinecraftDataFolders.length !== originalItems.length ||
+                    currentMinecraftDataFolders.some((v: string, i: number): boolean => v !== originalItems[i])
+                )
+                    this.minecraftDataFolders = currentMinecraftDataFolders;
             }
             if (semver.compareBuild(currentConfigVersion, VERSION) < 0) {
                 this.version = VERSION;
@@ -397,8 +449,8 @@ namespace exports {
          *     "Home/.var/app/io.mrarm.mcpelauncher/data/mcpelauncher/games/com.mojang",
          *     "Home/.local/share/mcpelauncher/games/com.mojang",
          *     "Home/Library/Application Support/mcpelauncher/games/com.mojang",
-         *     "%AppData%/Minecraft Bedrock Preview/Users/*\/games/com.mojang",
-         *     "%AppData%/Minecraft Bedrock Preview/games/com.mojang",
+         *     "%appdata%/Minecraft Bedrock Preview/Users/*\/games/com.mojang",
+         *     "%appdata%/Minecraft Bedrock Preview/games/com.mojang",
          * ]
          * ```
          */
@@ -593,6 +645,33 @@ namespace exports {
         }
         public set debugHUDDropShadow(value: boolean | undefined) {
             this.saveChanges({ debugHUDDropShadow: value ?? Config.defaults.debugHUDDropShadow });
+        }
+        /**
+         * The file size units to use.
+         *
+         * - "binary": Use binary units (KiB, MiB, GiB, etc.).
+         * - "metric": Use metric units (kB, MB, GB, etc.).
+         *
+         * @default "binary"
+         */
+        public get fileSizeUnits(): "binary" | "metric" {
+            return this.getConfigData().fileSizeUnits ?? Config.defaults.fileSizeUnits;
+        }
+        public set fileSizeUnits(value: "binary" | "metric" | undefined) {
+            this.saveChanges({
+                fileSizeUnits: value ?? Config.defaults.fileSizeUnits,
+            });
+        }
+        /**
+         * Whether or not to show the world sizes on the world selector list on the main menu.
+         *
+         * @default false
+         */
+        public get showWorldSizesOnWorldList(): boolean {
+            return this.getConfigData().showWorldSizesOnWorldList ?? Config.defaults.showWorldSizesOnWorldList;
+        }
+        public set showWorldSizesOnWorldList(value: boolean | undefined) {
+            this.saveChanges({ showWorldSizesOnWorldList: value ?? Config.defaults.showWorldSizesOnWorldList });
         }
         public get panorama(): (typeof ConfigConstants.panoramaList)[number] {
             return this.getConfigData().panorama ?? Config.defaults.panorama;
@@ -1049,6 +1128,185 @@ namespace exports {
                 return MapsViewConfig_ModeSettings;
             })())(this);
         })(this);
+        public readonly ticks = new (class TicksViewConfig extends DeepSubConfig<ViewsConfig> {
+            public get mode(): ConfigConstants.views.Ticks.TicksTabMode {
+                return this[DeepSubConfig_configSymbol].#config.getConfigData().views?.ticks?.mode ?? Config.defaults.views.ticks.mode;
+            }
+            public set mode(value: ConfigConstants.views.Ticks.TicksTabMode | undefined) {
+                this[DeepSubConfig_configSymbol].#config.saveChanges({ views: { ticks: { mode: value ?? Config.defaults.views.ticks.mode } } });
+            }
+            public readonly modeSettings = new ((() => {
+                const subConfigClassSymbol: unique symbol = Symbol.for("TicksViewConfig_ModeSettings_subConfig");
+                class TicksViewConfig_ModeSettings
+                    extends DeepSubConfig<TicksViewConfig>
+                    implements Record<ConfigConstants.views.Ticks.TicksTabMode, (typeof subConfigValueClasses)[number]["prototype"]>
+                {
+                    public static readonly __subConfigClassSymbol__: symbol = subConfigClassSymbol;
+                    public static readonly [subConfigClassSymbol] = (() => {
+                        abstract class TicksViewConfig_ModeSettings_SubConfig<
+                            T extends ConfigConstants.views.Ticks.TicksTabMode,
+                            M extends (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[T] = (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[T],
+                            HasNullSection extends null extends M[number] ? true : false = null extends M[number] ? true : false,
+                            HasNonNullSection extends Extract<M[number], string> extends never ? false : true = Extract<M[number], string> extends never
+                                ? false
+                                : true
+                        > extends DeepSubConfig<TicksViewConfig_ModeSettings> {
+                            public readonly modes: M;
+                            public constructor(config: TicksViewConfig_ModeSettings, public readonly mode: T) {
+                                super(config);
+                                this.modes = ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode] as M;
+                            }
+                            public get columns(): HasNullSection extends true
+                                ? (typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs)[Extract<
+                                      ConfigConstants.views.Ticks.TicksTabSectionModeFromTicksTabModeAndSectionID<T, M[number]>,
+                                      keyof typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs
+                                  >][number][]
+                                : never {
+                                if ((this.modes as M[number][]).includes(null as any)) {
+                                    return ((
+                                        this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views
+                                            ?.ticks?.modeSettings?.[this.mode] as any
+                                    )?.columns ??
+                                        (
+                                            Config.defaults.views.ticks.modeSettings[this.mode] as unknown as Extract<
+                                                (typeof Config)["defaults"]["views"]["ticks"]["modeSettings"][T],
+                                                { columns: any }
+                                            >
+                                        ).columns) as any;
+                                } else {
+                                    return void 0 as never;
+                                }
+                            }
+                            public set columns(
+                                value: HasNullSection extends true
+                                    ? (typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs)[Extract<
+                                          ConfigConstants.views.Ticks.TicksTabSectionModeFromTicksTabModeAndSectionID<T, M[number]>,
+                                          keyof typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs
+                                      >][number][]
+                                    : never
+                            ) {
+                                if ((this.modes as M[number][]).includes(null as any)) {
+                                    this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                        views: { ticks: { modeSettings: { [this.mode]: { columns: value } } } },
+                                    });
+                                }
+                            }
+                            public abstract readonly sections: HasNonNullSection extends true
+                                ? DeepSubConfig<any> & {
+                                      [K in NonNullable<M[number]>]: DeepSubConfig<any> & {
+                                          columns: (typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs)[Extract<
+                                              ConfigConstants.views.Ticks.TicksTabSectionModeFromTicksTabModeAndSectionID<T, NonNullable<M[number]>>,
+                                              keyof typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs
+                                          >][number][];
+                                      };
+                                  }
+                                : never;
+                        }
+                        return TicksViewConfig_ModeSettings_SubConfig;
+                    })();
+                    public readonly simple = new (class TicksViewConfig_ModeSettings_simple extends TicksViewConfig_ModeSettings[
+                        subConfigClassSymbol
+                    ]<"simple"> {
+                        public readonly sections = new (class TicksViewConfig_ModeSettings_simple_sections
+                            extends DeepSubConfig<TicksViewConfig_ModeSettings_simple>
+                            implements
+                                Extract<
+                                    {
+                                        [K in (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)["simple"][number]]: DeepSubConfig<TicksViewConfig_ModeSettings_simple_sections> & {
+                                            columns: (typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs)[Extract<
+                                                ConfigConstants.views.Ticks.TicksTabSectionModeFromTicksTabModeAndSectionID<
+                                                    "simple",
+                                                    (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)["simple"][number]
+                                                >,
+                                                keyof typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs
+                                            >][number][];
+                                        };
+                                    },
+                                    any
+                                >
+                        {
+                            public readonly randomTicks =
+                                new (class TicksViewConfig_ModeSettings_simple_sections_randomTicks extends DeepSubConfig<TicksViewConfig_ModeSettings_simple_sections> {
+                                    public get columns(): (typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs)[Extract<
+                                        ConfigConstants.views.Ticks.TicksTabSectionModeFromTicksTabModeAndSectionID<"simple", "randomTicks">,
+                                        keyof typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs
+                                    >][number][] {
+                                        return (
+                                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][
+                                                DeepSubConfig_configSymbol
+                                            ][DeepSubConfig_configSymbol].#config.getConfigData().views?.ticks?.modeSettings?.simple?.sections?.randomTicks
+                                                ?.columns ?? Config.defaults.views.ticks.modeSettings.simple.sections.randomTicks.columns
+                                        );
+                                    }
+                                    public set columns(
+                                        value:
+                                            | (typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs)[Extract<
+                                                  ConfigConstants.views.Ticks.TicksTabSectionModeFromTicksTabModeAndSectionID<"simple", "randomTicks">,
+                                                  keyof typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs
+                                              >][number][]
+                                            | undefined
+                                    ) {
+                                        this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][
+                                            DeepSubConfig_configSymbol
+                                        ].#config.saveChanges({
+                                            views: {
+                                                ticks: {
+                                                    modeSettings: {
+                                                        simple: {
+                                                            sections: {
+                                                                randomTicks: { columns: value },
+                                                            },
+                                                        },
+                                                    },
+                                                },
+                                            },
+                                        });
+                                    }
+                                })(this);
+                            public readonly pendingTicks =
+                                new (class TicksViewConfig_ModeSettings_simple_sections_pendingTicks extends DeepSubConfig<TicksViewConfig_ModeSettings_simple_sections> {
+                                    public get columns(): (typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs)[Extract<
+                                        ConfigConstants.views.Ticks.TicksTabSectionModeFromTicksTabModeAndSectionID<"simple", "pendingTicks">,
+                                        keyof typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs
+                                    >][number][] {
+                                        return (
+                                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][
+                                                DeepSubConfig_configSymbol
+                                            ][DeepSubConfig_configSymbol].#config.getConfigData().views?.ticks?.modeSettings?.simple?.sections?.pendingTicks
+                                                ?.columns ?? Config.defaults.views.ticks.modeSettings.simple.sections.pendingTicks.columns
+                                        );
+                                    }
+                                    public set columns(
+                                        value:
+                                            | (typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs)[Extract<
+                                                  ConfigConstants.views.Ticks.TicksTabSectionModeFromTicksTabModeAndSectionID<"simple", "pendingTicks">,
+                                                  keyof typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs
+                                              >][number][]
+                                            | undefined
+                                    ) {
+                                        this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][
+                                            DeepSubConfig_configSymbol
+                                        ].#config.saveChanges({
+                                            views: {
+                                                ticks: {
+                                                    modeSettings: {
+                                                        simple: {
+                                                            sections: {
+                                                                pendingTicks: { columns: value },
+                                                            },
+                                                        },
+                                                    },
+                                                },
+                                            },
+                                        });
+                                    }
+                                })(this);
+                        })(this);
+                    })(this, "simple");
+                }
+                return TicksViewConfig_ModeSettings;
+            })())(this);
+        })(this);
         public readonly tickingAreas = new (class TickingAreasViewConfig extends DeepSubConfig<ViewsConfig> {
             public get mode(): ConfigConstants.views.TickingAreas.TickingAreasTabMode {
                 return this[DeepSubConfig_configSymbol].#config.getConfigData().views?.tickingAreas?.mode ?? Config.defaults.views.tickingAreas.mode;
@@ -1450,6 +1708,46 @@ namespace exports {
                       }[MapsTabMode];
 
                 export type MapsTabModeToColumnType = { [key in MapsTabSectionMode]: (typeof mapsTabModeToColumnIDs)[key][number] };
+            }
+            export namespace Ticks {
+                export const columnIDToDisplayName = {
+                    DBKey: "DB Key",
+                } as const satisfies { [key in TicksTabModeToColumnType[TicksTabSectionMode]]: string | { optionLabel: string; headerLabel: string } };
+
+                export const ticksTabModeToSectionIDs = {
+                    simple: ["randomTicks", "pendingTicks"],
+                } as const satisfies { [key in TicksTabMode]: (string | null)[] };
+
+                export const ticksTabModeSectionHeaderNames = {
+                    simple: ["Random Ticks", "Pending Ticks"],
+                } as const satisfies { [key in TicksTabMode]: (string | null)[] };
+
+                export const ticksTabModeToColumnIDs = {
+                    simple_randomTicks: ["DBKey"],
+                    simple_pendingTicks: ["DBKey"],
+                } as const;
+
+                export type TicksTabMode = "simple";
+
+                export type TicksTabSectionModeFromTicksTabModeAndSectionID<
+                    M extends TicksTabMode,
+                    S extends (typeof ticksTabModeToSectionIDs)[M][number]
+                > = Extract<
+                    S extends null ? M : null extends S ? M | `${M}_${NonNullable<S>}` : `${M}_${NonNullable<S>}`,
+                    keyof typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs
+                >;
+
+                export type TicksTabSectionMode =
+                    | {
+                          [key in TicksTabMode]: null extends (typeof ticksTabModeToSectionIDs)[key][number] ? key : never;
+                      }[TicksTabMode]
+                    | {
+                          [key in TicksTabMode]: Exclude<(typeof ticksTabModeToSectionIDs)[key][number], null> extends string
+                              ? `${key}_${Exclude<(typeof ticksTabModeToSectionIDs)[key][number], null>}`
+                              : never;
+                      }[TicksTabMode];
+
+                export type TicksTabModeToColumnType = { [key in TicksTabSectionMode]: (typeof ticksTabModeToColumnIDs)[key][number] };
             }
             export namespace TickingAreas {
                 export const columnIDToDisplayName = {

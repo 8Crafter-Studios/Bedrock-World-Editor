@@ -27,6 +27,9 @@ import StructuresTab from "./tabs/structures";
 import FunTab from "./tabs/fun";
 import { ControlledMenu, MenuDivider, MenuItem } from "@szhsin/react-menu";
 import { APP_DATA_FOLDER_PATH } from "../src/utils/URLs";
+import TicksTab from "./tabs/ticks";
+import { readdir, stat } from "node:fs/promises";
+import { formatFileSizeBinary, formatFileSizeMetric } from "../src/utils/fileSizeUtils";
 // import { Renderer3D } from "./3DRendererV1/3DRenderer";
 const mime = require("mime-types") as typeof import("mime-types");
 
@@ -229,9 +232,17 @@ export interface MinecraftWorldDisplayDetails {
     lastOpenedWithVerison: `v${string}` | null;
     lastPlayed: Date | null;
     favorited: boolean;
+    /**
+     * The size of the world folder in bytes.
+     *
+     * If the size cannot be determined, it will be `NaN`.
+     *
+     * If getting the sizes was disabled, it will be `undefined`.
+     */
+    size?: Promise<number> | number | undefined;
 }
 
-export async function getMinecraftWorlds(all: boolean = false): Promise<MinecraftWorldDisplayDetails[]> {
+export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean = false): Promise<MinecraftWorldDisplayDetails[]> {
     return (
         await Promise.all(
             (all ? [...new Set([...config.parsedMinecraftDataFolders, ...config.parsedExtraMinecraftDataFolders])] : config.parsedMinecraftDataFolders)
@@ -250,6 +261,19 @@ export async function getMinecraftWorlds(all: boolean = false): Promise<Minecraf
                             ? readFileSync(path.join(folderPath, "levelname.txt"), { encoding: "utf-8" })
                             : (levelDat.value.LevelName?.value as string) ?? "Unknown Name";
                         // console.log(folderPath, levelDat);
+                        let size: Promise<number> | undefined = getSizes
+                            ? readdir(folderPath, { recursive: true, withFileTypes: true }).then(
+                                  (folderContents: Dirent[]): Promise<number> =>
+                                      Promise.all(
+                                          folderContents.map(
+                                              async (file: Dirent): Promise<number> =>
+                                                  file.isFile() ? (await stat(path.join(file.parentPath, file.name))).size : 0
+                                          )
+                                      )
+                                          .then((sizes: number[]): number => sizes.reduce((total: number, size: number): number => total + size, 0))
+                                          .catch((e: any): number => (console.error(`Error while reading size of world folder ${folderPath}:`, e), NaN))
+                              )
+                            : undefined;
                         return {
                             name,
                             path: folderPath,
@@ -275,6 +299,7 @@ export async function getMinecraftWorlds(all: boolean = false): Promise<Minecraf
                                       return false;
                                   })()
                                 : false,
+                            size,
                         };
                     } catch (e) {
                         console.error(e);
@@ -285,11 +310,25 @@ export async function getMinecraftWorlds(all: boolean = false): Promise<Minecraf
     ).filter((world: MinecraftWorldDisplayDetails | undefined): world is MinecraftWorldDisplayDetails => !!world);
 }
 
+let defaultWorldIconDataURI: string | null = null;
+fetch("resource://images/ui/misc/CreateNewWorld.png").then(
+    async (response: Response): Promise<void> =>
+        void (defaultWorldIconDataURI = `data:image/png;base64,${Buffer.from(await (await response.blob()).arrayBuffer()).toString("base64")}`)
+);
+
 export function WorldSelector(): JSX.SpecificElement<"div"> {
     const renderWorldsContainerRef: RefObject<HTMLDivElement> = useRef(null);
     const viewMode: "compact" | "detailed" | "grid" = "detailed";
     let [data, updateData] = useState<MinecraftWorldDisplayDetails[]>([]);
-    useEffect((): void => void getMinecraftWorlds().then(updateData), []);
+    let [showingMore, updateShowingMore] = useState(false);
+    function refreshData(data: MinecraftWorldDisplayDetails[]): void {
+        config.showWorldSizesOnWorldList &&
+            data.forEach((v: MinecraftWorldDisplayDetails): void =>
+                typeof v.size === "number" ? void 0 : void v.size?.then((size: number): void => void ((v.size = size), updateData([...data])))
+            );
+        updateData(data);
+    }
+    useEffect((): void => void getMinecraftWorlds(false, config.showWorldSizesOnWorldList).then(refreshData), []);
     function RenderWorlds(): JSX.SpecificElement<"div">[] {
         return data
             .toSorted((a: MinecraftWorldDisplayDetails, b: MinecraftWorldDisplayDetails): number =>
@@ -314,7 +353,15 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                     <div
                         title={`${world.name}\nLast Opened With: ${world.lastOpenedWithVerison}\nLast Played: ${
                             world.lastPlayed?.toLocaleString() ?? "null"
-                        }\nPath: ${world.path}`}
+                        }\nPath: ${world.path}${
+                            config.showWorldSizesOnWorldList
+                                ? `\nFolder Size: ${
+                                      typeof world.size === "number"
+                                          ? (config.fileSizeUnits === "binary" ? formatFileSizeBinary : formatFileSizeMetric)(world.size)
+                                          : "Loading..."
+                                  }`
+                                : ""
+                        }`}
                         class="nsel ndrg"
                         style={{
                             display: "flex",
@@ -341,6 +388,7 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                             );
                         }}
                         onAuxClick={(event: JSX.TargetedMouseEvent<HTMLDivElement>): void => void (event.button === 2 && onWorldRightClick(event))}
+                        key={JSON.stringify({ path: world.path })}
                     >
                         <img
                             aria-hidden="true"
@@ -349,7 +397,7 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                                     ? `data:${mime.lookup(path.extname(world.thumbnailPath))};base64,${readFileSync(world.thumbnailPath, {
                                           encoding: "base64",
                                       })}`
-                                    : "resource://images/ui/misc/CreateNewWorld.png"
+                                    : defaultWorldIconDataURI ?? "resource://images/ui/misc/CreateNewWorld.png"
                             }
                             style={`margin: 4px; width: ${viewMode === "compact" ? 32 : viewMode === "detailed" ? 64 : 128}px; aspect-ratio: 16 / 9;`}
                         />
@@ -383,7 +431,16 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                                     {world.lastPlayed?.toLocaleString() ?? <span style="color: red;">null</span>}
                                 </div>
                                 <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                    {world.lastOpenedWithVerison ?? <span style="color: red;">null</span>}
+                                    {config.showWorldSizesOnWorldList && (
+                                        <span class="worldSelectorListItemWorldSize">
+                                            {typeof world.size === "number"
+                                                ? (config.fileSizeUnits === "binary" ? formatFileSizeBinary : formatFileSizeMetric)(world.size)
+                                                : "Loading..."}{" "}
+                                        </span>
+                                    )}
+                                    <span class="worldSelectorListItemWorldVersion">
+                                        {world.lastOpenedWithVerison ?? <span style="color: red;">null</span>}
+                                    </span>
                                 </div>
                             </div>
                         )}
@@ -525,7 +582,6 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                 );
             });
     }
-    let showingMore: boolean = false;
     return (
         <div style="display: flex; flex-direction: column; overflow: auto;">
             <div style={{ display: "contents" }} ref={renderWorldsContainerRef}>
@@ -543,20 +599,17 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                 }}
                 onClick={(event): void => {
                     if (event.currentTarget.dataset.disabled) return;
-                    showingMore = !showingMore;
+                    const newShowingMoreValue: boolean = !showingMore;
+                    updateShowingMore(newShowingMoreValue);
                     event.currentTarget.textContent = "Loading...";
                     event.currentTarget.dataset.disabled = "true";
-                    getMinecraftWorlds(showingMore).then((worlds: MinecraftWorldDisplayDetails[]): void => {
-                        event.currentTarget!.textContent = showingMore ? "Show less" : "Show more";
+                    getMinecraftWorlds(newShowingMoreValue, config.showWorldSizesOnWorldList).then((worlds: MinecraftWorldDisplayDetails[]): void => {
+                        event.currentTarget!.textContent = newShowingMoreValue ? "Show less" : "Show more";
                         delete event.currentTarget.dataset.disabled;
-                        data = worlds;
-                        const parentElement = event.currentTarget.parentElement!;
-                        const currentTarget = event.currentTarget;
-                        parentElement.removeChild(event.currentTarget);
-                        render(<RenderWorlds />, parentElement);
-                        parentElement.appendChild(currentTarget);
+                        refreshData(worlds);
                     });
                 }}
+                key="showMoreOrLess"
             >
                 Show more
             </div>
@@ -614,7 +667,7 @@ export function LoadingScreenContents(props: LoadingScreenContentsProps): JSX.El
                 />
                 <div
                     style="margin-bottom: -1.5em; line-height: 1.5em; font-family: Consolas; font-size: round(down, calc(max(100vw, 300px) / 50), 5.12px);"
-                    class="loading-screen-message"
+                    class="loading-screen-message nsel"
                     ref={props.messageContainerRef}
                 >
                     {props.message ?? "Loading..."}
@@ -693,6 +746,8 @@ export function WorldEditorTabRenderer(props: {
                 return <RepairForcedWorldCorruptionTab tab={props.parentTab} />;
             case "structures":
                 return <StructuresTab tab={props.parentTab} />;
+            case "ticks":
+                return <TicksTab tab={props.parentTab} />;
             case "ticking-areas":
                 return <TickingAreasTab tab={props.parentTab} />;
             case "view-files":
