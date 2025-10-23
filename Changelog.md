@@ -7,6 +7,10 @@
     -   `Entity`
 -   Fixed a bug where when editing `level.dat`, the changes did not do anything because it was saved in the wrong format.
 
+## Changes
+
+-   Removed the click sound from the add tab popup menu.
+
 ## Fixes
 
 -   Fixed a bug where some platforms (namely Linux) would fail to load the app logo on the main menu of the app due to an extra `/` being appended to the end of the file path.

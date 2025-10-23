@@ -430,10 +430,10 @@ export default function TabBar(): JSX.Element {
                         (tab: PopupTab): JSX.SpecificElement<"div"> => (
                             <div
                                 class="sidebar_button nsel"
-                                onMouseDown={(event: JSX.TargetedMouseEvent<HTMLDivElement>): void => {
-                                    if (event.currentTarget.hasAttribute("disabled")) return;
-                                    SoundEffects.popB();
-                                }}
+                                // onMouseDown={(event: JSX.TargetedMouseEvent<HTMLDivElement>): void => {
+                                //     if (event.currentTarget.hasAttribute("disabled")) return;
+                                //     SoundEffects.popB();
+                                // }}
                                 onClick={tab.onClick}
                             >
                                 <div style="display: inline-block; vertical-align: middle; width: 36px; height: 36px;">
