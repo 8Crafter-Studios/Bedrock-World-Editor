@@ -1,3 +1,22 @@
+# v1.0.0-beta.13
+
+## Critical Fixes
+
+-   Fixed a bug where only the first entity or block entity in the following content types was extracted, so when editing them, all other entities in the key would be deleted:
+    -   `BlockEntity`
+    -   `Entity`
+-   Fixed a bug where when editing `level.dat`, the changes did not do anything because it was saved in the wrong format.
+
+## Fixes
+
+-   Fixed a bug where some platforms (namely Linux) would fail to load the app logo on the main menu of the app due to an extra `/` being appended to the end of the file path.
+-   Fixed a bug where when opening a pending tick in the "Ticks" tab, it would open with a content type of `RandomTicks` instead of `PendingTicks`.
+-   Fixed a bug where the format type of the `HardcodedSpawners` content type was `NBT` instead of `unknown`.
+
+## Technical Additions
+
+-   Added a new `resource-image://` app-scoped URI protocol to allow loading images from the app's resources folder without specifying a file extension.
+
 # v1.0.0-beta.12
 
 ## Additions

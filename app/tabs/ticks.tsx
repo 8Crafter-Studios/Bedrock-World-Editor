@@ -988,7 +988,7 @@ async function getTicksTabContentsRows(data: {
                     <tr
                         onDblClick={(): void => {
                             data.tab.openTab({
-                                contentType: "RandomTicks",
+                                contentType: "PendingTicks",
                                 name: pendingTickKey.displayKey,
                                 parentTab: data.tab,
                                 target: {

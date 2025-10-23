@@ -1,7 +1,7 @@
 {
     "name": "bedrock-world-editor",
     "productName": "bedrock-world-editor",
-    "version": "1.0.0-beta.12",
+    "version": "1.0.0-beta.13",
     "description": "An NBT editor for Minecraft Bedrock Edition.",
     "main": ".vite/build/main.js",
     "type": "commonjs",
@@ -25,6 +25,22 @@
         "type": "git",
         "url": "https://github.com/8Crafter-Studios/Bedrock-World-Editor.git"
     },
+    "engines": {
+        "node": ">=22.0.0"
+    },
+    "devEngines": {
+        "runtime": {
+            "name": "node",
+            "version": ">=22.0.0",
+            "onFail": "warn"
+        },
+        "packageManager": {
+            "name": "npm",
+            "version": ">=10.0.0",
+            "onFail": "warn"
+        }
+    },
+    "private": true,
     "devDependencies": {
         "@electron-forge/cli": "^7.8.1",
         "@electron-forge/maker-deb": "^7.8.1",
@@ -42,6 +58,7 @@
         "@types/extend": "^3.0.4",
         "@types/jquery": "^3.5.32",
         "@types/mime-types": "^3.0.1",
+        "@types/node": "22.17.2",
         "@types/q": "^1.5.8",
         "@types/winreg": "^1.2.36",
         "@typescript-eslint/eslint-plugin": "^5.62.0",
@@ -50,18 +67,18 @@
         "eslint": "^8.57.1",
         "eslint-plugin-import": "^2.32.0",
         "ts-node": "^10.9.2",
-        "typescript": "^5.9.2",
+        "typescript": "^5.9.3",
         "vite": "^5.0.0",
         "vite-plugin-commonjs-externals": "^0.1.1"
     },
     "dependencies": {
         "@8crafter/leveldb-zlib": "^1.6.0",
         "@electron/remote": "^2.1.3",
-        "@monaco-editor/react": "^4.7.0-rc.0",
+        "@monaco-editor/react": "^4.8.0-rc.2",
         "@octokit/rest": "^22.0.0",
         "@szhsin/react-menu": "^4.5.0",
         "about-window": "^1.15.2",
-        "comment-json": "^4.2.5",
+        "comment-json": "^4.4.1",
         "custom-electron-titlebar": "^4.2.8",
         "electron-is-dev": "^3.0.1",
         "electron-progressbar": "^2.2.1",
@@ -71,20 +88,20 @@
         "jquery": "^3.7.1",
         "jquery-ui": "^1.14.1",
         "json5": "^2.2.3",
-        "mcbe-leveldb": "^1.4.0",
+        "mcbe-leveldb": "^1.5.4",
         "merge-refs": "^2.0.0",
         "mime-types": "^3.0.1",
-        "monaco-editor": "^0.53.0",
-        "overlayscrollbars": "^2.11.4",
+        "monaco-editor": "^0.54.0",
+        "overlayscrollbars": "^2.12.0",
         "overlayscrollbars-react": "^0.5.6",
-        "preact": "^10.26.9",
+        "preact": "^10.27.2",
         "prismarine-nbt": "^2.7.0",
         "search-string": "^4.1.0",
-        "semver": "^7.7.2",
+        "semver": "^7.7.3",
         "three": "^0.180.0",
         "update-electron-app": "^3.1.1",
         "vscode-oniguruma": "^2.0.1",
-        "vscode-textmate": "^9.2.0"
+        "vscode-textmate": "^9.2.1"
     },
     "optionalDependencies": {
         "electron-installer-debian": "^3.2.0",

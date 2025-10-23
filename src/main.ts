@@ -313,6 +313,10 @@ if (!startup) {
             privileges: { bypassCSP: true, secure: true, standard: true, supportFetchAPI: true },
         },
         {
+            scheme: "resource-image",
+            privileges: { bypassCSP: true, secure: true, standard: true, supportFetchAPI: true },
+        },
+        {
             scheme: "module",
             privileges: { bypassCSP: true, secure: true, standard: true, supportFetchAPI: true },
         },
@@ -355,6 +359,7 @@ export function createWindow(): number | void {
             contextIsolation: false,
             nodeIntegration: true,
             // webSecurity: false,
+            nodeIntegrationInWorker: true,
         },
         resizable: true,
         darkTheme: nativeTheme.shouldUseDarkColorsForSystemIntegratedUI,
@@ -739,12 +744,94 @@ if (!startup && !started) {
                 );
             }); */
                 // return await fetch(new URL(path.posix.join("resources", url.hostname, url.pathname), MAIN_WINDOW_VITE_DEV_SERVER_URL));
-                return new Response(readFileSync(path.join(__dirname, "../../", "resources", url.hostname, url.pathname)));
+                return new Response(readFileSync(path.join(__dirname, "../../", "resources", url.hostname, url.pathname === "/" ? "" : url.pathname)));
             } else {
                 /* BrowserWindow.getAllWindows().forEach((window: BrowserWindow): void => {
                 window.webContents.send<1, "log">("console-action", "log", path.join(__dirname, "../", "resources", url.hostname, url.pathname));
             }); */
-                return new Response(readFileSync(path.join(__dirname, "../../../", "resources", url.hostname, url.pathname)));
+                return new Response(readFileSync(path.join(__dirname, "../../../", "resources", url.hostname, url.pathname === "/" ? "" : url.pathname)));
+            }
+        });
+        protocol.handle("resource-image", async (request: GlobalRequest): Promise<GlobalResponse> => {
+            const url: URL = new URL(request.url);
+            if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+                let imagePath: string = path
+                    .join(__dirname, "../../", "resources", url.hostname, url.pathname === "/" ? "" : url.pathname)
+                    .replace(/[/\\]$/, "");
+                if (!/\.[a-zA-Z]+$/.test(imagePath)) {
+                    for (const extension of [
+                        ".tga",
+                        ".svg",
+                        ".gif",
+                        ".apng",
+                        ".png",
+                        ".jpg",
+                        ".jpeg",
+                        ".jfif",
+                        ".pjpeg",
+                        ".pjp",
+                        ".webp",
+                        ".avif",
+                        ".bmp",
+                        ".ico",
+                        ".cur",
+                        ".tif",
+                        ".tiff",
+                    ]) {
+                        if (existsSync(imagePath + extension)) {
+                            imagePath += extension;
+                            break;
+                        }
+                    }
+                }
+                try {
+                    return new Response(readFileSync(imagePath));
+                } catch (e) {
+                    console.error(e);
+                    if (url.searchParams.get("use_missing_texture") !== "false") {
+                        return new Response(readFileSync(path.join(__dirname, "../../", "resources", "mc/textures/misc/missing_texture.png")));
+                    }
+                    return new Response(`Image not found. ${e}`, { status: 404 });
+                }
+            } else {
+                let imagePath: string = path
+                    .join(__dirname, "../../../", "resources", url.hostname, url.pathname === "/" ? "" : url.pathname)
+                    .replace(/[/\\]$/, "");
+                if (!/\.[a-zA-Z]+$/.test(imagePath)) {
+                    for (const extension of [
+                        ".tga",
+                        ".svg",
+                        ".gif",
+                        ".apng",
+                        ".png",
+                        ".jpg",
+                        ".jpeg",
+                        ".jfif",
+                        ".pjpeg",
+                        ".pjp",
+                        ".webp",
+                        ".avif",
+                        ".bmp",
+                        ".ico",
+                        ".cur",
+                        ".tif",
+                        ".tiff",
+                    ]) {
+                        if (existsSync(imagePath + extension)) {
+                            imagePath += extension;
+                            break;
+                        }
+                    }
+                }
+                try {
+                    return new Response(readFileSync(imagePath));
+                } catch (e) {
+                    console.error(e);
+                    if (url.searchParams.get("use_missing_texture") !== "false") {
+                        return new Response(readFileSync(path.join(__dirname, "../../../", "resources", "mc/textures/misc/missing_texture.png")));
+                    }
+                    return new Response(`Image not found. ${e}`, { status: 404 });
+                }
             }
         });
         protocol.handle("module", async (request: GlobalRequest): Promise<GlobalResponse> => {
