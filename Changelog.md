@@ -1,3 +1,9 @@
+# v1.0.0-beta.14
+
+## Additions
+
+-   Added the paths to the world folder locations for the Minecraft Windows GDK builds to the config.
+
 # v1.0.0-beta.13
 
 ## Critical Fixes

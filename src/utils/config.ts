@@ -172,6 +172,8 @@ namespace exports {
                 "Home/Library/Application Support/mcpelauncher/games/com.mojang",
                 "%appdata%/Minecraft Bedrock Preview/Users/*/games/com.mojang",
                 "%appdata%/Minecraft Bedrock Preview/games/com.mojang",
+                "%appdata%/Minecraft Bedrock/Users/*/games/com.mojang",
+                "%appdata%/Minecraft Bedrock/games/com.mojang",
             ],
             extraMinecraftDataFolders: [
                 "%appdata%/.minecraft_bedrock/installations/*/packageData",
@@ -311,6 +313,15 @@ namespace exports {
                     currentMinecraftDataFolders.some((v: string, i: number): boolean => v !== originalItems[i])
                 )
                     this.minecraftDataFolders = currentMinecraftDataFolders;
+            }
+            if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.14")) {
+                const currentMinecraftDataFolders: string[] = this.minecraftDataFolders;
+                const originalLength: number = currentMinecraftDataFolders.length;
+                if (!currentMinecraftDataFolders.includes("%appdata%/Minecraft Bedrock/Users/*/games/com.mojang"))
+                    currentMinecraftDataFolders.push("%appdata%/Minecraft Bedrock/Users/*/games/com.mojang");
+                if (!currentMinecraftDataFolders.includes("%appdata%/Minecraft Bedrock/games/com.mojang"))
+                    currentMinecraftDataFolders.push("%appdata%/Minecraft Bedrock/games/com.mojang");
+                if (currentMinecraftDataFolders.length !== originalLength) this.minecraftDataFolders = currentMinecraftDataFolders;
             }
             if (semver.compareBuild(currentConfigVersion, VERSION) < 0) {
                 this.version = VERSION;
