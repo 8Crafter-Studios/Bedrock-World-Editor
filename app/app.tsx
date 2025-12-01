@@ -1,10 +1,10 @@
 import { type JSX, type RefObject } from "preact";
-import { hydrate, render } from "preact/compat";
+import { render } from "preact/compat";
 import LeftSidebar from "./components/LeftSidebar";
 import DebugOverlay from "./components/DebugOverlay";
 import TabBar from "./components/TabBar";
 import { entryContentTypeToFormatMap, toLong } from "mcbe-leveldb";
-import { Dirent, existsSync, globSync, read, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { Dirent, existsSync, globSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import NBT from "prismarine-nbt";
 import { useEffect, useRef, useState } from "preact/hooks";
@@ -19,7 +19,6 @@ import ViewFilesTab from "./tabs/viewFiles";
 import RepairForcedWorldCorruptionTab from "./tabs/repairForcedWorldCorruption";
 import MapsTab from "./tabs/maps";
 import { app, dialog, shell } from "@electron/remote";
-import type { MessageBoxReturnValue } from "electron";
 import MapEditorTab from "./tabs/mapNBTEditor";
 import NoneTab from "./tabs/none";
 import TickingAreasTab from "./tabs/tickingAreas";
@@ -28,7 +27,6 @@ import FunTab from "./tabs/fun";
 import { ControlledMenu, MenuDivider, MenuItem } from "@szhsin/react-menu";
 import { APP_DATA_FOLDER_PATH } from "../src/utils/URLs";
 import TicksTab from "./tabs/ticks";
-import { readdir, stat } from "node:fs/promises";
 import { formatFileSizeBinary, formatFileSizeMetric } from "../src/utils/fileSizeUtils";
 // import { Renderer3D } from "./3DRendererV1/3DRenderer";
 const mime = require("mime-types") as typeof import("mime-types");
@@ -262,17 +260,19 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
                             : (levelDat.value.LevelName?.value as string) ?? "Unknown Name";
                         // console.log(folderPath, levelDat);
                         let size: Promise<number> | undefined = getSizes
-                            ? readdir(folderPath, { recursive: true, withFileTypes: true }).then(
-                                  (folderContents: Dirent[]): Promise<number> =>
-                                      Promise.all(
-                                          folderContents.map(
-                                              async (file: Dirent): Promise<number> =>
-                                                  file.isFile() ? (await stat(path.join(file.parentPath, file.name))).size : 0
+                            ? (require("node:fs/promises") as typeof import("node:fs/promises"))
+                                  .readdir(folderPath, { recursive: true, withFileTypes: true })
+                                  .then(
+                                      (folderContents: Dirent[]): Promise<number> =>
+                                          Promise.all(
+                                              folderContents.map(
+                                                  async (file: Dirent): Promise<number> =>
+                                                      file.isFile() ? (await (require("node:fs/promises") as typeof import("node:fs/promises")).stat(path.join(file.parentPath, file.name))).size : 0
+                                              )
                                           )
-                                      )
-                                          .then((sizes: number[]): number => sizes.reduce((total: number, size: number): number => total + size, 0))
-                                          .catch((e: any): number => (console.error(`Error while reading size of world folder ${folderPath}:`, e), NaN))
-                              )
+                                              .then((sizes: number[]): number => sizes.reduce((total: number, size: number): number => total + size, 0))
+                                              .catch((e: any): number => (console.error(`Error while reading size of world folder ${folderPath}:`, e), NaN))
+                                  )
                             : undefined;
                         return {
                             name,
