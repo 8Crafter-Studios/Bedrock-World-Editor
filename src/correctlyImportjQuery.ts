@@ -1,7 +1,7 @@
-import "jquery";
+import jQueryModule from "jquery";
 
 // @ts-expect-error
-globalThis.$ = globalThis.jQuery = require("jquery");
+globalThis.$ = globalThis.jQuery = jQueryModule;
 (function ($: JQueryStatic): void {
     $.fn.animateCSSVariable = function (
         variable: string,

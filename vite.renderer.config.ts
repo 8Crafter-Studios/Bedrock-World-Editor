@@ -1,6 +1,8 @@
 import { type ConfigEnv, defineConfig } from "vite";
 import path from "node:path";
 import commonjsExternals from "vite-plugin-commonjs-externals";
+import { nodePolyfills } from "vite-plugin-node-polyfills";
+// import commonjs from "vite-plugin-commonjs";
 
 const externals: (string | RegExp)[] = [/^node:.+$/, /^module:.+$/, "@electron/remote", "path" /* , "@8crafter/leveldb-zlib" */];
 
@@ -21,6 +23,9 @@ export default defineConfig((env: ConfigEnv) => ({
                 path.resolve(__dirname, "build/node-leveldb.node"), // native binary
             ],
         },
+        commonjsOptions: {
+            transformMixedEsModules: false,
+        },
     },
     esbuild: {
         jsxFactory: "h",
@@ -31,6 +36,14 @@ export default defineConfig((env: ConfigEnv) => ({
         treeShaking: false,
     },
     plugins: [
+        nodePolyfills({
+            globals: {
+                Buffer: true,
+                global: true,
+                process: true,
+            },
+        }),
+        // commonjs({}),
         commonjsExternals({
             externals,
         }),

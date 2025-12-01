@@ -1,0 +1,623 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workspace
+   version = "1.0">
+   <Group
+      location = "group:App"
+      name = "App">
+      <FileRef
+         location = "group:Assets.xcassets">
+      </FileRef>
+      <Group
+         location = "group:Base.lproj"
+         name = "Base.lproj">
+         <FileRef
+            location = "group:LaunchScreen.storyboard">
+         </FileRef>
+         <FileRef
+            location = "group:Main.storyboard">
+         </FileRef>
+      </Group>
+      <FileRef
+         location = "group:config.xml">
+      </FileRef>
+      <Group
+         location = "group:public"
+         name = "public">
+         <FileRef
+            location = "group:index.html">
+         </FileRef>
+         <FileRef
+            location = "group:cordova.js">
+         </FileRef>
+         <FileRef
+            location = "group:cordova_plugins.js">
+         </FileRef>
+         <Group
+            location = "group:assets"
+            name = "assets">
+            <FileRef
+               location = "group:shell-Cwx4F3dc.js">
+            </FileRef>
+            <FileRef
+               location = "group:coffee-DbKItkcA.js">
+            </FileRef>
+            <FileRef
+               location = "group:typescript-Cqn_JzS6.js">
+            </FileRef>
+            <FileRef
+               location = "group:m3-DWgEmQL4.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:wgsl-BzTezq2Q.js">
+            </FileRef>
+            <FileRef
+               location = "group:clojure-CDeWDN3S.js">
+            </FileRef>
+            <FileRef
+               location = "group:perl-W9KHlYbX.js">
+            </FileRef>
+            <FileRef
+               location = "group:scala-BaP9ymTV.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:scss-djx5PbyU.js">
+            </FileRef>
+            <FileRef
+               location = "group:liquid-CpvdEGKO.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:dockerfile-BL1IhMd_.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:htmlMode-Iogk2coe.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:systemverilog-Bj2W-nQl.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:go-DWZ8CI00.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:m3-DWgEmQL4.js">
+            </FileRef>
+            <FileRef
+               location = "group:pascaligo-B6FA7fQV.js">
+            </FileRef>
+            <FileRef
+               location = "group:mips-BeBiZ-3I.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:twig-CrY9ZhH-.js">
+            </FileRef>
+            <FileRef
+               location = "group:mdx-FrkHlNjI.js">
+            </FileRef>
+            <FileRef
+               location = "group:rust-8czV1KLI.js">
+            </FileRef>
+            <FileRef
+               location = "group:ini-BlEuYrfK.js">
+            </FileRef>
+            <FileRef
+               location = "group:pla-BBTYJ5ze.js">
+            </FileRef>
+            <FileRef
+               location = "group:mysql-DnVXokZo.js">
+            </FileRef>
+            <FileRef
+               location = "group:elixir-CIKyYq6X.js">
+            </FileRef>
+            <FileRef
+               location = "group:restructuredtext-BvNDIclY.js">
+            </FileRef>
+            <FileRef
+               location = "group:liquid-CpvdEGKO.js">
+            </FileRef>
+            <FileRef
+               location = "group:yaml-CjdYfe31.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:pgsql-CwtIvEbk.js">
+            </FileRef>
+            <FileRef
+               location = "group:scheme-DBsVVHFz.js">
+            </FileRef>
+            <FileRef
+               location = "group:Minecraft-Seven-66398-CThhLF7F.otf">
+            </FileRef>
+            <FileRef
+               location = "group:ruby-DjHoPkC4.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:sb-BLgAazrb.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:javascript-DN1d937I.js">
+            </FileRef>
+            <FileRef
+               location = "group:pug-CqT_swbQ.js">
+            </FileRef>
+            <FileRef
+               location = "group:elixir-CIKyYq6X.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:restructuredtext-BvNDIclY.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:solidity-Dy4TV5UY.js">
+            </FileRef>
+            <FileRef
+               location = "group:swift-COJB9OlN.js">
+            </FileRef>
+            <FileRef
+               location = "group:kotlin-BwpJGUv4.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:Minecraft-Five-Bold-4ded8-DM9zLJas.otf">
+            </FileRef>
+            <FileRef
+               location = "group:rust-8czV1KLI.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:pascaligo-B6FA7fQV.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:swift-COJB9OlN.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:coffee-DbKItkcA.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:typespec-DuxZ3E7x.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:jsonMode-CRxFZPiZ.js">
+            </FileRef>
+            <FileRef
+               location = "group:powerquery-Drl1AVA2.js">
+            </FileRef>
+            <FileRef
+               location = "group:ruby-DjHoPkC4.js">
+            </FileRef>
+            <FileRef
+               location = "group:java-CfrkNkgp.js">
+            </FileRef>
+            <FileRef
+               location = "group:lua-BejQ3nUq.js">
+            </FileRef>
+            <FileRef
+               location = "group:tcl-GsQmXbY7.js">
+            </FileRef>
+            <FileRef
+               location = "group:twig-CrY9ZhH-.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:freemarker2-CNhw3ayE.js">
+            </FileRef>
+            <FileRef
+               location = "group:css-CKI80dYD.js">
+            </FileRef>
+            <FileRef
+               location = "group:Minecraft-Seven-v4-c1725-B_nm4vTa.ttf">
+            </FileRef>
+            <FileRef
+               location = "group:postiats-BlxCP4_j.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:xml-CL5epmR2.js">
+            </FileRef>
+            <FileRef
+               location = "group:sophia-B3-xaWyP.js">
+            </FileRef>
+            <FileRef
+               location = "group:Minecraft-Ten-ed29a--x-oh6pg.otf">
+            </FileRef>
+            <FileRef
+               location = "group:cssMode-CSub8DGS.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:mdx-FrkHlNjI.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:javascript-DN1d937I.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:powershell-DuDzFIQV.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:razor-DjQ9cR_v.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:abap-f7VFVeWJ.js">
+            </FileRef>
+            <FileRef
+               location = "group:dart-DAj3fQ2i.js">
+            </FileRef>
+            <FileRef
+               location = "group:redis-BQNnd1QS.js">
+            </FileRef>
+            <FileRef
+               location = "group:pug-CqT_swbQ.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:php-B1S2SlgT.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:julia-DSGLfZua.js">
+            </FileRef>
+            <FileRef
+               location = "group:cpp-YGM_H0r_.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:pascal--wLO0YqT.js">
+            </FileRef>
+            <FileRef
+               location = "group:markdown-DO6rAjK-.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:mips-BeBiZ-3I.js">
+            </FileRef>
+            <FileRef
+               location = "group:msdax-DJAY9QYv.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:shell-Cwx4F3dc.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:settings_glyph_color_2x-B4hE7nHI.png">
+            </FileRef>
+            <FileRef
+               location = "group:css-CKI80dYD.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:qsharp-Denurze2.js">
+            </FileRef>
+            <FileRef
+               location = "group:hcl-6IrrVh7G.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:powerquery-Drl1AVA2.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:python-PyUBfiYi.js">
+            </FileRef>
+            <FileRef
+               location = "group:typescript-Cqn_JzS6.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:protobuf-Bma46oWt.js">
+            </FileRef>
+            <FileRef
+               location = "group:html-CYEGfDoa.js">
+            </FileRef>
+            <FileRef
+               location = "group:pascal--wLO0YqT.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:sql-D5-w7PU-.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:lua-BejQ3nUq.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:cameligo-D5CCa2G2.js">
+            </FileRef>
+            <FileRef
+               location = "group:go-DWZ8CI00.js">
+            </FileRef>
+            <FileRef
+               location = "group:r-D2Pqqw24.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:pla-BBTYJ5ze.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:scss-djx5PbyU.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:csharp-WnAUfhMt.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:r-D2Pqqw24.js">
+            </FileRef>
+            <FileRef
+               location = "group:sql-D5-w7PU-.js">
+            </FileRef>
+            <FileRef
+               location = "group:msdax-DJAY9QYv.js">
+            </FileRef>
+            <FileRef
+               location = "group:tsMode-BlZWqJg7.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:cssMode-CSub8DGS.js">
+            </FileRef>
+            <FileRef
+               location = "group:Minecraft-Five-48bb3-DRkgrNSN.otf">
+            </FileRef>
+            <FileRef
+               location = "group:st-BIWE61Dl.js">
+            </FileRef>
+            <FileRef
+               location = "group:handlebars-JbsJU2y2.js">
+            </FileRef>
+            <FileRef
+               location = "group:lexon-Mhdq6dIv.js">
+            </FileRef>
+            <FileRef
+               location = "group:less-CY2DV-iV.js">
+            </FileRef>
+            <FileRef
+               location = "group:scheme-DBsVVHFz.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:NotoSansMerged-Regular-5df70-BFT6Yn7m.ttf">
+            </FileRef>
+            <FileRef
+               location = "group:ecl-DvUMYO8o.js">
+            </FileRef>
+            <FileRef
+               location = "group:index-DuxlmTjL.js">
+            </FileRef>
+            <FileRef
+               location = "group:tsMode-BlZWqJg7.js">
+            </FileRef>
+            <FileRef
+               location = "group:dockerfile-BL1IhMd_.js">
+            </FileRef>
+            <FileRef
+               location = "group:redshift-BvTQHsqQ.js">
+            </FileRef>
+            <FileRef
+               location = "group:cypher-Cvwfey6s.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:perl-W9KHlYbX.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:fsharp-C2rPGrsv.js">
+            </FileRef>
+            <FileRef
+               location = "group:redshift-BvTQHsqQ.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:less-CY2DV-iV.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:julia-DSGLfZua.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:azcli-BRS06PQN.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:graphql-BD4Lm6GI.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:pgsql-CwtIvEbk.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:vb-DQZLJh-e.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:fsharp-C2rPGrsv.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:wgsl-BzTezq2Q.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:java-CfrkNkgp.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:qsharp-Denurze2.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:freemarker2-CNhw3ayE.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:apex-CRaQY4Wf.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:ecl-DvUMYO8o.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:flow9-HcKhn5V3.js">
+            </FileRef>
+            <FileRef
+               location = "group:clojure-CDeWDN3S.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:consola-BJc6iWDT.ttf">
+            </FileRef>
+            <FileRef
+               location = "group:kotlin-BwpJGUv4.js">
+            </FileRef>
+            <FileRef
+               location = "group:razor-DjQ9cR_v.js">
+            </FileRef>
+            <FileRef
+               location = "group:cpp-YGM_H0r_.js">
+            </FileRef>
+            <FileRef
+               location = "group:codicon-B_Z2XQ3P.ttf">
+            </FileRef>
+            <FileRef
+               location = "group:cameligo-D5CCa2G2.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:objective-c-Dx_J0mwU.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:azcli-BRS06PQN.js">
+            </FileRef>
+            <FileRef
+               location = "group:apex-CRaQY4Wf.js">
+            </FileRef>
+            <FileRef
+               location = "group:bat-DDuq7clf.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:handlebars-JbsJU2y2.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:scala-BaP9ymTV.js">
+            </FileRef>
+            <FileRef
+               location = "group:index-DlMwOOv6.css">
+            </FileRef>
+            <FileRef
+               location = "group:bicep-6G0m-f21.js">
+            </FileRef>
+            <FileRef
+               location = "group:xml-CL5epmR2.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:htmlMode-Iogk2coe.js">
+            </FileRef>
+            <FileRef
+               location = "group:powershell-DuDzFIQV.js">
+            </FileRef>
+            <FileRef
+               location = "group:abap-f7VFVeWJ.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:hcl-6IrrVh7G.js">
+            </FileRef>
+            <FileRef
+               location = "group:yaml-CjdYfe31.js">
+            </FileRef>
+            <FileRef
+               location = "group:NotoSans-Regular-BplKTy8b.woff2">
+            </FileRef>
+            <FileRef
+               location = "group:mysql-DnVXokZo.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:NotoSansArabic-Regular-9137a-CG69iJem.ttf">
+            </FileRef>
+            <FileRef
+               location = "group:vb-DQZLJh-e.js">
+            </FileRef>
+            <FileRef
+               location = "group:index-DuxlmTjL.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:sophia-B3-xaWyP.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:dart-DAj3fQ2i.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:Mojangles-Dz2AmQgY.ttf">
+            </FileRef>
+            <FileRef
+               location = "group:postiats-BlxCP4_j.js">
+            </FileRef>
+            <FileRef
+               location = "group:typespec-DuxZ3E7x.js">
+            </FileRef>
+            <FileRef
+               location = "group:objective-c-Dx_J0mwU.js">
+            </FileRef>
+            <FileRef
+               location = "group:redis-BQNnd1QS.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:st-BIWE61Dl.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:ini-BlEuYrfK.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:tcl-GsQmXbY7.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:systemverilog-Bj2W-nQl.js">
+            </FileRef>
+            <FileRef
+               location = "group:html-CYEGfDoa.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:graphql-BD4Lm6GI.js">
+            </FileRef>
+            <FileRef
+               location = "group:csp-B2ZTiYVV.js">
+            </FileRef>
+            <FileRef
+               location = "group:sb-BLgAazrb.js">
+            </FileRef>
+            <FileRef
+               location = "group:python-PyUBfiYi.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:bat-DDuq7clf.js">
+            </FileRef>
+            <FileRef
+               location = "group:php-B1S2SlgT.js">
+            </FileRef>
+            <FileRef
+               location = "group:solidity-Dy4TV5UY.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:jsonMode-CRxFZPiZ.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:cypher-Cvwfey6s.js">
+            </FileRef>
+            <FileRef
+               location = "group:flow9-HcKhn5V3.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:sparql-Cv0QJxET.js">
+            </FileRef>
+            <FileRef
+               location = "group:protobuf-Bma46oWt.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:csp-B2ZTiYVV.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:Monocraft-BxeDVg9c.ttc">
+            </FileRef>
+            <FileRef
+               location = "group:markdown-DO6rAjK-.js">
+            </FileRef>
+            <FileRef
+               location = "group:bicep-6G0m-f21.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:sparql-Cv0QJxET.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:lexon-Mhdq6dIv.js.map">
+            </FileRef>
+            <FileRef
+               location = "group:MinecraftFiveV3-CX6jCKBo.ttf">
+            </FileRef>
+            <FileRef
+               location = "group:csharp-WnAUfhMt.js">
+            </FileRef>
+         </Group>
+      </Group>
+      <FileRef
+         location = "group:capacitor.config.json">
+      </FileRef>
+      <FileRef
+         location = "group:AppDelegate.swift">
+      </FileRef>
+      <FileRef
+         location = "group:Info.plist">
+      </FileRef>
+   </Group>
+   <FileRef
+      location = "group:App.xcodeproj">
+   </FileRef>
+   <FileRef
+      location = "group:App.xcworkspace">
+   </FileRef>
+   <FileRef
+      location = "group:Podfile">
+   </FileRef>
+   <FileRef
+      location = "group:Pods/Pods.xcodeproj">
+   </FileRef>
+</Workspace>

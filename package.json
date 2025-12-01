@@ -42,6 +42,8 @@
     },
     "private": true,
     "devDependencies": {
+        "@capacitor/cli": "^7.4.4",
+        "@capacitor/ios": "^7.4.4",
         "@electron-forge/cli": "^7.8.1",
         "@electron-forge/maker-deb": "^7.8.1",
         "@electron-forge/maker-rpm": "^7.8.1",
@@ -69,7 +71,8 @@
         "ts-node": "^10.9.2",
         "typescript": "^5.9.3",
         "vite": "^5.0.0",
-        "vite-plugin-commonjs-externals": "^0.1.1"
+        "vite-plugin-commonjs-externals": "^0.1.1",
+        "vite-plugin-node-polyfills": "^0.24.0"
     },
     "dependencies": {
         "@8crafter/leveldb-zlib": "^1.6.0",
@@ -100,6 +103,7 @@
         "semver": "^7.7.3",
         "three": "^0.180.0",
         "update-electron-app": "^3.1.1",
+        "vite-plugin-commonjs": "^0.10.4",
         "vscode-oniguruma": "^2.0.1",
         "vscode-textmate": "^9.2.1"
     },

@@ -26,7 +26,8 @@
  * ```
  */
 
+import "./preRenderer.ts";
 import "../app/renderer.tsx";
-import "./api/renderer.ts";
-import "./init/registerMonacoGrammarsAndThemes.ts";
-
+// DEBUG: This is only temporarily commented out for debugging purposes.
+// import "./api/renderer.ts";
+// import "./init/registerMonacoGrammarsAndThemes.ts";

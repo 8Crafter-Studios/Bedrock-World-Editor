@@ -281,7 +281,7 @@ interface GPUInfo {
 }
 
 let GPUInfo: GPUInfo | undefined = undefined;
-(app.getGPUInfo("complete") as Promise<GPUInfo>).then((gpuInfo: GPUInfo): void => {
+(app?.getGPUInfo?.("complete") as Promise<GPUInfo>).then((gpuInfo: GPUInfo): void => {
     GPUInfo = gpuInfo;
 });
 
