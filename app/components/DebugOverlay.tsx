@@ -16,19 +16,44 @@ import { existsSync } from "node:fs";
  */
 export default function DebugOverlay(): JSX.SpecificElement<"div"> {
     const containerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
+    let currentDebugOverlayScrollTop: number = 0;
+    const debugOverlayAbortController: AbortController = new AbortController();
     useEffect((): (() => void) => {
         function debugHUDChangeCallback(mode: typeof config.debugHUD): void {
             if (!containerRef.current) return;
             containerRef.current.replaceChildren();
             render(<DebugOverlayContents mode={mode} />, containerRef.current);
         }
+        window.addEventListener(
+            "keydown",
+            (event: KeyboardEvent): void => {
+                if (event.key === "F3" && event.shiftKey) {
+                    event.preventDefault();
+                    currentDebugOverlayScrollTop = Math.max(0, currentDebugOverlayScrollTop - Math.min(50, innerHeight / 2));
+                    containerRef.current?.querySelectorAll("& > .scrollable-debug-overlay.debug-overlay-scroll-from-top").forEach((v: Element): void => {
+                        v.scrollTop = currentDebugOverlayScrollTop;
+                    });
+                } else if (event.key === "F4" && event.shiftKey) {
+                    event.preventDefault();
+                    currentDebugOverlayScrollTop = Math.min(
+                        Math.max(...Array.from(containerRef.current!.children).map((v: Element): number => v.scrollHeight - v.clientHeight)),
+                        Math.max(0, currentDebugOverlayScrollTop + Math.min(50, innerHeight / 2))
+                    );
+                    containerRef.current?.querySelectorAll("& > .scrollable-debug-overlay.debug-overlay-scroll-from-top").forEach((v: Element): void => {
+                        v.scrollTop = currentDebugOverlayScrollTop;
+                    });
+                }
+            },
+            { signal: debugOverlayAbortController.signal }
+        );
+
         config.on("settingChanged:debugHUD", debugHUDChangeCallback);
         return (): void => {
             config.off("settingChanged:debugHUD", debugHUDChangeCallback);
         };
     }, []);
     return (
-        <div style={{ display: "contents", fontFamily: "Mojangles" }} ref={containerRef}>
+        <div style={{ display: "contents", fontFamily: "Mojangles", overflowWrap: "break-word" }} ref={containerRef}>
             <DebugOverlayContents mode={config.debugHUD} />
         </div>
     );
@@ -173,7 +198,7 @@ function DebugOverlay_Top(): JSX.Element {
   padding: .3em;
 } */`}</style>
             <div
-                class="nsel ndrg debug-overlay-top"
+                class="nsel ndrg debug-overlay-top scrollable-debug-overlay debug-overlay-scroll-from-left debug-overlay-scroll-from-top"
                 style={{
                     display: "flex",
                     flexDirection: "column",
@@ -438,7 +463,7 @@ function DebugOverlay_Basic(): JSX.Element {
         <>
             {/* Left panel */}
             <div
-                class="nsel ndrg"
+                class="nsel ndrg scrollable-debug-overlay debug-overlay-scroll-from-left debug-overlay-scroll-from-top"
                 style={{
                     display: "flex",
                     flexDirection: "column",
@@ -465,7 +490,7 @@ function DebugOverlay_Basic(): JSX.Element {
             </div>
             {/* Right panel */}
             <div
-                class="nsel ndrg"
+                class="nsel ndrg scrollable-debug-overlay debug-overlay-scroll-from-right debug-overlay-scroll-from-top"
                 style={{
                     display: "flex",
                     flexDirection: "column",
@@ -877,7 +902,7 @@ function DebugOverlay_Config(): JSX.Element {
 }`}</style>
             {/* Right panel */}
             <div
-                class="nsel ndrg debug-overlay-config-mode debug-overlay-right"
+                class="nsel ndrg debug-overlay-config-mode debug-overlay-right scrollable-debug-overlay debug-overlay-scroll-from-right debug-overlay-scroll-from-top"
                 style={{
                     display: "flex",
                     flexDirection: "column",
@@ -1039,7 +1064,7 @@ function DebugOverlay_Config_Views(): JSX.Element {
 }`}</style>
             {/* Right panel */}
             <div
-                class="nsel ndrg debug-overlay-config-mode debug-overlay-right"
+                class="nsel ndrg debug-overlay-config-mode debug-overlay-right scrollable-debug-overlay debug-overlay-scroll-from-right debug-overlay-scroll-from-top"
                 style={{
                     display: "flex",
                     flexDirection: "column",
@@ -1317,7 +1342,7 @@ function DebugOverlay_Tab(): JSX.Element {
 }`}</style>
             {/* Left panel */}
             <div
-                class="nsel ndrg debug-overlay-tab-mode"
+                class="nsel ndrg debug-overlay-tab-mode scrollable-debug-overlay debug-overlay-scroll-from-left debug-overlay-scroll-from-top"
                 style={{
                     display: "flex",
                     flexDirection: "column",
@@ -1342,7 +1367,7 @@ function DebugOverlay_Tab(): JSX.Element {
             </div>
             {/* Right panel */}
             <div
-                class="nsel ndrg debug-overlay-tab-mode"
+                class="nsel ndrg debug-overlay-tab-mode scrollable-debug-overlay debug-overlay-scroll-from-right debug-overlay-scroll-from-top"
                 style={{
                     display: "flex",
                     flexDirection: "column",

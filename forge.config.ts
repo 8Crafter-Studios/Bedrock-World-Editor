@@ -7,7 +7,7 @@ import { VitePlugin } from "@electron-forge/plugin-vite";
 import type { ForgeConfig, ResolvedForgeConfig } from "@electron-forge/shared-types";
 import { FuseV1Options, FuseVersion } from "@electron/fuses";
 import { type ChildProcess, spawn } from "node:child_process";
-import { cpSync, existsSync, rmSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
 import path from "node:path";
 
 const config: ForgeConfig = {
@@ -195,14 +195,7 @@ module.exports = bindings
                             ...(process.platform !== "darwin" ? ["darwin-24-arm64"] : []),
                             ...(process.platform !== "linux" ? ["linux-6-x64"] : []),
                         ]) {
-                            const target: string = path.join(
-                                build_path,
-                                "node_modules",
-                                "@8crafter",
-                                "leveldb-zlib",
-                                "prebuilds",
-                                dir
-                            );
+                            const target: string = path.join(build_path, "node_modules", "@8crafter", "leveldb-zlib", "prebuilds", dir);
                             console.log(`Attempting to remove ${target}...`);
                             if (existsSync(target)) {
                                 console.log(`Found ${target}...`);
