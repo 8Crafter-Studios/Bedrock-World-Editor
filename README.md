@@ -6,7 +6,7 @@ This app is still in beta, so please report any issues you find [here](https://g
 
 ## Overview
 
-This app supports Windows, Linux, and macOS (Darwin).
+This app supports Windows, Linux, and macOS (Darwin). iOS and Android support is planned but not implemented yet.
 
 [Changelog](https://github.com/8Crafter-Studios/Bedrock-World-Editor/blob/main/Changelog.md)
 
@@ -41,4 +41,5 @@ If you want to locally run the app without having to wait to the installer to bu
 1.  Clone this repository.
 2.  Run `npm i`.
 3.  Run `npm run start`.
+
 
