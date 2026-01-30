@@ -4,6 +4,8 @@ An NBT editor for Minecraft Bedrock Edition.
 
 This app is still in beta, so please report any issues you find [here](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues).
 
+For support you can [email 8Crafter](mailto:8crafter) or ask for help on the [8Crafter Studios](https://discord.8crafter.com) discord server.
+
 ## Overview
 
 This app supports Windows, Linux, and macOS (Darwin). iOS and Android support is planned but not implemented yet.
@@ -25,6 +27,11 @@ This is a list of add-ons that if you have any of them on your world, then this 
 
 If you have an add-on that saves players' names, and you want it to be supported, email 8Crafter at [8crafteryt@gmail.com](mailto:8crafteryt@gmail.com) or create a pull request to add it (the file that contains the parsers is [here](https://github.com/8Crafter-Studios/mcbe-leveldb/blob/main/DBUtils.ts), just add a function to parse it to the `playerUUIDToNameDynamicPropertyParsers` array in that file).
 
+<!-- TODO -->
+<!-- ## Add-Ons With Integrations
+
+This is a list of add-ons that the Bedrock World Editor has integrations with.-->
+
 ## Building Locally
 
 If you want to build the app locally, do the following:
@@ -41,5 +48,6 @@ If you want to locally run the app without having to wait to the installer to bu
 1.  Clone this repository.
 2.  Run `npm i`.
 3.  Run `npm run start`.
+
 
 
