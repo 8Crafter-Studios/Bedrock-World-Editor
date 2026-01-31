@@ -1,0 +1,22 @@
+*.ps1      linguist-detectable
+*.xml      linguist-detectable
+*.json     linguist-detectable
+*.jsonc    linguist-detectable
+*.jsonl    linguist-detectable
+*.plist    linguist-detectable
+
+**/tsconfig.json -linguist-detectable
+**/jsconfig.json -linguist-detectable
+**/package.json -linguist-detectable
+**/package-lock.json -linguist-detectable
+**/.package-lock.json -linguist-detectable
+**/manifest.json -linguist-detectable
+**/.*rc.json  -linguist-detectable
+**/eslint.config.cjs -linguist-detectable
+test/**    -linguist-detectable
+deprecated/** -linguist-detectable
+development_scripts/** -linguist-detectable
+.vscode/** -linguist-detectable
+.github/** -linguist-detectable
+
+src/libs/** linguist-vendored
