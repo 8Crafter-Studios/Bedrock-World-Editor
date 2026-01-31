@@ -17,7 +17,7 @@ interface TreeEditorDataStorageObjectBase {
     };
 }
 
-export type TreeEditorDataStorageObjectInput = GenericDataStorageObject & Partial<TreeEditorDataStorageObjectBase>;
+export type TreeEditorDataStorageObjectInput = Partial<GenericDataStorageObject> & Partial<TreeEditorDataStorageObjectBase>;
 
 export type TreeEditorDataStorageObject = GenericDataStorageObject & TreeEditorDataStorageObjectBase;
 
@@ -1036,7 +1036,7 @@ export default class TreeEditor extends React.Component<
             const children = expanded ? getChildren() : undefined;
             const childrenRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
             return (
-                <div class="treeEditorTreeNode" ref={props.containerRef}>
+                <div class="treeEditorTreeNode" ref={props.containerRef!}> // HACK: Passing undefined here may actually be bad, look into this at some point.
                     <div
                         class="treeEditorTreeNodeHeader"
                         onClick={(event: JSX.TargetedMouseEvent<HTMLDivElement>): void => {

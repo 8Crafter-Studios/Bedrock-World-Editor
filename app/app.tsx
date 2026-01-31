@@ -30,6 +30,7 @@ import { APP_DATA_FOLDER_PATH } from "../src/utils/URLs";
 import TicksTab from "./tabs/ticks";
 import { readdir, stat } from "node:fs/promises";
 import { formatFileSizeBinary, formatFileSizeMetric } from "../src/utils/fileSizeUtils";
+import IntegrationsTab from "./tabs/integrations";
 // import { Renderer3D } from "./3DRendererV1/3DRenderer";
 const mime = require("mime-types") as typeof import("mime-types");
 
@@ -228,7 +229,7 @@ export default function App(): JSX.Element {
 export interface MinecraftWorldDisplayDetails {
     name: string;
     path: string;
-    thumbnailPath?: string;
+    thumbnailPath?: string | undefined;
     lastOpenedWithVerison: `v${string}` | null;
     lastPlayed: Date | null;
     favorited: boolean;
@@ -668,7 +669,7 @@ export function LoadingScreenContents(props: LoadingScreenContentsProps): JSX.El
                 <div
                     style="margin-bottom: -1.5em; line-height: 1.5em; font-family: Consolas; font-size: round(down, calc(max(100vw, 300px) / 50), 5.12px);"
                     class="loading-screen-message nsel"
-                    ref={props.messageContainerRef}
+                    ref={props.messageContainerRef!} // HACK: Passing undefined here may actually be bad, look into this at some point.
                 >
                     {props.message ?? "Loading..."}
                 </div>
@@ -740,6 +741,8 @@ export function WorldEditorTabRenderer(props: {
                 return <EntitiesTab tab={props.parentTab} />;
             case "fun":
                 return <FunTab tab={props.parentTab} />;
+            case "integrations":
+                return <IntegrationsTab tab={props.parentTab} />;
             case "maps":
                 return <MapsTab tab={props.parentTab} />;
             case "repair-forced-world-corruption":

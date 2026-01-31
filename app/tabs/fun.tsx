@@ -6,7 +6,7 @@ export interface FunTabProps {
     tab: TabManagerTab;
 }
 
-export default function FunTab(props: FunTabProps): JSX.SpecificElement<"center"> {
+export default function FunTab(props: FunTabProps): JSX.SpecificElement<"div"> {
     const forceCorruptWorldButtonRef: React.RefObject<HTMLButtonElement> = React.useRef<HTMLButtonElement>(null);
     let forceCorruptWorldButtonInitiallyDisabled: boolean = !props.tab.cachedDBKeys || props.tab.cachedDBKeys.ForcedWorldCorruption.length > 0;
     React.useEffect((): void => {

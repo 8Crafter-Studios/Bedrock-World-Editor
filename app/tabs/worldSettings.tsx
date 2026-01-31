@@ -6,7 +6,7 @@ export interface WorldSettingsTabProps {
     tab: TabManagerSubTab;
 }
 
-export default function WorldSettingsTab(props: WorldSettingsTabProps): JSX.SpecificElement<"center"> {
+export default function WorldSettingsTab(props: WorldSettingsTabProps): JSX.Element {
     return (
         <GenericNBTEditorTab tab={props.tab} />
     );

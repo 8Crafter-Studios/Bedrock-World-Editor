@@ -23,7 +23,8 @@
         "noUncheckedIndexedAccess": true,
         "allowJs": true,
         "checkJs": true,
-        "esModuleInterop": true
+        "esModuleInterop": true,
+        "exactOptionalPropertyTypes": true
     },
     "include": ["vite.config.ts"],
     "exclude": ["deprecated/*", "*.asar", "src/globalify_renderer_imports.ts"]

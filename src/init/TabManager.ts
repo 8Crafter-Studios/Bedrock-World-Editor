@@ -15,7 +15,7 @@ import {
     type EntryContentTypeFormatData,
 } from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
-import type { TreeEditorDataStorageObject } from "../../app/components/TreeEditor";
+import type { TreeEditorDataStorageObjectInput } from "../../app/components/TreeEditor";
 import { LevelDB } from "@8crafter/leveldb-zlib";
 import path from "node:path";
 import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
@@ -26,7 +26,13 @@ import { app, dialog } from "@electron/remote";
 
 namespace exports {
     type DefaultEventMap = [never];
-    type Listener<K, T, F> = T extends DefaultEventMap ? F : K extends keyof T ? (T[K] extends unknown[] ? (...args: T[K]) => void : never) : never;
+    type Listener<K, T, F> =
+        T extends DefaultEventMap ? F
+        : K extends keyof T ?
+            T[K] extends unknown[] ?
+                (...args: T[K]) => void
+            :   never
+        :   never;
     type Listener1<K extends keyof T, T> = Listener<K, T, (...args: any[]) => void>;
     type EventMap<T> = Record<keyof T, any[]> | DefaultEventMap;
     type Key<K, T> = T extends DefaultEventMap ? string | symbol : K | keyof T;
@@ -255,6 +261,7 @@ namespace exports {
         | "schedulerwt"
         | "view-files"
         | "fun"
+        | "integrations"
         | "repair-forced-world-corruption";
 
     /**
@@ -295,14 +302,14 @@ namespace exports {
                 target: TabManagerSubTab["target"];
                 contentType: DBEntryContentType;
                 name: string;
-                icon?: string;
-                specialTabID?: TabManagerTabGenericSubTabID;
+                icon?: string | undefined;
+                specialTabID?: TabManagerTabGenericSubTabID | undefined;
                 /**
                  * Whether the tab should be set as the active tab upon opening.
                  *
                  * @default false
                  */
-                active?: boolean;
+                active?: boolean | undefined;
             }[];
         };
     };
@@ -334,17 +341,19 @@ namespace exports {
         /**
          * The database that this tab represents.
          */
-        public db?: LevelDB;
+        public db?: LevelDB | undefined;
         /**
          * The search object that is used to search the database.
          */
-        public dbSearch?: TabManagerTab_LevelDBSearch;
+        public dbSearch?: TabManagerTab_LevelDBSearch | undefined;
         /**
          * The keys of the database that are cached.
          */
-        public cachedDBKeys?: {
-            [key in DBEntryContentType]: Buffer[];
-        };
+        public cachedDBKeys?:
+            | {
+                  [key in DBEntryContentType]: Buffer[];
+              }
+            | undefined;
         /**
          * A promise that resolves when the database is open.
          *
@@ -447,19 +456,19 @@ namespace exports {
             return this.type === "world" || this.type === "leveldb";
         }
         public get isFavorited(): boolean {
-            return existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"))
-                ? ((): boolean => {
-                      try {
-                          const favoritedWorldsData: string[] = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8"));
-                          if (favoritedWorldsData.includes(this.path)) {
-                              return true;
-                          }
-                      } catch (e) {
-                          console.error(e);
-                      }
-                      return false;
-                  })()
-                : false;
+            return existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json")) ?
+                    ((): boolean => {
+                        try {
+                            const favoritedWorldsData: string[] = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8"));
+                            if (favoritedWorldsData.includes(this.path)) {
+                                return true;
+                            }
+                        } catch (e) {
+                            console.error(e);
+                        }
+                        return false;
+                    })()
+                :   false;
         }
         public set isFavorited(value: boolean) {
             if (value) {
@@ -636,7 +645,11 @@ namespace exports {
                         else throw e;
                     }
                 }
-                progressBar.detail = `Copying modified files to ${this.type === "world" ? "world" : this.type === "leveldb" ? "LevelDB" : "source"}...`;
+                progressBar.detail = `Copying modified files to ${
+                    this.type === "world" ? "world"
+                    : this.type === "leveldb" ? "LevelDB"
+                    : "source"
+                }...`;
                 if (this.type === "world" || this.type === "leveldb") {
                     console.log(`Copying modified files from ${this.tempPath} to ${this.path}...`);
                     if (!unsafeMode && existsSync(this.path)) await rm(this.path, { recursive: true, force: true });
@@ -678,9 +691,9 @@ namespace exports {
                     (!tab.specialTabID &&
                         !props.specialTabID &&
                         tab.target.type === props.target.type &&
-                        (tab.target.type === "File" && props.target.type === "File"
-                            ? tab.target.path === props.target.path
-                            : tab.target.type === "LevelDBEntry" && props.target.type === "LevelDBEntry" && tab.target.key.equals(props.target.key)))
+                        (tab.target.type === "File" && props.target.type === "File" ?
+                            tab.target.path === props.target.path
+                        :   tab.target.type === "LevelDBEntry" && props.target.type === "LevelDBEntry" && tab.target.key.equals(props.target.key)))
             );
             if (alreadyOpenEquivalentTab) {
                 if (switchToTab && this.selectedTab !== alreadyOpenEquivalentTab) this.switchTab(alreadyOpenEquivalentTab);
@@ -772,7 +785,7 @@ namespace exports {
             }
             this.openTabs.length = 0;
             this.switchTab(null);
-            this.tabManager.switchTab(index === -1 ? null : this.tabManager.openTabs[index - 1] ?? this.tabManager.openTabs[0] ?? null);
+            this.tabManager.switchTab(index === -1 ? null : (this.tabManager.openTabs[index - 1] ?? this.tabManager.openTabs[0] ?? null));
             this.tabManager.emit("closeTab", { tab: this });
             this.emit("closed");
             if (this.tempPath) {
@@ -812,13 +825,12 @@ namespace exports {
         [key in Exclude<DBEntryContentType, keyof DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase>]: {
             type: key;
         } & DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsOptionBase &
-            ((typeof entryContentTypeToFormatMap)[key]["type"] extends "NBT"
-                ? { viewMode?: "node" | "jsonnbt" | "snbt" | "raw" }
-                : (typeof entryContentTypeToFormatMap)[key]["type"] extends "custom"
-                ? VerifyConstraint<(typeof entryContentTypeToFormatMap)[key], { type: "custom" }>["resultType"] extends "JSONNBT"
-                    ? { viewMode?: "node" | "jsonnbt" | "snbt" | "raw" }
-                    : unknown
-                : unknown);
+            ((typeof entryContentTypeToFormatMap)[key]["type"] extends "NBT" ? { viewMode?: "node" | "jsonnbt" | "snbt" | "raw" }
+            : (typeof entryContentTypeToFormatMap)[key]["type"] extends "custom" ?
+                VerifyConstraint<(typeof entryContentTypeToFormatMap)[key], { type: "custom" }>["resultType"] extends "JSONNBT" ?
+                    { viewMode?: "node" | "jsonnbt" | "snbt" | "raw" }
+                :   unknown
+            :   unknown);
     } & DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase;
 
     interface DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase {
@@ -837,8 +849,7 @@ namespace exports {
     }
 
     export interface DBEntryContentTypeToTabManagerSubTabCurrentStateOptions
-        extends DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase,
-            DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase2 {}
+        extends DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase, DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase2 {}
 
     export type TabManagerSubTabCurrentState<ContentType extends DBEntryContentType = DBEntryContentType> = {
         scrollTop: number;
@@ -852,7 +863,7 @@ namespace exports {
     }
 
     export interface GenericDataStorageObjectNBT {
-        data: Awaited<ReturnTypeWithArgs<(typeof NBT)["parse"], [data: Buffer, nbtType?: NBT.NBTFormat]>>;
+        data: Awaited<ReturnTypeWithArgs<(typeof NBT)["parse"], [data: Buffer, nbtType?: NBT.NBTFormat | undefined]>>;
         dataType: "NBT";
         sourceType: EntryContentTypeFormatData;
     }
@@ -926,7 +937,7 @@ namespace exports {
         | GenericDataStorageObjectUnknown;
 
     export type DataStorageObject = GenericDataStorageObject &
-        Partial<Omit<TreeEditorDataStorageObject & MapEditorDataStorageObject, KeysOfUnion<GenericDataStorageObject>>>;
+        PartialWU<Omit<TreeEditorDataStorageObjectInput & MapEditorDataStorageObject, KeysOfUnion<GenericDataStorageObject>>>;
 
     const tabManagerSubTabContentTypeToDefaultIconMap: Record<DBEntryContentType, string | undefined> = {
         AABBVolumes: undefined,
@@ -986,7 +997,7 @@ namespace exports {
         public static lastID: bigint = 0n;
         public readonly parentTab: TabManagerTab;
         public name: string;
-        public icon?: LooseAutocomplete<"auto">;
+        public icon?: LooseAutocomplete<"auto"> | undefined;
         public contentType: ContentType;
         public target:
             | {
@@ -1008,19 +1019,19 @@ namespace exports {
          */
         public activeChanges: TabManagerSubTabChange[] = [];
         public currentState: TabManagerSubTabCurrentState<ContentType>;
-        public specialTabID?: TabManagerTabGenericSubTabID;
+        public specialTabID?: TabManagerTabGenericSubTabID | undefined;
         public readonly readonly: boolean = false;
         public readonly id: bigint = TabManagerSubTab.lastID++;
         public isValid: boolean = true;
         public constructor(props: {
             parentTab: TabManagerTab;
             name: TabManagerSubTab<ContentType>["name"];
-            icon?: TabManagerSubTab<ContentType>["icon"];
+            icon?: TabManagerSubTab<ContentType>["icon"] | undefined;
             contentType: ContentType;
             target: TabManagerSubTab<ContentType>["target"];
-            specialTabID?: TabManagerTabGenericSubTabID;
-            isPinned?: boolean;
-            readonly?: boolean;
+            specialTabID?: TabManagerTabGenericSubTabID | undefined;
+            isPinned?: boolean | undefined;
+            readonly?: boolean | undefined;
         }) {
             this.parentTab = props.parentTab;
             this.name = props.name;
@@ -1374,15 +1385,12 @@ namespace exports {
                                 case "NBT": {
                                     rawData = NBT.writeUncompressed(
                                         { name: "", ...data },
-                                        "format" in format
-                                            ? format.format === "LE"
-                                                ? "little"
-                                                : format.format === "BE"
-                                                ? "big"
-                                                : format.format === "LEV"
-                                                ? "littleVarint"
-                                                : "little"
+                                        "format" in format ?
+                                            format.format === "LE" ? "little"
+                                            : format.format === "BE" ? "big"
+                                            : format.format === "LEV" ? "littleVarint"
                                             : "little"
+                                        :   "little"
                                     );
                                     break;
                                 }
@@ -1702,15 +1710,12 @@ namespace exports {
                                 case "NBT": {
                                     rawData = NBT.writeUncompressed(
                                         { name: "", ...data },
-                                        "format" in format
-                                            ? format.format === "LE"
-                                                ? "little"
-                                                : format.format === "BE"
-                                                ? "big"
-                                                : format.format === "LEV"
-                                                ? "littleVarint"
-                                                : "little"
+                                        "format" in format ?
+                                            format.format === "LE" ? "little"
+                                            : format.format === "BE" ? "big"
+                                            : format.format === "LEV" ? "littleVarint"
                                             : "little"
+                                        :   "little"
                                     );
                                     break;
                                 }
@@ -2030,7 +2035,7 @@ namespace exports {
                 this.parentTab.openTabs.splice(this.parentTab.openTabs.indexOf(this), 1);
             }
             if (this.parentTab.selectedTab === this)
-                this.parentTab.switchTab(index === -1 ? null : this.parentTab.openTabs[index - 1] ?? this.parentTab.openTabs[0] ?? null);
+                this.parentTab.switchTab(index === -1 ? null : (this.parentTab.openTabs[index - 1] ?? this.parentTab.openTabs[0] ?? null));
             if (this.target.type === "File" && this.hasUnsavedChanges) {
                 this.parentTab.setFileAsModified(this.target.path, false);
             }
@@ -2214,7 +2219,7 @@ namespace exports {
             | undefined;
     }
     export interface TabManagerTab_LevelDBSearchResult<
-        OriginalObject extends NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number] | undefined = undefined
+        OriginalObject extends NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number] | undefined = undefined,
     > {
         /**
          * The tab associated with the search.
@@ -2277,9 +2282,9 @@ namespace exports {
                     return false;
                 if (
                     query.key &&
-                    (key !== undefined
-                        ? !cmpStrCS(key, query.key, query.caseSensitiveKey ?? true)
-                        : "name" in nbt && !cmpStrCS(query.key, nbt.name, query.caseSensitiveKey ?? true))
+                    (key !== undefined ?
+                        !cmpStrCS(key, query.key, query.caseSensitiveKey ?? true)
+                    :   "name" in nbt && !cmpStrCS(query.key, nbt.name, query.caseSensitiveKey ?? true))
                 )
                     return false;
                 if (query.tagType && !cmpStrCS(query.tagType, nbt.type, false)) return false;
@@ -2338,12 +2343,11 @@ namespace exports {
             yieldUndefined?: YU
         ): Generator<
             | TabManagerTab_LevelDBSearchResult<
-                  T["searchTargets"] extends any[]
-                      ? T["searchTargets"][number]
-                      : {
-                            key: Buffer<ArrayBufferLike>;
-                            contentType: DBEntryContentType;
-                        }
+                  T["searchTargets"] extends any[] ? T["searchTargets"][number]
+                  :   {
+                          key: Buffer<ArrayBufferLike>;
+                          contentType: DBEntryContentType;
+                      }
               >
             | (YU extends true ? undefined : never),
             void
@@ -2359,9 +2363,9 @@ namespace exports {
             const searchTargets: TabManagerTab_LevelDBSearchQuery["searchTargets"] & { contentType: DBEntryContentType; displayKey: string }[] =
                 query.searchTargets
                     ?.map((v) =>
-                        v.contentType
-                            ? (v as typeof v & { contentType: DBEntryContentType; displayKey: string })
-                            : { ...v, contentType: getContentTypeFromDBKey(v.key), displayKey: v.displayKey ?? getKeyDisplayName(v.key) }
+                        v.contentType ?
+                            (v as typeof v & { contentType: DBEntryContentType; displayKey: string })
+                        :   { ...v, contentType: getContentTypeFromDBKey(v.key), displayKey: v.displayKey ?? getKeyDisplayName(v.key) }
                     )
                     .filter(({ contentType }): boolean =>
                         !query.excludeContentTypes?.includes(contentType) && query.contentTypes ? query.contentTypes.includes(contentType) : true
@@ -2376,9 +2380,10 @@ namespace exports {
                 const searchableContents: string[] = searchTarget.searchableContents ?? [searchTarget.displayKey];
                 if (query.displayKeyContents) {
                     const caseSensitive: boolean = query.displayKeyContents.caseSensitive ?? false;
-                    const displayKey: string = caseSensitive
-                        ? searchTarget.displayKey ?? getKeyDisplayName(searchTarget.key)
-                        : (searchTarget.displayKey ?? getKeyDisplayName(searchTarget.key)).toLowerCase();
+                    const displayKey: string =
+                        caseSensitive ?
+                            (searchTarget.displayKey ?? getKeyDisplayName(searchTarget.key))
+                        :   (searchTarget.displayKey ?? getKeyDisplayName(searchTarget.key)).toLowerCase();
                     if (
                         query.displayKeyContents.allOf &&
                         query.displayKeyContents.allOf.length > 0 &&
@@ -2534,9 +2539,9 @@ namespace exports {
                             query.customDataFields[customDataField].allOf.length > 0 &&
                             (searchTarget.customDataFields?.[customDataField] === undefined ||
                                 !query.customDataFields[customDataField].allOf.every((v: string): boolean =>
-                                    caseSensitive
-                                        ? searchTarget.customDataFields?.[customDataField] === v
-                                        : searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase()
+                                    caseSensitive ?
+                                        searchTarget.customDataFields?.[customDataField] === v
+                                    :   searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase()
                                 ))
                         ) {
                             if (yieldUndefined) yield undefined!;
@@ -2547,9 +2552,9 @@ namespace exports {
                             query.customDataFields[customDataField].anyOf.length > 0 &&
                             (searchTarget.customDataFields?.[customDataField] === undefined ||
                                 !query.customDataFields[customDataField].anyOf.some((v: string): boolean =>
-                                    caseSensitive
-                                        ? searchTarget.customDataFields?.[customDataField] === v
-                                        : searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase()
+                                    caseSensitive ?
+                                        searchTarget.customDataFields?.[customDataField] === v
+                                    :   searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase()
                                 ))
                         ) {
                             if (yieldUndefined) yield undefined!;
@@ -2560,9 +2565,9 @@ namespace exports {
                             query.customDataFields[customDataField].oneOf.length > 0 &&
                             (searchTarget.customDataFields?.[customDataField] === undefined ||
                                 !query.customDataFields[customDataField].oneOf.some((v: string): boolean =>
-                                    caseSensitive
-                                        ? searchTarget.customDataFields?.[customDataField] === v
-                                        : searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase()
+                                    caseSensitive ?
+                                        searchTarget.customDataFields?.[customDataField] === v
+                                    :   searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase()
                                 ))
                         ) {
                             if (yieldUndefined) yield undefined!;
@@ -2573,9 +2578,9 @@ namespace exports {
                             query.customDataFields[customDataField].noneOf.length > 0 &&
                             searchTarget.customDataFields?.[customDataField] !== undefined &&
                             query.customDataFields[customDataField].noneOf.some((v: string): boolean =>
-                                caseSensitive
-                                    ? searchTarget.customDataFields?.[customDataField] === v
-                                    : searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase()
+                                caseSensitive ?
+                                    searchTarget.customDataFields?.[customDataField] === v
+                                :   searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase()
                             )
                         ) {
                             if (yieldUndefined) yield undefined!;

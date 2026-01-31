@@ -92,6 +92,21 @@ export type ReturnTypeWithArgs<T extends (...args: any[]) => any, ARGS_T> = Extr
 
 declare global {
     /**
+     * A version of {@link Partial} that adds `undefined` to union for each property's type.
+     *
+     * @template T The type to mutate.
+     *
+     * @example
+     * ```ts
+     * type Original = { name: string; age: number }
+     * type Mutated_Partial = Partial<Original>; // { name?: string; age?: number }
+     * type Mutated = PartialWU<Original>; // { name?: string | undefined; age?: number | undefined }
+     * ```
+     */
+    type PartialWU<T> = {
+        [P in keyof T]?: T[P] | undefined;
+    };
+    /**
      * Mutates the type by removing the `readonly` modifier from all properties.
      *
      * @template T The type to mutate.
