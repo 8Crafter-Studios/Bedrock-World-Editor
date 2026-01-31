@@ -179,6 +179,8 @@ namespace exports {
                 "%appdata%/.minecraft_bedrock/installations/*/packageData",
                 "%appdata%/.minecraft_bedrock/installations/*/*/packageData",
             ],
+            enabledAutoApplyIntegrations: [],
+            disabledAutoApplyIntegrations: [],
             attemptToKeepCurrentConfigWhenUpdatingVersion: false,
             GUIScale: 0,
             GUIScaleOverride: null,
@@ -548,6 +550,34 @@ namespace exports {
                     )
                 )
                 .flat();
+        }
+        /**
+         * The list of integrations that should be automatically applied without prompting.
+         *
+         * @default
+         * ```typescript
+         * []
+         * ```
+         */
+        public get enabledAutoApplyIntegrations(): ConfigConstants.AutoApplySupportedIntegrationId[] {
+            return this.getConfigData().enabledAutoApplyIntegrations ?? Config.defaults.enabledAutoApplyIntegrations;
+        }
+        public set enabledAutoApplyIntegrations(value: ConfigConstants.AutoApplySupportedIntegrationId[] | undefined) {
+            this.saveChanges({ enabledAutoApplyIntegrations: value ?? Config.defaults.enabledAutoApplyIntegrations });
+        }
+        /**
+         * The list of integrations that should not be automatically applied or prompted for.
+         *
+         * @default
+         * ```typescript
+         * []
+         * ```
+         */
+        public get disabledAutoApplyIntegrations(): ConfigConstants.AutoApplySupportedIntegrationId[] {
+            return this.getConfigData().enabledAutoApplyIntegrations ?? Config.defaults.enabledAutoApplyIntegrations;
+        }
+        public set disabledAutoApplyIntegrations(value: ConfigConstants.AutoApplySupportedIntegrationId[] | undefined) {
+            this.saveChanges({ enabledAutoApplyIntegrations: value ?? Config.defaults.enabledAutoApplyIntegrations });
         }
         /**
          * The GUI scale of the app.
@@ -1515,6 +1545,8 @@ namespace exports {
     const subConfigValueClasses = [VolumeConfig, ViewsConfig, DeepSubConfig] as const;
 
     export namespace ConfigConstants {
+        export const AutoApplySupportedIntegrationIds = ["WorldEdit_Bedrock"] as const;
+        export type AutoApplySupportedIntegrationId = typeof AutoApplySupportedIntegrationIds[number];
         export const debugOverlayModeList = ["none", "top", "basic", "config", "config_views", "tab"] as const;
         export const debugOverlayModes = {
             none: "Off",
