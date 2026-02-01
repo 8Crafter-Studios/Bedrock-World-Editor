@@ -338,7 +338,7 @@ export default function TabBar(): JSX.Element {
                             style="max-width: 16px; max-height: 16px; margin-right: 0.5em;"
                         />
                     </div>
-                    {props.tab.name.length > 30
+                    {props.tab.name.length > 40
                         ? props.tab.name.slice(0, 30 - Math.min(10, Math.max(0, props.tab.name.length - 45))) +
                           "..." +
                           props.tab.name.slice(30 + Math.max(0, props.tab.name.length - 40))

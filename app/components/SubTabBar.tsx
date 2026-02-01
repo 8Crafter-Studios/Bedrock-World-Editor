@@ -310,7 +310,7 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                                 />
                             </div>
                         )}
-                        {props.tab.name.length > 30
+                        {props.tab.name.length > 40
                             ? props.tab.name.slice(0, 30 - Math.min(10, Math.max(0, props.tab.name.length - 45))) +
                               "..." +
                               props.tab.name.slice(30 + Math.max(0, props.tab.name.length - 40))
