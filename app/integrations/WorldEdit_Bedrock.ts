@@ -28,7 +28,7 @@ export default {
     autoApplyActions: [
         {
             id: "command_setbiome_legacy",
-            name: " Command (Legacy Scoreboard Values)",
+            name: "setbiome Command (Legacy Scoreboard Values)",
             description: "WorldEdit_Bedrock",
             waitToCheckUntilWorldLoaded: false,
             async checkIfApplicable(tab: TabManagerTab): Promise<boolean> {
@@ -52,7 +52,7 @@ export default {
                             commandData = JSON.parse(entry.FakePlayerName.value);
                         } catch (e) {
                             console.error(
-                                "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::checkIfApplicable] Invalid  command data for entry:",
+                                "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::checkIfApplicable] Invalid setbiome command data for entry:",
                                 entry,
                                 "error:",
                                 e
@@ -86,7 +86,7 @@ export default {
                             commandData = JSON.parse(entry.FakePlayerName.value) as SetBiomeData;
                         } catch (e) {
                             console.error(
-                                "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::apply] Invalid  command data for entry:",
+                                "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::apply] Invalid setbiome command data for entry:",
                                 entry,
                                 "error:",
                                 e
@@ -114,7 +114,7 @@ export default {
                         const rawData3d = await tab.db.get(data3dKey);
                         if (!rawData3d) {
                             console.warn(
-                                "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::apply] Skipping  command entry. Data3D key not found for entry:",
+                                "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::apply] Skipping setbiome command entry. Data3D key not found for entry:",
                                 entry
                             );
                             continue;
