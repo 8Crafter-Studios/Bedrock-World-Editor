@@ -251,6 +251,12 @@ const menu = Menu.buildFromTemplate([
                 },
             },
             {
+                label: "Discord",
+                click(): void {
+                    shell.openExternal("https://discord.8crafter.com");
+                },
+            },
+            {
                 label: "Check for Updates...",
                 click(): void {
                     autoUpdater.checkForUpdates();
