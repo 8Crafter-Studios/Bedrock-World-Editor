@@ -71,12 +71,12 @@ export default {
                 await tab.awaitDBOpen;
                 if (!tab.db?.isOpen()) throw new Error("Database is not open.");
                 const data = await tab.db.get("scoreboard");
-                if (!data) return;
+                if (!data) throw new Error("Scoreboard data not found.");
                 const parsedData = await NBT.parse(data);
                 const scoreboard: NBTSchemas.NBTSchemaTypes.Scoreboard = parsedData.parsed as unknown as NBTSchemas.NBTSchemaTypes.Scoreboard;
-                if (!scoreboard?.value?.Objectives?.value?.value) return;
+                if (!scoreboard?.value?.Objectives?.value?.value) throw new Error("Scoreboard objectives not found.");
                 const gametestDBObjective = scoreboard.value.Objectives.value.value.find((o) => o.Name.value === "GAMETEST_DB");
-                if (!gametestDBObjective) return;
+                if (!gametestDBObjective) throw new Error("GAMETEST_DB objective not found.");
                 const scoreboardIds = new Set<bigint>(gametestDBObjective.Scores.value.value.map((s) => toLong(s.ScoreboardId.value)));
                 let scoreboardModified = false;
                 for (const entry of scoreboard.value.Entries.value.value) {
