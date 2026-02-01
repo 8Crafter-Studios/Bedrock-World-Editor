@@ -49,7 +49,7 @@ export default {
                         if (!entry.FakePlayerName?.value) continue;
                         let commandData: SetBiomeData;
                         try {
-                            commandData = JSON.parse(entry.FakePlayerName.value);
+                            commandData = JSON.parse(JSON.parse(`"${entry.FakePlayerName.value}"`)) as SetBiomeData;
                         } catch (e) {
                             console.error(
                                 "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::checkIfApplicable] Invalid setbiome command data for entry:",
@@ -83,7 +83,7 @@ export default {
                         if (!entry.FakePlayerName?.value) continue;
                         let commandData: SetBiomeData;
                         try {
-                            commandData = JSON.parse(entry.FakePlayerName.value) as SetBiomeData;
+                            commandData = JSON.parse(JSON.parse(`"${entry.FakePlayerName.value}"`)) as SetBiomeData;
                         } catch (e) {
                             console.error(
                                 "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::apply] Invalid setbiome command data for entry:",
@@ -175,6 +175,7 @@ export default {
                             biome.values.value.value[i] = resolvedPaletteIndex;
                         }
                         await tab.db.put(data3dKey, entryContentTypeToFormatMap.Data3D.serialize(data3dValue));
+                        tab.setLevelDBIsModified(true);
                     }
                 }
                 // TODO
