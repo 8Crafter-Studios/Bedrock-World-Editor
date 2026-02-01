@@ -1545,7 +1545,7 @@ namespace exports {
     const subConfigValueClasses = [VolumeConfig, ViewsConfig, DeepSubConfig] as const;
 
     export namespace ConfigConstants {
-        export const AutoApplySupportedIntegrationIds = ["WorldEdit_Bedrock"] as const;
+        export const AutoApplySupportedIntegrationIds = ["WorldEdit_Bedrock"] as const satisfies (keyof typeof import("../../app/integrations/index.ts").integrations)[];
         export type AutoApplySupportedIntegrationId = typeof AutoApplySupportedIntegrationIds[number];
         export const debugOverlayModeList = ["none", "top", "basic", "config", "config_views", "tab"] as const;
         export const debugOverlayModes = {

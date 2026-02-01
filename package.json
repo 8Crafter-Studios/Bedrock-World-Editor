@@ -88,7 +88,7 @@
         "jquery": "^3.7.1",
         "jquery-ui": "^1.14.1",
         "json5": "^2.2.3",
-        "mcbe-leveldb": "^1.6.0",
+        "mcbe-leveldb": "^1.7.2",
         "merge-refs": "^2.0.0",
         "mime-types": "^3.0.1",
         "monaco-editor": "^0.54.0",
