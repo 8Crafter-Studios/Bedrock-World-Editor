@@ -94,7 +94,17 @@ export default {
                             );
                             continue;
                         }
-                        if (!commandData[0].startsWith("wedit:biome,")) continue;
+                        if (!commandData[0].startsWith("wedit:biome,")) {
+                            // DEBUG: In production this should just continute without a console error.
+                            console.error(
+                                "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::apply] Invalid ID for setbiome command data for entry:",
+                                entry,
+                                'expected commandData[0] to start with "wedit:biome,"',
+                                "commandData:",
+                                commandData
+                            );
+                            continue;
+                        }
                         const [, dimension, coordinates] = commandData[0].split(",") as [
                             id: "wedit:biome",
                             dimension: `minecraft:${Dimension}`,
