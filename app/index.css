@@ -1324,6 +1324,59 @@ div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
     cursor: not-allowed;
 }
 
+.integrationsTabIntegrationButton {
+    padding: 10px;
+    background-color: var(--generic-button-bg-color);
+    color: var(--generic-button-text-color);
+    border: none;
+    border-radius: 5px;
+    margin: 5px;
+    cursor: pointer;
+
+    -webkit-user-select: none;
+    /* Safari */
+    -ms-user-select: none;
+    -moz-user-select: none;
+    /* IE 10 and IE 11 */
+    user-select: none;
+    /* Standard syntax */
+    -webkit-user-drag: none;
+}
+
+.integrationsTabIntegrationButton:not(:first-of-type) {
+    margin-top: 0;
+}
+
+.integrationsTabIntegrationButton:not(:disabled):active {
+    background-color: var(--generic-button-pressed-bg-color);
+    color: var(--generic-button-pressed-text-color);
+}
+
+.integrationsTabIntegrationButton:not(:disabled):hover:not(:active) {
+    background-color: var(--generic-button-hover-bg-color);
+    color: var(--generic-button-hover-text-color);
+}
+
+.integrationsTabIntegrationButton.selected {
+    background-color: var(--generic-button-selected-bg-color);
+    color: var(--generic-option-button-text-color);
+}
+
+.integrationsTabIntegrationButton:not(:disabled).selected:active {
+    background-color: var(--generic-option-selected-pressed-bg-color);
+    color: var(--generic-option-selected-pressed-text-color);
+}
+
+.integrationsTabIntegrationButton:not(:disabled).selected:hover:not(:active) {
+    background-color: var(--generic-option-selected-hover-bg-color);
+    color: var(--generic-option-selected-hover-text-color);
+}
+
+.integrationsTabIntegrationButton:disabled {
+    filter: contrast(0.5) brightness(0.5);
+    cursor: not-allowed;
+}
+
 .szh-menu-container {
     cursor: auto;
 }

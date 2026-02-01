@@ -203,4 +203,42 @@ export default {
             },
         },
     ],
+    async checkIfDetected(tab: TabManagerTab): Promise<boolean> {
+        if (tab.type !== "world" && tab.type !== "leveldb") return false;
+        if (!tab.db) return false;
+        await tab.awaitDBOpen;
+        if (!tab.db?.isOpen()) throw new Error("Database is not open.");
+        dynamicPropertiesUUIDCheck: {
+            const data = await tab.db.get("DynamicProperties");
+            if (!data) break dynamicPropertiesUUIDCheck;
+            let parsedData: { parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata };
+            try {
+                parsedData = await NBT.parse(data);
+            } catch (e) {
+                console.error(
+                    "[integration::WorldEdit_Bedrock::checkIfDetected::dynamicPropertiesUUIDCheck] Failed to parse DynamicProperties NBT data. error:",
+                    e
+                );
+                break dynamicPropertiesUUIDCheck;
+            }
+            const dynamicProperties: NBTSchemas.NBTSchemaTypes.DynamicProperties = parsedData.parsed as NBTSchemas.NBTSchemaTypes.DynamicProperties;
+            const UUIDs = ["3cdb2ddf-662e-4f8f-a0a1-1293b91ccb2f"] as const;
+            for (const UUID of UUIDs) {
+                if (UUID in dynamicProperties.value) {
+                    return true;
+                }
+            }
+        }
+        worldBehaviorPacksUUIDCheck: {
+            break worldBehaviorPacksUUIDCheck; // TEMP
+        }
+        worldBehaviorPacksHistoryUUIDCheck: {
+            break worldBehaviorPacksHistoryUUIDCheck; // TEMP
+        }
+        scoreboardCheck: {
+            break scoreboardCheck; // TEMP
+        }
+        // TODO
+        return false;
+    },
 } satisfies Integration;

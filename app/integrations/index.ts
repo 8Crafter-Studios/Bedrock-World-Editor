@@ -7,6 +7,15 @@ export interface Integration {
     readonly description: string;
     readonly links?: { [buttonLabel: string]: { url: string; description?: string } };
     readonly autoApplyActions?: IntegrationAutoApplyAction[];
+    /**
+     * Checks if this integration should show in the "Detected" section of the "Integrations" sidebar tab of the provided tab.
+     * 
+     * @param tab The tab to check.
+     * @returns `true` if this integration should show in the "Detected" section of the "Integrations" sidebar tab of the provided tab, `false` otherwise.
+     *
+     * @throws {unknown} If an error occurs.
+     */
+    checkIfDetected(tab: TabManagerTab): boolean | Promise<boolean>;
 }
 
 export interface IntegrationAutoApplyAction {

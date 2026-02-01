@@ -1,3 +1,13 @@
+# v1.0.0-beta.15
+
+## Additions
+
+-   Added support for editing the `Digest` content type.
+-   Added support for the `ChunkLoadedRequest` content type.
+-   Added the ability to scroll the debug overlay with `Shift+F3` and `Shift+F4`.
+-   Added a `Discord` button to the `Help` menu.
+-   Added the "Integrations" tab.
+
 # v1.0.0-beta.14
 
 ## Additions
