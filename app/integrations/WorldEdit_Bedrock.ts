@@ -78,6 +78,7 @@ export default {
                 const gametestDBObjective = scoreboard.value.Objectives.value.value.find((o) => o.Name.value === "GAMETEST_DB");
                 if (!gametestDBObjective) return;
                 const scoreboardIds = new Set<bigint>(gametestDBObjective.Scores.value.value.map((s) => toLong(s.ScoreboardId.value)));
+                let scoreboardModified = false;
                 for (const entry of scoreboard.value.Entries.value.value) {
                     if (scoreboardIds.has(toLong(entry.ScoreboardId.value))) {
                         if (!entry.FakePlayerName?.value) continue;
@@ -176,7 +177,17 @@ export default {
                         }
                         await tab.db.put(data3dKey, entryContentTypeToFormatMap.Data3D.serialize(data3dValue));
                         tab.setLevelDBIsModified(true);
+                        scoreboardModifications: {
+                            const entryIndex: number = scoreboard.value.Entries.value.value.indexOf(entry);
+                            if (entryIndex === -1) break scoreboardModifications;
+                            scoreboardModified = true;
+                            scoreboard.value.Entries.value.value.splice(entryIndex, 1);
+                        }
                     }
+                }
+                if (scoreboardModified) {
+                    // HACK: Look into why the scoreboard type is not assignable to the NBT.NBT type.
+                    await tab.db.put("scoreboard", NBT.writeUncompressed({ name: "", ...scoreboard } as unknown as NBT.NBT, "little"));
                 }
                 // TODO
             },
