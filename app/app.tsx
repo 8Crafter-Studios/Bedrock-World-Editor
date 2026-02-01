@@ -3,7 +3,7 @@ import { hydrate, render } from "preact/compat";
 import LeftSidebar from "./components/LeftSidebar";
 import DebugOverlay from "./components/DebugOverlay";
 import TabBar from "./components/TabBar";
-import { entryContentTypeToFormatMap, toLong } from "mcbe-leveldb";
+import { entryContentTypeToFormatMap, toLong, type NBTSchemas } from "mcbe-leveldb";
 import { Dirent, existsSync, globSync, read, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import NBT from "prismarine-nbt";
@@ -241,6 +241,8 @@ export interface MinecraftWorldDisplayDetails {
      * If getting the sizes was disabled, it will be `undefined`.
      */
     size?: Promise<number> | number | undefined;
+    editorOnly: boolean;
+    createdInEditor: boolean;
 }
 
 export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean = false): Promise<MinecraftWorldDisplayDetails[]> {
@@ -257,10 +259,10 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
                 .map(async (folderPath: string): Promise<MinecraftWorldDisplayDetails | undefined> => {
                     if (!existsSync(path.join(folderPath, "level.dat"))) return;
                     try {
-                        const levelDat: NBT.NBT = (await NBT.parse(readFileSync(path.join(folderPath, "level.dat"), { encoding: null }))).parsed;
+                        const levelDat: NBTSchemas.NBTSchemaTypes.LevelDat = (await NBT.parse(readFileSync(path.join(folderPath, "level.dat"), { encoding: null }))).parsed;
                         const name: string = existsSync(path.join(folderPath, "levelname.txt"))
                             ? readFileSync(path.join(folderPath, "levelname.txt"), { encoding: "utf-8" })
-                            : (levelDat.value.LevelName?.value as string) ?? "Unknown Name";
+                            : levelDat.value.LevelName?.value ?? "Unknown Name";
                         // console.log(folderPath, levelDat);
                         let size: Promise<number> | undefined = getSizes
                             ? readdir(folderPath, { recursive: true, withFileTypes: true }).then(
@@ -282,9 +284,9 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
                                 ? path.join(folderPath, "world_icon.jpeg")
                                 : globSync(path.join(folderPath, "world_icon.*"))[0],
                             lastOpenedWithVerison: levelDat.value.lastOpenedWithVersion
-                                ? `v${(levelDat.value.lastOpenedWithVersion as NBT.List<NBT.TagType.Int>).value.value.join(".")}`
+                                ? `v${levelDat.value.lastOpenedWithVersion.value.value.join(".")}`
                                 : null,
-                            lastPlayed: levelDat.value.LastPlayed ? new Date(Number(toLong((levelDat.value.LastPlayed as NBT.Long).value) * 1000n)) : null,
+                            lastPlayed: levelDat.value.LastPlayed ? new Date(Number(toLong(levelDat.value.LastPlayed.value) * 1000n)) : null,
                             favorited: existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"))
                                 ? ((): boolean => {
                                       try {
@@ -301,6 +303,8 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
                                   })()
                                 : false,
                             size,
+                            editorOnly: levelDat.value.editorWorldType?.value === 1,
+                            createdInEditor: levelDat.value.isCreatedInEditor?.value === 1
                         };
                     } catch (e) {
                         console.error(e);
