@@ -951,6 +951,7 @@ namespace exports {
         BlockEntity: undefined,
         BorderBlocks: undefined,
         Checksums: undefined,
+        ChunkLoadedRequest: undefined,
         ConversionData: undefined,
         Data2D: undefined,
         Data2DLegacy: undefined,
