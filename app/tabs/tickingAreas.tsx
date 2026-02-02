@@ -786,7 +786,7 @@ async function getTickingAreasTabContentsRows(data: {
                             data-key={key.rawKey}
                             onDblClick={(): void => {
                                 data.tab.openTab({
-                                    // TO-DO: In the future, add support for getting their skin head or profile picture.
+                                    // TODO: In the future, add support for getting their skin head or profile picture.
                                     contentType: "TickingArea",
                                     icon: "resource://images/ui/glyphs/icon_map.png",
                                     name: key.displayKey,
@@ -893,7 +893,7 @@ async function getTickingAreasTabContentsRows(data: {
                             data-key={key.rawKey}
                             onDblClick={(): void => {
                                 data.tab.openTab({
-                                    // TO-DO: In the future, add support for getting their skin head or profile picture.
+                                    // TODO: In the future, add support for getting their skin head or profile picture.
                                     contentType: "TickingArea",
                                     icon: "resource://images/ui/glyphs/icon_map.png",
                                     name: key.displayKey,

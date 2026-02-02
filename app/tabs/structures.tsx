@@ -76,7 +76,7 @@ const structuresTabSearchSyntax: SearchSyntaxHelpInfo = {
         dbkey: {
             description: "Searches the human-readable LevelDB key (the one displayed in the DB Key column) for the text.",
         },
-        // TO-DO
+        // TODO
         contents: {
             description: "Searches the LevelDB entry value as SNBT.",
         },
@@ -381,7 +381,7 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                                     buttonLabel: "Import",
                                     filters: [
                                         { name: "mcstructure", extensions: ["mcstructure"] },
-                                        // { name: "Java Structure", extensions: ["nbt", "schem", "schematic"] }, // TO-DO
+                                        // { name: "Java Structure", extensions: ["nbt", "schem", "schematic"] }, // TODO
                                         { name: "All", extensions: ["*"] },
                                     ],
                                     message: "Select the structure files to import.",
@@ -591,9 +591,9 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                                 });
                                 if (result.canceled) return;
                                 if (!existsSync(result.filePaths[0]!)) await mkdir(result.filePaths[0]!, { recursive: true });
-                                // TO-DO: Add an option to toggle this.
+                                // TODO: Add an option to toggle this.
                                 const filterExportsBySearchQuery: boolean = true;
-                                // TO-DO: Add an option to toggle this.
+                                // TODO: Add an option to toggle this.
                                 const refreshBeforeExporting: boolean = false;
                                 if (refreshBeforeExporting) {
                                     await tab.refreshCachedDBKeys();
@@ -683,9 +683,9 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                                     tabTargetTypeFilter: ["world", "leveldb"],
                                 });
                                 if (result.canceled) return;
-                                // TO-DO: Add an option to toggle this.
+                                // TODO: Add an option to toggle this.
                                 const filterExportsBySearchQuery: boolean = true;
-                                // TO-DO: Add an option to toggle this.
+                                // TODO: Add an option to toggle this.
                                 const refreshBeforeExporting: boolean = false;
                                 if (refreshBeforeExporting) {
                                     await tab.refreshCachedDBKeys();
@@ -1100,7 +1100,7 @@ async function getStructuresTabContentsRows(data: {
                             data-key={key.rawKey}
                             onDblClick={(): void => {
                                 data.tab.openTab({
-                                    // TO-DO: In the future, add support for getting their skin head or profile picture.
+                                    // TODO: In the future, add support for getting their skin head or profile picture.
                                     contentType: "StructureTemplate",
                                     icon: "resource://images/ui/glyphs/structure_block.png",
                                     name: key.displayKey,
@@ -1172,7 +1172,7 @@ async function getStructuresTabContentsRows(data: {
                             data-key={key.rawKey}
                             onDblClick={(): void => {
                                 data.tab.openTab({
-                                    // TO-DO: In the future, add support for getting their skin head or profile picture.
+                                    // TODO: In the future, add support for getting their skin head or profile picture.
                                     contentType: "StructureTemplate",
                                     icon: "resource://images/ui/glyphs/structure_block.png",
                                     name: key.displayKey,

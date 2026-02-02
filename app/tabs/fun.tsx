@@ -26,7 +26,7 @@ export default function FunTab(props: FunTabProps): JSX.SpecificElement<"div"> {
                 title="This feature will be added in a future update."
                 class="funTabButton"
                 onClick={(): void => {
-                    // TO-DO
+                    // TODO
                 }}
                 disabled
             >

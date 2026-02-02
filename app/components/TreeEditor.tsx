@@ -210,7 +210,7 @@ export default class TreeEditor extends React.Component<
                                             ".treeEditorTreeNodeHeader.selected"
                                         )[0];
                                         if (!headerElement) return;
-                                        // TO-DO
+                                        // TODO
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.byte}
@@ -230,7 +230,7 @@ export default class TreeEditor extends React.Component<
                                             ".treeEditorTreeNodeHeader.selected"
                                         )[0];
                                         if (!headerElement) return;
-                                        // TO-DO
+                                        // TODO
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.short}
@@ -250,7 +250,7 @@ export default class TreeEditor extends React.Component<
                                             ".treeEditorTreeNodeHeader.selected"
                                         )[0];
                                         if (!headerElement) return;
-                                        // TO-DO
+                                        // TODO
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.int}
@@ -270,7 +270,7 @@ export default class TreeEditor extends React.Component<
                                             ".treeEditorTreeNodeHeader.selected"
                                         )[0];
                                         if (!headerElement) return;
-                                        // TO-DO
+                                        // TODO
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.long}
@@ -290,7 +290,7 @@ export default class TreeEditor extends React.Component<
                                             ".treeEditorTreeNodeHeader.selected"
                                         )[0];
                                         if (!headerElement) return;
-                                        // TO-DO
+                                        // TODO
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.float}
@@ -310,7 +310,7 @@ export default class TreeEditor extends React.Component<
                                             ".treeEditorTreeNodeHeader.selected"
                                         )[0];
                                         if (!headerElement) return;
-                                        // TO-DO
+                                        // TODO
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.double}
@@ -330,7 +330,7 @@ export default class TreeEditor extends React.Component<
                                             ".treeEditorTreeNodeHeader.selected"
                                         )[0];
                                         if (!headerElement) return;
-                                        // TO-DO
+                                        // TODO
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.byteArray}
@@ -350,7 +350,7 @@ export default class TreeEditor extends React.Component<
                                             ".treeEditorTreeNodeHeader.selected"
                                         )[0];
                                         if (!headerElement) return;
-                                        // TO-DO
+                                        // TODO
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.shortArray}
@@ -370,7 +370,7 @@ export default class TreeEditor extends React.Component<
                                             ".treeEditorTreeNodeHeader.selected"
                                         )[0];
                                         if (!headerElement) return;
-                                        // TO-DO
+                                        // TODO
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.intArray}
@@ -390,7 +390,7 @@ export default class TreeEditor extends React.Component<
                                             ".treeEditorTreeNodeHeader.selected"
                                         )[0];
                                         if (!headerElement) return;
-                                        // TO-DO
+                                        // TODO
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.longArray}
@@ -410,7 +410,7 @@ export default class TreeEditor extends React.Component<
                                             ".treeEditorTreeNodeHeader.selected"
                                         )[0];
                                         if (!headerElement) return;
-                                        // TO-DO
+                                        // TODO
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.list}
@@ -430,7 +430,7 @@ export default class TreeEditor extends React.Component<
                                             ".treeEditorTreeNodeHeader.selected"
                                         )[0];
                                         if (!headerElement) return;
-                                        // TO-DO
+                                        // TODO
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.compound}
@@ -574,7 +574,7 @@ export default class TreeEditor extends React.Component<
                         .reduce((value: any, property: string): any => value?.[property], dataStorageObject.data);
                     if (!(nameTextBoxRef.current.defaultValue in parentObject)) return;
                     if (nameTextBoxRef.current.value in parentObject) {
-                        // TO-DO: Add a popup warning to config if they want to overwrite the property with the same name.
+                        // TODO: Add a popup warning to config if they want to overwrite the property with the same name.
                         console.error("Property name already exists");
                         return;
                     }
@@ -645,7 +645,7 @@ export default class TreeEditor extends React.Component<
                             try {
                                 newValue = BigInt(valueTextBoxRef.current.value);
                             } catch (e) {
-                                // TO-DO: Add a popup warning that they entered invalid input.
+                                // TODO: Add a popup warning that they entered invalid input.
                                 console.error(e);
                                 return;
                             }
@@ -653,7 +653,7 @@ export default class TreeEditor extends React.Component<
                         case "number":
                             newValue = Number(valueTextBoxRef.current.value);
                             if (isNaN(newValue)) {
-                                // TO-DO: Add a popup warning that they entered invalid input.
+                                // TODO: Add a popup warning that they entered invalid input.
                                 console.error("Invalid number input, result is NaN.");
                                 return;
                             }
@@ -665,13 +665,13 @@ export default class TreeEditor extends React.Component<
                             try {
                                 newValue = toLongParts(BigInt(valueTextBoxRef.current.value));
                             } catch (e) {
-                                // TO-DO: Add a popup warning that they entered invalid input.
+                                // TODO: Add a popup warning that they entered invalid input.
                                 console.error(e);
                                 return;
                             }
                             break;
                         case "never":
-                            // TO-DO: Add a popup warning that something went wrong.
+                            // TODO: Add a popup warning that something went wrong.
                             console.error(`Error saving new node value, value type ${JSON.stringify(type)} is not allowed to have its value directly edited.`);
                             return;
                     }

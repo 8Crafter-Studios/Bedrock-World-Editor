@@ -1054,7 +1054,7 @@ if (!startup && !started) {
                     .filter(
                         (release: (typeof releases.data)[number]): boolean =>
                             !!semver.valid(release.tag_name) &&
-                            // TO-DO: Add an option to allow showing draft releases.
+                            // TODO: Add an option to allow showing draft releases.
                             !release.draft /* && config.notifyForPrereleaseUpdates ? true : !release.prerelease */
                     )
                     .reduce(

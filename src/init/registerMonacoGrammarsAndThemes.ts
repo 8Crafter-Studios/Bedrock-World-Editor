@@ -706,7 +706,7 @@ async function main(language: LanguageId): Promise<void> {
                     case tokenAtCursor.scopes.some((scope: string): boolean => scope.startsWith("support.type.property-name.") && scope.endsWith(".snbt")): {
                         const text: string = model.getLineContent(position.lineNumber).slice(tokenAtCursor.startIndex ?? 0, position.column - 1);
                         switch (contentType) {
-                            // TO-DO: Switch this to use NBT schemas.
+                            // TODO: Switch this to use NBT schemas.
                             case "LevelDat": {
                                 return {
                                     suggestions: [

@@ -2,7 +2,7 @@ export function preloadImage(url: string): void {
     new Image().src = url;
 }
 
-// TO-DO
+// TODO
 const imagesToPreload: string[] = [];
 
 for (const imageURI of imagesToPreload) {

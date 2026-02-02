@@ -127,7 +127,7 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                                             const contentType = getContentTypeFromDBKey(props.tab.target.key);
                                             const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[contentType];
                                             if (!((format.type === "NBT") /*  || (format.type === "custom" && format.resultType === "JSONNBT") */)) return;
-                                            // TO-DO: Make this determine the default values dynamically so as not to insert invalid data.
+                                            // TODO: Make this determine the default values dynamically so as not to insert invalid data.
                                             props.tab.parentTab.db!.put(
                                                 props.tab.target.key,
                                                 NBT.writeUncompressed(

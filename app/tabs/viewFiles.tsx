@@ -1102,7 +1102,7 @@ async function getViewFilesTabContentsRows(data: {
             <tr
                 onDblClick={(): void => {
                     data.tab.openTab({
-                        // TO-DO: In the future, add support for getting their skin head or profile picture.
+                        // TODO: In the future, add support for getting their skin head or profile picture.
                         contentType: key.contentType,
                         icon: "auto",
                         name: key.displayKey,

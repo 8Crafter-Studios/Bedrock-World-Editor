@@ -29,7 +29,7 @@ export interface TicksTabProps {
     tab: TabManagerTab;
 }
 
-// TO-DO: Finish filling this in.
+// TODO: Finish filling this in.
 const ticksTabSearchSyntax: SearchSyntaxHelpInfo = {
     bodyText: (
         <>

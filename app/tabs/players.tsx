@@ -29,7 +29,7 @@ export interface PlayersTabProps {
     tab: TabManagerTab;
 }
 
-// TO-DO: Finish filling this in.
+// TODO: Finish filling this in.
 const playersTabSearchSyntax: SearchSyntaxHelpInfo = {
     bodyText: (
         <>
@@ -960,7 +960,7 @@ async function getPlayersTabContentsRows(data: {
                     <tr
                         onDblClick={(): void => {
                             data.tab.openTab({
-                                // TO-DO: In the future, add support for getting their skin head or profile picture.
+                                // TODO: In the future, add support for getting their skin head or profile picture.
                                 contentType: "Player",
                                 icon: "resource://images/ui/glyphs/icon_steve_server.png",
                                 name: serverKey.displayKey,
@@ -1114,7 +1114,7 @@ async function getPlayersTabContentsRows(data: {
                     <tr
                         onDblClick={(): void => {
                             data.tab.openTab({
-                                // TO-DO: In the future, add support for getting their skin head or profile picture.
+                                // TODO: In the future, add support for getting their skin head or profile picture.
                                 contentType: "PlayerClient",
                                 icon: "resource://images/ui/glyphs/icon_steve_client.png",
                                 name: clientKey.displayKey,
@@ -1211,7 +1211,7 @@ async function getPlayersTabContentsRows(data: {
                     <tr
                         onDblClick={(): void => {
                             data.tab.openTab({
-                                // TO-DO: In the future, add support for getting their skin head or profile picture.
+                                // TODO: In the future, add support for getting their skin head or profile picture.
                                 contentType: "Player",
                                 icon: "resource://images/ui/glyphs/icon_steve_server.png",
                                 name: serverKey.displayKey,

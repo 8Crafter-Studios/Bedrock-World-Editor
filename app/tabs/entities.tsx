@@ -810,7 +810,7 @@ async function getEntitiesTabContentsRows(data: {
                         data-key={key.rawKey}
                         onDblClick={(): void => {
                             data.tab.openTab({
-                                // TO-DO: In the future, add support for getting their skin head or profile picture.
+                                // TODO: In the future, add support for getting their skin head or profile picture.
                                 contentType: "ActorPrefix",
                                 icon: "resource://images/ui/glyphs/icon_panda.png",
                                 name: key.displayKey,
