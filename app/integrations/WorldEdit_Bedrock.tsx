@@ -446,9 +446,9 @@ const thisIntegration = {
             const abortController: AbortController | null = currentAbortController;
             return (
                 <>
-                    <div style={{marginLeft: "1em"}}>
+                    <div style={{ marginLeft: "1em" }}>
                         <h2>Biome Changes (Legacy)</h2>
-                        <div style={{marginLeft: "1em"}}>
+                        <div style={{ marginLeft: "1em" }}>
                             {(!!targetedChunkCountData.valid || !targetedChunkCountData.invalid) && (
                                 <p>{targetedChunkCountData.valid} chunk(s) with pending biome changes</p>
                             )}
@@ -543,7 +543,7 @@ const thisIntegration = {
             render(
                 <>
                     {...[
-                        applicableActions.includes("command_setbiome_legacy") && (
+                        applicableActions.includes("command_setbiome_legacy") && !!actionData.command_setbiome_legacy.targetedChunkCountData && (
                             <ActionMenu_Command_setbiome_Legacy targetedChunkCountData={actionData.command_setbiome_legacy.targetedChunkCountData} />
                         ),
                     ]
