@@ -1324,7 +1324,8 @@ div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
     cursor: not-allowed;
 }
 
-.integrationsTabIntegrationButton {
+.integrationsTabIntegrationButton,
+.genericRoundButton {
     padding: 10px;
     background-color: var(--generic-button-bg-color);
     color: var(--generic-button-text-color);
@@ -1343,36 +1344,43 @@ div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
     -webkit-user-drag: none;
 }
 
-.integrationsTabIntegrationButton:not(:first-of-type) {
+.integrationsTabIntegrationButton:not(:first-of-type),
+.genericRoundButton:not(:first-of-type) {
     margin-top: 0;
 }
 
-.integrationsTabIntegrationButton:not(:disabled):active {
+.integrationsTabIntegrationButton:not(:disabled):active,
+.genericRoundButton:not(:disabled):active {
     background-color: var(--generic-button-pressed-bg-color);
     color: var(--generic-button-pressed-text-color);
 }
 
-.integrationsTabIntegrationButton:not(:disabled):hover:not(:active) {
+.integrationsTabIntegrationButton:not(:disabled):hover:not(:active),
+.genericRoundButton:not(:disabled):hover:not(:active) {
     background-color: var(--generic-button-hover-bg-color);
     color: var(--generic-button-hover-text-color);
 }
 
-.integrationsTabIntegrationButton.selected {
+.integrationsTabIntegrationButton.selected,
+.genericRoundButton.selected {
     background-color: var(--generic-button-selected-bg-color);
     color: var(--generic-option-button-text-color);
 }
 
-.integrationsTabIntegrationButton:not(:disabled).selected:active {
+.integrationsTabIntegrationButton:not(:disabled).selected:active,
+.genericRoundButton:not(:disabled).selected:active {
     background-color: var(--generic-option-selected-pressed-bg-color);
     color: var(--generic-option-selected-pressed-text-color);
 }
 
-.integrationsTabIntegrationButton:not(:disabled).selected:hover:not(:active) {
+.integrationsTabIntegrationButton:not(:disabled).selected:hover:not(:active),
+.genericRoundButton:not(:disabled).selected:hover:not(:active) {
     background-color: var(--generic-option-selected-hover-bg-color);
     color: var(--generic-option-selected-hover-text-color);
 }
 
-.integrationsTabIntegrationButton:disabled {
+.integrationsTabIntegrationButton:disabled,
+.genericRoundButton:disabled {
     filter: contrast(0.5) brightness(0.5);
     cursor: not-allowed;
 }

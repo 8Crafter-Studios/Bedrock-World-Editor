@@ -12,6 +12,8 @@ export interface IntegrationsTabProps {
 }
 
 export default function IntegrationsTab(props: IntegrationsTabProps): JSX.SpecificElement<"center"> {
+    const mainIntegrationsScreenRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
+    const currentIntegrationMenuRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     const tablesContainerRef: RefObject<HTMLTableElement> = useRef<HTMLTableElement>(null);
     const viewOptionsRefs = {
         viewOptionsContainer: useRef<HTMLDivElement>(null),
@@ -59,10 +61,16 @@ export default function IntegrationsTab(props: IntegrationsTabProps): JSX.Specif
                             type="button"
                             class="integrationsTabIntegrationButton"
                             onClick={(): void => {
-                                console.warn(`[integrationsTab::integrationButton::${integration.id}] This button has not been implemented yet.`); // TEMP: This is just until this is implemented.
+                                if (!mainIntegrationsScreenRef.current) return;
+                                if (!currentIntegrationMenuRef.current) return;
+                                mainIntegrationsScreenRef.current.style.display = "none";
+                                currentIntegrationMenuRef.current.style.display = "flex";
+                                render(null, currentIntegrationMenuRef.current);
+                                render(
+                                    <integration.integrationMenu tab={props.tab} closeIntegrationMenu={closeIntegrationMenu} />,
+                                    currentIntegrationMenuRef.current
+                                );
                             }}
-                            title="This button has not been implemented yet." // TEMP: This is just until this is implemented.
-                            disabled={true} // TEMP: This is just until this is implemented.
                         >
                             {integration.name}
                             {/* TODO: Add icon, author, and description. */}
@@ -81,58 +89,68 @@ export default function IntegrationsTab(props: IntegrationsTabProps): JSX.Specif
             </div>
         );
     }
+    function closeIntegrationMenu(): void {
+        if (!mainIntegrationsScreenRef.current) return;
+        if (!currentIntegrationMenuRef.current) return;
+        mainIntegrationsScreenRef.current.style.display = "flex";
+        currentIntegrationMenuRef.current.style.display = "none";
+        render(null, currentIntegrationMenuRef.current);
+    }
     return (
-        <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
-            <div
-                class="widget-overlay-bar widget-overlay-bar-transparent"
-                style="display: flex; flex-direction: row;"
-                ref={viewOptionsRefs.viewOptionsContainer}
-            >
-                <div class="widget-overlay tabbed-selector" ref={viewOptionsRefs.viewOptionsTabbedSelector}>
-                    <button
-                        type="button"
-                        class={mode === "detected" ? "selected" : ""}
-                        onClick={(event: JSX.TargetedMouseEvent<HTMLButtonElement>): void => {
-                            if (event.currentTarget.classList.contains("selected")) return;
-                            $(event.currentTarget).siblings("button").removeClass("selected");
-                            $(event.currentTarget).addClass("selected");
-                            mode = "detected";
-                            updateTablesContents();
-                        }}
-                    >
-                        Detected
-                    </button>
-                    <button
-                        type="button"
-                        class={mode === "undetected" ? "selected" : ""}
-                        onClick={(event: JSX.TargetedMouseEvent<HTMLButtonElement>): void => {
-                            if (event.currentTarget.classList.contains("selected")) return;
-                            $(event.currentTarget).siblings("button").removeClass("selected");
-                            $(event.currentTarget).addClass("selected");
-                            mode = "undetected";
-                            updateTablesContents();
-                        }}
-                    >
-                        Undetected
-                    </button>
-                    <button
-                        type="button"
-                        class={mode === "loading" ? "selected" : ""}
-                        onClick={(event: JSX.TargetedMouseEvent<HTMLButtonElement>): void => {
-                            if (event.currentTarget.classList.contains("selected")) return;
-                            $(event.currentTarget).siblings("button").removeClass("selected");
-                            $(event.currentTarget).addClass("selected");
-                            mode = "loading";
-                            updateTablesContents();
-                        }}
-                    >
-                        Loading
-                    </button>
+        <>
+            <div class="mainIntegrationsScreen" style="width: 100%; height: 100%; display: flex; flex-direction: column;" ref={mainIntegrationsScreenRef}>
+                <div
+                    class="widget-overlay-bar widget-overlay-bar-transparent"
+                    style="display: flex; flex-direction: row;"
+                    ref={viewOptionsRefs.viewOptionsContainer}
+                >
+                    <div class="widget-overlay tabbed-selector" ref={viewOptionsRefs.viewOptionsTabbedSelector}>
+                        <button
+                            type="button"
+                            class={mode === "detected" ? "selected" : ""}
+                            onClick={(event: JSX.TargetedMouseEvent<HTMLButtonElement>): void => {
+                                if (event.currentTarget.classList.contains("selected")) return;
+                                $(event.currentTarget).siblings("button").removeClass("selected");
+                                $(event.currentTarget).addClass("selected");
+                                mode = "detected";
+                                updateTablesContents();
+                            }}
+                        >
+                            Detected
+                        </button>
+                        <button
+                            type="button"
+                            class={mode === "undetected" ? "selected" : ""}
+                            onClick={(event: JSX.TargetedMouseEvent<HTMLButtonElement>): void => {
+                                if (event.currentTarget.classList.contains("selected")) return;
+                                $(event.currentTarget).siblings("button").removeClass("selected");
+                                $(event.currentTarget).addClass("selected");
+                                mode = "undetected";
+                                updateTablesContents();
+                            }}
+                        >
+                            Undetected
+                        </button>
+                        <button
+                            type="button"
+                            class={mode === "loading" ? "selected" : ""}
+                            onClick={(event: JSX.TargetedMouseEvent<HTMLButtonElement>): void => {
+                                if (event.currentTarget.classList.contains("selected")) return;
+                                $(event.currentTarget).siblings("button").removeClass("selected");
+                                $(event.currentTarget).addClass("selected");
+                                mode = "loading";
+                                updateTablesContents();
+                            }}
+                        >
+                            Loading
+                        </button>
+                    </div>
+                </div>
+                <div style="display: flex; flex-direction: column;" ref={tablesContainerRef}>
+                    <TablesContents />
                 </div>
             </div>
-            <div style="display: flex; flex-direction: column;" ref={tablesContainerRef}>
-                <TablesContents />
-            </div>
-        </div>
+            <div class="integrationMenu" style="width: 100%; height: 100%; display: none; flex-direction: column;" ref={currentIntegrationMenuRef}></div>
+        </>
     );
 }

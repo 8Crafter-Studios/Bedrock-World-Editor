@@ -68,13 +68,13 @@ export interface TreeEditorProps {
      *
      * @default false
      */
-    readonly?: boolean;
+    readonly?: boolean | undefined;
     /**
      * An optional overlay bar widget registry to allow the tree editor to register widgets for the overlay bar.
      *
      * @default undefined
      */
-    overlayBarRegistry?: EditorWidgetOverlayBarWidgetRegistry;
+    overlayBarRegistry?: EditorWidgetOverlayBarWidgetRegistry | undefined;
 }
 
 export type TreeEditorSupportedDataType = "NBTCompound" | "NBT" | "JSON";

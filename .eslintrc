@@ -38,7 +38,8 @@
         "no-compare-neg-zero": "warn",
         // Unnecessary as it is built in to TypeScript.
         "no-fallthrough": "off",
-        "no-control-regex": "off"
+        "no-control-regex": "off",
+        "preserve-caught-error": "warn"
     }
 }
 

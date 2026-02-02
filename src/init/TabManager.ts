@@ -2050,31 +2050,31 @@ namespace exports {
              *
              * @default undefined
              */
-            path?: string[];
+            path?: string[] | undefined;
             /**
              * Whether or not the path should be case-sensitive.
              *
              * @default true
              */
-            caseSensitivePath?: boolean;
+            caseSensitivePath?: boolean | undefined;
             /**
              * The key of the tag.
              *
              * @default undefined
              */
-            key?: string;
+            key?: string | undefined;
             /**
              * Whether or not the key should be case-sensitive.
              *
              * @default true
              */
-            caseSensitiveKey?: boolean;
+            caseSensitiveKey?: boolean | undefined;
             /**
              * The type of the tag.
              *
              * @default undefined
              */
-            tagType?: `${TagType}`;
+            tagType?: `${TagType}` | undefined;
             /**
              * The value of the tag.
              *
@@ -2082,13 +2082,13 @@ namespace exports {
              *
              * @default undefined
              */
-            value?: NBT.Tags[TagType]["value"] | bigint;
+            value?: NBT.Tags[TagType]["value"] | bigint | undefined;
             /**
              * Whether or not the value should be case-sensitive.
              *
              * @default true
              */
-            caseSensitiveValue?: boolean;
+            caseSensitiveValue?: boolean | undefined;
         };
     }[NBT.TagType];
     export interface TabManagerTab_LevelDBSearchQuery {

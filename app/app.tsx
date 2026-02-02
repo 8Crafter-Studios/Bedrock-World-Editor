@@ -47,17 +47,15 @@ getCurrentWindow().on("close", async (event: Electron.Event): Promise<void> => {
             const result: number = dialog.showMessageBoxSync(getCurrentWindow(), {
                 type: "warning",
                 title: "Unsaved Changes",
-                ...(unsavedTabs.length === 1
-                    ? {
-                          message: `Do you want to save the changes you made to ${unsavedTabs[0]!.name}?`,
-                          detail: "Your changes will be lost if you don't save them.",
-                      }
-                    : {
-                          message: `Do you want to save the changes to the following ${unsavedTabs.length} tab${unsavedTabs.length === 1 ? "" : "s"}?`,
-                          detail: `${unsavedTabs
-                              .map((tab: TabManagerTab): string => tab.name)
-                              .join("\n")}\n\nYour changes will be lost if you don't save them.`,
-                      }),
+                ...(unsavedTabs.length === 1 ?
+                    {
+                        message: `Do you want to save the changes you made to ${unsavedTabs[0]!.name}?`,
+                        detail: "Your changes will be lost if you don't save them.",
+                    }
+                :   {
+                        message: `Do you want to save the changes to the following ${unsavedTabs.length} tab${unsavedTabs.length === 1 ? "" : "s"}?`,
+                        detail: `${unsavedTabs.map((tab: TabManagerTab): string => tab.name).join("\n")}\n\nYour changes will be lost if you don't save them.`,
+                    }),
                 buttons: ["Save", "Don't Save", "Cancel"],
                 noLink: true,
                 defaultId: 0,
@@ -130,17 +128,15 @@ window.addEventListener("beforeunload", async (event: BeforeUnloadEvent): Promis
             const result: number = dialog.showMessageBoxSync(getCurrentWindow(), {
                 type: "warning",
                 title: "Unsaved Changes",
-                ...(unsavedTabs.length === 1
-                    ? {
-                          message: `Do you want to save the changes you made to ${unsavedTabs[0]!.name}?`,
-                          detail: "Your changes will be lost if you don't save them.",
-                      }
-                    : {
-                          message: `Do you want to save the changes to the following ${unsavedTabs.length} tab${unsavedTabs.length === 1 ? "" : "s"}?`,
-                          detail: `${unsavedTabs
-                              .map((tab: TabManagerTab): string => tab.name)
-                              .join("\n")}\n\nYour changes will be lost if you don't save them.`,
-                      }),
+                ...(unsavedTabs.length === 1 ?
+                    {
+                        message: `Do you want to save the changes you made to ${unsavedTabs[0]!.name}?`,
+                        detail: "Your changes will be lost if you don't save them.",
+                    }
+                :   {
+                        message: `Do you want to save the changes to the following ${unsavedTabs.length} tab${unsavedTabs.length === 1 ? "" : "s"}?`,
+                        detail: `${unsavedTabs.map((tab: TabManagerTab): string => tab.name).join("\n")}\n\nYour changes will be lost if you don't save them.`,
+                    }),
                 buttons: ["Save", "Don't Save", "Cancel"],
                 noLink: true,
                 defaultId: 0,
@@ -259,52 +255,57 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
                 .map(async (folderPath: string): Promise<MinecraftWorldDisplayDetails | undefined> => {
                     if (!existsSync(path.join(folderPath, "level.dat"))) return;
                     try {
-                        const levelDat: NBTSchemas.NBTSchemaTypes.LevelDat = (await NBT.parse(readFileSync(path.join(folderPath, "level.dat"), { encoding: null }))).parsed;
-                        const name: string = existsSync(path.join(folderPath, "levelname.txt"))
-                            ? readFileSync(path.join(folderPath, "levelname.txt"), { encoding: "utf-8" })
-                            : levelDat.value.LevelName?.value ?? "Unknown Name";
+                        const levelDat: NBTSchemas.NBTSchemaTypes.LevelDat = (
+                            await NBT.parse(readFileSync(path.join(folderPath, "level.dat"), { encoding: null }))
+                        ).parsed;
+                        const name: string =
+                            existsSync(path.join(folderPath, "levelname.txt")) ?
+                                readFileSync(path.join(folderPath, "levelname.txt"), { encoding: "utf-8" })
+                            :   (levelDat.value.LevelName?.value ?? "Unknown Name");
                         // console.log(folderPath, levelDat);
-                        let size: Promise<number> | undefined = getSizes
-                            ? readdir(folderPath, { recursive: true, withFileTypes: true }).then(
-                                  (folderContents: Dirent[]): Promise<number> =>
-                                      Promise.all(
-                                          folderContents.map(
-                                              async (file: Dirent): Promise<number> =>
-                                                  file.isFile() ? (await stat(path.join(file.parentPath, file.name))).size : 0
-                                          )
-                                      )
-                                          .then((sizes: number[]): number => sizes.reduce((total: number, size: number): number => total + size, 0))
-                                          .catch((e: any): number => (console.error(`Error while reading size of world folder ${folderPath}:`, e), NaN))
-                              )
-                            : undefined;
+                        let size: Promise<number> | undefined =
+                            getSizes ?
+                                readdir(folderPath, { recursive: true, withFileTypes: true }).then(
+                                    (folderContents: Dirent[]): Promise<number> =>
+                                        Promise.all(
+                                            folderContents.map(
+                                                async (file: Dirent): Promise<number> =>
+                                                    file.isFile() ? (await stat(path.join(file.parentPath, file.name))).size : 0
+                                            )
+                                        )
+                                            .then((sizes: number[]): number => sizes.reduce((total: number, size: number): number => total + size, 0))
+                                            .catch((e: any): number => (console.error(`Error while reading size of world folder ${folderPath}:`, e), NaN))
+                                )
+                            :   undefined;
                         return {
                             name,
                             path: folderPath,
-                            thumbnailPath: existsSync(path.join(folderPath, "world_icon.jpeg"))
-                                ? path.join(folderPath, "world_icon.jpeg")
-                                : globSync(path.join(folderPath, "world_icon.*"))[0],
-                            lastOpenedWithVerison: levelDat.value.lastOpenedWithVersion
-                                ? `v${levelDat.value.lastOpenedWithVersion.value.value.join(".")}`
-                                : null,
+                            thumbnailPath:
+                                existsSync(path.join(folderPath, "world_icon.jpeg")) ?
+                                    path.join(folderPath, "world_icon.jpeg")
+                                :   globSync(path.join(folderPath, "world_icon.*"))[0],
+                            lastOpenedWithVerison:
+                                levelDat.value.lastOpenedWithVersion ? `v${levelDat.value.lastOpenedWithVersion.value.value.join(".")}` : null,
                             lastPlayed: levelDat.value.LastPlayed ? new Date(Number(toLong(levelDat.value.LastPlayed.value) * 1000n)) : null,
-                            favorited: existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"))
-                                ? ((): boolean => {
-                                      try {
-                                          const favoritedWorldsData: string[] = JSON.parse(
-                                              readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8")
-                                          );
-                                          if (favoritedWorldsData.includes(folderPath)) {
-                                              return true;
-                                          }
-                                      } catch (e) {
-                                          console.error(e);
-                                      }
-                                      return false;
-                                  })()
-                                : false,
+                            favorited:
+                                existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json")) ?
+                                    ((): boolean => {
+                                        try {
+                                            const favoritedWorldsData: string[] = JSON.parse(
+                                                readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8")
+                                            );
+                                            if (favoritedWorldsData.includes(folderPath)) {
+                                                return true;
+                                            }
+                                        } catch (e) {
+                                            console.error(e);
+                                        }
+                                        return false;
+                                    })()
+                                :   false,
                             size,
                             editorOnly: levelDat.value.editorWorldType?.value === 1,
-                            createdInEditor: levelDat.value.isCreatedInEditor?.value === 1
+                            createdInEditor: levelDat.value.isCreatedInEditor?.value === 1,
                         };
                     } catch (e) {
                         console.error(e);
@@ -320,6 +321,36 @@ fetch("resource://images/ui/misc/CreateNewWorld.png").then(
     async (response: Response): Promise<void> =>
         void (defaultWorldIconDataURI = `data:image/png;base64,${Buffer.from(await (await response.blob()).arrayBuffer()).toString("base64")}`)
 );
+
+interface PreloadedIconsObject {
+    [key: PropertyKey]: PreloadedIconsObject | string;
+}
+
+export const preloadedIcons = {
+    back: "resource://images/ui/glyphs/Chevron-Left.png",
+} as const satisfies PreloadedIconsObject;
+
+// Preloads the icons.
+{
+    function preloadIcons(object: PreloadedIconsObject): void {
+        Object.entries(object).forEach(([key, value]: [key: PropertyKey, value: PreloadedIconsObject | string]): void => {
+            if (typeof value === "object") {
+                preloadIcons(value);
+                return;
+            }
+
+            fetch(value)
+                .then((response: Response): Promise<Blob> => response.blob())
+                .then(
+                    async (blob: Blob): Promise<void> =>
+                        void (object[key] =
+                            `data:${mime.lookup(value)};base64,${Buffer.from(await blob.arrayBuffer()).toString("base64")}`)
+                )
+                .catch((): void => {});
+        });
+    }
+    preloadIcons(preloadedIcons);
+}
 
 export function WorldSelector(): JSX.SpecificElement<"div"> {
     const renderWorldsContainerRef: RefObject<HTMLDivElement> = useRef(null);
@@ -337,7 +368,9 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
     function RenderWorlds(): JSX.SpecificElement<"div">[] {
         return data
             .toSorted((a: MinecraftWorldDisplayDetails, b: MinecraftWorldDisplayDetails): number =>
-                a.favorited && !b.favorited ? -1 : b.favorited && !a.favorited ? 1 : b.lastPlayed!.getTime() - a.lastPlayed!.getTime()
+                a.favorited && !b.favorited ? -1
+                : b.favorited && !a.favorited ? 1
+                : b.lastPlayed!.getTime() - a.lastPlayed!.getTime()
             )
             .map((world: MinecraftWorldDisplayDetails, index: number): JSX.SpecificElement<"div"> => {
                 const [worldContextMenu_isOpen, worldContextMenu_setOpen] = useState(false);
@@ -359,13 +392,13 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                         title={`${world.name}\nLast Opened With: ${world.lastOpenedWithVerison}\nLast Played: ${
                             world.lastPlayed?.toLocaleString() ?? "null"
                         }\nPath: ${world.path}${
-                            config.showWorldSizesOnWorldList
-                                ? `\nFolder Size: ${
-                                      typeof world.size === "number"
-                                          ? (config.fileSizeUnits === "binary" ? formatFileSizeBinary : formatFileSizeMetric)(world.size)
-                                          : "Loading..."
-                                  }`
-                                : ""
+                            config.showWorldSizesOnWorldList ?
+                                `\nFolder Size: ${
+                                    typeof world.size === "number" ?
+                                        (config.fileSizeUnits === "binary" ? formatFileSizeBinary : formatFileSizeMetric)(world.size)
+                                    :   "Loading..."
+                                }`
+                            :   ""
                         }`}
                         class="nsel ndrg"
                         style={{
@@ -398,13 +431,17 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                         <img
                             aria-hidden="true"
                             src={
-                                world.thumbnailPath
-                                    ? `data:${mime.lookup(path.extname(world.thumbnailPath))};base64,${readFileSync(world.thumbnailPath, {
-                                          encoding: "base64",
-                                      })}`
-                                    : defaultWorldIconDataURI ?? "resource://images/ui/misc/CreateNewWorld.png"
+                                world.thumbnailPath ?
+                                    `data:${mime.lookup(path.extname(world.thumbnailPath))};base64,${readFileSync(world.thumbnailPath, {
+                                        encoding: "base64",
+                                    })}`
+                                :   (defaultWorldIconDataURI ?? "resource://images/ui/misc/CreateNewWorld.png")
                             }
-                            style={`margin: 4px; width: ${viewMode === "compact" ? 32 : viewMode === "detailed" ? 64 : 128}px; aspect-ratio: 16 / 9;`}
+                            style={`margin: 4px; width: ${
+                                viewMode === "compact" ? 32
+                                : viewMode === "detailed" ? 64
+                                : 128
+                            }px; aspect-ratio: 16 / 9;`}
                         />
                         <div
                             style={{
@@ -438,9 +475,9 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                                 <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                                     {config.showWorldSizesOnWorldList && (
                                         <span class="worldSelectorListItemWorldSize">
-                                            {typeof world.size === "number"
-                                                ? (config.fileSizeUnits === "binary" ? formatFileSizeBinary : formatFileSizeMetric)(world.size)
-                                                : "Loading..."}{" "}
+                                            {typeof world.size === "number" ?
+                                                (config.fileSizeUnits === "binary" ? formatFileSizeBinary : formatFileSizeMetric)(world.size)
+                                            :   "Loading..."}{" "}
                                         </span>
                                     )}
                                     <span class="worldSelectorListItemWorldVersion">
@@ -511,7 +548,11 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                                     }}
                                 >
                                     Open World Folder in{" "}
-                                    {process.platform === "win32" ? "File Explorer" : process.platform === "darwin" ? "Finder" : "File Manager"}
+                                    {process.platform === "win32" ?
+                                        "File Explorer"
+                                    : process.platform === "darwin" ?
+                                        "Finder"
+                                    :   "File Manager"}
                                 </MenuItem>
                                 {app.getApplicationNameForProtocol("minecraft:") && (
                                     <MenuItem
@@ -532,7 +573,7 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                                     </MenuItem>
                                 )}
                                 <MenuDivider />
-                                {world.favorited ? (
+                                {world.favorited ?
                                     <MenuItem
                                         onClick={(): void => {
                                             if (!existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"))) return;
@@ -555,8 +596,7 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                                     >
                                         Unfavorite
                                     </MenuItem>
-                                ) : (
-                                    <MenuItem
+                                :   <MenuItem
                                         onClick={(): void => {
                                             try {
                                                 let favoritedWorldsData: string[] = [];
@@ -579,7 +619,7 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                                     >
                                         Favorite
                                     </MenuItem>
-                                )}
+                                }
                             </ControlledMenu>
                         </div>
                         {/* TO-DO: Add a star icon for favorited tabs. */}
