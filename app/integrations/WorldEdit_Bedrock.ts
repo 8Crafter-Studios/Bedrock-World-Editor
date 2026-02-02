@@ -79,7 +79,7 @@ export default {
                 if (!gametestDBObjective) throw new Error("GAMETEST_DB objective not found.");
                 const scoreboardIds = new Set<bigint>(gametestDBObjective.Scores.value.value.map((s) => toLong(s.ScoreboardId.value)));
                 let scoreboardModified = false;
-                for (const entry of scoreboard.value.Entries.value.value) {
+                for (const entry of [...scoreboard.value.Entries.value.value]) {
                     if (scoreboardIds.has(toLong(entry.ScoreboardId.value))) {
                         if (!entry.FakePlayerName?.value) continue;
                         let commandData: SetBiomeData;
@@ -192,6 +192,10 @@ export default {
                             if (entryIndex === -1) break scoreboardModifications;
                             scoreboardModified = true;
                             scoreboard.value.Entries.value.value.splice(entryIndex, 1);
+                            const scoreboardId: bigint = toLong(entry.ScoreboardId.value)
+                            const objectiveEntryIndex: number = gametestDBObjective.Scores.value.value.findIndex((s) => toLong(s.ScoreboardId.value) === scoreboardId);
+                            if (objectiveEntryIndex === -1) break scoreboardModifications;
+                            gametestDBObjective.Scores.value.value.splice(objectiveEntryIndex, 1);
                         }
                     }
                 }
