@@ -17,7 +17,7 @@ This app supports Windows, Linux, and macOS (Darwin). iOS and Android support is
 Here are some important bugs to note:
 
 -   The Node editor currently only allows renaming, editing, and deleting tags, but not adding them (the buttons in the top right for it do not do anything yet).
--   For the SNBT and Prismaine-NBT JSON editors, you have to do `CTRL+SHIFT+V` instead of `CTRL+V` to paste.
+-   For the SNBT and Prismaine-NBT JSON editors, you have to do `CTRL+SHIFT+V` instead of `CTRL+V` to paste (on macOS you have to do `COMMAND+OPTION+SHIFT+V` instead).
 
 ## Supported Add-Ons for Detecting Player Names
 
@@ -48,6 +48,7 @@ If you want to locally run the app without having to wait to the installer to bu
 1.  Clone this repository.
 2.  Run `npm i`.
 3.  Run `npm run start`.
+
 
 
 
