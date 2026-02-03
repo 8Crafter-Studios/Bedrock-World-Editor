@@ -147,7 +147,7 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.SpecificElemen
         ] as const satisfies (Tab | false | undefined)[]
     ).filter((tab: Tab | false | undefined): tab is Tab => !!tab) as Tab[];
     return (
-        <div style="display: flex; flex-direction: column; height: 100%; width: 200px; overflow-y: auto;" id="left_sidebar">
+        <div style="display: flex; flex-direction: column; height: 100%; width: 200px; overflow: hidden auto;" id="left_sidebar">
             {tabs.map(
                 (tab: Tab): JSX.SpecificElement<"div"> => (
                     <div
