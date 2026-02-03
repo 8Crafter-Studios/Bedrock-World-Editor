@@ -7,6 +7,15 @@
 -   Added the ability to scroll the debug overlay with `Shift+F3` and `Shift+F4`.
 -   Added a `Discord` button to the `Help` menu.
 -   Added the "Integrations" tab.
+-   The left sidebar is now scrollable.
+
+## Changes
+
+-   Removed the transition of dragged tabs in the tab bars.
+
+## Fixes
+
+-   Fixed a bug where tabs' modes were never actually set in the constructor.
 
 # v1.0.0-beta.14
 

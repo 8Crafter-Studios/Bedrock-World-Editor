@@ -437,6 +437,7 @@ namespace exports {
             this.name = props.name;
             this.icon = props.icon;
             this.type = props.type;
+            if (props.mode) this.mode = props.mode;
             switch (props.mode) {
                 case TabManagerTabMode.Readonly:
                 case TabManagerTabMode.ReadonlyDirect:
