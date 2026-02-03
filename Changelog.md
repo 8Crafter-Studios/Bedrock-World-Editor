@@ -9,7 +9,10 @@
 -   Added the "Integrations" tab.
 -   The left sidebar is now scrollable.
 -   The lock icon of read-only tabs now has hover text.
+-   The bullet point modified icons of tabs and sub-tabs now have hover text.
+-   Changed the hover text of the close button of sub-tabs from `"Close (Shift to Close Without Saving)"` to `"Save & Close (Shift to Close Without Saving)"`.
 -   Holding Shift while clicking the X button of a tab now closes it without saving without a prompt, holding Ctrl+Shift saves and closes the tab.
+-   Added a warning before opening a world in Direct Mode.
 
 ## Changes
 

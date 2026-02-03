@@ -324,6 +324,7 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                             />
                         )}
                         <div
+                            title="Modified"
                             style={{
                                 display: props.tab.isModified() ? undefined : "none",
                                 marginLeft: "0.25em",
@@ -348,7 +349,7 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                                 }}
                             />
                         :   <img
-                                title="Close (Shift to Close Without Saving)"
+                                title="Save & Close (Shift to Close Without Saving)"
                                 src="resource://images/ui/glyphs/Close.png"
                                 style="margin-left: 0.5em; width: 10px; height: 10px; vertical-align: middle;"
                                 class="closebtn"
