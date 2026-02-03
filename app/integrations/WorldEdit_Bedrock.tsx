@@ -603,7 +603,7 @@ const thisIntegration = {
                                 props.closeIntegrationMenu();
                             }}
                         >
-                            <img src={preloadedIcons.back} style={{ width: "15px", imageRendering: "pixelated" }} aria-hidden="true" />
+                            <img src={preloadedIcons.back} style={{ width: "15px", imageRendering: "pixelated", marginRight: "1px" }} aria-hidden="true" />
                         </button>
                     </div>
                     {/* <div class="widget-overlay tabbed-selector" ref={viewOptionsRefs.viewOptionsTabbedSelector}>
