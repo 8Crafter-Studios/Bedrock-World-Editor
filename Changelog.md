@@ -9,6 +9,7 @@
 -   Added the "Integrations" tab.
 -   The left sidebar is now scrollable.
 -   The lock icon of read-only tabs now has hover text.
+-   Holding Shift while clicking the X button of a tab now closes it without saving without a prompt, holding Ctrl+Shift saves and closes the tab.
 
 ## Changes
 

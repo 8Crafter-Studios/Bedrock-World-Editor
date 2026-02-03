@@ -361,6 +361,7 @@ export default function TabBar(): JSX.Element {
                         />
                     )}
                     <div
+                        title="Modified"
                         style={{
                             display: props.tab.isModified() ? undefined : "none",
                             marginLeft: "0.25em",
@@ -373,12 +374,17 @@ export default function TabBar(): JSX.Element {
                         •
                     </div>
                     <img
-                        title="Close"
+                        title="Close (Shift to Close Without Saving, Ctrl+Shift to Save & Close)"
                         src="resource://images/ui/glyphs/Close.png"
                         style="margin-left: 0.5em; width: 10px; height: 10px; vertical-align: middle;"
                         class="closebtn"
                         onClick={async (event: JSX.TargetedMouseEvent<HTMLImageElement>): Promise<void> => {
                             if (props.tab.isModified()) {
+                                if (event.shiftKey) {
+                                    if (event.ctrlKey) await props.tab.save();
+                                    await props.tab.close();
+                                    return;
+                                }
                                 const result: MessageBoxReturnValue = await dialog.showMessageBox(getCurrentWindow(), {
                                     type: "warning",
                                     title: "Unsaved Changes",
