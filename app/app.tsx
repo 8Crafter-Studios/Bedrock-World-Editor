@@ -404,7 +404,7 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                                     :   "Loading..."
                                 }`
                             :   ""
-                        }`}
+                        }${world.editorOnly ? "\nEditor Only" : ""}${world.createdInEditor ? "\nCreated In Editor" : ""}`}
                         class="nsel ndrg"
                         style={{
                             display: "flex",
