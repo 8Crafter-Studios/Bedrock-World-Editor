@@ -253,10 +253,10 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
                         .map((dirent: Dirent<string>): string => path.join(folderPath, "minecraftWorlds", dirent.name));
                 })
                 .flat()
-                .filter((folderPath: string, i: number, a: string[]): boolean => {
-                    if (i === 0) return true;
-                    currentRealPaths.push(realpathSync(a[i - 1]!));
-                    return !currentRealPaths.includes(realpathSync(folderPath));
+                .filter((_folderPath: string, i: number, a: string[]): boolean => {
+                    // TODO: Rework this to allow favorited worlds to always show up, and if a favorite world shares a real path with a non-favorite world, the non-favorite world should not be shown.
+                    if (i === 0) currentRealPaths.push(...a.map((folderPath: string): string => realpathSync(folderPath)));
+                    return !currentRealPaths.slice(0, i).includes(currentRealPaths[i]!);
                 })
                 .map(async (folderPath: string): Promise<MinecraftWorldDisplayDetails | undefined> => {
                     if (!existsSync(path.join(folderPath, "level.dat"))) return;
