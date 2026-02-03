@@ -21,6 +21,7 @@
 ## Fixes
 
 -   Fixed a bug where tabs' modes were never actually set in the constructor.
+-   Symlinks no longer can cause duplicates of worlds to appear in the world selection menu when multiple found world folders resolve to the same real path.
 
 # v1.0.0-beta.14
 

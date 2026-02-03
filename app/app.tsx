@@ -4,7 +4,7 @@ import LeftSidebar from "./components/LeftSidebar";
 import DebugOverlay from "./components/DebugOverlay";
 import TabBar from "./components/TabBar";
 import { entryContentTypeToFormatMap, toLong, type NBTSchemas } from "mcbe-leveldb";
-import { Dirent, existsSync, globSync, read, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { Dirent, existsSync, globSync, readdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import NBT from "prismarine-nbt";
 import { useEffect, useRef, useState } from "preact/hooks";
@@ -242,6 +242,7 @@ export interface MinecraftWorldDisplayDetails {
 }
 
 export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean = false): Promise<MinecraftWorldDisplayDetails[]> {
+    const currentRealPaths: string[] = [];
     return (
         await Promise.all(
             (all ? [...new Set([...config.parsedMinecraftDataFolders, ...config.parsedExtraMinecraftDataFolders])] : config.parsedMinecraftDataFolders)
@@ -252,6 +253,11 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
                         .map((dirent: Dirent<string>): string => path.join(folderPath, "minecraftWorlds", dirent.name));
                 })
                 .flat()
+                .filter((folderPath: string, i: number, a: string[]): boolean => {
+                    if (i === 0) return true;
+                    currentRealPaths.push(realpathSync(a[i - 1]!));
+                    return !currentRealPaths.includes(realpathSync(folderPath));
+                })
                 .map(async (folderPath: string): Promise<MinecraftWorldDisplayDetails | undefined> => {
                     if (!existsSync(path.join(folderPath, "level.dat"))) return;
                     try {
