@@ -103,17 +103,20 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                 if (newTabIndex !== tab.openTabs.indexOf(props.tab)) {
                     tab.moveTab(props.tab, newTabIndex);
                 }
-                clonedElement.style.transition = "top 0.2s ease-out, left 0.2s ease-out";
-                const x: number = containerRef.current.offsetLeft;
-                const y: number = containerRef.current.offsetTop;
-                clonedElement.style.left = `${x}px`;
-                clonedElement.style.top = `${y}px`;
-                setTimeout((): void => {
-                    if (!containerRef.current || !clonedElement) return;
-                    clonedElement.remove();
-                    clonedElement = null;
-                    // containerRef.current.style.opacity = "";
-                }, 200);
+                // UNDONE: Removed the transition of the dragged tab.
+                clonedElement.remove();
+                clonedElement = null;
+                // clonedElement.style.transition = "top 0.2s ease-out, left 0.2s ease-out";
+                // const x: number = containerRef.current.offsetLeft;
+                // const y: number = containerRef.current.offsetTop;
+                // clonedElement.style.left = `${x}px`;
+                // clonedElement.style.top = `${y}px`;
+                // setTimeout((): void => {
+                //     if (!containerRef.current || !clonedElement) return;
+                //     clonedElement.remove();
+                //     clonedElement = null;
+                //     // containerRef.current.style.opacity = "";
+                // }, 200);
             }
             $(containerRef.current.parentElement!)
                 .find<HTMLLIElement>(".left-highlight, .right-highlight")
