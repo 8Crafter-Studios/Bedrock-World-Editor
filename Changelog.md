@@ -8,6 +8,7 @@
 -   Added a `Discord` button to the `Help` menu.
 -   Added the "Integrations" tab.
 -   The left sidebar is now scrollable.
+-   The lock icon of read-only tabs now has hover text.
 
 ## Changes
 
