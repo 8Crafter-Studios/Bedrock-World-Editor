@@ -13,7 +13,17 @@
 -   Changed the hover text of the close button of sub-tabs from `"Close (Shift to Close Without Saving)"` to `"Save & Close (Shift to Close Without Saving)"`.
 -   Holding Shift while clicking the X button of a tab now closes it without saving without a prompt, holding Ctrl+Shift saves and closes the tab.
 -   Added a warning before opening a world in Direct Mode.
--   Added details to the hover text of worlds in the world selection menu to show if a world is only visible in editor mode or was created in editor mode.
+-   Added the following details to the hover text of worlds in the world selection menu:
+    -   Start Count
+    -   Play Time
+    -   Game Mode
+    -   If the world is in hardcore mode.
+    -   Multiplayer/Singleplayer
+    -   If the world was from a locked template.
+    -   If the world was from a world template.
+    -   If the world is a single use world.
+    -   If the world is only visible in editor mode.
+    -   If the world was created in editor mode.
 
 ## Changes
 

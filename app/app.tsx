@@ -3,7 +3,7 @@ import { hydrate, render } from "preact/compat";
 import LeftSidebar from "./components/LeftSidebar";
 import DebugOverlay from "./components/DebugOverlay";
 import TabBar from "./components/TabBar";
-import { entryContentTypeToFormatMap, toLong, type NBTSchemas } from "mcbe-leveldb";
+import { entryContentTypeToFormatMap, gameModes, toLong, type NBTSchemas } from "mcbe-leveldb";
 import { Dirent, existsSync, globSync, readdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import NBT from "prismarine-nbt";
@@ -237,6 +237,14 @@ export interface MinecraftWorldDisplayDetails {
      * If getting the sizes was disabled, it will be `undefined`.
      */
     size?: Promise<number> | number | undefined;
+    startCount: bigint;
+    playTime: bigint;
+    gameMode: number;
+    hardcore: boolean;
+    multiplayer: boolean;
+    fromLockedTemplate: boolean;
+    fromWorldTemplate: boolean;
+    singleUseWorld: boolean;
     editorOnly: boolean;
     createdInEditor: boolean;
 }
@@ -310,6 +318,14 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
                                     })()
                                 :   false,
                             size,
+                            startCount: 0xffffffffn - toLong(levelDat.value.worldStartCount?.value ?? [0, -1]),
+                            playTime: toLong(levelDat.value.currentTick?.value ?? [0, 0]),
+                            gameMode: levelDat.value.GameType?.value ?? -1,
+                            hardcore: levelDat.value.IsHardcore?.value === 1,
+                            multiplayer: levelDat.value.MultiplayerGameIntent?.value === 1,
+                            fromLockedTemplate: levelDat.value.isFromLockedTemplate?.value === 1,
+                            fromWorldTemplate: levelDat.value.isFromWorldTemplate?.value === 1,
+                            singleUseWorld: levelDat.value.isSingleUseWorld?.value === 1,
                             editorOnly: levelDat.value.editorWorldType?.value === 1,
                             createdInEditor: levelDat.value.isCreatedInEditor?.value === 1,
                         };
@@ -404,6 +420,21 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                                     :   "Loading..."
                                 }`
                             :   ""
+                        }\nWorld Start Count: ${world.startCount}\nPlay Time: ${(world.playTime / 20n / 60n / 60n / 24n).toString().padStart(2, "0")}:${(
+                            (world.playTime / 20n / 60n / 60n) %
+                            24n
+                        )
+                            .toString()
+                            .padStart(2, "0")}:${((world.playTime / 20n / 60n) % 60n).toString().padStart(2, "0")}:${((world.playTime / 20n) % 60n)
+                            .toString()
+                            .padStart(2, "0")}.${
+                            (world.playTime % 20n) * 5n
+                        }\nGame Mode: ${world.gameMode === -1 ? "Unknown" : (gameModes[world.gameMode] ?? world.gameMode)}${
+                            world.hardcore ? "\nHardcore" : ""
+                        }\n${
+                            world.multiplayer ? "Multiplayer" : "Singleplayer"
+                        }${world.fromLockedTemplate ? "\nFrom Locked Template" : ""}${world.fromWorldTemplate ? "\nFrom World Template" : ""}${
+                            world.singleUseWorld ? "\nSingle Use World" : ""
                         }${world.editorOnly ? "\nEditor Only" : ""}${world.createdInEditor ? "\nCreated In Editor" : ""}`}
                         class="nsel ndrg"
                         style={{
