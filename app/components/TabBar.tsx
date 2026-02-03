@@ -212,7 +212,7 @@ export default function TabBar(): JSX.Element {
                     direction="right"
                     onClose={(): void => void tabContextMenu_setOpen(false)}
                 >
-                    {props.tab.isModified() ? (
+                    {props.tab.isModified() ?
                         <>
                             <MenuItem
                                 onClick={async (event: JSX.TargetedMouseEvent<HTMLDivElement>): Promise<void> => {
@@ -237,15 +237,14 @@ export default function TabBar(): JSX.Element {
                                 Close Tab Without Saving
                             </MenuItem>
                         </>
-                    ) : (
-                        <MenuItem
+                    :   <MenuItem
                             onClick={(): void => {
                                 props.tab.close();
                             }}
                         >
                             Close Tab
                         </MenuItem>
-                    )}
+                    }
                     <MenuItem
                         onClick={(event: JSX.TargetedMouseEvent<HTMLDivElement>): void => {
                             tabManager.openTabs.forEach(async (tab: TabManagerTab): Promise<void> => {
@@ -270,23 +269,32 @@ export default function TabBar(): JSX.Element {
                         Close Others
                     </MenuItem>
                     <MenuDivider />
-                    {props.tab.type === "world" || props.tab.type === "leveldb" ? (
+                    {props.tab.type === "world" || props.tab.type === "leveldb" ?
                         <MenuItem
                             onClick={(): void => {
                                 shell.openPath(props.tab.path);
                             }}
                         >
-                            Open Folder in {process.platform === "win32" ? "File Explorer" : process.platform === "darwin" ? "Finder" : "File Manager"}
+                            Open Folder in{" "}
+                            {process.platform === "win32" ?
+                                "File Explorer"
+                            : process.platform === "darwin" ?
+                                "Finder"
+                            :   "File Manager"}
                         </MenuItem>
-                    ) : (
-                        <MenuItem
+                    :   <MenuItem
                             onClick={(): void => {
                                 shell.showItemInFolder(props.tab.path);
                             }}
                         >
-                            Reveal in {process.platform === "win32" ? "File Explorer" : process.platform === "darwin" ? "Finder" : "File Manager"}
+                            Reveal in{" "}
+                            {process.platform === "win32" ?
+                                "File Explorer"
+                            : process.platform === "darwin" ?
+                                "Finder"
+                            :   "File Manager"}
                         </MenuItem>
-                    )}
+                    }
                     {props.tab.type === "world" &&
                         (config.parsedMinecraftDataFolders.some((folder: string): boolean =>
                             props.tab.path.replaceAll("\\", "/").startsWith(folder.replaceAll("\\", "/").replace(/(?<!\/)$/, "/"))
@@ -294,7 +302,7 @@ export default function TabBar(): JSX.Element {
                             props.tab.isFavorited) && (
                             <>
                                 <MenuDivider />
-                                {props.tab.isFavorited ? (
+                                {props.tab.isFavorited ?
                                     <MenuItem
                                         onClick={(): void => {
                                             props.tab.isFavorited = false;
@@ -302,15 +310,14 @@ export default function TabBar(): JSX.Element {
                                     >
                                         Unfavorite
                                     </MenuItem>
-                                ) : (
-                                    <MenuItem
+                                :   <MenuItem
                                         onClick={(): void => {
                                             props.tab.isFavorited = true;
                                         }}
                                     >
                                         Favorite
                                     </MenuItem>
-                                )}
+                                }
                             </>
                         )}
                 </ControlledMenu>
@@ -330,25 +337,25 @@ export default function TabBar(): JSX.Element {
                         <img
                             aria-hidden="true"
                             src={
-                                props.tab.icon
-                                    ? checkIsURIOrPath(props.tab.icon) === "URI"
-                                        ? props.tab.icon
-                                        : `data:${mime.lookup(props.tab.icon)};base64,${readFileSync(props.tab.icon, "base64")}`
-                                    : props.tab.type === "world"
-                                    ? "resource://images/ui/misc/CreateNewWorld.png"
-                                    : undefined
+                                props.tab.icon ?
+                                    checkIsURIOrPath(props.tab.icon) === "URI" ?
+                                        props.tab.icon
+                                    :   `data:${mime.lookup(props.tab.icon)};base64,${readFileSync(props.tab.icon, "base64")}`
+                                : props.tab.type === "world" ?
+                                    "resource://images/ui/misc/CreateNewWorld.png"
+                                :   undefined
                             }
                             style="max-width: 16px; max-height: 16px; margin-right: 0.5em;"
                         />
                     </div>
-                    {props.tab.name.length > 40
-                        ? props.tab.name.slice(0, 30 - Math.min(10, Math.max(0, props.tab.name.length - 45))) +
-                          "..." +
-                          props.tab.name.slice(30 + Math.max(0, props.tab.name.length - 40))
-                        : props.tab.name}
+                    {props.tab.name.length > 40 ?
+                        props.tab.name.slice(0, 30 - Math.min(10, Math.max(0, props.tab.name.length - 45))) +
+                        "..." +
+                        props.tab.name.slice(30 + Math.max(0, props.tab.name.length - 40))
+                    :   props.tab.name}
                     {props.tab.readonly && (
                         <img
-                            aria-hidden="true"
+                            title="Read-only"
                             src="resource://images/ui/glyphs/Lock-Locked.png"
                             style="margin-left: 0.5em; width: 18px; height: 18px; vertical-align: middle;"
                         />
