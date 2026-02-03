@@ -343,8 +343,7 @@ export const preloadedIcons = {
                 .then((response: Response): Promise<Blob> => response.blob())
                 .then(
                     async (blob: Blob): Promise<void> =>
-                        void (object[key] =
-                            `data:${mime.lookup(value)};base64,${Buffer.from(await blob.arrayBuffer()).toString("base64")}`)
+                        void (object[key] = `data:${mime.lookup(value)};base64,${Buffer.from(await blob.arrayBuffer()).toString("base64")}`)
                 )
                 .catch((): void => {});
         });
@@ -525,6 +524,17 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                                 </MenuItem>
                                 <MenuItem
                                     onClick={(): void => {
+                                        if (
+                                            dialog.showMessageBoxSync({
+                                                type: "warning",
+                                                title: "Bedrock World Editor",
+                                                message: `Are you sure you want to open this world in Direct Mode?`,
+                                                detail: "Direct mode is unsafe as any changes are immediately saved directly to your world files, leading to the potential corruption of your world. Using unsafe mode also can behave unpredictably when used while the world is open in Minecraft. Use at your own risk.",
+                                                buttons: ["Proceed", "Cancel"],
+                                                noLink: true,
+                                            })
+                                        )
+                                            return;
                                         tabManager.switchTab("loading");
                                         setTimeout(
                                             (): void =>
