@@ -77,7 +77,7 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.SpecificElemen
                         //     if (event.currentTarget.hasAttribute("disabled")) return;
                         //     SoundEffects.popB();
                         // }}
-                        style={{ paddingRight: "1px", lineHeight: "1em", textAlign: "left" }}
+                        style={{ paddingRight: "1px", lineHeight: "1em", textAlign: "left", flexShrink: 0 }}
                     >
                         <div style="display: inline-block; vertical-align: middle; width: 36px; height: 36px; text-align: center;">
                             <img
@@ -147,7 +147,7 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.SpecificElemen
         ] as const satisfies (Tab | false | undefined)[]
     ).filter((tab: Tab | false | undefined): tab is Tab => !!tab) as Tab[];
     return (
-        <div style="display: flex; flex-direction: column; height: 100%; width: 200px;" id="left_sidebar">
+        <div style="display: flex; flex-direction: column; height: 100%; width: 200px; overflow-y: auto;" id="left_sidebar">
             {tabs.map(
                 (tab: Tab): JSX.SpecificElement<"div"> => (
                     <div
@@ -157,7 +157,7 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.SpecificElemen
                         //     if (event.currentTarget.hasAttribute("disabled")) return;
                         //     SoundEffects.popB();
                         // }}
-                        style={{ paddingRight: "1px", lineHeight: "1em", textAlign: "left" }}
+                        style={{ paddingRight: "1px", lineHeight: "1em", textAlign: "left", flexShrink: 0 }}
                     >
                         <div style="display: inline-block; vertical-align: middle; width: 36px; height: 36px; text-align: center;">
                             <img
