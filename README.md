@@ -19,6 +19,11 @@ Here are some important bugs to note:
 -   The Node editor currently only allows renaming, editing, and deleting tags, but not adding them (the buttons in the top right for it do not do anything yet).
 -   For the SNBT and Prismaine-NBT JSON editors, you have to do `CTRL+SHIFT+V` instead of `CTRL+V` to paste (on macOS you have to do `COMMAND+OPTION+SHIFT+V` instead).
 
+If you are on an Apple Silicon Mac, you must run the following command in the directory the app is in before you run the arm64 build of the app, otherwise it will throw an error that the app is damaged and could not be opened since the app is not signed:
+```sh
+xattr -cr "Bedrock World Editor.app"
+```
+
 ## Supported Add-Ons for Detecting Player Names
 
 This is a list of add-ons that if you have any of them on your world, then this app can read the player names that they saved to the world's dynamic properties, allowing you to see players' names in the "Players" tab, as well as search for players by their name.
@@ -48,6 +53,7 @@ If you want to locally run the app without having to wait to the installer to bu
 1.  Clone this repository.
 2.  Run `npm i`.
 3.  Run `npm run start`.
+
 
 
 
