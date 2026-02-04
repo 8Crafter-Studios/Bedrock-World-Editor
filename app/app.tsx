@@ -31,6 +31,7 @@ import TicksTab from "./tabs/ticks";
 import { readdir, stat } from "node:fs/promises";
 import { formatFileSizeBinary, formatFileSizeMetric } from "../src/utils/fileSizeUtils";
 import IntegrationsTab from "./tabs/integrations";
+import TextEditorTab from "./tabs/textEditor";
 // import { Renderer3D } from "./3DRendererV1/3DRenderer";
 const mime = require("mime-types") as typeof import("mime-types");
 
@@ -877,7 +878,9 @@ export function WorldEditorTabRenderer(props: {
                             default:
                                 return <HexEditor tab={props.tab} />;
                         }
-                    case "ASCII": // Add text editor tab.
+                    case "ASCII":
+                    case "UTF-8":
+                        return <TextEditorTab tab={props.tab} />;
                     case "int": // Add int editor tab.
                     case "unknown":
                     default:
