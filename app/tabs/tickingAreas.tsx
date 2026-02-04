@@ -790,7 +790,7 @@ async function getTickingAreasTabContentsRows(data: {
                             onDblClick={(): void => {
                                 data.tab.openTab({
                                     contentType: "TickingArea",
-                                    icon: "resource://images/ui/glyphs/icon_map.png",
+                                    icon: "auto",
                                     name: key.displayKey,
                                     parentTab: data.tab,
                                     target: {
@@ -804,7 +804,7 @@ async function getTickingAreasTabContentsRows(data: {
                                 data.tab.openTab(
                                     {
                                         contentType: "TickingArea",
-                                        icon: "resource://images/ui/glyphs/icon_map.png",
+                                        icon: "auto",
                                         name: key.displayKey,
                                         parentTab: data.tab,
                                         target: {
@@ -896,7 +896,7 @@ async function getTickingAreasTabContentsRows(data: {
                             onDblClick={(): void => {
                                 data.tab.openTab({
                                     contentType: "TickingArea",
-                                    icon: "resource://images/ui/glyphs/icon_map.png",
+                                    icon: "auto",
                                     name: key.displayKey,
                                     parentTab: data.tab,
                                     target: {
@@ -910,7 +910,7 @@ async function getTickingAreasTabContentsRows(data: {
                                 data.tab.openTab(
                                     {
                                         contentType: "TickingArea",
-                                        icon: "resource://images/ui/glyphs/icon_map.png",
+                                        icon: "auto",
                                         name: key.displayKey,
                                         parentTab: data.tab,
                                         target: {

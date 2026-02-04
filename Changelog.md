@@ -25,6 +25,8 @@
     -   If the world is only visible in editor mode.
     -   If the world was created in editor mode.
 -   Added the ability to open sub-tabs in the background instead of immediately switching to them upon opening them by clicking with the scroll wheel instead of double-clicking.
+-   Added an icon for sub-tabs of content type `BiomeData`.
+-   Added an icon for sub-tabs of content type `SchedulerWT`.
 
 ## Changes
 
@@ -34,6 +36,7 @@
 
 -   Fixed a bug where tabs' modes were never actually set in the constructor.
 -   Symlinks no longer can cause duplicates of worlds to appear in the world selection menu when multiple found world folders resolve to the same real path.
+-   Fixed a bug where `TickingArea` sub-tabs opened through the "Ticking Areas" left sidebar tab had a map icon.
 
 # v1.0.0-beta.14
 

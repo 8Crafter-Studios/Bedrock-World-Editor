@@ -1104,7 +1104,7 @@ async function getStructuresTabContentsRows(data: {
                             onDblClick={(): void => {
                                 data.tab.openTab({
                                     contentType: "StructureTemplate",
-                                    icon: "resource://images/ui/glyphs/structure_block.png",
+                                    icon: "auto",
                                     name: key.displayKey,
                                     parentTab: data.tab,
                                     target: {
@@ -1118,7 +1118,7 @@ async function getStructuresTabContentsRows(data: {
                                 data.tab.openTab(
                                     {
                                         contentType: "StructureTemplate",
-                                        icon: "resource://images/ui/glyphs/structure_block.png",
+                                        icon: "auto",
                                         name: key.displayKey,
                                         parentTab: data.tab,
                                         target: {
@@ -1187,7 +1187,7 @@ async function getStructuresTabContentsRows(data: {
                             onDblClick={(): void => {
                                 data.tab.openTab({
                                     contentType: "StructureTemplate",
-                                    icon: "resource://images/ui/glyphs/structure_block.png",
+                                    icon: "auto",
                                     name: key.displayKey,
                                     parentTab: data.tab,
                                     target: {
@@ -1201,7 +1201,7 @@ async function getStructuresTabContentsRows(data: {
                                 data.tab.openTab(
                                     {
                                         contentType: "StructureTemplate",
-                                        icon: "resource://images/ui/glyphs/structure_block.png",
+                                        icon: "auto",
                                         name: key.displayKey,
                                         parentTab: data.tab,
                                         target: {

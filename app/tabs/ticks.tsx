@@ -965,6 +965,7 @@ async function getTicksTabContentsRows(data: {
                         onDblClick={(): void => {
                             data.tab.openTab({
                                 contentType: "RandomTicks",
+                                    icon: "auto",
                                 name: randomTickKey.displayKey,
                                 parentTab: data.tab,
                                 target: {
@@ -978,6 +979,7 @@ async function getTicksTabContentsRows(data: {
                             data.tab.openTab(
                                 {
                                     contentType: "RandomTicks",
+                                    icon: "auto",
                                     name: randomTickKey.displayKey,
                                     parentTab: data.tab,
                                     target: {
@@ -1007,6 +1009,7 @@ async function getTicksTabContentsRows(data: {
                         onDblClick={(): void => {
                             data.tab.openTab({
                                 contentType: "PendingTicks",
+                                icon: "auto",
                                 name: pendingTickKey.displayKey,
                                 parentTab: data.tab,
                                 target: {
@@ -1020,6 +1023,7 @@ async function getTicksTabContentsRows(data: {
                             data.tab.openTab(
                                 {
                                     contentType: "PendingTicks",
+                                    icon: "auto",
                                     name: pendingTickKey.displayKey,
                                     parentTab: data.tab,
                                     target: {

@@ -817,7 +817,7 @@ async function getMapsTabContentsRows(data: {
                             onDblClick={(): void => {
                                 data.tab.openTab({
                                     contentType: "Map",
-                                    icon: "resource://images/ui/glyphs/icon_map.png",
+                                    icon: "auto",
                                     name: key.displayKey,
                                     parentTab: data.tab,
                                     target: {
@@ -831,7 +831,7 @@ async function getMapsTabContentsRows(data: {
                                 data.tab.openTab(
                                     {
                                         contentType: "Map",
-                                        icon: "resource://images/ui/glyphs/icon_map.png",
+                                        icon: "auto",
                                         name: key.displayKey,
                                         parentTab: data.tab,
                                         target: {
@@ -956,7 +956,7 @@ async function getMapsTabContentsRows(data: {
                             onDblClick={(): void => {
                                 data.tab.openTab({
                                     contentType: "Map",
-                                    icon: "resource://images/ui/glyphs/icon_map.png",
+                                    icon: "auto",
                                     name: key.displayKey,
                                     parentTab: data.tab,
                                     target: {
@@ -970,7 +970,7 @@ async function getMapsTabContentsRows(data: {
                                 data.tab.openTab(
                                     {
                                         contentType: "Map",
-                                        icon: "resource://images/ui/glyphs/icon_map.png",
+                                        icon: "auto",
                                         name: key.displayKey,
                                         parentTab: data.tab,
                                         target: {

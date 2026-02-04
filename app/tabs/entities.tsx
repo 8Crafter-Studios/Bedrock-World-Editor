@@ -813,7 +813,7 @@ async function getEntitiesTabContentsRows(data: {
                         onDblClick={(): void => {
                             data.tab.openTab({
                                 contentType: "ActorPrefix",
-                                icon: "resource://images/ui/glyphs/icon_panda.png",
+                                    icon: "auto",
                                 name: key.displayKey,
                                 parentTab: data.tab,
                                 target: {
@@ -827,7 +827,7 @@ async function getEntitiesTabContentsRows(data: {
                             data.tab.openTab(
                                 {
                                     contentType: "ActorPrefix",
-                                    icon: "resource://images/ui/glyphs/icon_panda.png",
+                                    icon: "auto",
                                     name: key.displayKey,
                                     parentTab: data.tab,
                                     target: {

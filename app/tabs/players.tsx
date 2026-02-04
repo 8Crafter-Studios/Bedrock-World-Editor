@@ -965,7 +965,7 @@ async function getPlayersTabContentsRows(data: {
                             data.tab.openTab({
                                 // TODO: In the future, add support for getting their skin head or profile picture.
                                 contentType: "Player",
-                                icon: "resource://images/ui/glyphs/icon_steve_server.png",
+                                icon: "auto",
                                 name: serverKey.displayKey,
                                 parentTab: data.tab,
                                 target: {
@@ -980,7 +980,7 @@ async function getPlayersTabContentsRows(data: {
                                 {
                                     // TODO: In the future, add support for getting their skin head or profile picture.
                                     contentType: "Player",
-                                    icon: "resource://images/ui/glyphs/icon_steve_server.png",
+                                    icon: "auto",
                                     name: serverKey.displayKey,
                                     parentTab: data.tab,
                                     target: {
@@ -1138,7 +1138,7 @@ async function getPlayersTabContentsRows(data: {
                             data.tab.openTab({
                                 // TODO: In the future, add support for getting their skin head or profile picture.
                                 contentType: "PlayerClient",
-                                icon: "resource://images/ui/glyphs/icon_steve_client.png",
+                                icon: "auto",
                                 name: clientKey.displayKey,
                                 parentTab: data.tab,
                                 target: {
@@ -1153,7 +1153,7 @@ async function getPlayersTabContentsRows(data: {
                                 {
                                     // TODO: In the future, add support for getting their skin head or profile picture.
                                     contentType: "PlayerClient",
-                                    icon: "resource://images/ui/glyphs/icon_steve_client.png",
+                                    icon: "auto",
                                     name: clientKey.displayKey,
                                     parentTab: data.tab,
                                     target: {

@@ -133,7 +133,7 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.SpecificElemen
             { icon: "resource://images/ui/glyphs/realmPortalSmall.png", id: "portals", name: "Portals", resolution: 10 },
             { icon: "resource://images/ui/glyphs/timer.png", id: "ticks", name: "Ticks", resolution: 11 },
             { icon: "resource://images/ui/glyphs/timer.png", id: "ticking-areas", name: "Ticking Areas", resolution: 11 },
-            { icon: "resource://images/ui/glyphs/Slash-Command.png", id: "schedulerwt", name: "SchedulerWT", resolution: 12 },
+            { icon: "resource://images/ui/glyphs/icon_wandering_trader.png", id: "schedulerwt", name: "SchedulerWT", resolution: 16 },
             { icon: "resource://images/ui/glyphs/Folder-Closed.png", id: "view-files", name: "View Files", resolution: 12 },
             { icon: "resource://images/ui/glyphs/flame_full_image.png", id: "fun", name: "Fun", resolution: 13 },
             { icon: "resource://images/ui/glyphs/Source.png", id: "integrations", name: "Integrations", resolution: 12 },
