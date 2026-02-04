@@ -1,4 +1,4 @@
-import type { JSX, RefObject } from "preact";
+import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef, useState } from "preact/compat";
 import TreeEditor from "../components/TreeEditor";
 import {
@@ -191,7 +191,11 @@ export default function MapsTab(props: MapsTabProps): JSX.SpecificElement<"div">
                 errorElement.style.fontFamily = "monospace";
                 errorElement.style.whiteSpace = "pre";
                 errorElement.textContent =
-                    reason instanceof Error ? (reason.stack?.startsWith(reason.toString()) ? reason.stack : reason.toString() + reason.stack) : reason;
+                    reason instanceof Error ?
+                        reason.stack?.startsWith(reason.toString()) ?
+                            reason.stack
+                        :   reason.toString() + reason.stack
+                    :   reason;
                 render(null, containerRef.current);
                 containerRef.current.replaceChildren("Failed to load data:", errorElement);
             }
@@ -270,8 +274,7 @@ async function getMapsTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                                 // const [columnHeadersContextMenu_anchorPoint, columnHeadersContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
                                 const headerName = ConfigConstants.views.Maps.mapsTabModeSectionHeaderNames[mode][index];
                                 const sectionMode: ConfigConstants.views.Maps.MapsTabSectionMode = (
-                                    sectionID === null ? mode : `${mode}_${sectionID}`
-                                ) as ConfigConstants.views.Maps.MapsTabSectionMode;
+                                    sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Maps.MapsTabSectionMode;
                                 return (
                                     <>
                                         {/* TO-DO: Add in this context menu once the bug with it is fixed. https://github.com/szhsin/react-menu/issues/1591 */}
@@ -388,7 +391,7 @@ async function getMapsTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                                 }
                             })(),
                         },
-                    } as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number])
+                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
             ),
         };
         async function updateTablesContents(reloadData: boolean): Promise<void> {
@@ -402,12 +405,12 @@ async function getMapsTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                             await getMapsTabContentsRows({
                                 tab,
                                 keys:
-                                    Object.keys(query).length > 1
-                                        ? tab
-                                              .dbSearch!.serach(query)
-                                              .toArray()
-                                              .map((key): KeyData => key.originalObject.data)
-                                        : keys,
+                                    Object.keys(query).length > 1 ?
+                                        tab
+                                            .dbSearch!.serach(query)
+                                            .toArray()
+                                            .map((key): KeyData => key.originalObject.data)
+                                    :   keys,
                                 dynamicProperties,
                                 mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Maps.MapsTabSectionMode,
                             })
@@ -813,7 +816,6 @@ async function getMapsTabContentsRows(data: {
                             data-key={key.rawKey}
                             onDblClick={(): void => {
                                 data.tab.openTab({
-                                    // TODO: In the future, add support for getting their skin head or profile picture.
                                     contentType: "Map",
                                     icon: "resource://images/ui/glyphs/icon_map.png",
                                     name: key.displayKey,
@@ -824,6 +826,22 @@ async function getMapsTabContentsRows(data: {
                                     },
                                 });
                             }}
+                            onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                if (event.button !== 1) return;
+                                data.tab.openTab(
+                                    {
+                                        contentType: "Map",
+                                        icon: "resource://images/ui/glyphs/icon_map.png",
+                                        name: key.displayKey,
+                                        parentTab: data.tab,
+                                        target: {
+                                            type: "LevelDBEntry",
+                                            key: key.rawKey,
+                                        },
+                                    },
+                                    false
+                                );
+                            }}
                         >
                             {columns.map((column: (typeof columns)[number]): JSX.Element => {
                                 switch (column) {
@@ -832,103 +850,87 @@ async function getMapsTabContentsRows(data: {
                                     case "ID":
                                         return (
                                             <td>
-                                                {key.data.parsed.value.mapId?.type === "long" ? (
+                                                {key.data.parsed.value.mapId?.type === "long" ?
                                                     toLong(key.data.parsed.value.mapId.value)
-                                                ) : (
-                                                    <span style="color: red;">null</span>
-                                                )}
+                                                :   <span style="color: red;">null</span>}
                                             </td>
                                         );
                                     case "DecorationCount":
                                         return (
                                             <td>
-                                                {key.data.parsed.value.decorations?.type === "list" &&
-                                                key.data.parsed.value.decorations.value?.type === "compound" ? (
+                                                {(
+                                                    key.data.parsed.value.decorations?.type === "list" &&
+                                                    key.data.parsed.value.decorations.value?.type === "compound"
+                                                ) ?
                                                     key.data.parsed.value.decorations.value.value.length
-                                                ) : (
-                                                    <span style="color: red;">null</span>
-                                                )}
+                                                :   <span style="color: red;">null</span>}
                                             </td>
                                         );
                                     case "Location":
                                         return (
                                             <td>
-                                                {key.data.parsed.value.xCenter?.type === "int" && key.data.parsed.value.zCenter?.type === "int" ? (
+                                                {key.data.parsed.value.xCenter?.type === "int" && key.data.parsed.value.zCenter?.type === "int" ?
                                                     `${[key.data.parsed.value.xCenter.value, key.data.parsed.value.zCenter.value]
                                                         .map((v: number): string => v.toFixed(3))
                                                         .join(", ")} ${
-                                                        key.data.parsed.value.dimension?.type === "byte"
-                                                            ? dimensions[key.data.parsed.value.dimension.value] ?? key.data.parsed.value.dimension.value
-                                                            : "Unknown Dimension"
+                                                        key.data.parsed.value.dimension?.type === "byte" ?
+                                                            (dimensions[key.data.parsed.value.dimension.value] ?? key.data.parsed.value.dimension.value)
+                                                        :   "Unknown Dimension"
                                                     }`
-                                                ) : (
-                                                    <span style="color: red;">null</span>
-                                                )}
+                                                :   <span style="color: red;">null</span>}
                                             </td>
                                         );
                                     case "LocationCompact":
                                         return (
                                             <td>
-                                                {key.data.parsed.value.xCenter?.type === "int" && key.data.parsed.value.zCenter?.type === "int" ? (
+                                                {key.data.parsed.value.xCenter?.type === "int" && key.data.parsed.value.zCenter?.type === "int" ?
                                                     `${[key.data.parsed.value.xCenter.value, key.data.parsed.value.zCenter.value]
                                                         .map((v: number): string => v.toFixed(0))
                                                         .join(",")} ${
                                                         key.data.parsed.value.dimension?.type === "byte" ? key.data.parsed.value.dimension.value : "?"
                                                     }`
-                                                ) : (
-                                                    <span style="color: red;">null</span>
-                                                )}
+                                                :   <span style="color: red;">null</span>}
                                             </td>
                                         );
                                     case "FullyExplored":
                                         return (
                                             <td>
-                                                {key.data.parsed.value.fullyExplored?.type === "byte" ? (
-                                                    key.data.parsed.value.fullyExplored.value === 1 ? (
+                                                {key.data.parsed.value.fullyExplored?.type === "byte" ?
+                                                    key.data.parsed.value.fullyExplored.value === 1 ?
                                                         <span style="color: #5F5;">True</span>
-                                                    ) : key.data.parsed.value.fullyExplored.value === 0 ? (
+                                                    : key.data.parsed.value.fullyExplored.value === 0 ?
                                                         <span style="color: #F55;">False</span>
-                                                    ) : (
-                                                        <span style="color: #FA5;">{key.data.parsed.value.fullyExplored.value}</span>
-                                                    )
-                                                ) : (
-                                                    <span style="color: red;">null</span>
-                                                )}
+                                                    :   <span style="color: #FA5;">{key.data.parsed.value.fullyExplored.value}</span>
+                                                :   <span style="color: red;">null</span>}
                                             </td>
                                         );
                                     case "Height":
                                         return (
                                             <td>
-                                                {key.data.parsed.value.height?.type === "short" ? (
+                                                {key.data.parsed.value.height?.type === "short" ?
                                                     key.data.parsed.value.height.value
-                                                ) : (
-                                                    <span style="color: red;">null</span>
-                                                )}
+                                                :   <span style="color: red;">null</span>}
                                             </td>
                                         );
                                     case "ParentMapID":
                                         return (
                                             <td>
-                                                {key.data.parsed.value.parentMapId?.type === "long" ? (
+                                                {key.data.parsed.value.parentMapId?.type === "long" ?
                                                     toLong(key.data.parsed.value.parentMapId.value)
-                                                ) : (
-                                                    <span style="color: red;">null</span>
-                                                )}
+                                                :   <span style="color: red;">null</span>}
                                             </td>
                                         );
                                     case "Scale":
                                         return (
                                             <td>
-                                                {key.data.parsed.value.scale?.type === "byte" ? (
+                                                {key.data.parsed.value.scale?.type === "byte" ?
                                                     key.data.parsed.value.scale.value.toFixed(3)
-                                                ) : (
-                                                    <span style="color: red;">null</span>
-                                                )}
+                                                :   <span style="color: red;">null</span>}
                                             </td>
                                         );
                                     case "Preview":
                                         return (
-                                            <td style={{width: "128px"}}>
+                                            <td style={{ width: "128px" }}>
                                                 {
                                                     <MapEditor
                                                         dataStorageObject={{
@@ -953,7 +955,6 @@ async function getMapsTabContentsRows(data: {
                             data-key={key.rawKey}
                             onDblClick={(): void => {
                                 data.tab.openTab({
-                                    // TODO: In the future, add support for getting their skin head or profile picture.
                                     contentType: "Map",
                                     icon: "resource://images/ui/glyphs/icon_map.png",
                                     name: key.displayKey,
@@ -963,6 +964,22 @@ async function getMapsTabContentsRows(data: {
                                         key: key.rawKey,
                                     },
                                 });
+                            }}
+                            onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                if (event.button !== 1) return;
+                                data.tab.openTab(
+                                    {
+                                        contentType: "Map",
+                                        icon: "resource://images/ui/glyphs/icon_map.png",
+                                        name: key.displayKey,
+                                        parentTab: data.tab,
+                                        target: {
+                                            type: "LevelDBEntry",
+                                            key: key.rawKey,
+                                        },
+                                    },
+                                    false
+                                );
                             }}
                         >
                             <td style={{ color: "red" }}>{e as any}</td>

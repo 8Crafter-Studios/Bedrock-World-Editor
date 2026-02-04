@@ -24,6 +24,7 @@
     -   If the world is a single use world.
     -   If the world is only visible in editor mode.
     -   If the world was created in editor mode.
+-   Added the ability to open sub-tabs in the background instead of immediately switching to them upon opening them by clicking with the scroll wheel instead of double-clicking.
 
 ## Changes
 

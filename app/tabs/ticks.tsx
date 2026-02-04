@@ -1,4 +1,4 @@
-import type { JSX, RefObject } from "preact";
+import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef, useState } from "preact/compat";
 import TreeEditor from "../components/TreeEditor";
 import {
@@ -94,7 +94,11 @@ export default function TicksTab(props: TicksTabProps): JSX.SpecificElement<"div
                 errorElement.style.fontFamily = "monospace";
                 errorElement.style.whiteSpace = "pre";
                 errorElement.textContent =
-                    reason instanceof Error ? (reason.stack?.startsWith(reason.toString()) ? reason.stack : reason.toString() + reason.stack) : reason;
+                    reason instanceof Error ?
+                        reason.stack?.startsWith(reason.toString()) ?
+                            reason.stack
+                        :   reason.toString() + reason.stack
+                    :   reason;
                 render(null, containerRef.current);
                 containerRef.current.replaceChildren("Failed to load data:", errorElement);
             }
@@ -203,8 +207,7 @@ async function getTicksTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                                 // const [columnHeadersContextMenu_anchorPoint, columnHeadersContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
                                 const headerName = ConfigConstants.views.Ticks.ticksTabModeSectionHeaderNames[mode][index];
                                 const sectionMode: ConfigConstants.views.Ticks.TicksTabSectionMode = (
-                                    sectionID === null ? mode : `${mode}_${sectionID}`
-                                ) as ConfigConstants.views.Ticks.TicksTabSectionMode;
+                                    sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Ticks.TicksTabSectionMode;
                                 return (
                                     <>
                                         {/* TO-DO: Add in this context menu once the bug with it is fixed. https://github.com/szhsin/react-menu/issues/1591 */}
@@ -234,9 +237,9 @@ async function getTicksTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                                                         columnHeadersContextMenu_setOpen(true);
                                                     }} */
                                                 >
-                                                    {...(sectionID === null
-                                                        ? config.views.ticks.modeSettings[mode].columns
-                                                        : config.views.ticks.modeSettings[mode].sections[sectionID].columns
+                                                    {...(sectionID === null ?
+                                                        config.views.ticks.modeSettings[mode].columns
+                                                    :   config.views.ticks.modeSettings[mode].sections[sectionID].columns
                                                     ).map(
                                                         (
                                                             columnID: (typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs)[typeof sectionMode][number]
@@ -299,19 +302,19 @@ async function getTicksTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                             await getTicksTabContentsRows({
                                 tab,
                                 randomTickKeys:
-                                    Object.keys(randomTickQuery).length > 1
-                                        ? tab
-                                              .dbSearch!.serach(randomTickQuery)
-                                              .toArray()
-                                              .map((key): RandomTickKeyData => key.originalObject.data)
-                                        : randomTickKeys,
+                                    Object.keys(randomTickQuery).length > 1 ?
+                                        tab
+                                            .dbSearch!.serach(randomTickQuery)
+                                            .toArray()
+                                            .map((key): RandomTickKeyData => key.originalObject.data)
+                                    :   randomTickKeys,
                                 pendingTickKeys:
-                                    Object.keys(pendingTickQuery).length > 1
-                                        ? tab
-                                              .dbSearch!.serach(pendingTickQuery)
-                                              .toArray()
-                                              .map((key): PendingTickKeyData => key.originalObject.data)
-                                        : pendingTickKeys,
+                                    Object.keys(pendingTickQuery).length > 1 ?
+                                        tab
+                                            .dbSearch!.serach(pendingTickQuery)
+                                            .toArray()
+                                            .map((key): PendingTickKeyData => key.originalObject.data)
+                                    :   pendingTickKeys,
                                 mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Ticks.TicksTabSectionMode,
                             })
                     )
@@ -369,7 +372,7 @@ async function getTicksTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                                 }
                             })(),
                         },
-                    } as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number])
+                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
             ),
         };
         let pendingTickQuery: Omit<TabManagerTab_LevelDBSearchQuery, "searchTargets"> & {
@@ -419,7 +422,7 @@ async function getTicksTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                                 }
                             })(),
                         },
-                    } as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number])
+                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
             ),
         };
         useEffect((): (() => void) => {
@@ -970,6 +973,21 @@ async function getTicksTabContentsRows(data: {
                                 },
                             });
                         }}
+                        onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                            if (event.button !== 1) return;
+                            data.tab.openTab(
+                                {
+                                    contentType: "RandomTicks",
+                                    name: randomTickKey.displayKey,
+                                    parentTab: data.tab,
+                                    target: {
+                                        type: "LevelDBEntry",
+                                        key: randomTickKey.rawKey,
+                                    },
+                                },
+                                false
+                            );
+                        }}
                     >
                         {columns.map((column: (typeof columns)[number]): JSX.Element => {
                             switch (column) {
@@ -996,6 +1014,21 @@ async function getTicksTabContentsRows(data: {
                                     key: pendingTickKey.rawKey,
                                 },
                             });
+                        }}
+                        onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                            if (event.button !== 1) return;
+                            data.tab.openTab(
+                                {
+                                    contentType: "PendingTicks",
+                                    name: pendingTickKey.displayKey,
+                                    parentTab: data.tab,
+                                    target: {
+                                        type: "LevelDBEntry",
+                                        key: pendingTickKey.rawKey,
+                                    },
+                                },
+                                false
+                            );
                         }}
                     >
                         {columns.map((column: (typeof columns)[number]): JSX.Element => {

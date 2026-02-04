@@ -1,4 +1,4 @@
-import type { JSX, RefObject } from "preact";
+import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef, useState } from "preact/compat";
 import TreeEditor from "../components/TreeEditor";
 import {
@@ -201,7 +201,11 @@ export default function PlayersTab(props: PlayersTabProps): JSX.SpecificElement<
                 errorElement.style.fontFamily = "monospace";
                 errorElement.style.whiteSpace = "pre";
                 errorElement.textContent =
-                    reason instanceof Error ? (reason.stack?.startsWith(reason.toString()) ? reason.stack : reason.toString() + reason.stack) : reason;
+                    reason instanceof Error ?
+                        reason.stack?.startsWith(reason.toString()) ?
+                            reason.stack
+                        :   reason.toString() + reason.stack
+                    :   reason;
                 render(null, containerRef.current);
                 containerRef.current.replaceChildren("Failed to load data:", errorElement);
             }
@@ -316,8 +320,7 @@ async function getPlayersTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                                 // const [columnHeadersContextMenu_anchorPoint, columnHeadersContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
                                 const headerName = ConfigConstants.views.Players.playersTabModeSectionHeaderNames[mode][index];
                                 const sectionMode: ConfigConstants.views.Players.PlayersTabSectionMode = (
-                                    sectionID === null ? mode : `${mode}_${sectionID}`
-                                ) as ConfigConstants.views.Players.PlayersTabSectionMode;
+                                    sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Players.PlayersTabSectionMode;
                                 return (
                                     <>
                                         {/* TO-DO: Add in this context menu once the bug with it is fixed. https://github.com/szhsin/react-menu/issues/1591 */}
@@ -349,9 +352,9 @@ async function getPlayersTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                                                         columnHeadersContextMenu_setOpen(true);
                                                     }} */
                                                 >
-                                                    {...(sectionID === null
-                                                        ? config.views.players.modeSettings[mode].columns
-                                                        : config.views.players.modeSettings[mode].sections[sectionID].columns
+                                                    {...(sectionID === null ?
+                                                        config.views.players.modeSettings[mode].columns
+                                                    :   config.views.players.modeSettings[mode].sections[sectionID].columns
                                                     ).map(
                                                         (
                                                             columnID: (typeof ConfigConstants.views.Players.playersTabModeToColumnIDs)[typeof sectionMode][number]
@@ -402,19 +405,19 @@ async function getPlayersTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                             await getPlayersTabContentsRows({
                                 tab,
                                 clientKeys:
-                                    Object.keys(clientQuery).length > 1
-                                        ? tab
-                                              .dbSearch!.serach(clientQuery)
-                                              .toArray()
-                                              .map((key): ClientKeyData => key.originalObject.data)
-                                        : clientKeys,
+                                    Object.keys(clientQuery).length > 1 ?
+                                        tab
+                                            .dbSearch!.serach(clientQuery)
+                                            .toArray()
+                                            .map((key): ClientKeyData => key.originalObject.data)
+                                    :   clientKeys,
                                 serverKeys:
-                                    Object.keys(serverQuery).length > 1
-                                        ? tab
-                                              .dbSearch!.serach(serverQuery)
-                                              .toArray()
-                                              .map((key): ServerKeyData => key.originalObject.data)
-                                        : serverKeys,
+                                    Object.keys(serverQuery).length > 1 ?
+                                        tab
+                                            .dbSearch!.serach(serverQuery)
+                                            .toArray()
+                                            .map((key): ServerKeyData => key.originalObject.data)
+                                    :   serverKeys,
                                 serverToClientKeyMap,
                                 clientToServerKeyMap,
                                 dynamicProperties,
@@ -475,7 +478,7 @@ async function getPlayersTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                                 }
                             })(),
                         },
-                    } as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number])
+                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
             ),
         };
         let serverQuery: Omit<TabManagerTab_LevelDBSearchQuery, "searchTargets"> & {
@@ -525,7 +528,7 @@ async function getPlayersTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                                 }
                             })(),
                         },
-                    } as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number])
+                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
             ),
         };
         useEffect((): (() => void) => {
@@ -971,6 +974,23 @@ async function getPlayersTabContentsRows(data: {
                                 },
                             });
                         }}
+                        onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                            if (event.button !== 1) return;
+                            data.tab.openTab(
+                                {
+                                    // TODO: In the future, add support for getting their skin head or profile picture.
+                                    contentType: "Player",
+                                    icon: "resource://images/ui/glyphs/icon_steve_server.png",
+                                    name: serverKey.displayKey,
+                                    parentTab: data.tab,
+                                    target: {
+                                        type: "LevelDBEntry",
+                                        key: serverKey.rawKey,
+                                    },
+                                },
+                                false
+                            );
+                        }}
                     >
                         {columns.map((column: (typeof columns)[number]): JSX.Element => {
                             switch (column) {
@@ -978,9 +998,9 @@ async function getPlayersTabContentsRows(data: {
                                     return <td>{serverKey.displayKey}</td>;
                                 case "Name": {
                                     const UUID: bigint | undefined =
-                                        data.dynamicProperties && serverKey.data.parsed.value.UniqueID?.type === "long"
-                                            ? toLong(serverKey.data.parsed.value.UniqueID.value)
-                                            : undefined;
+                                        data.dynamicProperties && serverKey.data.parsed.value.UniqueID?.type === "long" ?
+                                            toLong(serverKey.data.parsed.value.UniqueID.value)
+                                        :   undefined;
                                     if (!UUID) {
                                         if (data.dynamicProperties) {
                                             if (serverKey.data.parsed.value.UniqueID) {
@@ -1031,73 +1051,75 @@ async function getPlayersTabContentsRows(data: {
                                 case "UUID":
                                     return (
                                         <td>
-                                            {serverKey.data.parsed.value.UniqueID?.type === "long" ? (
+                                            {serverKey.data.parsed.value.UniqueID?.type === "long" ?
                                                 toLong(serverKey.data.parsed.value.UniqueID.value)
-                                            ) : (
-                                                <span style="color: red;">null</span>
-                                            )}
+                                            :   <span style="color: red;">null</span>}
                                         </td>
                                     );
                                 case "Permissions":
                                     return (
                                         <td
                                             title={
-                                                serverKey.data.parsed.value.abilities?.type === "compound"
-                                                    ? JSON.stringify(serverKey.data.parsed.value.abilities.value)
-                                                    : undefined
+                                                serverKey.data.parsed.value.abilities?.type === "compound" ?
+                                                    JSON.stringify(serverKey.data.parsed.value.abilities.value)
+                                                :   undefined
                                             }
                                         >
-                                            {serverKey.data.parsed.value.abilities?.type === "compound" ? (
-                                                testForObjectExtension(serverKey.data.parsed.value.abilities.value, {
-                                                    attackmobs: { value: 1 },
-                                                    attackplayers: { value: 1 },
-                                                    build: { value: 1 },
-                                                    doorsandswitches: { value: 1 },
-                                                    mine: { value: 1 },
-                                                    op: { value: 1 },
-                                                    opencontainers: { value: 1 },
-                                                    teleport: { value: 1 },
-                                                } as DeepPartial<NBT.Compound["value"]>) ? (
+                                            {serverKey.data.parsed.value.abilities?.type === "compound" ?
+                                                (
+                                                    testForObjectExtension(serverKey.data.parsed.value.abilities.value, {
+                                                        attackmobs: { value: 1 },
+                                                        attackplayers: { value: 1 },
+                                                        build: { value: 1 },
+                                                        doorsandswitches: { value: 1 },
+                                                        mine: { value: 1 },
+                                                        op: { value: 1 },
+                                                        opencontainers: { value: 1 },
+                                                        teleport: { value: 1 },
+                                                    } as DeepPartial<NBT.Compound["value"]>)
+                                                ) ?
                                                     <span style="color: #5f5;">Operator</span>
-                                                ) : testForObjectExtension(serverKey.data.parsed.value.abilities.value, {
-                                                      attackmobs: { value: 1 },
-                                                      attackplayers: { value: 1 },
-                                                      build: { value: 1 },
-                                                      doorsandswitches: { value: 1 },
-                                                      mine: { value: 1 },
-                                                      op: { value: 1 },
-                                                      opencontainers: { value: 1 },
-                                                      teleport: { value: 0 },
-                                                  } as DeepPartial<NBT.Compound["value"]>) ? (
+                                                : (
+                                                    testForObjectExtension(serverKey.data.parsed.value.abilities.value, {
+                                                        attackmobs: { value: 1 },
+                                                        attackplayers: { value: 1 },
+                                                        build: { value: 1 },
+                                                        doorsandswitches: { value: 1 },
+                                                        mine: { value: 1 },
+                                                        op: { value: 1 },
+                                                        opencontainers: { value: 1 },
+                                                        teleport: { value: 0 },
+                                                    } as DeepPartial<NBT.Compound["value"]>)
+                                                ) ?
                                                     <span style="color: #8f5;">Operator (No TP)</span>
-                                                ) : testForObjectExtension(serverKey.data.parsed.value.abilities.value, {
-                                                      attackmobs: { value: 1 },
-                                                      attackplayers: { value: 1 },
-                                                      build: { value: 1 },
-                                                      doorsandswitches: { value: 1 },
-                                                      mine: { value: 1 },
-                                                      op: { value: 0 },
-                                                      opencontainers: { value: 1 },
-                                                      teleport: { value: 0 },
-                                                  } as DeepPartial<NBT.Compound["value"]>) ? (
+                                                : (
+                                                    testForObjectExtension(serverKey.data.parsed.value.abilities.value, {
+                                                        attackmobs: { value: 1 },
+                                                        attackplayers: { value: 1 },
+                                                        build: { value: 1 },
+                                                        doorsandswitches: { value: 1 },
+                                                        mine: { value: 1 },
+                                                        op: { value: 0 },
+                                                        opencontainers: { value: 1 },
+                                                        teleport: { value: 0 },
+                                                    } as DeepPartial<NBT.Compound["value"]>)
+                                                ) ?
                                                     <span style="color: #55f;">Member</span>
-                                                ) : testForObjectExtension(serverKey.data.parsed.value.abilities.value, {
-                                                      attackmobs: { value: 0 },
-                                                      attackplayers: { value: 0 },
-                                                      build: { value: 0 },
-                                                      doorsandswitches: { value: 0 },
-                                                      mine: { value: 0 },
-                                                      op: { value: 0 },
-                                                      opencontainers: { value: 0 },
-                                                      teleport: { value: 0 },
-                                                  } as DeepPartial<NBT.Compound["value"]>) ? (
+                                                : (
+                                                    testForObjectExtension(serverKey.data.parsed.value.abilities.value, {
+                                                        attackmobs: { value: 0 },
+                                                        attackplayers: { value: 0 },
+                                                        build: { value: 0 },
+                                                        doorsandswitches: { value: 0 },
+                                                        mine: { value: 0 },
+                                                        op: { value: 0 },
+                                                        opencontainers: { value: 0 },
+                                                        teleport: { value: 0 },
+                                                    } as DeepPartial<NBT.Compound["value"]>)
+                                                ) ?
                                                     <span style="color: #f55;">Visitor</span>
-                                                ) : (
-                                                    <span style="color: #ff5;">Custom</span>
-                                                )
-                                            ) : (
-                                                <span style="color: red;">null</span>
-                                            )}
+                                                :   <span style="color: #ff5;">Custom</span>
+                                            :   <span style="color: red;">null</span>}
                                         </td>
                                     );
                             }
@@ -1125,6 +1147,23 @@ async function getPlayersTabContentsRows(data: {
                                 },
                             });
                         }}
+                        onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                            if (event.button !== 1) return;
+                            data.tab.openTab(
+                                {
+                                    // TODO: In the future, add support for getting their skin head or profile picture.
+                                    contentType: "PlayerClient",
+                                    icon: "resource://images/ui/glyphs/icon_steve_client.png",
+                                    name: clientKey.displayKey,
+                                    parentTab: data.tab,
+                                    target: {
+                                        type: "LevelDBEntry",
+                                        key: clientKey.rawKey,
+                                    },
+                                },
+                                false
+                            );
+                        }}
                     >
                         {columns.map((column: (typeof columns)[number]): JSX.Element => {
                             switch (column) {
@@ -1142,9 +1181,9 @@ async function getPlayersTabContentsRows(data: {
                                         );
                                     }
                                     const UUID: bigint | undefined =
-                                        data.dynamicProperties && serverKey.data.parsed.value.UniqueID?.type === "long"
-                                            ? toLong(serverKey.data.parsed.value.UniqueID.value)
-                                            : undefined;
+                                        data.dynamicProperties && serverKey.data.parsed.value.UniqueID?.type === "long" ?
+                                            toLong(serverKey.data.parsed.value.UniqueID.value)
+                                        :   undefined;
                                     if (!UUID) {
                                         if (data.dynamicProperties) {
                                             if (serverKey.data.parsed.value.UniqueID) {
@@ -1221,6 +1260,22 @@ async function getPlayersTabContentsRows(data: {
                                 },
                             });
                         }}
+                        onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                            if (event.button !== 1) return;
+                            data.tab.openTab(
+                                {
+                                    // TODO: In the future, add support for getting their skin head or profile picture.
+                                    contentType: "Player",
+                                    icon: "resource://images/ui/glyphs/icon_steve_server.png",
+                                    name: serverKey.displayKey,
+                                    target: {
+                                        type: "LevelDBEntry",
+                                        key: serverKey.rawKey,
+                                    },
+                                },
+                                false
+                            );
+                        }}
                     >
                         {columns.map((column: (typeof columns)[number]): JSX.Element => {
                             switch (column) {
@@ -1230,9 +1285,9 @@ async function getPlayersTabContentsRows(data: {
                                     return <td>{data.serverToClientKeyMap.get(serverKey.displayKey)?.displayKey ?? <span style="color: red;">null</span>}</td>;
                                 case "Name": {
                                     const UUID: bigint | undefined =
-                                        data.dynamicProperties && serverKey.data.parsed.value.UniqueID?.type === "long"
-                                            ? toLong(serverKey.data.parsed.value.UniqueID.value)
-                                            : undefined;
+                                        data.dynamicProperties && serverKey.data.parsed.value.UniqueID?.type === "long" ?
+                                            toLong(serverKey.data.parsed.value.UniqueID.value)
+                                        :   undefined;
                                     if (!UUID) {
                                         if (data.dynamicProperties) {
                                             if (serverKey.data.parsed.value.UniqueID) {
@@ -1283,178 +1338,165 @@ async function getPlayersTabContentsRows(data: {
                                 case "UUID":
                                     return (
                                         <td>
-                                            {serverKey.data.parsed.value.UniqueID?.type === "long" ? (
+                                            {serverKey.data.parsed.value.UniqueID?.type === "long" ?
                                                 toLong(serverKey.data.parsed.value.UniqueID.value)
-                                            ) : (
-                                                <span style="color: red;">null</span>
-                                            )}
+                                            :   <span style="color: red;">null</span>}
                                         </td>
                                     );
                                 case "Permissions":
                                     return (
                                         <td
                                             title={
-                                                serverKey.data.parsed.value.abilities?.type === "compound"
-                                                    ? JSON.stringify(serverKey.data.parsed.value.abilities.value)
-                                                    : undefined
+                                                serverKey.data.parsed.value.abilities?.type === "compound" ?
+                                                    JSON.stringify(serverKey.data.parsed.value.abilities.value)
+                                                :   undefined
                                             }
                                         >
-                                            {serverKey.data.parsed.value.abilities?.type === "compound" ? (
-                                                testForObjectExtension(serverKey.data.parsed.value.abilities.value, {
-                                                    attackmobs: { value: 1 },
-                                                    attackplayers: { value: 1 },
-                                                    build: { value: 1 },
-                                                    doorsandswitches: { value: 1 },
-                                                    mine: { value: 1 },
-                                                    op: { value: 1 },
-                                                    opencontainers: { value: 1 },
-                                                    teleport: { value: 1 },
-                                                } as DeepPartial<NBT.Compound["value"]>) ? (
+                                            {serverKey.data.parsed.value.abilities?.type === "compound" ?
+                                                (
+                                                    testForObjectExtension(serverKey.data.parsed.value.abilities.value, {
+                                                        attackmobs: { value: 1 },
+                                                        attackplayers: { value: 1 },
+                                                        build: { value: 1 },
+                                                        doorsandswitches: { value: 1 },
+                                                        mine: { value: 1 },
+                                                        op: { value: 1 },
+                                                        opencontainers: { value: 1 },
+                                                        teleport: { value: 1 },
+                                                    } as DeepPartial<NBT.Compound["value"]>)
+                                                ) ?
                                                     <span style="color: #5f5;">Operator</span>
-                                                ) : testForObjectExtension(serverKey.data.parsed.value.abilities.value, {
-                                                      attackmobs: { value: 1 },
-                                                      attackplayers: { value: 1 },
-                                                      build: { value: 1 },
-                                                      doorsandswitches: { value: 1 },
-                                                      mine: { value: 1 },
-                                                      op: { value: 1 },
-                                                      opencontainers: { value: 1 },
-                                                      teleport: { value: 0 },
-                                                  } as DeepPartial<NBT.Compound["value"]>) ? (
+                                                : (
+                                                    testForObjectExtension(serverKey.data.parsed.value.abilities.value, {
+                                                        attackmobs: { value: 1 },
+                                                        attackplayers: { value: 1 },
+                                                        build: { value: 1 },
+                                                        doorsandswitches: { value: 1 },
+                                                        mine: { value: 1 },
+                                                        op: { value: 1 },
+                                                        opencontainers: { value: 1 },
+                                                        teleport: { value: 0 },
+                                                    } as DeepPartial<NBT.Compound["value"]>)
+                                                ) ?
                                                     <span style="color: #8f5;">Operator (No TP)</span>
-                                                ) : testForObjectExtension(serverKey.data.parsed.value.abilities.value, {
-                                                      attackmobs: { value: 1 },
-                                                      attackplayers: { value: 1 },
-                                                      build: { value: 1 },
-                                                      doorsandswitches: { value: 1 },
-                                                      mine: { value: 1 },
-                                                      op: { value: 0 },
-                                                      opencontainers: { value: 1 },
-                                                      teleport: { value: 0 },
-                                                  } as DeepPartial<NBT.Compound["value"]>) ? (
+                                                : (
+                                                    testForObjectExtension(serverKey.data.parsed.value.abilities.value, {
+                                                        attackmobs: { value: 1 },
+                                                        attackplayers: { value: 1 },
+                                                        build: { value: 1 },
+                                                        doorsandswitches: { value: 1 },
+                                                        mine: { value: 1 },
+                                                        op: { value: 0 },
+                                                        opencontainers: { value: 1 },
+                                                        teleport: { value: 0 },
+                                                    } as DeepPartial<NBT.Compound["value"]>)
+                                                ) ?
                                                     <span style="color: #55f;">Member</span>
-                                                ) : testForObjectExtension(serverKey.data.parsed.value.abilities.value, {
-                                                      attackmobs: { value: 0 },
-                                                      attackplayers: { value: 0 },
-                                                      build: { value: 0 },
-                                                      doorsandswitches: { value: 0 },
-                                                      mine: { value: 0 },
-                                                      op: { value: 0 },
-                                                      opencontainers: { value: 0 },
-                                                      teleport: { value: 0 },
-                                                  } as DeepPartial<NBT.Compound["value"]>) ? (
+                                                : (
+                                                    testForObjectExtension(serverKey.data.parsed.value.abilities.value, {
+                                                        attackmobs: { value: 0 },
+                                                        attackplayers: { value: 0 },
+                                                        build: { value: 0 },
+                                                        doorsandswitches: { value: 0 },
+                                                        mine: { value: 0 },
+                                                        op: { value: 0 },
+                                                        opencontainers: { value: 0 },
+                                                        teleport: { value: 0 },
+                                                    } as DeepPartial<NBT.Compound["value"]>)
+                                                ) ?
                                                     <span style="color: #f55;">Visitor</span>
-                                                ) : (
-                                                    <span style="color: #ff5;">Custom</span>
-                                                )
-                                            ) : (
-                                                <span style="color: red;">null</span>
-                                            )}
+                                                :   <span style="color: #ff5;">Custom</span>
+                                            :   <span style="color: red;">null</span>}
                                         </td>
                                     );
                                 case "Location":
                                     return (
                                         <td>
-                                            {serverKey.data.parsed.value.Pos?.type === "list" && serverKey.data.parsed.value.Pos.value.type === "float" ? (
+                                            {serverKey.data.parsed.value.Pos?.type === "list" && serverKey.data.parsed.value.Pos.value.type === "float" ?
                                                 `${(serverKey.data.parsed.value.Pos.value.value as number[])
                                                     .map((v: number): string => v.toFixed(3))
                                                     .join(", ")} ${
-                                                    serverKey.data.parsed.value.DimensionId?.type === "int"
-                                                        ? dimensions[serverKey.data.parsed.value.DimensionId.value] ??
-                                                          serverKey.data.parsed.value.DimensionId.value
-                                                        : "Unknown Dimension"
+                                                    serverKey.data.parsed.value.DimensionId?.type === "int" ?
+                                                        (dimensions[serverKey.data.parsed.value.DimensionId.value] ??
+                                                        serverKey.data.parsed.value.DimensionId.value)
+                                                    :   "Unknown Dimension"
                                                 }`
-                                            ) : (
-                                                <span style="color: red;">null</span>
-                                            )}
+                                            :   <span style="color: red;">null</span>}
                                         </td>
                                     );
                                 case "LocationCompact":
                                     return (
                                         <td>
-                                            {serverKey.data.parsed.value.Pos?.type === "list" && serverKey.data.parsed.value.Pos.value.type === "float" ? (
+                                            {serverKey.data.parsed.value.Pos?.type === "list" && serverKey.data.parsed.value.Pos.value.type === "float" ?
                                                 `${(serverKey.data.parsed.value.Pos.value.value as number[])
                                                     .map((v: number): string => v.toFixed(0))
                                                     .join(",")} ${
-                                                    serverKey.data.parsed.value.DimensionId?.type === "int"
-                                                        ? serverKey.data.parsed.value.DimensionId.value
-                                                        : "?"
+                                                    serverKey.data.parsed.value.DimensionId?.type === "int" ?
+                                                        serverKey.data.parsed.value.DimensionId.value
+                                                    :   "?"
                                                 }`
-                                            ) : (
-                                                <span style="color: red;">null</span>
-                                            )}
+                                            :   <span style="color: red;">null</span>}
                                         </td>
                                     );
                                 case "Rotation":
                                     return (
                                         <td>
-                                            {serverKey.data.parsed.value.Rotation?.type === "list" ? (
+                                            {serverKey.data.parsed.value.Rotation?.type === "list" ?
                                                 serverKey.data.parsed.value.Rotation.value.value.join(", ")
-                                            ) : (
-                                                <span style="color: red;">null</span>
-                                            )}
+                                            :   <span style="color: red;">null</span>}
                                         </td>
                                     );
                                 case "Spawn":
                                     return (
                                         <td>
-                                            {serverKey.data.parsed.value.SpawnX?.type === "int" ? (
-                                                serverKey.data.parsed.value.SpawnX?.value === -2147483648 ? (
+                                            {serverKey.data.parsed.value.SpawnX?.type === "int" ?
+                                                serverKey.data.parsed.value.SpawnX?.value === -2147483648 ?
                                                     "Not Set"
-                                                ) : (
-                                                    `${serverKey.data.parsed.value.SpawnX.value}, ${serverKey.data.parsed.value.SpawnY?.value}, ${
+                                                :   `${serverKey.data.parsed.value.SpawnX.value}, ${serverKey.data.parsed.value.SpawnY?.value}, ${
                                                         serverKey.data.parsed.value.SpawnZ?.value
                                                     } ${
-                                                        serverKey.data.parsed.value.SpawnDimension?.type === "int"
-                                                            ? dimensions[serverKey.data.parsed.value.SpawnDimension.value] ??
-                                                              serverKey.data.parsed.value.SpawnDimension.value
-                                                            : "Unknown Dimension"
+                                                        serverKey.data.parsed.value.SpawnDimension?.type === "int" ?
+                                                            (dimensions[serverKey.data.parsed.value.SpawnDimension.value] ??
+                                                            serverKey.data.parsed.value.SpawnDimension.value)
+                                                        :   "Unknown Dimension"
                                                     }`
-                                                )
-                                            ) : (
-                                                <span style="color: red;">null</span>
-                                            )}
+
+                                            :   <span style="color: red;">null</span>}
                                         </td>
                                     );
                                 case "SpawnCompact":
                                     return (
                                         <td>
-                                            {serverKey.data.parsed.value.SpawnX?.type === "int" ? (
-                                                serverKey.data.parsed.value.SpawnX?.value === -2147483648 ? (
+                                            {serverKey.data.parsed.value.SpawnX?.type === "int" ?
+                                                serverKey.data.parsed.value.SpawnX?.value === -2147483648 ?
                                                     "Not Set"
-                                                ) : (
-                                                    `${serverKey.data.parsed.value.SpawnX.value.toFixed(0)},${(
+                                                :   `${serverKey.data.parsed.value.SpawnX.value.toFixed(0)},${(
                                                         serverKey.data.parsed.value.SpawnY?.value as number
                                                     ).toFixed(0)},${(serverKey.data.parsed.value.SpawnZ?.value as number).toFixed(0)} ${
-                                                        serverKey.data.parsed.value.SpawnDimension?.type === "int"
-                                                            ? serverKey.data.parsed.value.SpawnDimension.value
-                                                            : "?"
+                                                        serverKey.data.parsed.value.SpawnDimension?.type === "int" ?
+                                                            serverKey.data.parsed.value.SpawnDimension.value
+                                                        :   "?"
                                                     }`
-                                                )
-                                            ) : (
-                                                <span style="color: red;">null</span>
-                                            )}
+
+                                            :   <span style="color: red;">null</span>}
                                         </td>
                                     );
                                 case "GameMode":
                                     return (
                                         <td>
-                                            {serverKey.data.parsed.value.PlayerGameMode?.type === "int" ? (
-                                                gameModes[serverKey.data.parsed.value.PlayerGameMode.value] ?? serverKey.data.parsed.value.PlayerGameMode.value
-                                            ) : (
-                                                <span style="color: red;">null</span>
-                                            )}
+                                            {serverKey.data.parsed.value.PlayerGameMode?.type === "int" ?
+                                                (gameModes[serverKey.data.parsed.value.PlayerGameMode.value] ??
+                                                serverKey.data.parsed.value.PlayerGameMode.value)
+                                            :   <span style="color: red;">null</span>}
                                         </td>
                                     );
                                 case "Level":
                                     return (
                                         <td>
-                                            {serverKey.data.parsed.value.PlayerLevel?.type === "int" ? (
+                                            {serverKey.data.parsed.value.PlayerLevel?.type === "int" ?
                                                 serverKey.data.parsed.value.PlayerLevel.value +
                                                 (serverKey.data.parsed.value.PlayerLevelProgress?.value.toString().slice(1, 5) ?? "")
-                                            ) : (
-                                                <span style="color: red;">null</span>
-                                            )}
+                                            :   <span style="color: red;">null</span>}
                                         </td>
                                     );
                                 case "raw_playerPermissionsLevel":

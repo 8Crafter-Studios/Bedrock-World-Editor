@@ -1,4 +1,4 @@
-import type { JSX, RefObject } from "preact";
+import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef, useState } from "preact/compat";
 import TreeEditor from "../components/TreeEditor";
 import {
@@ -100,7 +100,11 @@ export default function StructuresTab(props: StructuresTabProps): JSX.SpecificEl
                 errorElement.style.fontFamily = "monospace";
                 errorElement.style.whiteSpace = "pre";
                 errorElement.textContent =
-                    reason instanceof Error ? (reason.stack?.startsWith(reason.toString()) ? reason.stack : reason.toString() + reason.stack) : reason;
+                    reason instanceof Error ?
+                        reason.stack?.startsWith(reason.toString()) ?
+                            reason.stack
+                        :   reason.toString() + reason.stack
+                    :   reason;
                 render(null, containerRef.current);
                 containerRef.current.replaceChildren("Failed to load data:", errorElement);
             }
@@ -182,8 +186,7 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                                 // const [columnHeadersContextMenu_anchorPoint, columnHeadersContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
                                 const headerName = ConfigConstants.views.Structures.structuresTabModeSectionHeaderNames[mode][index];
                                 const sectionMode: ConfigConstants.views.Structures.StructuresTabSectionMode = (
-                                    sectionID === null ? mode : `${mode}_${sectionID}`
-                                ) as ConfigConstants.views.Structures.StructuresTabSectionMode;
+                                    sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Structures.StructuresTabSectionMode;
                                 return (
                                     <>
                                         {/* TO-DO: Add in this context menu once the bug with it is fixed. https://github.com/szhsin/react-menu/issues/1591 */}
@@ -302,7 +305,7 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                                 }
                             })(),
                         },
-                    } as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number])
+                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
             ),
         };
         async function updateTablesContents(reloadData: boolean): Promise<void> {
@@ -316,12 +319,12 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                             getStructuresTabContentsRows({
                                 tab,
                                 keys:
-                                    Object.keys(query).length > 1
-                                        ? tab
-                                              .dbSearch!.serach(query)
-                                              .toArray()
-                                              .map((key): KeyData => key.originalObject.data)
-                                        : keys,
+                                    Object.keys(query).length > 1 ?
+                                        tab
+                                            .dbSearch!.serach(query)
+                                            .toArray()
+                                            .map((key): KeyData => key.originalObject.data)
+                                    :   keys,
                                 dynamicProperties,
                                 mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Structures.StructuresTabSectionMode,
                             })
@@ -608,21 +611,21 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                                     );
                                 }
                                 const structureKeys: KeyData[] =
-                                    filterExportsBySearchQuery && Object.keys(query).length > 1
-                                        ? tab
-                                              .dbSearch!.serach(query)
-                                              .toArray()
-                                              .map((key): KeyData => key.originalObject.data)
-                                        : keys;
+                                    filterExportsBySearchQuery && Object.keys(query).length > 1 ?
+                                        tab
+                                            .dbSearch!.serach(query)
+                                            .toArray()
+                                            .map((key): KeyData => key.originalObject.data)
+                                    :   keys;
                                 let failedExports: [filePath: string, error?: any][] = [];
                                 await Promise.all(
                                     structureKeys.map(async function exportStructureToFile(key: KeyData): Promise<void> {
                                         try {
                                             const stringKey: string = key.rawKey.toString("utf-8");
                                             const destinationPath: string = `${
-                                                stringKey.startsWith("structuretemplate_mystructure:")
-                                                    ? ""
-                                                    : stringKey.replace(/^structuretemplate_/, "").split(":")[0] + "/"
+                                                stringKey.startsWith("structuretemplate_mystructure:") ? "" : (
+                                                    stringKey.replace(/^structuretemplate_/, "").split(":")[0] + "/"
+                                                )
                                             }${stringKey.replace(/^structuretemplate_[^:]*:/, "")}.mcstructure`.replace(
                                                 /[:*?"<>|\x00-\x1F]/g,
                                                 (char: string): string => {
@@ -700,12 +703,12 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                                     );
                                 }
                                 const structureKeys: KeyData[] =
-                                    filterExportsBySearchQuery && Object.keys(query).length > 1
-                                        ? tab
-                                              .dbSearch!.serach(query)
-                                              .toArray()
-                                              .map((key): KeyData => key.originalObject.data)
-                                        : keys;
+                                    filterExportsBySearchQuery && Object.keys(query).length > 1 ?
+                                        tab
+                                            .dbSearch!.serach(query)
+                                            .toArray()
+                                            .map((key): KeyData => key.originalObject.data)
+                                    :   keys;
                                 console.log(`Transferring ${structureKeys.length} structure(s) to tab ${result.tabID} in window ${result.window.id}.`);
                                 const errors: Error[] = (
                                     await Promise.all(
@@ -1100,7 +1103,6 @@ async function getStructuresTabContentsRows(data: {
                             data-key={key.rawKey}
                             onDblClick={(): void => {
                                 data.tab.openTab({
-                                    // TODO: In the future, add support for getting their skin head or profile picture.
                                     contentType: "StructureTemplate",
                                     icon: "resource://images/ui/glyphs/structure_block.png",
                                     name: key.displayKey,
@@ -1110,6 +1112,22 @@ async function getStructuresTabContentsRows(data: {
                                         key: key.rawKey,
                                     },
                                 });
+                            }}
+                            onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                if (event.button !== 1) return;
+                                data.tab.openTab(
+                                    {
+                                        contentType: "StructureTemplate",
+                                        icon: "resource://images/ui/glyphs/structure_block.png",
+                                        name: key.displayKey,
+                                        parentTab: data.tab,
+                                        target: {
+                                            type: "LevelDBEntry",
+                                            key: key.rawKey,
+                                        },
+                                    },
+                                    false
+                                );
                             }}
                         >
                             {columns.map((column: (typeof columns)[number]): JSX.Element => {
@@ -1121,44 +1139,40 @@ async function getStructuresTabContentsRows(data: {
                                     case "Size":
                                         return (
                                             <td>
-                                                {key.data.parsed.value.size?.type === "list" && key.data.parsed.value.size.value.type === "int" ? (
+                                                {key.data.parsed.value.size?.type === "list" && key.data.parsed.value.size.value.type === "int" ?
                                                     (key.data.parsed.value.size.value.value as number[]).join(", ")
-                                                ) : (
-                                                    <span style="color: red;">null</span>
-                                                )}
+                                                :   <span style="color: red;">null</span>}
                                             </td>
                                         );
                                     case "WorldOrigin":
                                         return (
                                             <td>
-                                                {key.data.parsed.value.size?.type === "list" && key.data.parsed.value.size.value.type === "int" ? (
+                                                {key.data.parsed.value.size?.type === "list" && key.data.parsed.value.size.value.type === "int" ?
                                                     (key.data.parsed.value.size.value.value as number[]).join(", ")
-                                                ) : (
-                                                    <span style="color: red;">null</span>
-                                                )}
+                                                :   <span style="color: red;">null</span>}
                                             </td>
                                         );
                                     case "Entities":
                                         return (
                                             <td>
-                                                {key.data.parsed.value.structure?.value?.entities?.type === "list" &&
-                                                key.data.parsed.value.structure?.value?.entities?.value?.value ? (
+                                                {(
+                                                    key.data.parsed.value.structure?.value?.entities?.type === "list" &&
+                                                    key.data.parsed.value.structure?.value?.entities?.value?.value
+                                                ) ?
                                                     key.data.parsed.value.structure.value.entities.value.value.length
-                                                ) : (
-                                                    <span style="color: red;">null</span>
-                                                )}
+                                                :   <span style="color: red;">null</span>}
                                             </td>
                                         );
                                     case "BlockEntities":
                                         return (
                                             <td>
-                                                {key.data.parsed.value.structure?.value?.palette?.value?.default?.value?.block_position_data?.type ===
-                                                "compound" ? (
+                                                {(
+                                                    key.data.parsed.value.structure?.value?.palette?.value?.default?.value?.block_position_data?.type ===
+                                                    "compound"
+                                                ) ?
                                                     Object.keys(key.data.parsed.value.structure.value.palette.value.default.value.block_position_data.value)
                                                         .length
-                                                ) : (
-                                                    <span style="color: red;">null</span>
-                                                )}
+                                                :   <span style="color: red;">null</span>}
                                             </td>
                                         );
                                 }
@@ -1172,7 +1186,6 @@ async function getStructuresTabContentsRows(data: {
                             data-key={key.rawKey}
                             onDblClick={(): void => {
                                 data.tab.openTab({
-                                    // TODO: In the future, add support for getting their skin head or profile picture.
                                     contentType: "StructureTemplate",
                                     icon: "resource://images/ui/glyphs/structure_block.png",
                                     name: key.displayKey,
@@ -1182,6 +1195,22 @@ async function getStructuresTabContentsRows(data: {
                                         key: key.rawKey,
                                     },
                                 });
+                            }}
+                            onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                if (event.button !== 1) return;
+                                data.tab.openTab(
+                                    {
+                                        contentType: "StructureTemplate",
+                                        icon: "resource://images/ui/glyphs/structure_block.png",
+                                        name: key.displayKey,
+                                        parentTab: data.tab,
+                                        target: {
+                                            type: "LevelDBEntry",
+                                            key: key.rawKey,
+                                        },
+                                    },
+                                    false
+                                );
                             }}
                         >
                             <td style={{ color: "red" }}>{e as any}</td>

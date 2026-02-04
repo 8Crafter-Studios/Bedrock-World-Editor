@@ -1,4 +1,4 @@
-import type { JSX, RefObject } from "preact";
+import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef, useState } from "preact/compat";
 import TreeEditor from "../components/TreeEditor";
 import {
@@ -157,7 +157,11 @@ export default function TickingAreasTab(props: TickingAreasTabProps): JSX.Specif
                 errorElement.style.fontFamily = "monospace";
                 errorElement.style.whiteSpace = "pre";
                 errorElement.textContent =
-                    reason instanceof Error ? (reason.stack?.startsWith(reason.toString()) ? reason.stack : reason.toString() + reason.stack) : reason;
+                    reason instanceof Error ?
+                        reason.stack?.startsWith(reason.toString()) ?
+                            reason.stack
+                        :   reason.toString() + reason.stack
+                    :   reason;
                 render(null, containerRef.current);
                 containerRef.current.replaceChildren("Failed to load data:", errorElement);
             }
@@ -239,8 +243,7 @@ async function getTickingAreasTabContents(tab: TabManagerTab): Promise<JSX.Eleme
                                 // const [columnHeadersContextMenu_anchorPoint, columnHeadersContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
                                 const headerName = ConfigConstants.views.TickingAreas.tickingAreasTabModeSectionHeaderNames[mode][index];
                                 const sectionMode: ConfigConstants.views.TickingAreas.TickingAreasTabSectionMode = (
-                                    sectionID === null ? mode : `${mode}_${sectionID}`
-                                ) as ConfigConstants.views.TickingAreas.TickingAreasTabSectionMode;
+                                    sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.TickingAreas.TickingAreasTabSectionMode;
                                 return (
                                     <>
                                         {/* TO-DO: Add in this context menu once the bug with it is fixed. https://github.com/szhsin/react-menu/issues/1591 */}
@@ -359,7 +362,7 @@ async function getTickingAreasTabContents(tab: TabManagerTab): Promise<JSX.Eleme
                                 }
                             })(),
                         },
-                    } as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number])
+                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
             ),
         };
         async function updateTablesContents(reloadData: boolean): Promise<void> {
@@ -375,12 +378,12 @@ async function getTickingAreasTabContents(tab: TabManagerTab): Promise<JSX.Eleme
                             await getTickingAreasTabContentsRows({
                                 tab,
                                 keys:
-                                    Object.keys(query).length > 1
-                                        ? tab
-                                              .dbSearch!.serach(query)
-                                              .toArray()
-                                              .map((key): KeyData => key.originalObject.data)
-                                        : keys,
+                                    Object.keys(query).length > 1 ?
+                                        tab
+                                            .dbSearch!.serach(query)
+                                            .toArray()
+                                            .map((key): KeyData => key.originalObject.data)
+                                    :   keys,
                                 dynamicProperties,
                                 mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.TickingAreas.TickingAreasTabSectionMode,
                             })
@@ -786,7 +789,6 @@ async function getTickingAreasTabContentsRows(data: {
                             data-key={key.rawKey}
                             onDblClick={(): void => {
                                 data.tab.openTab({
-                                    // TODO: In the future, add support for getting their skin head or profile picture.
                                     contentType: "TickingArea",
                                     icon: "resource://images/ui/glyphs/icon_map.png",
                                     name: key.displayKey,
@@ -797,6 +799,22 @@ async function getTickingAreasTabContentsRows(data: {
                                     },
                                 });
                             }}
+                            onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                if (event.button !== 1) return;
+                                data.tab.openTab(
+                                    {
+                                        contentType: "TickingArea",
+                                        icon: "resource://images/ui/glyphs/icon_map.png",
+                                        name: key.displayKey,
+                                        parentTab: data.tab,
+                                        target: {
+                                            type: "LevelDBEntry",
+                                            key: key.rawKey,
+                                        },
+                                    },
+                                    false
+                                );
+                            }}
                         >
                             {columns.map((column: (typeof columns)[number]): JSX.Element => {
                                 switch (column) {
@@ -805,81 +823,65 @@ async function getTickingAreasTabContentsRows(data: {
                                     case "EntityID":
                                         return (
                                             <td>
-                                                {key.data.parsed.value.EntityId?.type === "long" ? (
+                                                {key.data.parsed.value.EntityId?.type === "long" ?
                                                     toLong(key.data.parsed.value.EntityId.value)
-                                                ) : (
-                                                    <span style="color: red;">null</span>
-                                                )}
+                                                :   <span style="color: red;">null</span>}
                                             </td>
                                         );
                                     case "Dimension":
                                         return (
                                             <td>
-                                                {key.data.parsed.value.Dimension?.type === "int" ? (
-                                                    dimensions[key.data.parsed.value.Dimension.value] ?? key.data.parsed.value.Dimension.value
-                                                ) : (
-                                                    <span style="color: red;">null</span>
-                                                )}
+                                                {key.data.parsed.value.Dimension?.type === "int" ?
+                                                    (dimensions[key.data.parsed.value.Dimension.value] ?? key.data.parsed.value.Dimension.value)
+                                                :   <span style="color: red;">null</span>}
                                             </td>
                                         );
                                     case "From":
                                         return (
                                             <td>
-                                                {key.data.parsed.value.MinX?.type === "int" && key.data.parsed.value.MinZ?.type === "int" ? (
+                                                {key.data.parsed.value.MinX?.type === "int" && key.data.parsed.value.MinZ?.type === "int" ?
                                                     [key.data.parsed.value.MinX.value, key.data.parsed.value.MinZ.value]
                                                         .map((v: number): string => v.toFixed(0))
                                                         .join(",")
-                                                ) : (
-                                                    <span style="color: red;">null</span>
-                                                )}
+                                                :   <span style="color: red;">null</span>}
                                             </td>
                                         );
                                     case "To":
                                         return (
                                             <td>
-                                                {key.data.parsed.value.MaxX?.type === "int" && key.data.parsed.value.MaxZ?.type === "int" ? (
+                                                {key.data.parsed.value.MaxX?.type === "int" && key.data.parsed.value.MaxZ?.type === "int" ?
                                                     [key.data.parsed.value.MaxX.value, key.data.parsed.value.MaxZ.value]
                                                         .map((v: number): string => v.toFixed(0))
                                                         .join(",")
-                                                ) : (
-                                                    <span style="color: red;">null</span>
-                                                )}
+                                                :   <span style="color: red;">null</span>}
                                             </td>
                                         );
                                     case "IsCircle":
                                         return (
                                             <td>
-                                                {key.data.parsed.value.IsCircle?.type === "byte" ? (
-                                                    key.data.parsed.value.IsCircle.value === 1 ? (
+                                                {key.data.parsed.value.IsCircle?.type === "byte" ?
+                                                    key.data.parsed.value.IsCircle.value === 1 ?
                                                         <span style="color: #5F5;">True</span>
-                                                    ) : key.data.parsed.value.IsCircle.value === 0 ? (
+                                                    : key.data.parsed.value.IsCircle.value === 0 ?
                                                         <span style="color: #F55;">False</span>
-                                                    ) : (
-                                                        <span style="color: #FA5;">{key.data.parsed.value.IsCircle.value}</span>
-                                                    )
-                                                ) : (
-                                                    <span style="color: red;">null</span>
-                                                )}
+                                                    :   <span style="color: #FA5;">{key.data.parsed.value.IsCircle.value}</span>
+                                                :   <span style="color: red;">null</span>}
                                             </td>
                                         );
                                     case "MaxDistToPlayers":
                                         return (
                                             <td>
-                                                {key.data.parsed.value.MaxDistToPlayers?.type === "float" ? (
+                                                {key.data.parsed.value.MaxDistToPlayers?.type === "float" ?
                                                     key.data.parsed.value.MaxDistToPlayers.value
-                                                ) : (
-                                                    <span style="color: red;">null</span>
-                                                )}
+                                                :   <span style="color: red;">null</span>}
                                             </td>
                                         );
                                     case "Name":
                                         return (
                                             <td>
-                                                {key.data.parsed.value.Name?.type === "string" ? (
+                                                {key.data.parsed.value.Name?.type === "string" ?
                                                     key.data.parsed.value.Name.value
-                                                ) : (
-                                                    <span style="color: red;">null</span>
-                                                )}
+                                                :   <span style="color: red;">null</span>}
                                             </td>
                                         );
                                 }
@@ -893,7 +895,6 @@ async function getTickingAreasTabContentsRows(data: {
                             data-key={key.rawKey}
                             onDblClick={(): void => {
                                 data.tab.openTab({
-                                    // TODO: In the future, add support for getting their skin head or profile picture.
                                     contentType: "TickingArea",
                                     icon: "resource://images/ui/glyphs/icon_map.png",
                                     name: key.displayKey,
@@ -903,6 +904,22 @@ async function getTickingAreasTabContentsRows(data: {
                                         key: key.rawKey,
                                     },
                                 });
+                            }}
+                            onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                if (event.button !== 1) return;
+                                data.tab.openTab(
+                                    {
+                                        contentType: "TickingArea",
+                                        icon: "resource://images/ui/glyphs/icon_map.png",
+                                        name: key.displayKey,
+                                        parentTab: data.tab,
+                                        target: {
+                                            type: "LevelDBEntry",
+                                            key: key.rawKey,
+                                        },
+                                    },
+                                    false
+                                );
                             }}
                         >
                             <td style={{ color: "red" }}>{e as any}</td>
