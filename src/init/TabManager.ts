@@ -945,7 +945,7 @@ namespace exports {
         ActorDigestVersion: undefined,
         ActorPrefix: "resource://images/ui/glyphs/icon_panda.png",
         AutonomousEntities: undefined,
-        BiomeData: undefined,
+        BiomeData: "resource://images/ui/glyphs/icon_biome.png",
         BiomeState: undefined,
         BlendingBiomeHeight: undefined,
         BlendingData: undefined,
