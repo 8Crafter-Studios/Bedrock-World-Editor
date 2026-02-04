@@ -2,6 +2,7 @@ import { MakerDeb } from "@electron-forge/maker-deb";
 import { MakerRpm } from "@electron-forge/maker-rpm";
 import { MakerSquirrel } from "@electron-forge/maker-squirrel";
 import { MakerZIP } from "@electron-forge/maker-zip";
+import { MakerDMG } from "@electron-forge/maker-dmg";
 import { FusesPlugin } from "@electron-forge/plugin-fuses";
 import { VitePlugin } from "@electron-forge/plugin-vite";
 import type { ForgeConfig, ResolvedForgeConfig } from "@electron-forge/shared-types";
@@ -50,6 +51,11 @@ const config: ForgeConfig = {
                 icon: "resources/icon.png",
                 mimeType: ["x-scheme-handler/bedrock-world-editor"],
             },
+        }),
+        new MakerDMG({
+            // background // TODO: Make a background image for the DMG window.
+            icon: "resources/icon.png",
+            name: "Bedrock World Editor", // REVIEW: Verify if this should be like this or use dashes instead.
         }),
     ],
     publishers: [
