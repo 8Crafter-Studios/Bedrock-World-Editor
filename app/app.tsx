@@ -32,6 +32,7 @@ import { readdir, stat } from "node:fs/promises";
 import { formatFileSizeBinary, formatFileSizeMetric } from "../src/utils/fileSizeUtils";
 import IntegrationsTab from "./tabs/integrations";
 import TextEditorTab from "./tabs/textEditor";
+import UnderConstruction from "./components/UnderConstruction";
 // import { Renderer3D } from "./3DRendererV1/3DRenderer";
 const mime = require("mime-types") as typeof import("mime-types");
 
@@ -848,7 +849,7 @@ export function WorldEditorTabRenderer(props: {
             case "view-files":
                 return <ViewFilesTab tab={props.parentTab} />;
             default:
-                return <h2>The {props.tab} tab has not been implemented yet.</h2>;
+                return <UnderConstruction detail={`The ${props.tab} tab has not been implemented yet.`} />;
         }
     } else {
         switch (props.tab.contentType) {

@@ -1,6 +1,5 @@
 import type { JSX } from "preact";
 import _React, { render, useEffect } from "preact/compat";
-import { setActivePage } from "../app";
 
 export interface LeftSidebarProps {
     tab: TabManagerTab;

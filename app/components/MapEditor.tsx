@@ -25,18 +25,18 @@ export interface MapRendererProps {
     /**
      * The tab associated with this editor.
      */
-    tab?: TabManagerSubTab;
+    tab?: TabManagerSubTab | undefined;
     dataStorageObject: MapEditorDataStorageObject;
     readonly?: boolean | undefined;
-    canvasRef?: RefObject<HTMLCanvasElement>;
-    containerRef?: RefObject<HTMLDivElement>;
-    interactionRef?: RefObject<MapEditorInteraction>;
+    canvasRef?: RefObject<HTMLCanvasElement> | undefined;
+    containerRef?: RefObject<HTMLDivElement> | undefined;
+    interactionRef?: RefObject<MapEditorInteraction> | undefined;
     /**
      * An optional overlay bar widget registry to allow the map editor to register widgets for the overlay bar.
      *
      * @default undefined
      */
-    overlayBarRegistry?: EditorWidgetOverlayBarWidgetRegistry;
+    overlayBarRegistry?: EditorWidgetOverlayBarWidgetRegistry | undefined;
 }
 
 export interface MapEditorInteraction {
