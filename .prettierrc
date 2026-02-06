@@ -24,7 +24,7 @@
     "objectWrap": "preserve",
     "overrides": [
         {
-            "files": ".hintrc",
+            "files": [".hintrc", ".eslintrc"],
             "options": {
                 "parser": "json"
             }
