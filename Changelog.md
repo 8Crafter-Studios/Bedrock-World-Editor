@@ -29,6 +29,7 @@
 -   Added an icon for sub-tabs of content type `BiomeData`.
 -   Added an icon for sub-tabs of content type `SchedulerWT`.
 -   Added a DMG build of the app for macOS.
+-   Added the `structureid` search filter to the "Structures" tab.
 
 ## Changes
 
@@ -40,9 +41,10 @@
 -   Fixed a bug where search filters other than `dbkey` and `nbt` did not support partial matches of the target data, requiring the search query to be exactly the entire target data, which is rarely ever useful.
 -   Fixed a bug where tabs' modes were never actually set in the constructor.
 -   Symlinks no longer can cause duplicates of worlds to appear in the world selection menu when multiple found world folders resolve to the same real path.
--   Fixed a bug where `TickingArea` sub-tabs opened through the "Ticking Areas" left sidebar tab had a map icon.
+-   Fixed a bug where `TickingArea` sub-tabs opened through the "Ticking Areas" tab had a map icon.
 -   The "Repair Force World Corruption" button now updates the list of cached DB keys to remove the deleted keys.
 -   The "Force Corrupt World" button now updates the list of cached DB keys to add the created keys.
+-   Fixed the search filters for the "Structures" tab.
 
 # v1.0.0-beta.14
 
