@@ -2101,6 +2101,21 @@ namespace exports {
             caseSensitiveValue?: boolean | undefined;
         };
     }[NBT.TagType];
+    /**
+     *  @todo Implement this.
+     */
+    export interface TabManagerTab_LevelDBSearchQuery_AdvancedSearchConditionEntry {
+        /**
+         * The query to search for.
+         */
+        query: string;
+        /**
+         * Whether it should only match results where the query is equal to the entire data string.
+         *
+         * @default false
+         */
+        fullMatch?: boolean | undefined;
+    }
     export interface TabManagerTab_LevelDBSearchQuery {
         customDataFields?: Record<
             string,
@@ -2538,6 +2553,7 @@ namespace exports {
                     }
                 }
 
+                // TODO: Implement advanced query entry support (as in entries that are an object).
                 if (query.customDataFields) {
                     for (const customDataField in query.customDataFields) {
                         if (query.customDataFields[customDataField] === undefined) {
@@ -2550,9 +2566,12 @@ namespace exports {
                             query.customDataFields[customDataField].allOf.length > 0 &&
                             (searchTarget.customDataFields?.[customDataField] === undefined ||
                                 !query.customDataFields[customDataField].allOf.every((v: string): boolean =>
-                                    caseSensitive ?
+                                    /* caseSensitive ?
                                         searchTarget.customDataFields?.[customDataField] === v
-                                    :   searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase()
+                                    :   searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase() */
+                                    caseSensitive ?
+                                        !!searchTarget.customDataFields?.[customDataField]?.includes(v)
+                                    :   !!searchTarget.customDataFields?.[customDataField]?.toLowerCase()?.includes(v.toLowerCase())
                                 ))
                         ) {
                             if (yieldUndefined) yield undefined!;
@@ -2563,9 +2582,12 @@ namespace exports {
                             query.customDataFields[customDataField].anyOf.length > 0 &&
                             (searchTarget.customDataFields?.[customDataField] === undefined ||
                                 !query.customDataFields[customDataField].anyOf.some((v: string): boolean =>
+                                    // caseSensitive ?
+                                    //     searchTarget.customDataFields?.[customDataField] === v
+                                    // :   searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase()
                                     caseSensitive ?
-                                        searchTarget.customDataFields?.[customDataField] === v
-                                    :   searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase()
+                                        !!searchTarget.customDataFields?.[customDataField]?.includes(v)
+                                    :   !!searchTarget.customDataFields?.[customDataField]?.toLowerCase()?.includes(v.toLowerCase())
                                 ))
                         ) {
                             if (yieldUndefined) yield undefined!;
@@ -2576,9 +2598,12 @@ namespace exports {
                             query.customDataFields[customDataField].oneOf.length > 0 &&
                             (searchTarget.customDataFields?.[customDataField] === undefined ||
                                 !query.customDataFields[customDataField].oneOf.some((v: string): boolean =>
+                                    // caseSensitive ?
+                                    //     searchTarget.customDataFields?.[customDataField] === v
+                                    // :   searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase()
                                     caseSensitive ?
-                                        searchTarget.customDataFields?.[customDataField] === v
-                                    :   searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase()
+                                        !!searchTarget.customDataFields?.[customDataField]?.includes(v)
+                                    :   !!searchTarget.customDataFields?.[customDataField]?.toLowerCase()?.includes(v.toLowerCase())
                                 ))
                         ) {
                             if (yieldUndefined) yield undefined!;
@@ -2589,9 +2614,12 @@ namespace exports {
                             query.customDataFields[customDataField].noneOf.length > 0 &&
                             searchTarget.customDataFields?.[customDataField] !== undefined &&
                             query.customDataFields[customDataField].noneOf.some((v: string): boolean =>
+                                // caseSensitive ?
+                                //     searchTarget.customDataFields?.[customDataField] === v
+                                // :   searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase()
                                 caseSensitive ?
-                                    searchTarget.customDataFields?.[customDataField] === v
-                                :   searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase()
+                                    !!searchTarget.customDataFields?.[customDataField]?.includes(v)
+                                :   !!searchTarget.customDataFields?.[customDataField]?.toLowerCase()?.includes(v.toLowerCase())
                             )
                         ) {
                             if (yieldUndefined) yield undefined!;

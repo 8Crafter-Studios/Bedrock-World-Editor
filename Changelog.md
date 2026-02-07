@@ -2,6 +2,7 @@
 
 ## Additions
 
+-   Added a text editor.
 -   Added support for editing the `Digest` content type.
 -   Added support for the `ChunkLoadedRequest` content type.
 -   Added the ability to scroll the debug overlay with `Shift+F3` and `Shift+F4`.
@@ -27,13 +28,16 @@
 -   Added the ability to open sub-tabs in the background instead of immediately switching to them upon opening them by clicking with the scroll wheel instead of double-clicking.
 -   Added an icon for sub-tabs of content type `BiomeData`.
 -   Added an icon for sub-tabs of content type `SchedulerWT`.
+-   Added a DMG build of the app for macOS.
 
 ## Changes
 
 -   Removed the transition of dragged tabs in the tab bars.
+-   Redesigned pages and components that are not implemented yet, there is now a graphic and styling instead of just a plain text message saying that it hasn't been implemented yet.
 
 ## Fixes
 
+-   Fixed a bug where search filters other than `dbkey` and `nbt` did not support partial matches of the target data, requiring the search query to be exactly the entire target data, which is rarely ever useful.
 -   Fixed a bug where tabs' modes were never actually set in the constructor.
 -   Symlinks no longer can cause duplicates of worlds to appear in the world selection menu when multiple found world folders resolve to the same real path.
 -   Fixed a bug where `TickingArea` sub-tabs opened through the "Ticking Areas" left sidebar tab had a map icon.
