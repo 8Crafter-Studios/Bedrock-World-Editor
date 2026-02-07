@@ -1,6 +1,6 @@
 import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef } from "preact/compat";
-import { entryContentTypeToFormatMap, generateChunkKeyFromIndices, toLong, type Dimension, type NBTSchemas } from "mcbe-leveldb";
+import { entryContentTypeToFormatMap, generateChunkKeyFromIndices, getKeyDisplayName, toLong, type Dimension, type NBTSchemas } from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
 import {
     INTEGRATION_BUTTON_LINK_ALLOWED_UNPROMPTED_PROTOCOLS,
@@ -10,7 +10,8 @@ import {
 } from ".";
 import { preloadedIcons } from "../app";
 import { app, clipboard, dialog, shell } from "@electron/remote";
-import { parse } from "path";
+import type { ShowSelectOpenTabDialogResult } from "../components/SelectOpenTabDialog";
+import showSelectOpenTabDialog from "../components/SelectOpenTabDialog";
 
 type LegacyScoreboardSetBiomeData = [
     `wedit:biome,minecraft:${Dimension},${number}_${number}_${number}`,
@@ -31,6 +32,7 @@ interface Action_Command_setbiome_Legacy_TargetedChunkCountData {
 }
 
 /**
+ * Get the targeted chunk count for a legacy setbiome action.
  *
  * @param tab The tab to get the targeted chunk count from.
  * @param signal The signal to abort the operation if needed.
@@ -49,7 +51,7 @@ async function action_command_setbiome_legacy_getTargetedChunkCount(
     signal?: AbortSignal
 ): Promise<Action_Command_setbiome_Legacy_TargetedChunkCountData> {
     if (tab.type !== "world" && tab.type !== "leveldb") throw new TypeError("Invalid tab type.");
-    if (!tab.db) throw new Error("Database is not open.");
+    if (!tab.db) throw new Error("Database is not available.");
     await tab.awaitDBOpen;
     signal?.throwIfAborted();
     if (!tab.db?.isOpen()) throw new Error("Database is not open.");
@@ -58,7 +60,7 @@ async function action_command_setbiome_legacy_getTargetedChunkCount(
     if (!data) throw new Error("Scoreboard data not found.");
     const parsedData = await NBT.parse(data);
     signal?.throwIfAborted();
-    const scoreboard: NBTSchemas.NBTSchemaTypes.Scoreboard = parsedData.parsed as unknown as NBTSchemas.NBTSchemaTypes.Scoreboard;
+    const scoreboard: NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT = parsedData.parsed as unknown as NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT;
     if (!scoreboard?.value?.Objectives?.value?.value) throw new Error("Scoreboard objectives not found.");
     const gametestDBObjective = scoreboard.value.Objectives.value.value.find((o) => o.Name.value === "GAMETEST_DB");
     if (!gametestDBObjective) throw new Error("GAMETEST_DB objective not found.");
@@ -108,7 +110,7 @@ async function action_command_setbiome_legacy_getTargetedChunkCount(
                 targetedChunkCountData.errorTypes.data3dKeyNotFound++;
                 continue;
             }
-            // TODO: Make this dynamic determine the index offset so it works with worlds with custom height limits.
+            // TODO: Make this dynamically determine the index offset so it works with worlds with custom height limits.
             const data3dValue: NBTSchemas.NBTSchemaTypes.Data3D = entryContentTypeToFormatMap.Data3D.parse(rawData3d);
             const biome = data3dValue.value.biomes.value.value[y - MIN_SUBCHUNK_INDEX];
             if (!biome) {
@@ -120,6 +122,71 @@ async function action_command_setbiome_legacy_getTargetedChunkCount(
     }
     targetedChunkCountData.invalid = targetedChunkCountData.total - targetedChunkCountData.valid;
     return targetedChunkCountData;
+}
+
+interface Action_Export_Structures_StructureData {
+    structures: {
+        structureId: string;
+        scoreboardId: bigint;
+        individualStructures: Buffer[];
+    }[];
+}
+
+/**
+ * Gets the list of exportable structures.
+ *
+ * @param tab The tab to get the exportable structures for.
+ * @param signal The signal to abort the operation if needed.
+ * @returns The list of exportable structures.
+ *
+ * @throws {TypeError} If the tab type is invalid.
+ * @throws {Error} If the database is not open.
+ * @throws {Error} If the scoreboard data is not found.
+ * @throws {Error} If the scoreboard objectives are not found.
+ * @throws {Error} If the wedit:exports objective is not found.
+ * @throws {AbortError | DOMException} If the signal is aborted.
+ * @throws {unknown} If an error occurs.
+ */
+async function action_export_structures_getStructures(tab: TabManagerTab, signal?: AbortSignal): Promise<Action_Export_Structures_StructureData> {
+    if (tab.type !== "world" && tab.type !== "leveldb") throw new TypeError("Invalid tab type.");
+    if (!tab.db) throw new Error("Database is not available.");
+    await tab.awaitDBOpen;
+    signal?.throwIfAborted();
+    if (!tab.db?.isOpen()) throw new Error("Database is not open.");
+    await tab.awaitCachedDBKeys;
+    signal?.throwIfAborted();
+    if (!tab.cachedDBKeys) throw new Error("Cached DB keys not found.");
+    const data = await tab.db.get("scoreboard");
+    signal?.throwIfAborted();
+    if (!data) throw new Error("Scoreboard data not found.");
+    const parsedData = await NBT.parse(data);
+    signal?.throwIfAborted();
+    const scoreboard: NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT = parsedData.parsed as unknown as NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT;
+    if (!scoreboard?.value?.Objectives?.value?.value) throw new Error("Scoreboard objectives not found.");
+    const weditExportsObjective = scoreboard.value.Objectives.value.value.find((o) => o.Name.value === "wedit:exports");
+    if (!weditExportsObjective) throw new Error("wedit:exports objective not found.");
+    const scoreboardIds = new Set<bigint>(weditExportsObjective.Scores.value.value.map((s) => toLong(s.ScoreboardId.value)));
+    const structureKeys: Buffer[] = [...tab.cachedDBKeys.StructureTemplate];
+    const structures: Action_Export_Structures_StructureData["structures"] = [];
+    for (const entry of [...scoreboard.value.Entries.value.value]) {
+        if (scoreboardIds.has(toLong(entry.ScoreboardId.value))) {
+            if (!entry.FakePlayerName?.value) continue;
+            const structureId: string = entry.FakePlayerName.value;
+            const structureName: string | undefined = structureId.split(":")[1];
+            if (structureName === undefined) continue;
+            structures.push({
+                structureId,
+                scoreboardId: toLong(entry.ScoreboardId.value),
+                individualStructures: structureKeys.filter((key: Buffer): true | void => {
+                    const k: string = key.toString();
+                    if (k === `structuretemplate_wedit:weditstructmeta_${structureName}`) return true;
+                    if (k === `structuretemplate_mystructure:weditstructref_${structureName}`) return true;
+                    if (new RegExp(String.raw`^structuretemplate_wedit:weditstructexport_${RegExp.escape(structureName)}_\d+_\d+_\d+$`).test(k)) return true;
+                }),
+            });
+        }
+    }
+    return { structures };
 }
 
 /**
@@ -155,7 +222,7 @@ const thisIntegration = {
                 const data = await tab.db.get("scoreboard");
                 if (!data) return false;
                 const parsedData = await NBT.parse(data);
-                const scoreboard: NBTSchemas.NBTSchemaTypes.Scoreboard = parsedData.parsed as unknown as NBTSchemas.NBTSchemaTypes.Scoreboard;
+                const scoreboard: NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT = parsedData.parsed as unknown as NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT;
                 if (!scoreboard?.value?.Objectives?.value?.value) return false;
                 const gametestDBObjective = scoreboard.value.Objectives.value.value.find((o) => o.Name.value === "GAMETEST_DB");
                 if (!gametestDBObjective) return false;
@@ -189,7 +256,7 @@ const thisIntegration = {
                 const data = await tab.db.get("scoreboard");
                 if (!data) throw new Error("Scoreboard data not found.");
                 const parsedData = await NBT.parse(data);
-                const scoreboard: NBTSchemas.NBTSchemaTypes.Scoreboard = parsedData.parsed as unknown as NBTSchemas.NBTSchemaTypes.Scoreboard;
+                const scoreboard: NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT = parsedData.parsed as unknown as NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT;
                 if (!scoreboard?.value?.Objectives?.value?.value) throw new Error("Scoreboard objectives not found.");
                 const gametestDBObjective = scoreboard.value.Objectives.value.value.find((o) => o.Name.value === "GAMETEST_DB");
                 if (!gametestDBObjective) throw new Error("GAMETEST_DB objective not found.");
@@ -210,17 +277,7 @@ const thisIntegration = {
                             );
                             continue;
                         }
-                        if (!commandData[0].startsWith("wedit:biome,")) {
-                            // DEBUG: In production this should just continute without a console error.
-                            console.error(
-                                "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::apply] Invalid ID for setbiome command data for entry:",
-                                entry,
-                                'expected commandData[0] to start with "wedit:biome,"',
-                                "commandData:",
-                                commandData
-                            );
-                            continue;
-                        }
+                        if (!commandData[0].startsWith("wedit:biome,")) continue;
                         const [, dimension, coordinates] = commandData[0].split(",") as [
                             id: "wedit:biome",
                             dimension: `minecraft:${Dimension}`,
@@ -243,7 +300,7 @@ const thisIntegration = {
                             );
                             continue;
                         }
-                        // TODO: Make this dynamic determine the index offset so it works with worlds with custom height limits.
+                        // TODO: Make this dynamically determine the index offset so it works with worlds with custom height limits.
                         const data3dValue: NBTSchemas.NBTSchemaTypes.Data3D = entryContentTypeToFormatMap.Data3D.parse(rawData3d);
                         const biome = data3dValue.value.biomes.value.value[y - MIN_SUBCHUNK_INDEX];
                         if (!biome) {
@@ -315,11 +372,8 @@ const thisIntegration = {
                     }
                 }
                 if (scoreboardModified) {
-                    // HACK: Look into why the scoreboard type is not assignable to the NBT.NBT type.
-                    // TSC: The ` as unknown as NBT.NBT` is temporary until it is figured out what is wrong with the type.
-                    await tab.db.put("scoreboard", NBT.writeUncompressed({ name: "", ...scoreboard } as unknown as NBT.NBT, "little"));
+                    await tab.db.put("scoreboard", NBT.writeUncompressed(scoreboard, "little"));
                 }
-                // TODO
             },
         },
     ],
@@ -442,7 +496,7 @@ const thisIntegration = {
         }: {
             targetedChunkCountData: Action_Command_setbiome_Legacy_TargetedChunkCountData;
         }): JSX.Element {
-            // TODO: Make this show more info about the biome changes, as seen in issue #17: https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/17
+            // IDEA: Make this show more info about the biome changes, as seen in issue #17: https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/17
             const abortController: AbortController | null = currentAbortController;
             return (
                 <>
@@ -521,12 +575,270 @@ const thisIntegration = {
                 </>
             );
         }
-        type ApplicableAction = "command_setbiome_legacy";
+        function ActionMenu_Export_Structures({ structureData: { structures } }: { structureData: Action_Export_Structures_StructureData }): JSX.Element {
+            const abortController: AbortController | null = currentAbortController;
+            return (
+                <>
+                    <div style={{ marginLeft: "1em" }}>
+                        <h2>Structure Exports</h2>
+                        <div style={{ marginLeft: "1em" }}>
+                            {/* IDEA: This text should be clickable and when clicked should show a menu with a list of all of the structures and should use pages like in the "View Files" left sidebar tab */}
+                            <p>{structures.length} structures(s) pending export</p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        class="genericRoundButton"
+                        onClick={async (event: TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
+                            if (!tablesContainerRef.current) return;
+                            if (props.tab.type !== "world" && props.tab.type !== "leveldb") return;
+                            if (!props.tab.db) return;
+                            await props.tab.awaitDBOpen;
+                            if (!props.tab.db?.isOpen()) throw new Error("Database is not open.");
+                            abortController?.signal.throwIfAborted();
+                            event.currentTarget.blur();
+                            const result: ShowSelectOpenTabDialogResult = await showSelectOpenTabDialog({
+                                excludedTabs: [{ windowID: getCurrentWindow().id, tabID: props.tab.id }],
+                                message: "Select a tab to transfer structures to.",
+                                tabTargetTypeFilter: ["world", "leveldb"],
+                            });
+                            if (result.canceled) return;
+                            abortController?.signal.throwIfAborted();
+                            const results: (Error | void)[] = await Promise.all(
+                                structures.map(async (structureData): Promise<Error | void> => {
+                                    return await Promise.all(
+                                        structureData.individualStructures.map(async (structure): Promise<void> => {
+                                            const data: readonly [key: Buffer, data: Buffer | null] = [structure, await props.tab.db!.get(structure)!] as const;
+                                            abortController?.signal.throwIfAborted();
+                                            if (data[1] === null)
+                                                throw new ReferenceError(
+                                                    `Entry not found for structure ${structureData.structureId}: ${getKeyDisplayName(data[0])}`
+                                                );
+                                            await result.window.webContents.executeJavaScript(
+                                                `{/* This is to make sure the contents are different so that it works each time. */"${Date.now()}_${Math.floor(
+                                                    Math.random() * 1000000
+                                                )}"; const tab = tabManager.openTabs.find((tab) => tab.id === ${
+                                                    result.tabID
+                                                }n); if (tab) {const db = tab.db; if (db) {const [{data: key}, {data}] = ${JSON.stringify(
+                                                    data
+                                                )}; const keyBuffer = Buffer.from(key); db.put(keyBuffer, Buffer.from(data)).then((success)=>{if(!success) console.error("Failed to transfer structure:", keyBuffer); else if (!tab.cachedDBKeys.StructureTemplate.some(targetKey=> targetKey.equals(keyBuffer))) {tab.cachedDBKeys.StructureTemplate.push(keyBuffer); tab.setLevelDBIsModified();}});}} else console.log("Unable to find tab with ID:", ${
+                                                    result.tabID
+                                                }n);}`
+                                            );
+                                        })
+                                    ).then(
+                                        (): void => void 0,
+                                        (error: Error): Error => error
+                                    );
+                                })
+                            );
+                            abortController?.signal.throwIfAborted();
+                            const errors: Error[] = results.filter((error: void | Error): error is Error => error instanceof Error);
+                            if (errors.length > 0) {
+                                dialog.showErrorBox(
+                                    "Failed to Transfer Some Structures",
+                                    errors.map((error: Error): string => `${error.message}\n\n${error.stack}`).join("\n\n")
+                                );
+                            }
+                            if (errors.length === structures.length) return;
+                            const data = await props.tab.db.get("scoreboard");
+                            if (!data) throw new Error("Scoreboard data not found.");
+                            abortController?.signal.throwIfAborted();
+                            const parsedData = await NBT.parse(data);
+                            abortController?.signal.throwIfAborted();
+                            const scoreboard: NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT = parsedData.parsed as unknown as NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT;
+                            if (!scoreboard?.value?.Objectives?.value?.value) throw new Error("Scoreboard objectives not found.");
+                            const weditExportsObjective = scoreboard.value.Objectives.value.value.find((o) => o.Name.value === "wedit:exports");
+                            if (!weditExportsObjective) throw new Error("wedit:exports objective not found.");
+                            await Promise.all(
+                                [...structures].map(async (structure, index): Promise<void> => {
+                                    if (results[index] instanceof Error) return;
+
+                                    const entryIndex: number = scoreboard.value.Entries.value.value.findIndex(
+                                        (e) => toLong(e.ScoreboardId.value) === structure.scoreboardId
+                                    );
+                                    if (entryIndex !== -1) scoreboard.value.Entries.value.value.splice(entryIndex, 1);
+
+                                    const objectiveIndex: number = weditExportsObjective.Scores.value.value.findIndex(
+                                        (s) => toLong(s.ScoreboardId.value) === structure.scoreboardId
+                                    );
+                                    if (objectiveIndex !== -1) weditExportsObjective.Scores.value.value.splice(objectiveIndex, 1);
+
+                                    await Promise.all(
+                                        structure.individualStructures.map(
+                                            (key: Buffer): Promise<void> =>
+                                                props.tab.db!.delete(key).then((): void => {
+                                                    if (!props.tab.cachedDBKeys) return;
+                                                    const keyIndex: number = props.tab.cachedDBKeys.StructureTemplate.findIndex((targetKey: Buffer): boolean =>
+                                                        targetKey.equals(key)
+                                                    );
+                                                    if (keyIndex !== -1) props.tab.cachedDBKeys.StructureTemplate.splice(keyIndex, 1);
+                                                })
+                                        )
+                                    );
+
+                                    const structureIndex: number = structures.indexOf(structure);
+                                    if (structureIndex !== -1) structures.splice(structureIndex, 1);
+                                })
+                            );
+                            abortController?.signal.throwIfAborted();
+                            await props.tab.db.put("scoreboard", NBT.writeUncompressed(scoreboard, "little"));
+                            abortController?.signal.throwIfAborted();
+                            if (structures.length === 0) {
+                                actionData.export_structures.structureData = undefined;
+                                {
+                                    const applicableActionsIndex: number = applicableActions.indexOf("export_structures");
+                                    if (applicableActionsIndex !== -1) applicableActions.splice(applicableActionsIndex, 1);
+                                }
+                                if (!loadingActions.includes("export_structures")) loadingActions.push("export_structures");
+                                updateTablesContents();
+                            }
+                        }}
+                    >
+                        Transfer to Open Tab
+                    </button>
+                    <button
+                        type="button"
+                        class="genericRoundButton"
+                        onClick={async (event: TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
+                            if (!tablesContainerRef.current) return;
+                            event.currentTarget.blur();
+                            const result: ShowSelectOpenTabDialogResult = await showSelectOpenTabDialog({
+                                excludedTabs: [{ windowID: getCurrentWindow().id, tabID: props.tab.id }],
+                                message: "Select a tab to transfer structures to.",
+                                tabTargetTypeFilter: ["world", "leveldb"],
+                            });
+                            if (result.canceled) return;
+                            abortController?.signal.throwIfAborted();
+                            const errors: Error[] = (
+                                await Promise.all(
+                                    structures.map(async (structureData): Promise<Error | void> => {
+                                        return await Promise.all(
+                                            structureData.individualStructures.map(async (structure): Promise<void> => {
+                                                const data: readonly [key: Buffer, data: Buffer | null] = [
+                                                    structure,
+                                                    await props.tab.db!.get(structure)!,
+                                                ] as const;
+                                                abortController?.signal.throwIfAborted();
+                                                if (data[1] === null)
+                                                    throw new ReferenceError(
+                                                        `Entry not found for structure ${structureData.structureId}: ${getKeyDisplayName(data[0])}`
+                                                    );
+                                                await result.window.webContents.executeJavaScript(
+                                                    `{/* This is to make sure the contents are different so that it works each time. */"${Date.now()}_${Math.floor(
+                                                        Math.random() * 1000000
+                                                    )}"; const tab = tabManager.openTabs.find((tab) => tab.id === ${
+                                                        result.tabID
+                                                    }n); if (tab) {const db = tab.db; if (db) {const [{data: key}, {data}] = ${JSON.stringify(
+                                                        data
+                                                    )}; const keyBuffer = Buffer.from(key); db.put(keyBuffer, Buffer.from(data)).then((success)=>{if(!success) console.error("Failed to transfer structure:", keyBuffer); else if (!tab.cachedDBKeys.StructureTemplate.some(targetKey=> targetKey.equals(keyBuffer))) {tab.cachedDBKeys.StructureTemplate.push(keyBuffer); tab.setLevelDBIsModified();}});}} else console.log("Unable to find tab with ID:", ${
+                                                        result.tabID
+                                                    }n);}`
+                                                );
+                                            })
+                                        ).then(
+                                            (): void => void 0,
+                                            (error: Error): Error => error
+                                        );
+                                    })
+                                )
+                            ).filter((error: void | Error): error is Error => error instanceof Error);
+                            abortController?.signal.throwIfAborted();
+                            if (errors.length > 0) {
+                                dialog.showErrorBox(
+                                    "Failed to Copy Some Structures",
+                                    errors.map((error: Error): string => `${error.message}\n\n${error.stack}`).join("\n\n")
+                                );
+                            }
+                        }}
+                    >
+                        Copy to Open Tab
+                    </button>
+                    <button
+                        type="button"
+                        class="genericRoundButton"
+                        onClick={async (event: TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
+                            if (!tablesContainerRef.current) return;
+                            if (
+                                dialog.showMessageBoxSync(getCurrentWindow(), {
+                                    type: "warning",
+                                    title: "Bedrock World Editor",
+                                    message: `This will delete all structure exports from this world. Are you sure you want to do this?`,
+                                    buttons: ["Proceed", "Cancel"],
+                                    noLink: true,
+                                })
+                            )
+                                return;
+                            if (props.tab.type !== "world" && props.tab.type !== "leveldb") return;
+                            if (!props.tab.db) return;
+                            await props.tab.awaitDBOpen;
+                            if (!props.tab.db?.isOpen()) throw new Error("Database is not open.");
+                            abortController?.signal.throwIfAborted();
+                            event.currentTarget.blur();
+                            const data = await props.tab.db.get("scoreboard");
+                            if (!data) throw new Error("Scoreboard data not found.");
+                            abortController?.signal.throwIfAborted();
+                            const parsedData = await NBT.parse(data);
+                            abortController?.signal.throwIfAborted();
+                            const scoreboard: NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT = parsedData.parsed as unknown as NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT;
+                            if (!scoreboard?.value?.Objectives?.value?.value) throw new Error("Scoreboard objectives not found.");
+                            const weditExportsObjective = scoreboard.value.Objectives.value.value.find((o) => o.Name.value === "wedit:exports");
+                            if (!weditExportsObjective) throw new Error("wedit:exports objective not found.");
+                            await Promise.all(
+                                [...structures].map(async (structure): Promise<void> => {
+                                    const entryIndex: number = scoreboard.value.Entries.value.value.findIndex(
+                                        (e) => toLong(e.ScoreboardId.value) === structure.scoreboardId
+                                    );
+                                    if (entryIndex !== -1) scoreboard.value.Entries.value.value.splice(entryIndex, 1);
+
+                                    const objectiveIndex: number = weditExportsObjective.Scores.value.value.findIndex(
+                                        (s) => toLong(s.ScoreboardId.value) === structure.scoreboardId
+                                    );
+                                    if (objectiveIndex !== -1) weditExportsObjective.Scores.value.value.splice(objectiveIndex, 1);
+
+                                    await Promise.all(
+                                        structure.individualStructures.map(
+                                            (key: Buffer): Promise<void> =>
+                                                props.tab.db!.delete(key).then((): void => {
+                                                    if (!props.tab.cachedDBKeys) return;
+                                                    const keyIndex: number = props.tab.cachedDBKeys.StructureTemplate.findIndex((targetKey: Buffer): boolean =>
+                                                        targetKey.equals(key)
+                                                    );
+                                                    if (keyIndex !== -1) props.tab.cachedDBKeys.StructureTemplate.splice(keyIndex, 1);
+                                                })
+                                        )
+                                    );
+
+                                    const structureIndex: number = structures.indexOf(structure);
+                                    if (structureIndex !== -1) structures.splice(structureIndex, 1);
+                                })
+                            );
+                            abortController?.signal.throwIfAborted();
+                            await props.tab.db.put("scoreboard", NBT.writeUncompressed(scoreboard, "little"));
+                            abortController?.signal.throwIfAborted();
+                            actionData.export_structures.structureData = undefined;
+                            {
+                                const applicableActionsIndex: number = applicableActions.indexOf("export_structures");
+                                if (applicableActionsIndex !== -1) applicableActions.splice(applicableActionsIndex, 1);
+                            }
+                            if (!loadingActions.includes("export_structures")) loadingActions.push("export_structures");
+                            updateTablesContents();
+                        }}
+                    >
+                        Delete All Exports
+                    </button>
+                </>
+            );
+        }
+        type ApplicableAction = "command_setbiome_legacy" | "export_structures";
         const applicableActions: ApplicableAction[] = [];
-        const loadingActions: ApplicableAction[] = ["command_setbiome_legacy"];
+        const loadingActions: ApplicableAction[] = ["command_setbiome_legacy", "export_structures"];
         const actionData = {
             command_setbiome_legacy: {
                 targetedChunkCountData: undefined as Action_Command_setbiome_Legacy_TargetedChunkCountData | undefined,
+            },
+            export_structures: {
+                structureData: undefined as Action_Export_Structures_StructureData | undefined,
             },
         } satisfies Partial<Record<ApplicableAction, Record<PropertyKey, unknown>>>;
         function updateTablesContents(): void {
@@ -544,7 +856,16 @@ const thisIntegration = {
                 <>
                     {...[
                         applicableActions.includes("command_setbiome_legacy") && !!actionData.command_setbiome_legacy.targetedChunkCountData && (
-                            <ActionMenu_Command_setbiome_Legacy targetedChunkCountData={actionData.command_setbiome_legacy.targetedChunkCountData} />
+                            <ActionMenu_Command_setbiome_Legacy
+                                targetedChunkCountData={actionData.command_setbiome_legacy.targetedChunkCountData}
+                                key="actionMenu:WorldEdit_Bedrock:command_setbiome_legacy"
+                            />
+                        ),
+                        applicableActions.includes("export_structures") && !!actionData.export_structures.structureData && (
+                            <ActionMenu_Export_Structures
+                                structureData={actionData.export_structures.structureData}
+                                key="actionMenu:WorldEdit_Bedrock:export_structures"
+                            />
                         ),
                     ]
                         .filter(Boolean as unknown as (v: false | JSX.Element) => v is JSX.Element)
@@ -584,6 +905,31 @@ const thisIntegration = {
                         if (result) updateTablesContents();
                     }
                 });
+            }
+            export_structures: {
+                let success: boolean = false;
+                action_export_structures_getStructures(props.tab, abortController.signal)
+                    .then((result: Action_Export_Structures_StructureData): void => {
+                        abortController.signal.throwIfAborted();
+                        applicableActions.push("export_structures");
+                        if (result.structures.length > 0) {
+                            actionData.export_structures.structureData = result;
+                            success = true;
+                        } else {
+                            actionData.export_structures.structureData = undefined;
+                        }
+                    })
+                    .finally((): void => {
+                        {
+                            const loadingActionsIndex: number = loadingActions.indexOf("export_structures");
+                            if (loadingActionsIndex !== -1) {
+                                loadingActions.splice(loadingActionsIndex, 1);
+                                if (!success && loadingActions.length === 0) updateTablesContents();
+                            }
+                            if (success) updateTablesContents();
+                        }
+                    });
+                break export_structures;
             }
             return (): void => abortController.abort("Effect cleanup");
         });

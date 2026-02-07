@@ -368,6 +368,11 @@ td:not(:last-of-type) {
     border-right: 1px solid var(--table-outline-color);
 }
 
+hr {
+    margin-inline-start: 0.5em;
+    margin-inline-end: 0.5em;
+}
+
 ignoredcontainer {
     display: contents;
 }

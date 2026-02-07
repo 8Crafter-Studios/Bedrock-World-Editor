@@ -8,6 +8,7 @@
 -   Added the ability to scroll the debug overlay with `Shift+F3` and `Shift+F4`.
 -   Added a `Discord` button to the `Help` menu.
 -   Added the "Integrations" tab.
+-   Added an integration with the [WorldEdit Bedrock](https://github.com/SIsilicon/WorldEdit-BE) add-on.
 -   The left sidebar is now scrollable.
 -   The lock icon of read-only tabs now has hover text.
 -   The bullet point modified icons of tabs and sub-tabs now have hover text.
