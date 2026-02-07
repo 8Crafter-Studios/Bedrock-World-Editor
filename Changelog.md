@@ -37,6 +37,8 @@
 -   Fixed a bug where tabs' modes were never actually set in the constructor.
 -   Symlinks no longer can cause duplicates of worlds to appear in the world selection menu when multiple found world folders resolve to the same real path.
 -   Fixed a bug where `TickingArea` sub-tabs opened through the "Ticking Areas" left sidebar tab had a map icon.
+-   The "Repair Force World Corruption" button now updates the list of cached DB keys to remove the deleted keys.
+-   The "Force Corrupt World" button now updates the list of cached DB keys to add the created keys.
 
 # v1.0.0-beta.14
 
