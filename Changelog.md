@@ -53,6 +53,10 @@
 -   When clicking an option in the add tab popup menu, it now closes the popup menu.
 -   Fixed a bug where on macOS, the app would not quit when all windows were closed.
 
+## Performance Improvements
+
+-   Masive load time improvements to the worlds list by only getting the application name for the `minecraft:` and `minecraft-preview:` protocols (checking if Minecraft and Minecraft Preview are installed) once instead of per world.
+
 # v1.0.0-beta.14
 
 ## Additions

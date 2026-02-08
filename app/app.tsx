@@ -389,6 +389,8 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
     }
     useEffect((): void => void getMinecraftWorlds(false, config.showWorldSizesOnWorldList).then(refreshData), []);
     function RenderWorlds(): JSX.SpecificElement<"div">[] {
+        const mcAppName: string = app.getApplicationNameForProtocol("minecraft:");
+        const mcPreviewAppName: string = app.getApplicationNameForProtocol("minecraft-preview:");
         return data
             .toSorted((a: MinecraftWorldDisplayDetails, b: MinecraftWorldDisplayDetails): number =>
                 a.favorited && !b.favorited ? -1
@@ -603,7 +605,7 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                                         "Finder"
                                     :   "File Manager"}
                                 </MenuItem>
-                                {app.getApplicationNameForProtocol("minecraft:") && (
+                                {mcAppName && (
                                     <MenuItem
                                         onClick={async (): Promise<void> => {
                                             shell.openExternal(`minecraft://?load=${encodeURIComponent(path.basename(world.path))}`);
@@ -612,7 +614,7 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                                         Open World in Minecraft
                                     </MenuItem>
                                 )}
-                                {app.getApplicationNameForProtocol("minecraft-preview:") && (
+                                {mcPreviewAppName && (
                                     <MenuItem
                                         onClick={async (): Promise<void> => {
                                             shell.openExternal(`minecraft-preview://?load=${encodeURIComponent(path.basename(world.path))}`);
