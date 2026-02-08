@@ -2,11 +2,6 @@ import type { JSX, RefObject } from "preact";
 import _React, { render, useRef } from "preact/compat";
 import { integrations, type Integration } from "../integrations";
 
-// DEBUG: This is to allow testing the functionality manually through the DevTools console.
-// @ts-ignore: // TEMP
-globalThis.integrations = integrations;
-console.log(integrations);
-
 export interface IntegrationsTabProps {
     tab: TabManagerTab;
 }
