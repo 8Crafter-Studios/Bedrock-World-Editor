@@ -32,9 +32,10 @@ import semver from "semver";
 const openAboutWindow_function = require("about-window").default as typeof import("about-window").default;
 function openAboutWindow(parentWindow?: BrowserWindow): BrowserWindow {
     return openAboutWindow_function({
-        icon_path: isDev
-            ? path.join(__dirname, "../../resources/icon.png")
-            : path.join(process.resourcesPath, "resources/icon.png") /* path.join(__dirname, (isDev ? "../../" : "") + "resources/icon.png"), */,
+        icon_path:
+            isDev ?
+                path.join(__dirname, "../../resources/icon.png")
+            :   path.join(process.resourcesPath, "resources/icon.png") /* path.join(__dirname, (isDev ? "../../" : "") + "resources/icon.png"), */,
         product_name: "Bedrock World Editor",
         adjust_window_size: true,
         use_version_info: [
@@ -46,7 +47,7 @@ function openAboutWindow(parentWindow?: BrowserWindow): BrowserWindow {
         bug_report_url: "https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues",
         homepage: "https://wiki.8crafter.com/main/apps/bedrock-world-editor",
         win_options: {
-            parent: parentWindow,
+            parent: parentWindow!,
         },
     });
 }
@@ -894,7 +895,7 @@ if (!startup && !started) {
             switch (parsedURL.hostname + parsedURL.pathname) {
                 case "openFile": {
                     const source: string | null = parsedURL.searchParams.get("path");
-                    lastFocusedMainWindows.at(-1)?.webContents.send<1>("open-file", source!);
+                    lastFocusedMainWindows.at(-1)?.webContents.send<1>("open-file", source!, (parsedURL.searchParams.get("type") ?? undefined) as never);
                     break;
                 }
                 case "openLevelDBFolder": {
@@ -1006,7 +1007,12 @@ if (!startup && !started) {
         }
         const filePath: string | undefined = argv.find((arg: string): boolean => arg !== "." && /^(?!-)/.test(arg));
         if (filePath && existsSync(filePath)) {
-            handleFileOpen(filePath, argv.includes("--edit") ? "edit" : argv.includes("--preview") ? "preview" : "open");
+            handleFileOpen(
+                filePath,
+                argv.includes("--edit") ? "edit"
+                : argv.includes("--preview") ? "preview"
+                : "open"
+            );
         }
     }
     if (webContentsLoaded) {
@@ -1059,7 +1065,11 @@ if (!startup && !started) {
                     )
                     .reduce(
                         (a: (typeof releases.data)[number] | null, b: (typeof releases.data)[number]): (typeof releases.data)[number] | null =>
-                            a ? (semver.compareBuild(a.tag_name, b.tag_name) < 0 ? b : a) : b ?? null,
+                            a ?
+                                semver.compareBuild(a.tag_name, b.tag_name) < 0 ?
+                                    b
+                                :   a
+                            :   (b ?? null),
                         null
                     );
                 if (!latestRelease) return;
@@ -1071,7 +1081,7 @@ if (!startup && !started) {
                             message: `A new version of Bedrock World Editor is available.\n\nCurrent Version: ${app.getVersion()}\nLatest Version: ${
                                 latestRelease.tag_name
                             }`,
-                            detail: latestRelease.body ? `Release Notes:\n${latestRelease.body}` : undefined,
+                            detail: latestRelease.body ? `Release Notes:\n${latestRelease.body}` : undefined!,
                             buttons: ["Open", "Cancel"],
                             noLink: true,
                             cancelId: 1,

@@ -373,11 +373,11 @@ namespace exports {
         /**
          * The file path or URI of the icon.
          */
-        public icon: string;
+        public icon: string | null;
         /**
          * The type of the tab.
          */
-        public type: "world" | "leveldb" | "nbt" | "json" | "other";
+        public type: "world" | "leveldb" | "nbt" | "json" | "xml" | "text" | "binary" | "other";
         /**
          * The mode of the tab.
          *
@@ -426,7 +426,7 @@ namespace exports {
             tabManager: TabManager;
             path: TabManagerTab["path"];
             name: TabManagerTab["name"];
-            icon: TabManagerTab["icon"];
+            icon: TabManagerTab["icon"] | undefined;
             type: TabManagerTab["type"];
             mode?: TabManagerTabMode;
         }) {
@@ -435,7 +435,7 @@ namespace exports {
             this.tabManager = props.tabManager;
             this.path = props.path;
             this.name = props.name;
-            this.icon = props.icon;
+            this.icon = props.icon ?? null;
             this.type = props.type;
             if (props.mode) this.mode = props.mode;
             switch (props.mode) {

@@ -100,58 +100,14 @@ const fileMenu: Electron.Menu = Menu.buildFromTemplate([
         type: "submenu",
         label: "Open",
         toolTip: "Open a file or folder.",
-        enabled: false,
         submenu: [
-            {
-                label: "NBT File",
-                toolTip: "Open NBT files.",
-                async click(): Promise<void> {
-                    currentWindow.webContents.executeJavaScript("try { SoundEffects.popB(); } catch {}");
-                    const result: Electron.OpenDialogReturnValue = await dialog.showOpenDialog(currentWindow, {
-                        buttonLabel: "Open",
-                        filters: [
-                            { name: "NBT", extensions: ["nbt", "mcstructure", "schem", "schematic", "bin", "snbt", "hex", "dat"] },
-                            { name: "All", extensions: ["*"] },
-                        ],
-                        message: "Select NBT files to open",
-                        properties: ["openFile", "showHiddenFiles", "treatPackageAsDirectory", "multiSelections"],
-                        title: "Open NBT Files",
-                    });
-                    if (result.canceled) return;
-                    const configPaths: string[] = result.filePaths;
-                    configPaths.forEach((path: string): void => {
-                        currentWindow.webContents.send<1>("open-file", path);
-                    });
-                },
-            },
-            {
-                label: "JSON File",
-                toolTip: "Open JSON files.",
-                async click(): Promise<void> {
-                    currentWindow.webContents.executeJavaScript("try { SoundEffects.popB(); } catch {}");
-                    const result: Electron.OpenDialogReturnValue = await dialog.showOpenDialog(currentWindow, {
-                        buttonLabel: "Open",
-                        filters: [
-                            { name: "Config", extensions: ["json", "jsonc"] },
-                            { name: "All", extensions: ["*"] },
-                        ],
-                        message: "Select NBT files to open",
-                        properties: ["openFile", "showHiddenFiles", "treatPackageAsDirectory", "multiSelections"],
-                        title: "Open NBT Files",
-                    });
-                    if (result.canceled) return;
-                    const configPaths: string[] = result.filePaths;
-                    configPaths.forEach((path: string): void => {
-                        currentWindow.webContents.send<1>("open-file", path);
-                    });
-                },
-            },
             {
                 label: "World Folder",
                 toolTip: "Open world folders.",
                 async click(): Promise<void> {
-                    currentWindow.webContents.executeJavaScript("try { SoundEffects.popB(); } catch {}");
+                    // IDEA: If the user holds ALT while clicking the button, have it prompt them to select what mode to open the world folders in.
                     const result: Electron.OpenDialogReturnValue = await dialog.showOpenDialog(currentWindow, {
+                        // IDEA: Implement functionality to remember the folder that the last opened world folder was located in to default to that folder.
                         buttonLabel: "Open",
                         message: "Select world folders to open",
                         properties: ["openDirectory", "showHiddenFiles", "treatPackageAsDirectory", "multiSelections"],
@@ -168,8 +124,9 @@ const fileMenu: Electron.Menu = Menu.buildFromTemplate([
                 label: "LevelDB Folder",
                 toolTip: "Open LevelDB folders.",
                 async click(): Promise<void> {
-                    currentWindow.webContents.executeJavaScript("try { SoundEffects.popB(); } catch {}");
+                    // IDEA: If the user holds ALT while clicking the button, have it prompt them to select what mode to open the LevelDB folders in.
                     const result: Electron.OpenDialogReturnValue = await dialog.showOpenDialog(currentWindow, {
+                        // IDEA: Implement functionality to remember the folder that the last opened LevelDB folder was located in to default to that folder.
                         buttonLabel: "Open",
                         message: "Select LevelDB folders to open",
                         properties: ["openDirectory", "showHiddenFiles", "treatPackageAsDirectory", "multiSelections"],
@@ -179,6 +136,74 @@ const fileMenu: Electron.Menu = Menu.buildFromTemplate([
                     const configPaths: string[] = result.filePaths;
                     configPaths.forEach((path: string): void => {
                         currentWindow.webContents.send<1>("open-leveldb-folder", path);
+                    });
+                },
+            },
+            {
+                label: "NBT File",
+                toolTip: "Open NBT files.",
+                async click(): Promise<void> {
+                    // IDEA: If the user holds ALT while clicking the button, have it prompt them to select what mode to open the NBT files in.
+                    const result: Electron.OpenDialogReturnValue = await dialog.showOpenDialog(currentWindow, {
+                        // IDEA: Implement functionality to remember the folder that the last opened NBT file was located in to default to that folder.
+                        buttonLabel: "Open",
+                        filters: [
+                            { name: "NBT", extensions: ["nbt", "mcstructure", "schem", "schematic", "bin", "snbt", "hex", "dat"] },
+                            { name: "All", extensions: ["*"] },
+                        ],
+                        message: "Select NBT files to open",
+                        properties: ["openFile", "showHiddenFiles", "treatPackageAsDirectory", "multiSelections"],
+                        title: "Open NBT Files",
+                    });
+                    if (result.canceled) return;
+                    const configPaths: string[] = result.filePaths;
+                    configPaths.forEach((path: string): void => {
+                        currentWindow.webContents.send<1>("open-file", path, "nbt");
+                    });
+                },
+            },
+            {
+                label: "JSON File",
+                toolTip: "Open JSON files.",
+                async click(): Promise<void> {
+                    // IDEA: If the user holds ALT while clicking the button, have it prompt them to select what mode to open the JSON files in.
+                    const result: Electron.OpenDialogReturnValue = await dialog.showOpenDialog(currentWindow, {
+                        // IDEA: Implement functionality to remember the folder that the last opened JSON file was located in to default to that folder.
+                        buttonLabel: "Open",
+                        filters: [
+                            { name: "JSON", extensions: ["json", "jsonc"] }, // TODO: Add JSONL support.
+                            { name: "All", extensions: ["*"] },
+                        ],
+                        message: "Select JSON files to open",
+                        properties: ["openFile", "showHiddenFiles", "treatPackageAsDirectory", "multiSelections"],
+                        title: "Open JSON Files",
+                    });
+                    if (result.canceled) return;
+                    const configPaths: string[] = result.filePaths;
+                    configPaths.forEach((path: string): void => {
+                        currentWindow.webContents.send<1>("open-file", path, "json");
+                    });
+                },
+            },
+            {
+                label: "Raw File",
+                toolTip: "Open binary files in the hex editor.",
+                async click(): Promise<void> {
+                    // IDEA: If the user holds ALT while clicking the button, have it prompt them to select what mode to open the binary files in.
+                    const result: Electron.OpenDialogReturnValue = await dialog.showOpenDialog(currentWindow, {
+                        // IDEA: Implement functionality to remember the folder that the last opened binary file was located in to default to that folder.
+                        buttonLabel: "Open",
+                        filters: [
+                            { name: "All", extensions: ["*"] },
+                        ],
+                        message: "Select binary files to open",
+                        properties: ["openFile", "showHiddenFiles", "treatPackageAsDirectory", "multiSelections"],
+                        title: "Open Binary Files",
+                    });
+                    if (result.canceled) return;
+                    const configPaths: string[] = result.filePaths;
+                    configPaths.forEach((path: string): void => {
+                        currentWindow.webContents.send<1>("open-file", path, "binary");
                     });
                 },
             },

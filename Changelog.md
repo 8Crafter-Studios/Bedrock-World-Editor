@@ -31,6 +31,10 @@
 -   Added an icon for sub-tabs of content type `SchedulerWT`.
 -   Added a DMG build of the app for macOS.
 -   Added the `structureid` search filter to the "Structures" tab.
+-   The `File > Open` submenu in the menu bar is now functional.
+-   Added more options to the add tab popup menu.
+-   All of the options on the add tab popup menu are now functional.
+-   The app now supports opening files and folders in it through a file manager (files only), executable arguments, or URI.
 
 ## Changes
 
@@ -46,6 +50,7 @@
 -   The "Repair Force World Corruption" button now updates the list of cached DB keys to remove the deleted keys.
 -   The "Force Corrupt World" button now updates the list of cached DB keys to add the created keys.
 -   Fixed the search filters for the "Structures" tab.
+-   When clicking an option in the add tab popup menu, it now closes the popup menu.
 
 # v1.0.0-beta.14
 

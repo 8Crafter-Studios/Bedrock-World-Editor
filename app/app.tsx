@@ -934,15 +934,99 @@ tabManager.on("switchTab", ({ previousTab, newTab }: TabManagerSwitchTabEvent): 
     if (!tabContentsElement) return;
     // const tempElement: HTMLDivElement = document.createElement("div");
     render(null, tabContentsElement);
-    if (newTab === null)
+    if (newTab === null) {
         render(
             <div style="width: 100vw; height: 0; flex: 1; display: flex; flex-direction: row;">
                 <StartScreenContents />
             </div>,
             tabContentsElement // tempElement
         );
-    else if (typeof newTab !== "string" && newTab.type === "world") render(<WorldEditor tab={newTab} />, tabContentsElement /* tempElement */);
-    else if (typeof newTab === "string") {
+    } else if (typeof newTab !== "string") {
+        switch (newTab.type) {
+            case "world":
+                render(<WorldEditor tab={newTab} />, tabContentsElement /* tempElement */);
+                break;
+            case "leveldb":
+                render(
+                    <UnderConstruction subtitle="This tab type is under construction." detail="The LevelDB editor has not been implemented yet." />,
+                    tabContentsElement
+                );
+                break;
+            case "nbt":
+                render(
+                    <UnderConstruction subtitle="This tab type is under construction." detail="The NBT editor has not been implemented yet." />,
+                    tabContentsElement
+                );
+                break;
+            case "json":
+                render(
+                    <UnderConstruction subtitle="This tab type is under construction." detail="The JSON editor has not been implemented yet." />,
+                    tabContentsElement
+                );
+                break;
+            case "xml":
+                render(
+                    <UnderConstruction subtitle="This tab type is under construction." detail="The XML editor has not been implemented yet." />,
+                    tabContentsElement
+                );
+                break;
+            case "binary":
+                render(
+                    <UnderConstruction subtitle="This tab type is under construction." detail="The binary editor has not been implemented yet." />,
+                    tabContentsElement
+                );
+                break;
+            case "text":
+                render(
+                    <UnderConstruction subtitle="This tab type is under construction." detail="The text editor has not been implemented yet." />,
+                    tabContentsElement
+                );
+                break;
+            case "other":
+                render(
+                    <center
+                        style={{
+                            display: "inline-block",
+                            width: "-webkit-fill-available",
+                            height: "-webkit-fill-available",
+                        }}
+                    >
+                        <h1>Hmmmmm... There's nothing here.</h1>
+                        <p>How did this happen?</p>
+                        <img
+                            class="piximg ndrg nsel"
+                            style={{ width: "min(calc(100% - mod(100%, 256px)), 256px * 4)" }}
+                            aria-hidden="true"
+                            src="resource://images/ui/art/generic_empty.png"
+                        />
+                        <p>We don't know what do to with a tab type of "other"...</p>
+                    </center>,
+                    tabContentsElement
+                );
+                break;
+            default:
+                render(
+                    <center
+                        style={{
+                            display: "inline-block",
+                            width: "-webkit-fill-available",
+                            height: "-webkit-fill-available",
+                        }}
+                    >
+                        <h1>Error</h1>
+                        <p>Something went wrong...</p>
+                        <img
+                            class="piximg ndrg nsel"
+                            style={{ width: "min(calc(100% - mod(100%, 260px)), 260px * 4)" }}
+                            aria-hidden="true"
+                            src="resource://images/ui/art/generic_error.png"
+                        />
+                        <p>Invalid tab type: {newTab.type}</p>
+                    </center>,
+                    tabContentsElement
+                );
+        }
+    } else if (typeof newTab === "string") {
         if (newTab === "loading") {
             render(
                 <div style="width: 100vw; height: 0; flex: 1; display: flex; flex-direction: row;">
