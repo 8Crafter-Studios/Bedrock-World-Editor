@@ -51,6 +51,7 @@
 -   The "Force Corrupt World" button now updates the list of cached DB keys to add the created keys.
 -   Fixed the search filters for the "Structures" tab.
 -   When clicking an option in the add tab popup menu, it now closes the popup menu.
+-   Fixed a bug where on macOS, the app would not quit when all windows were closed.
 
 # v1.0.0-beta.14
 
