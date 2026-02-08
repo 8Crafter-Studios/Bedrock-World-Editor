@@ -1,6 +1,14 @@
 import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef } from "preact/compat";
-import { entryContentTypeToFormatMap, generateChunkKeyFromIndices, getKeyDisplayName, toLong, type Dimension, type NBTSchemas } from "mcbe-leveldb";
+import {
+    entryContentTypeToFormatMap,
+    generateChunkKeyFromIndices,
+    getKeyDisplayName,
+    toLong,
+    type Dimension,
+    type DimensionVectorXZ,
+    type NBTSchemas,
+} from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
 import {
     INTEGRATION_BUTTON_LINK_ALLOWED_UNPROMPTED_PROTOCOLS,
@@ -12,6 +20,7 @@ import { preloadedIcons } from "../app";
 import { app, clipboard, dialog, shell } from "@electron/remote";
 import type { ShowSelectOpenTabDialogResult } from "../components/SelectOpenTabDialog";
 import showSelectOpenTabDialog from "../components/SelectOpenTabDialog";
+import type { LevelDB } from "@8crafter/leveldb-zlib";
 
 type LegacyScoreboardSetBiomeData = [
     `wedit:biome,minecraft:${Dimension},${number}_${number}_${number}`,
@@ -110,9 +119,27 @@ async function action_command_setbiome_legacy_getTargetedChunkCount(
                 targetedChunkCountData.errorTypes.data3dKeyNotFound++;
                 continue;
             }
-            // TODO: Make this dynamically determine the index offset so it works with worlds with custom height limits.
             const data3dValue: NBTSchemas.NBTSchemaTypes.Data3D = entryContentTypeToFormatMap.Data3D.parse(rawData3d);
-            const biome = data3dValue.value.biomes.value.value[y - MIN_SUBCHUNK_INDEX];
+            let minSubchunkIndex: number;
+            try {
+                const chunkMetaData = await getLevelChunkMetaDataForChunk(tab.db, { dimension: dimension.split(":")[1] as Dimension, x, z });
+                const heightRange = (chunkMetaData.LastSavedDimensionHeightRange ?? chunkMetaData.OriginalDimensionHeightRange).value;
+                minSubchunkIndex = Math.floor(heightRange.min.value / 16);
+            } catch (e) {
+                if (e instanceof ReferenceError && e.message === "LevelChunkMetaDataDictionary data not found.") {
+                    minSubchunkIndex = FALLBACK_MIN_SUBCHUNK_INDEX;
+                } else {
+                    // REVIEW: Check if the game actually makes metadata hashes for ALL saved chunks when upgrading worlds to a version with the LevelChunkMetaDataDictionary.
+                    console.error(
+                        "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_legacy_getTargetedChunkCount] Skipping entry. Failed to get level chunk meta data for chunk even though the LevelChunkMetaDataDictionary is present. entry:",
+                        entry,
+                        "error:",
+                        e
+                    );
+                    continue;
+                }
+            }
+            const biome = data3dValue.value.biomes.value.value[y - minSubchunkIndex];
             if (!biome) {
                 targetedChunkCountData.errorTypes.data3dMissingBiomeDataAtIndex++;
                 continue;
@@ -190,9 +217,35 @@ async function action_export_structures_getStructures(tab: TabManagerTab, signal
 }
 
 /**
- * @todo This should be determined using the `LevelChunkMetaDataDictionary`.
+ * Gets the level chunk meta data for a chunk.
+ *
+ * @param db The LevelDB.
+ * @param chunk The chunk.
+ * @returns The level chunk meta data.
+ *
+ * @throws {ReferenceError} If the LevelChunkMetaDataDictionary data is not found, the message will be `"LevelChunkMetaDataDictionary data not found."`.
+ * @throws {ReferenceError} If the level chunk meta data hash is not found.
+ * @throws {ReferenceError} If the LevelChunkMetaDataDictionary did not contain mapping for the meta data hash.
+ * @throws {unknown} If an error occurs.
  */
-const MIN_SUBCHUNK_INDEX = -4;
+async function getLevelChunkMetaDataForChunk(
+    db: LevelDB,
+    chunk: DimensionVectorXZ
+): Promise<NBTSchemas.NBTSchemaTypes.LevelChunkMetaDataDictionary["value"][string]["value"]> {
+    const rawMetaDataDictionary: Buffer | null = await db.get("LevelChunkMetaDataDictionary");
+    if (!rawMetaDataDictionary) throw new ReferenceError("LevelChunkMetaDataDictionary data not found.");
+    const hashKey: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(chunk, "MetaDataHash");
+    const rawHash: Buffer | null = await db.get(hashKey);
+    if (!rawHash) throw new ReferenceError("Level chunk meta data hash not found.");
+    const hash: string = rawHash.toString("hex");
+    const metaDataDictionary: NBTSchemas.NBTSchemaTypes.LevelChunkMetaDataDictionary =
+        await entryContentTypeToFormatMap.LevelChunkMetaDataDictionary.parse(rawMetaDataDictionary);
+    const metaData = metaDataDictionary.value[hash]?.value;
+    if (!metaData) throw new ReferenceError(`LevelChunkMetaDataDictionary did not contain mapping for meta data hash: ${hash}`);
+    return metaData;
+}
+
+const FALLBACK_MIN_SUBCHUNK_INDEX = 0;
 
 const thisIntegration = {
     id: "WorldEdit_Bedrock",
@@ -222,7 +275,8 @@ const thisIntegration = {
                 const data = await tab.db.get("scoreboard");
                 if (!data) return false;
                 const parsedData = await NBT.parse(data);
-                const scoreboard: NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT = parsedData.parsed as unknown as NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT;
+                const scoreboard: NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT = parsedData.parsed as unknown as NBTSchemas.NBTSchemaTypes.Scoreboard &
+                    NBT.NBT;
                 if (!scoreboard?.value?.Objectives?.value?.value) return false;
                 const gametestDBObjective = scoreboard.value.Objectives.value.value.find((o) => o.Name.value === "GAMETEST_DB");
                 if (!gametestDBObjective) return false;
@@ -256,7 +310,8 @@ const thisIntegration = {
                 const data = await tab.db.get("scoreboard");
                 if (!data) throw new Error("Scoreboard data not found.");
                 const parsedData = await NBT.parse(data);
-                const scoreboard: NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT = parsedData.parsed as unknown as NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT;
+                const scoreboard: NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT = parsedData.parsed as unknown as NBTSchemas.NBTSchemaTypes.Scoreboard &
+                    NBT.NBT;
                 if (!scoreboard?.value?.Objectives?.value?.value) throw new Error("Scoreboard objectives not found.");
                 const gametestDBObjective = scoreboard.value.Objectives.value.value.find((o) => o.Name.value === "GAMETEST_DB");
                 if (!gametestDBObjective) throw new Error("GAMETEST_DB objective not found.");
@@ -302,10 +357,29 @@ const thisIntegration = {
                         }
                         // TODO: Make this dynamically determine the index offset so it works with worlds with custom height limits.
                         const data3dValue: NBTSchemas.NBTSchemaTypes.Data3D = entryContentTypeToFormatMap.Data3D.parse(rawData3d);
-                        const biome = data3dValue.value.biomes.value.value[y - MIN_SUBCHUNK_INDEX];
+                        let minSubchunkIndex: number;
+                        try {
+                            const chunkMetaData = await getLevelChunkMetaDataForChunk(tab.db, { dimension: dimension.split(":")[1] as Dimension, x, z });
+                            const heightRange = (chunkMetaData.LastSavedDimensionHeightRange ?? chunkMetaData.OriginalDimensionHeightRange).value;
+                            minSubchunkIndex = Math.floor(heightRange.min.value / 16);
+                        } catch (e) {
+                            if (e instanceof ReferenceError && e.message === "LevelChunkMetaDataDictionary data not found.") {
+                                minSubchunkIndex = FALLBACK_MIN_SUBCHUNK_INDEX;
+                            } else {
+                                // REVIEW: Check if the game actually makes metadata hashes for ALL saved chunks when upgrading worlds to a version with the LevelChunkMetaDataDictionary.
+                                console.error(
+                                    "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_legacy_getTargetedChunkCount] Skipping entry. Failed to get level chunk meta data for chunk even though the LevelChunkMetaDataDictionary is present. entry:",
+                                    entry,
+                                    "error:",
+                                    e
+                                );
+                                continue;
+                            }
+                        }
+                        const biome = data3dValue.value.biomes.value.value[y - minSubchunkIndex];
                         if (!biome) {
                             console.warn(
-                                `[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::apply] Skipping setbiome command entry. Data3D for entry is missing biome data at index ${y - MIN_SUBCHUNK_INDEX} (subchunk index: ${y}). entry:`,
+                                `[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::apply] Skipping setbiome command entry. Data3D for entry is missing biome data at index ${y - minSubchunkIndex} (subchunk index: ${y}). entry:`,
                                 entry
                             );
                             continue;
@@ -646,7 +720,8 @@ const thisIntegration = {
                             abortController?.signal.throwIfAborted();
                             const parsedData = await NBT.parse(data);
                             abortController?.signal.throwIfAborted();
-                            const scoreboard: NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT = parsedData.parsed as unknown as NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT;
+                            const scoreboard: NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT =
+                                parsedData.parsed as unknown as NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT;
                             if (!scoreboard?.value?.Objectives?.value?.value) throw new Error("Scoreboard objectives not found.");
                             const weditExportsObjective = scoreboard.value.Objectives.value.value.find((o) => o.Name.value === "wedit:exports");
                             if (!weditExportsObjective) throw new Error("wedit:exports objective not found.");
@@ -780,7 +855,8 @@ const thisIntegration = {
                             abortController?.signal.throwIfAborted();
                             const parsedData = await NBT.parse(data);
                             abortController?.signal.throwIfAborted();
-                            const scoreboard: NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT = parsedData.parsed as unknown as NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT;
+                            const scoreboard: NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT =
+                                parsedData.parsed as unknown as NBTSchemas.NBTSchemaTypes.Scoreboard & NBT.NBT;
                             if (!scoreboard?.value?.Objectives?.value?.value) throw new Error("Scoreboard objectives not found.");
                             const weditExportsObjective = scoreboard.value.Objectives.value.value.find((o) => o.Name.value === "wedit:exports");
                             if (!weditExportsObjective) throw new Error("wedit:exports objective not found.");
