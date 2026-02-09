@@ -18,11 +18,15 @@ import NBT from "prismarine-nbt";
 import type { TreeEditorDataStorageObjectInput } from "../../app/components/TreeEditor";
 import { LevelDB } from "@8crafter/leveldb-zlib";
 import path from "node:path";
-import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { copyFile, cp, readFile, rm, writeFile } from "node:fs/promises";
 import { APP_DATA_FOLDER_PATH } from "../utils/URLs";
 import type { MapEditorDataStorageObject } from "../../app/components/MapEditor";
-import { app, dialog } from "@electron/remote";
+import { app, dialog, nativeImage } from "@electron/remote";
+import type { NativeImage } from "electron";
+import { padNativeImageToSquare, pngToIco } from "../utils/imageUtils";
+import { defaultWorldIconDataURI } from "../utils/preloadImages";
+import { checkIsURIOrPath } from "../utils/pathUtils";
 
 namespace exports {
     type DefaultEventMap = [never];
@@ -191,6 +195,47 @@ namespace exports {
 
     export type TabManagerGenericTabID = "loading";
 
+    interface RecentsItem {
+        /**
+         * Description of the task (displayed in a tooltip). Maximum length 260 characters.
+         */
+        description?: string | undefined;
+        /**
+         * The index of the icon in the resource file. If a resource file contains multiple
+         * icons this value can be used to specify the zero-based index of the icon that
+         * should be displayed for this task. If a resource file contains only one icon,
+         * this property should be set to zero.
+         */
+        iconIndex?: number | undefined;
+        /**
+         * The absolute path to an icon to be displayed in a Jump List, which can be an
+         * arbitrary resource file that contains an icon (e.g. `.ico`, `.exe`, `.dll`). You
+         * can usually specify `process.execPath` to show the program icon.
+         */
+        iconPath?: string | undefined;
+        /**
+         * Path of the item.
+         */
+        path?: string | undefined;
+        /**
+         * The text to be displayed for the item in the Jump List.
+         */
+        title?: string | undefined;
+    }
+
+    interface RecentsItem_File extends RecentsItem {
+        /**
+         * The type of the
+         */
+        type?: IpcRendererOpenFileType | undefined;
+    }
+
+    interface RecentsData {
+        worlds: RecentsItem[];
+        folders: RecentsItem[];
+        files: RecentsItem_File[];
+    }
+
     /**
      * Represents a tab manager.
      */
@@ -206,8 +251,206 @@ namespace exports {
             this.openTabs.push(tab);
             this.emit("openTab", { tab });
             this.switchTab(tab);
-            if (tab.path) app.addRecentDocument(tab.path);
+            this.addRecentItem(props, tab);
             return tab;
+        }
+        private addRecentItem(props: Parameters<this["openTab"]>[0], tab: TabManagerTab): void {
+            try {
+                if (tab.path) app.addRecentDocument(tab.path);
+            } catch {}
+            let recentsData: RecentsData = { worlds: [], folders: [], files: [] };
+            recentsReader: if (existsSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"))) {
+                try {
+                    const data: RecentsData = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), "utf-8"));
+                    // IDEA: Add something to validate the recents data.
+                    recentsData = data;
+                } catch (e) {
+                    console.error("Error reading recents.json:", e);
+                    break recentsReader;
+                }
+            }
+            if (tab.type === "world") {
+                const existingWorldRecentEntryIndex: number = recentsData.worlds.findLastIndex((world: RecentsItem): boolean => world.path === tab.path);
+                if (existingWorldRecentEntryIndex !== -1) recentsData.worlds.splice(existingWorldRecentEntryIndex, 1);
+                recentsData.worlds.unshift({ path: tab.path, iconPath: tab.icon ?? undefined, title: tab.name, description: tab.path.slice(-196) });
+                recentsData.worlds.splice(5);
+            } else if (tab.type === "leveldb") {
+                const existingLevelDBRecentEntryIndex: number = recentsData.folders.findLastIndex((folder: RecentsItem): boolean => folder.path === tab.path);
+                if (existingLevelDBRecentEntryIndex !== -1) recentsData.folders.splice(existingLevelDBRecentEntryIndex, 1);
+                recentsData.folders.unshift({ path: tab.path, iconPath: tab.icon ?? undefined, title: tab.name, description: tab.path.slice(-196) });
+                recentsData.folders.splice(5);
+            } else if (tab.type !== "other") {
+                const existingFileRecentEntryIndex: number = recentsData.files.findLastIndex((file: RecentsItem_File): boolean => file.path === tab.path);
+                if (existingFileRecentEntryIndex !== -1) recentsData.files.splice(existingFileRecentEntryIndex, 1);
+                recentsData.files.unshift({
+                    path: tab.path,
+                    iconPath: tab.icon ?? undefined,
+                    title: tab.name,
+                    description: tab.path.slice(-196),
+                    type: tab.type,
+                });
+                recentsData.worlds.splice(5);
+            }
+            writeFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), JSON.stringify(recentsData));
+            this.setJumpListData();
+        }
+        private setJumpListData(): void {
+            if (process.platform !== "win32") return;
+            let recentsData: RecentsData = { worlds: [], folders: [], files: [] };
+            if (existsSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"))) {
+                try {
+                    const data: RecentsData = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), "utf-8"));
+                    // IDEA: Add something to validate the recents data.
+                    recentsData = data;
+                } catch (e) {
+                    console.error("Error reading recents.json:", e);
+                    return;
+                }
+            }
+            const removedItems: Electron.JumpListItem[] = app.getJumpListSettings().removedItems;
+            removedItems.forEach((item: Electron.JumpListItem): void => {
+                if (item.type === "task") {
+                    if (item.args?.startsWith("--allow-file-access-from-files --file-tab-type=world")) {
+                        const itemPath: string | undefined = item.args.match(/(?<=\s").*(?=")/)?.[0];
+                        if (!itemPath) {
+                            console.warn("Unable to find world path in removedItems:", item);
+                            return;
+                        }
+                        const worldsIndex: number = recentsData.worlds.findIndex(
+                            (world: RecentsItem): boolean =>
+                                !!world.path && path.normalize(world.path).replace(/[\\/]$/, "") === path.normalize(itemPath).replace(/[\\/]$/, "")
+                        );
+                        if (worldsIndex !== -1) recentsData.worlds.splice(worldsIndex, 1);
+                        else console.warn("Unable to find world task in removedItems:", item);
+                    } else if (item.args?.startsWith("--allow-file-access-from-files --file-tab-type=leveldb")) {
+                        const itemPath: string | undefined = item.args.match(/(?<=\s").*(?=")/)?.[0];
+                        if (!itemPath) {
+                            console.warn("Unable to find world path in removedItems:", item);
+                            return;
+                        }
+                        const foldersIndex: number = recentsData.folders.findIndex(
+                            (folder: RecentsItem): boolean =>
+                                !!folder.path && path.normalize(folder.path).replace(/[\\/]$/, "") === path.normalize(itemPath).replace(/[\\/]$/, "")
+                        );
+                        if (foldersIndex !== -1) recentsData.folders.splice(foldersIndex, 1);
+                        else console.warn("Unable to find folder task in removedItems:", item);
+                    } else console.warn("Unknown task in removedItems:", item);
+                } else if (item.type === "file") {
+                    const itemPath: string | undefined = item.path;
+                    if (!itemPath) {
+                        console.warn("Unable to find world path in removedItems:", item);
+                        return;
+                    }
+                    const worldsIndex: number = recentsData.worlds.findIndex(
+                        (world: RecentsItem): boolean =>
+                            !!world.path && path.normalize(world.path).replace(/[\\/]$/, "") === path.normalize(itemPath).replace(/[\\/]$/, "")
+                    );
+                    const filesIndex: number = recentsData.files.findIndex(
+                        (file: RecentsItem_File): boolean =>
+                            !!file.path && path.normalize(file.path).replace(/[\\/]$/, "") === path.normalize(itemPath).replace(/[\\/]$/, "")
+                    );
+                    if (filesIndex !== -1) recentsData.files.splice(filesIndex, 1);
+                    else console.warn("Unable to find file in removedItems:", item);
+                } else console.warn("Unknown item in removedItems:", item);
+            });
+            if (removedItems.length) writeFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), JSON.stringify(recentsData));
+            if (!existsSync(path.join(APP_DATA_FOLDER_PATH, "taskbar_user_tasks.json"))) return;
+            try {
+                var userTasksData: Electron.Task[] = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "taskbar_user_tasks.json"), "utf-8"));
+            } catch (e) {
+                console.error("Error reading taskbar_user_tasks.json:", e);
+                return;
+            }
+            const execPath: string | null =
+                process.env.NODE_ENV === "development" ?
+                    (userTasksData.find((task: Electron.Task): boolean => task.title === "New Window")?.program ?? null)
+                :   process.execPath;
+            if (!execPath) return;
+            rmSync(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons"), { recursive: true, force: true });
+            mkdirSync(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons"), { recursive: true });
+            recentsData.worlds.forEach(async (world: RecentsItem, index: number): Promise<void> => {
+                if (world.iconPath && ["ico", "exe", "dll"].includes(path.extname(world.iconPath).slice(1).toLowerCase())) return;
+                if (!world.iconPath && !defaultWorldIconDataURI) return;
+                const img: NativeImage = await padNativeImageToSquare(
+                    world.iconPath ? nativeImage.createFromPath(world.iconPath) : nativeImage.createFromDataURL(defaultWorldIconDataURI!)
+                );
+                writeFileSync(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons", `w${index}.ico`), pngToIco(img.resize({ width: 256, height: 256 }).toPNG()));
+            });
+            recentsData.folders.forEach(async (world: RecentsItem, index: number): Promise<void> => {
+                if (!world.iconPath || ["ico", "exe", "dll"].includes(path.extname(world.iconPath).slice(1).toLowerCase())) return;
+                const img: NativeImage = await padNativeImageToSquare(
+                    checkIsURIOrPath(world.iconPath) === "Path" ?
+                        nativeImage.createFromPath(world.iconPath)
+                    :   nativeImage.createFromBuffer(Buffer.from(await (await fetch(world.iconPath)).arrayBuffer()))
+                );
+                writeFileSync(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons", `d${index}.ico`), pngToIco(img.resize({ width: 256, height: 256 }).toPNG()));
+            });
+            recentsData.files.forEach(async (world: RecentsItem, index: number): Promise<void> => {
+                if (!world.iconPath || ["ico", "exe", "dll"].includes(path.extname(world.iconPath).slice(1).toLowerCase())) return;
+                const img: NativeImage = await padNativeImageToSquare(nativeImage.createFromPath(world.iconPath));
+                writeFileSync(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons", `f${index}.ico`), pngToIco(img.resize({ width: 256, height: 256 }).toPNG()));
+            });
+            try {
+                const jumpListData: Electron.JumpListCategory[] = [
+                    {
+                        type: "custom",
+                        name: "Recent Worlds",
+                        items: recentsData.worlds.map(
+                            (world: RecentsItem): Electron.JumpListItem => ({
+                                type: "task",
+                                description: world.description!,
+                                iconPath:
+                                    world.iconPath && ["ico", "exe", "dll"].includes(path.extname(world.iconPath).slice(1).toLowerCase()) ?
+                                        world.iconPath
+                                    :   path.join(APP_DATA_FOLDER_PATH, "jumplist_icons", `w${recentsData.worlds.indexOf(world)}.ico`),
+                                iconIndex: world.iconIndex ?? 0,
+                                program: execPath,
+                                title: world.title!,
+                                args: `--allow-file-access-from-files --file-tab-type=world "${world.path!}"`,
+                            })
+                        ),
+                    },
+                    {
+                        type: "custom",
+                        name: "Recent Folders",
+                        items: recentsData.folders.map(
+                            (world: RecentsItem): Electron.JumpListItem => ({
+                                type: "task",
+                                description: world.description!,
+                                iconPath:
+                                    !world.iconPath || ["ico", "exe", "dll"].includes(path.extname(world.iconPath).slice(1).toLowerCase()) ?
+                                        (world.iconPath ?? "C:/Windows/explorer.exe")
+                                    :   path.join(APP_DATA_FOLDER_PATH, "jumplist_icons", `d${recentsData.folders.indexOf(world)}.ico`),
+                                iconIndex: world.iconIndex ?? 0,
+                                program: execPath,
+                                title: world.title!,
+                                args: `--allow-file-access-from-files --file-tab-type=leveldb "${world.path!}"`,
+                            })
+                        ),
+                    },
+                    {
+                        type: "recent",
+                    },
+                    {
+                        type: "tasks",
+                        items: userTasksData.map(
+                            (v: Electron.Task): Electron.JumpListItem => ({
+                                args: v.arguments,
+                                description: v.description,
+                                iconIndex: v.iconIndex,
+                                iconPath: v.iconPath,
+                                program: v.program,
+                                title: v.title,
+                                type: "task",
+                                workingDirectory: v.workingDirectory!,
+                            })
+                        ),
+                    },
+                ];
+                app.setJumpList(jumpListData);
+            } catch (e) {
+                console.error("Error setting jump list:", e);
+            }
         }
         public switchTab(tab: TabManagerTab | TabManagerGenericTabID | null): void {
             // console.log(new Error().stack);
@@ -428,7 +671,7 @@ namespace exports {
             name: TabManagerTab["name"];
             icon: TabManagerTab["icon"] | undefined;
             type: TabManagerTab["type"];
-            mode?: TabManagerTabMode;
+            mode?: TabManagerTabMode | undefined;
         }) {
             super();
             this.setMaxListeners(1000000);

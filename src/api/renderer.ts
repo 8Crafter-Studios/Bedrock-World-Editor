@@ -14,7 +14,7 @@ ipcRenderer.on("console-action", function <
 
 ipcRenderer.on(
     "open-file",
-    async function (_event: IpcRendererEvent, filePath: string, type?: "nbt" | "json" | "xml" | "text" | "binary" | "unset"): Promise<void> {
+    async function (_event: IpcRendererEvent, filePath: string, type?: IpcRendererOpenFileType, tabMode?: TabManagerTabMode): Promise<void> {
         type ??= "unset";
         getCurrentWindow().focus();
         switch (true) {
@@ -25,6 +25,7 @@ ipcRenderer.on(
                     name: path.basename(filePath),
                     path: filePath,
                     type: "nbt",
+                    mode: tabMode,
                 });
                 break;
             case type === "json":
@@ -36,6 +37,7 @@ ipcRenderer.on(
                     name: path.basename(filePath),
                     path: filePath,
                     type: "json",
+                    mode: tabMode,
                 });
                 break;
             // TEMP: This is just until JSONL support is added.
@@ -56,6 +58,7 @@ ipcRenderer.on(
                     name: path.basename(filePath),
                     path: filePath,
                     type: "xml",
+                    mode: tabMode,
                 });
                 break;
             case type === "text":
@@ -69,6 +72,7 @@ ipcRenderer.on(
                     name: path.basename(filePath),
                     path: filePath,
                     type: "text",
+                    mode: tabMode,
                 });
                 break;
             case type === "binary":
@@ -78,12 +82,13 @@ ipcRenderer.on(
                     name: path.basename(filePath),
                     path: filePath,
                     type: "binary",
+                    mode: tabMode,
                 });
                 break;
             default:
                 dialog.showMessageBox({
-                    type: "warning",
-                    title: "Feature Not Implemented",
+                    type: "error",
+                    title: "Unknown Tab Type",
                     message: `Unable to open the file at ${path}.`,
                     detail: `The ability to open this type of file has not been implemented yet. Unknown type: ${type}`,
                     buttons: ["OK"],
@@ -93,7 +98,7 @@ ipcRenderer.on(
     }
 );
 
-ipcRenderer.on("open-world-folder", async function (_event: IpcRendererEvent, folderPath: string): Promise<void> {
+ipcRenderer.on("open-world-folder", async function (_event: IpcRendererEvent, folderPath: string, tabMode?: TabManagerTabMode): Promise<void> {
     getCurrentWindow().focus();
     tabManager.openTab({
         icon:
@@ -107,20 +112,23 @@ ipcRenderer.on("open-world-folder", async function (_event: IpcRendererEvent, fo
                     ?.value ?? "Unknown Name"),
         path: folderPath,
         type: "world",
+        mode: tabMode,
     });
 });
 
-ipcRenderer.on("open-leveldb-folder", async function (_event: IpcRendererEvent, folderPath: string): Promise<void> {
+ipcRenderer.on("open-leveldb-folder", async function (_event: IpcRendererEvent, folderPath: string, tabMode?: TabManagerTabMode): Promise<void> {
     getCurrentWindow().focus();
     tabManager.openTab({
         icon: "resource://images/ui/glyphs/icon_bookshelf.png", // TODO: Add supports for using the custom icon set for the folder if it exists.
-        name: "LevelDB", // TODO: Implement something to get a name for the tab.
+        name: path.basename(folderPath), // TODO: Implement something to get a better name for the tab (as it will often times just be `db`).
         path: folderPath,
         type: "leveldb",
+        mode: tabMode,
     });
 });
 
 declare global {
+    type IpcRendererOpenFileType = "nbt" | "json" | "xml" | "text" | "binary" | "unset";
     namespace Electron {
         interface WebContents {
             send<_T extends 1, T extends Exclude<keyof Console, "Console">>(
@@ -128,9 +136,9 @@ declare global {
                 action: T,
                 ...args: globalThis.Parameters<Console[T]>
             ): void;
-            send<_T extends 1>(channel: "open-file", path: string, type?: "nbt" | "json" | "binary" | "unset"): void;
-            send<_T extends 1>(channel: "open-world-folder", path: string): void;
-            send<_T extends 1>(channel: "open-leveldb-folder", path: string): void;
+            send<_T extends 1>(channel: "open-file", path: string, type?: IpcRendererOpenFileType, tabMode?: TabManagerTabMode | `${TabManagerTabMode}`): void;
+            send<_T extends 1>(channel: "open-world-folder", path: string, tabMode?: TabManagerTabMode | `${TabManagerTabMode}`): void;
+            send<_T extends 1>(channel: "open-leveldb-folder", path: string, tabMode?: TabManagerTabMode | `${TabManagerTabMode}`): void;
         }
     }
 }

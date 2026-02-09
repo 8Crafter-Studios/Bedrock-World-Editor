@@ -33,6 +33,7 @@ import { formatFileSizeBinary, formatFileSizeMetric } from "../src/utils/fileSiz
 import IntegrationsTab from "./tabs/integrations";
 import TextEditorTab from "./tabs/textEditor";
 import UnderConstruction from "./components/UnderConstruction";
+import { defaultWorldIconDataURI } from "../src/utils/preloadImages";
 // import { Renderer3D } from "./3DRendererV1/3DRenderer";
 const mime = require("mime-types") as typeof import("mime-types");
 
@@ -339,12 +340,6 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
         )
     ).filter((world: MinecraftWorldDisplayDetails | undefined): world is MinecraftWorldDisplayDetails => !!world);
 }
-
-let defaultWorldIconDataURI: string | null = null;
-fetch("resource://images/ui/misc/CreateNewWorld.png").then(
-    async (response: Response): Promise<void> =>
-        void (defaultWorldIconDataURI = `data:image/png;base64,${Buffer.from(await (await response.blob()).arrayBuffer()).toString("base64")}`)
-);
 
 interface PreloadedIconsObject {
     [key: PropertyKey]: PreloadedIconsObject | string;

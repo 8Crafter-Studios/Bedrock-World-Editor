@@ -193,9 +193,7 @@ const fileMenu: Electron.Menu = Menu.buildFromTemplate([
                     const result: Electron.OpenDialogReturnValue = await dialog.showOpenDialog(currentWindow, {
                         // IDEA: Implement functionality to remember the folder that the last opened binary file was located in to default to that folder.
                         buttonLabel: "Open",
-                        filters: [
-                            { name: "All", extensions: ["*"] },
-                        ],
+                        filters: [{ name: "All", extensions: ["*"] }],
                         message: "Select binary files to open",
                         properties: ["openFile", "showHiddenFiles", "treatPackageAsDirectory", "multiSelections"],
                         title: "Open Binary Files",
@@ -209,6 +207,21 @@ const fileMenu: Electron.Menu = Menu.buildFromTemplate([
             },
         ],
     },
+    // TODO: Implement this for Windows.
+    ...(process.platform === "darwin" ?
+        [
+            {
+                label: "Open Recent",
+                role: "recentDocuments",
+                submenu: [
+                    {
+                        label: "Clear Recent",
+                        role: "clearRecentDocuments",
+                    },
+                ],
+            },
+        ] satisfies Electron.MenuItemConstructorOptions[]
+    :   []),
     { type: "separator" },
     {
         label: "Preferences",

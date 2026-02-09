@@ -35,6 +35,9 @@
 -   Added more options to the add tab popup menu.
 -   All of the options on the add tab popup menu are now functional.
 -   The app now supports opening files and folders in it through a file manager (files only), executable arguments, or URI.
+-   Added a warning when running the x64 build of the app on an ARM64 machine through a translation layer (except on Windows as there is currently no ARM64 build of the app for Windows).
+-   Added recent worlds and folders sections to the taskbar jump list on Windows.
+-   Added the `File > Open Recent` submenu to the menu bar on macOS.
 
 ## Changes
 
@@ -52,6 +55,7 @@
 -   Fixed the search filters for the "Structures" tab.
 -   When clicking an option in the add tab popup menu, it now closes the popup menu.
 -   Fixed a bug where on macOS, the app would not quit when all windows were closed.
+-   Fixed a bug where the app's URI protocol was not functional for any purpose other than opening the app on Windows.
 
 ## Performance Improvements
 

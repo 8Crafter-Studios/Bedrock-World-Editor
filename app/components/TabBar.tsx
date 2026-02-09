@@ -129,7 +129,7 @@ export default function TabBar(): JSX.Element {
                     validFilePaths.forEach(async (folderPath: string): Promise<void> => {
                         tabManager.openTab({
                             icon: "resource://images/ui/glyphs/icon_bookshelf.png", // TODO: Add supports for using the custom icon set for the folder if it exists.
-                            name: "LevelDB", // TODO: Implement something to get a name for the tab.
+                            name: path.basename(folderPath), // TODO: Implement something to get a better name for the tab (as it will often times just be `db`).
                             path: folderPath,
                             type: "leveldb",
                         });

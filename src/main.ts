@@ -8,7 +8,9 @@ import {
     nativeTheme,
     protocol,
     shell,
+    type ApplicationInfoForProtocolReturnValue,
     type IpcMainEvent,
+    type MessageBoxReturnValue,
     type OpenDialogReturnValue,
 } from "electron";
 import path from "node:path";
@@ -64,8 +66,10 @@ const mainWindowIDs: number[] = [];
 
 let startup: boolean = false;
 
-// Register protocol handler for custom URL scheme
-app.setAsDefaultProtocolClient("bedrock-world-editor");
+if (!isDev) {
+    // Register protocol handler for custom URL scheme
+    app.setAsDefaultProtocolClient("bedrock-world-editor");
+}
 
 if (process.platform === "win32") {
     app.setAppUserModelId("com.8crafter.bedrock-world-editor");
@@ -699,6 +703,26 @@ export function createWindow(): number | void {
 }
 
 if (!startup && !started) {
+    if (
+        app.runningUnderARM64Translation &&
+        process.platform !== "win32" // TEMP: There is no ARM64 build for windows at the moment. Remove this when one is available.
+    ) {
+        dialog
+            .showMessageBox({
+                type: "warning",
+                title: "ARM64 Translation",
+                message:
+                    "You are running the x64 build of this app on an ARM64 machine.\n\nThis is not recommended as it will cause terrible performance, it is highly recommended to download the ARM64 native build of the app.",
+                buttons: ["Download", "Ignore"],
+                noLink: true,
+            })
+            .then((result: MessageBoxReturnValue): void => {
+                if (result.response === 0) {
+                    shell.openExternal("https://github.com/Bedrock-World-Editor/Bedrock-World-Editor/releases");
+                }
+            });
+    }
+
     ipcMain.on("create-window", (event: IpcMainEvent): void => {
         createWindow();
         event.returnValue = void true;
@@ -889,31 +913,32 @@ if (!startup && !started) {
         }
     });
 
-    app.on("open-url", (_event: Electron.Event, url: string): void => {
+    function handleURL(url: string): void {
+        if (/^bedrock-world-editor:\/{0,2}$/.test(url)) {
+            lastFocusedMainWindows.at(-1)?.focus();
+            return;
+        }
         const parsedURL: URL = new URL(url);
         if (parsedURL.protocol === "bedrock-world-editor:") {
-            switch (parsedURL.hostname + parsedURL.pathname) {
+            switch (parsedURL.hostname + (parsedURL.pathname === "/" ? "" : parsedURL.pathname)) {
                 case "openFile": {
                     const source: string | null = parsedURL.searchParams.get("path");
                     lastFocusedMainWindows.at(-1)?.webContents.send<1>("open-file", source!, (parsedURL.searchParams.get("type") ?? undefined) as never);
                     break;
                 }
+                // IDEA: Add support for editing `.mcworld` and `.mctemplate` files, and maybe even selecting a `.mcaddon` file that contains worlds to open all of those worlds at once.
                 case "openLevelDBFolder": {
-                    const source: string | null = parsedURL.searchParams.get("path");
-                    lastFocusedMainWindows.at(-1)?.webContents.send<1>("open-world-folder", source!);
-                    break;
-                }
-                case "openWorldFolder": {
                     const source: string | null = parsedURL.searchParams.get("path");
                     lastFocusedMainWindows.at(-1)?.webContents.send<1>("open-leveldb-folder", source!);
                     break;
                 }
-                case "about": {
-                    openAboutWindow(lastFocusedMainWindows.at(-1));
+                case "openWorldFolder": {
+                    const source: string | null = parsedURL.searchParams.get("path");
+                    lastFocusedMainWindows.at(-1)?.webContents.send<1>("open-world-folder", source!);
                     break;
                 }
-                case "": {
-                    lastFocusedMainWindows.at(-1)?.focus();
+                case "about": {
+                    openAboutWindow(lastFocusedMainWindows.at(-1));
                     break;
                 }
                 default: {
@@ -927,6 +952,10 @@ if (!startup && !started) {
                 }
             }
         }
+    }
+
+    app.on("open-url", (_event: Electron.Event, url: string): void => {
+        handleURL(url);
     });
 
     // eslint-disable-next-line prefer-const
@@ -939,38 +968,52 @@ if (!startup && !started) {
         }
     });
 
-    function handleFileOpen(filePath: string, mode: "open" | "edit" | "preview" = "open"): void {
+    // TODO: Update this to have better file type support, like how it was done with the URIs.
+    function handleFileOpen(filePath: string, mode: "open" | "edit" | "preview" = "open", type?: IpcRendererOpenFileType | "world" | "leveldb" | null): void {
         switch (mode) {
             case "open":
+            case "edit":
+            case "preview":
                 try {
-                    if (existsSync(filePath) && statSync(filePath).isDirectory()) {
-                        lastFocusedMainWindows.at(-1)?.webContents.send<1>("open-world-folder", filePath);
-                    } else if (/^\.(?:mcworld|mcstructure|mcaddon|json|nbt|bin|hex|snbt|dat|schem|schematic)$/i.test(path.extname(filePath).toLowerCase())) {
-                        lastFocusedMainWindows.at(-1)?.webContents.send<1>("open-file", filePath);
-                    } else {
-                        dialog.showMessageBox({
-                            type: "error",
-                            title: "Unsupported File Type",
-                            message: `The file type of the file at ${filePath} is not supported.`,
-                            detail: "Supported file types: .mcworld, .mcstructure, .mcaddon, .json, .nbt, .bin, .hex, .snbt, .dat, .schem, .schematic",
-                            buttons: ["Okay"],
-                            noLink: true,
-                        });
+                    switch (true) {
+                        case type === "world":
+                        case type === "leveldb":
+                        case (type === "unset" || !type) && existsSync(filePath) && statSync(filePath).isDirectory():
+                            if (type === "world" || ((type === "unset" || !type) && existsSync(path.join(filePath, "level.dat")))) {
+                                lastFocusedMainWindows.at(-1)?.webContents.send<1>("open-world-folder", filePath, mode === "preview" ? "readonly" : undefined);
+                            } else {
+                                lastFocusedMainWindows
+                                    .at(-1)
+                                    ?.webContents.send<1>("open-leveldb-folder", filePath, mode === "preview" ? "readonly" : undefined);
+                            }
+                            break;
+                        case !!type || type === undefined:
+                        case /^\.(?:mcworld|mcstructure|mcaddon|jsonc?|nbt|bin|hex|snbt|dat|schem|schematic)$/i.test(path.extname(filePath).toLowerCase()):
+                            lastFocusedMainWindows
+                                .at(-1)
+                                ?.webContents.send<1>("open-file", filePath, type ?? undefined, mode === "preview" ? "readonly" : undefined);
+                            break;
+                        case type === null:
+                        default:
+                            dialog.showMessageBox({
+                                type: "error",
+                                title: "Unsupported File Type",
+                                message: `The file type of the file at ${filePath} is not supported.`,
+                                detail: "Supported file types: .mcworld, .mcstructure, .mcaddon, .json, .jsonc, .nbt, .bin, .hex, .snbt, .dat, .schem, .schematic",
+                                buttons: ["Okay"],
+                                noLink: true,
+                            });
                     }
                 } catch (e: any) {
                     dialog.showMessageBox({
                         type: "error",
-                        title: "Error Importing File",
-                        message: `There was an error importing the file at ${filePath}.`,
+                        title: "Error Opening File",
+                        message: `There was an error opening the file at ${filePath}.`,
                         detail: e.message + e?.stack,
                         buttons: ["Okay"],
                         noLink: true,
                     });
                 }
-                break;
-            case "edit":
-                break;
-            case "preview":
                 break;
             default:
                 break;
@@ -997,6 +1040,14 @@ if (!startup && !started) {
     function handleArgv(originalArgv: string[], secondInstance: boolean = false): void {
         console.log("handleArgv", originalArgv, "secondInstance:", secondInstance);
         const argv: string[] = originalArgv.slice(1 + +(originalArgv[1] === "--process-start-args"));
+        // TODO: Add support for handling URIs on Linux.
+        // Handle URIs on Windows.
+        if (argv.includes("--allow-file-access-from-files")) {
+            const restArgv: string[] = argv.slice(argv.indexOf("--allow-file-access-from-files") + 1);
+            if (restArgv[0]?.startsWith("bedrock-world-editor:")) {
+                handleURL(restArgv[0]);
+            }
+        }
         const nonAllowFileAccessFromFilesParams: string[] = argv.filter((arg: string): boolean => arg !== "--allow-file-access-from-files");
         if (
             nonAllowFileAccessFromFilesParams.length === 0 ||
@@ -1012,7 +1063,10 @@ if (!startup && !started) {
                 filePath,
                 argv.includes("--edit") ? "edit"
                 : argv.includes("--preview") ? "preview"
-                : "open"
+                : "open",
+                argv.some((v: string): boolean => v.startsWith("--file-tab-type=")) ?
+                    (argv.find((v: string): boolean => v.startsWith("--file-tab-type="))?.split("=")[1] as IpcRendererOpenFileType)
+                :   undefined
             );
         }
     }
@@ -1037,18 +1091,67 @@ if (!startup && !started) {
     });
 
     if (!isSecondInstance) {
-        if (!isDev) {
-            if (process.platform === "win32") {
-                app.setUserTasks([
+        if (process.platform === "win32") {
+            userTasks: if (!isDev) {
+                const tasks: Electron.Task[] = [
                     {
                         program: process.execPath,
                         arguments: "--new-window",
                         iconPath: process.execPath,
                         iconIndex: 0,
                         title: "New Window",
-                        description: "Create a new window",
+                        description: "Opens a new window",
                     },
-                ]);
+                ];
+                writeFileSync(path.join(APP_DATA_FOLDER_PATH, "taskbar_user_tasks.json"), JSON.stringify(tasks));
+                app.setUserTasks(tasks);
+            } else if (existsSync(path.join(APP_DATA_FOLDER_PATH, "taskbar_user_tasks.json"))) {
+                let tasks: Electron.Task[];
+                try {
+                    tasks = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "taskbar_user_tasks.json"), "utf-8"));
+                } catch (e) {
+                    dialog.showMessageBox({
+                        type: "error",
+                        title: "Error Reading Taskbar User Tasks",
+                        message: `There was an error reading the taskbar user tasks from ${path.join(APP_DATA_FOLDER_PATH, "taskbar_user_tasks.json")}.`,
+                        detail: e instanceof Error ? (e.stack ?? e.toString()) : String(e),
+                        buttons: ["OK"],
+                        noLink: true,
+                    });
+                    break userTasks;
+                }
+                try {
+                    app.setUserTasks(tasks);
+                } catch (e) {
+                    dialog.showMessageBox({
+                        type: "error",
+                        title: "Error Setting Taskbar User Tasks",
+                        message: `There was an error setting the taskbar user tasks from ${path.join(APP_DATA_FOLDER_PATH, "taskbar_user_tasks.json")}.`,
+                        detail: e instanceof Error ? (e.stack ?? e.toString()) : String(e),
+                        buttons: ["OK"],
+                        noLink: true,
+                    });
+                    break userTasks;
+                }
+            } else {
+                app.getApplicationInfoForProtocol("bedrock-world-editor:").then(
+                    (info: ApplicationInfoForProtocolReturnValue): void => {
+                        if (path.basename(info.path) === "electron.exe") return;
+                        const tasks: Electron.Task[] = [
+                            {
+                                program: info.path,
+                                arguments: "--new-window",
+                                iconPath: info.path,
+                                iconIndex: 0,
+                                title: "New Window",
+                                description: "Opens a new window",
+                            },
+                        ];
+                        writeFileSync(path.join(APP_DATA_FOLDER_PATH, "taskbar_user_tasks.json"), JSON.stringify(tasks));
+                        app.setUserTasks(tasks);
+                    },
+                    (): void => {}
+                );
             }
         }
         new Octokit().repos.listReleases({ owner: "8Crafter-Studios", repo: "Bedrock-World-Editor" }).then(
