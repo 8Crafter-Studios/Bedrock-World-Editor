@@ -417,7 +417,8 @@ page_background[theme_color_bg] {
     image-rendering: pixelated;
 }
 
-#left_sidebar {
+#left_sidebar,
+#settings_left_sidebar {
     background-color: #6b6b6b80;
     -webkit-backdrop-filter: blur(5px);
     backdrop-filter: blur(5px);

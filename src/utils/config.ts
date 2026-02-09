@@ -193,10 +193,6 @@ namespace exports {
             debugHUDDropShadow: false,
             fileSizeUnits: "binary",
             showWorldSizesOnWorldList: false,
-            panorama: "off",
-            panoramaPerspective: 400,
-            panoramaRotateDirection: "counterclockwise",
-            panoramaRotateSpeed: 2.5,
             volume: { master: 100, ui: 100 },
             views: {
                 players: {
@@ -615,6 +611,7 @@ namespace exports {
         public get GUIScale(): number {
             return this.getConfigData().GUIScale ?? Config.defaults.GUIScale;
         }
+        /** @deprecated */
         public set GUIScale(value: number | undefined) {
             this.saveChanges({ GUIScale: value ?? Config.defaults.GUIScale });
         }
@@ -632,6 +629,7 @@ namespace exports {
         public get GUIScaleOverride(): number | null {
             return this.getConfigData().GUIScaleOverride ?? Config.defaults.GUIScaleOverride;
         }
+        /** @deprecated */
         public set GUIScaleOverride(value: number | null | undefined) {
             this.saveChanges({ GUIScaleOverride: value ?? Config.defaults.GUIScaleOverride });
         }
@@ -741,30 +739,6 @@ namespace exports {
         }
         public set showWorldSizesOnWorldList(value: boolean | undefined) {
             this.saveChanges({ showWorldSizesOnWorldList: value ?? Config.defaults.showWorldSizesOnWorldList });
-        }
-        public get panorama(): (typeof ConfigConstants.panoramaList)[number] {
-            return this.getConfigData().panorama ?? Config.defaults.panorama;
-        }
-        public set panorama(value: (typeof ConfigConstants.panoramaList)[number] | undefined) {
-            this.saveChanges({ panorama: value ?? Config.defaults.panorama });
-        }
-        public get panoramaPerspective(): number {
-            return this.getConfigData().panoramaPerspective ?? Config.defaults.panoramaPerspective;
-        }
-        public set panoramaPerspective(value: number | undefined) {
-            this.saveChanges({ panoramaPerspective: value ?? Config.defaults.panoramaPerspective });
-        }
-        public get panoramaRotateDirection(): "clockwise" | "counterclockwise" {
-            return this.getConfigData().panoramaRotateDirection ?? Config.defaults.panoramaRotateDirection;
-        }
-        public set panoramaRotateDirection(value: "clockwise" | "counterclockwise" | undefined) {
-            this.saveChanges({ panoramaRotateDirection: value ?? Config.defaults.panoramaRotateDirection });
-        }
-        public get panoramaRotateSpeed(): number {
-            return this.getConfigData().panoramaRotateSpeed ?? Config.defaults.panoramaRotateSpeed;
-        }
-        public set panoramaRotateSpeed(value: number | undefined) {
-            this.saveChanges({ panoramaRotateSpeed: value ?? Config.defaults.panoramaRotateSpeed });
         }
         /**
          * The volume options.

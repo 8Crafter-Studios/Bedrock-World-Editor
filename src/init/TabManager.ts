@@ -193,7 +193,7 @@ namespace exports {
         isModified: boolean;
     }
 
-    export type TabManagerGenericTabID = "loading";
+    export type TabManagerGenericTabID = "loading" | "settings";
 
     interface RecentsItem {
         /**
@@ -455,7 +455,7 @@ namespace exports {
         public switchTab(tab: TabManagerTab | TabManagerGenericTabID | null): void {
             // console.log(new Error().stack);
             if (tab === this.selectedTab) return;
-            if (tab === null || tab === "loading") getCurrentWindow().setTitle("Bedrock World Editor");
+            if (tab === null || tab === "loading" || tab === "settings") getCurrentWindow().setTitle("Bedrock World Editor");
             else if (typeof tab === "string") getCurrentWindow().setTitle(tab);
             // IDEA: Add a config option to change the template string for the window title, like how it is done in VSCode.
             else getCurrentWindow().setTitle(tab.name);

@@ -1,6 +1,7 @@
 import type { CSSProperties, JSX } from "preact";
 import _React from "preact/compat";
 import type { ComponentMessageContents } from "./commonComponentUtils";
+import Notice from "./Notice";
 
 /**
  * Props for the {@link UnderConstruction} component.
@@ -72,40 +73,5 @@ export default function UnderConstruction(props: UnderConstructionProps): JSX.Sp
     const title: ComponentMessageContents | string | null = props.title === undefined ? "Under Construction" : props.title;
     const subtitle: ComponentMessageContents | string | null = props.subtitle === undefined ? "This page is under construction." : props.subtitle;
     const detail: ComponentMessageContents | string | null = props.detail === undefined ? null : props.detail;
-    return (
-        <center
-            style={
-                props.style === null ? undefined
-                : typeof props.style === "string" ?
-                    props.style
-                :   {
-                        display: "inline-block",
-                        width: "-webkit-fill-available",
-                        height: "-webkit-fill-available",
-                        ...props.style,
-                    }
-
-            }
-        >
-            {title !== null &&
-                (typeof title === "string" ? <h1>{title}</h1>
-                : title.type === "text" ? <h1>{title.content}</h1>
-                : <h1 dangerouslySetInnerHTML={{ __html: title.content }} />)}
-            {subtitle !== null &&
-                (typeof subtitle === "string" ? <p>{subtitle}</p>
-                : subtitle.type === "text" ? <p>{subtitle.content}</p>
-                : <p dangerouslySetInnerHTML={{ __html: subtitle.content }} />)}
-            <img
-                class="piximg ndrg nsel"
-                // REVIEW: Figure out if the max zoom should be 1x, 2x, 3x, or 4x (currently it is set to 2x).
-                style={{ width: "min(calc(100% - mod(100%, 260px)), 260px * 2)" }}
-                aria-hidden="true"
-                src="resource://images/ui/art/under_construction.png"
-            />
-            {detail !== null &&
-                (typeof detail === "string" ? <p>{detail}</p>
-                : detail.type === "text" ? <p>{detail.content}</p>
-                : <p dangerouslySetInnerHTML={{ __html: detail.content }} />)}
-        </center>
-    );
+    return <Notice title={title} subtitle={subtitle} detail={detail} image="under_construction_cropped" style={props.style} />;
 }

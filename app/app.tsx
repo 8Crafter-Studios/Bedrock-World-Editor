@@ -34,6 +34,7 @@ import IntegrationsTab from "./tabs/integrations";
 import TextEditorTab from "./tabs/textEditor";
 import UnderConstruction from "./components/UnderConstruction";
 import { defaultWorldIconDataURI } from "../src/utils/preloadImages";
+import SettingsPage from "./pages/settings";
 // import { Renderer3D } from "./3DRendererV1/3DRenderer";
 const mime = require("mime-types") as typeof import("mime-types");
 
@@ -1023,14 +1024,21 @@ tabManager.on("switchTab", ({ previousTab, newTab }: TabManagerSwitchTabEvent): 
                     tabContentsElement
                 );
         }
-    } else if (typeof newTab === "string") {
-        if (newTab === "loading") {
-            render(
-                <div style="width: 100vw; height: 0; flex: 1; display: flex; flex-direction: row;">
-                    <LoadingScreenContents />
-                </div>,
-                tabContentsElement // tempElement
-            );
+    } else {
+        switch (newTab) {
+            case "loading":
+                render(
+                    <div style="width: 100vw; height: 0; flex: 1; display: flex; flex-direction: row;">
+                        <LoadingScreenContents />
+                    </div>,
+                    tabContentsElement // tempElement
+                );
+                break;
+            case "settings":
+                render(
+                    <SettingsPage />,
+                    tabContentsElement // tempElement
+                );
         }
     }
     // tabContentsElement.replaceChildren(...tempElement.children);

@@ -38,6 +38,7 @@
 -   Added a warning when running the x64 build of the app on an ARM64 machine through a translation layer (except on Windows as there is currently no ARM64 build of the app for Windows).
 -   Added recent worlds and folders sections to the taskbar jump list on Windows.
 -   Added the `File > Open Recent` submenu to the menu bar on macOS.
+-   Added a settings menu.
 
 ## Changes
 

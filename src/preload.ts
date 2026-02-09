@@ -226,7 +226,7 @@ const fileMenu: Electron.Menu = Menu.buildFromTemplate([
     {
         label: "Preferences",
         click(): void {
-            $("#app-tab-preferences").show();
+            tabManager.switchTab("settings");
         },
     },
     { type: "separator" },
