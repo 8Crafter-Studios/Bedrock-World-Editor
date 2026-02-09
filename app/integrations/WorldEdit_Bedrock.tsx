@@ -770,7 +770,7 @@ const thisIntegration = {
                             }
                         }}
                     >
-                        Transfer to Open Tab
+                        Transfer to Open World
                     </button>
                     <button
                         type="button"
@@ -827,7 +827,7 @@ const thisIntegration = {
                             }
                         }}
                     >
-                        Copy to Open Tab
+                        Copy to Open World
                     </button>
                     <button
                         type="button"
