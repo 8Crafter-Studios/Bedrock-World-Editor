@@ -430,7 +430,7 @@ const thisIntegration = {
                             biome.values.value.value[i] = resolvedPaletteIndex;
                         }
                         await tab.db.put(data3dKey, entryContentTypeToFormatMap.Data3D.serialize(data3dValue));
-                        tab.setLevelDBIsModified(true);
+                        tab.setLevelDBIsModified();
                         scoreboardModifications: {
                             const entryIndex: number = scoreboard.value.Entries.value.value.indexOf(entry);
                             if (entryIndex === -1) break scoreboardModifications;
@@ -759,6 +759,7 @@ const thisIntegration = {
                             abortController?.signal.throwIfAborted();
                             await props.tab.db.put("scoreboard", NBT.writeUncompressed(scoreboard, "little"));
                             abortController?.signal.throwIfAborted();
+                            props.tab.setLevelDBIsModified();
                             if (structures.length === 0) {
                                 actionData.export_structures.structureData = undefined;
                                 {
@@ -892,6 +893,7 @@ const thisIntegration = {
                             abortController?.signal.throwIfAborted();
                             await props.tab.db.put("scoreboard", NBT.writeUncompressed(scoreboard, "little"));
                             abortController?.signal.throwIfAborted();
+                            props.tab.setLevelDBIsModified();
                             actionData.export_structures.structureData = undefined;
                             {
                                 const applicableActionsIndex: number = applicableActions.indexOf("export_structures");
