@@ -995,6 +995,7 @@ if (!startup && !started) {
         }
     });
     function handleArgv(originalArgv: string[], secondInstance: boolean = false): void {
+        console.log("handleArgv", originalArgv, "secondInstance:", secondInstance);
         const argv: string[] = originalArgv.slice(1 + +(originalArgv[1] === "--process-start-args"));
         const nonAllowFileAccessFromFilesParams: string[] = argv.filter((arg: string): boolean => arg !== "--allow-file-access-from-files");
         if (
