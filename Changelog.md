@@ -1,3 +1,9 @@
+# v1.0.0-beta.17
+
+## Critical Fixes
+
+-   Fixed an issue where the Data3D serializer could corrupt the data by serializing it with a number of bits per block that 32 was not divisible by (also made the parser able to parse those corrupted subchunks, though the referenced palette indices in the values arrays will likely be incorrect for those corrupted subchunks). This fix also fixes the issue mentioned in the `v1.0.0-beta.16` changelog.
+
 # v1.0.0-beta.16
 
 ## Fixes
