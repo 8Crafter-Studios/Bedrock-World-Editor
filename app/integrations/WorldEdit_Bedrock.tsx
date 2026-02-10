@@ -101,67 +101,76 @@ async function action_command_setbiome_legacy_getTargetedChunkCount(
         },
     };
     for (const entry of [...scoreboard.value.Entries.value.value]) {
-        if (scoreboardIds.has(toLong(entry.ScoreboardId.value))) {
-            if (!entry.FakePlayerName?.value) continue;
-            let commandData: LegacyScoreboardSetBiomeData;
-            try {
-                commandData = JSON.parse(JSON.parse(`"${entry.FakePlayerName.value}"`)) as LegacyScoreboardSetBiomeData;
-            } catch (e) {
-                console.error(
-                    "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_legacy_getTargetedChunkCount] Invalid setbiome command data for entry:",
-                    entry,
-                    "error:",
-                    e
-                );
-                continue;
-            }
-            if (!commandData[0].startsWith("wedit:biome,")) continue;
-            targetedChunkCountData.total++;
-            const [, dimension, coordinates] = commandData[0].split(",") as [
-                id: "wedit:biome",
-                dimension: `minecraft:${Dimension}`,
-                coordinates: `${number}_${number}_${number}`,
-            ];
-            const [x, y, z] = coordinates.split("_").map(Number) as [x: number, y: number, z: number];
-            const data3dKey: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(
-                {
-                    dimension: dimension.split(":")[1] as Dimension,
-                    x,
-                    z,
-                },
-                "Data3D"
-            );
-            const rawData3d = await tab.db.get(data3dKey);
-            if (!rawData3d) {
-                targetedChunkCountData.errorTypes.data3dKeyNotFound++;
-                continue;
-            }
-            const data3dValue: NBTSchemas.NBTSchemaTypes.Data3D = entryContentTypeToFormatMap.Data3D.parse(rawData3d);
-            let minSubchunkIndex: number;
-            try {
-                const chunkMetaData = await getLevelChunkMetaDataForChunk(tab.db, { dimension: dimension.split(":")[1] as Dimension, x, z });
-                const heightRange = (chunkMetaData.LastSavedDimensionHeightRange ?? chunkMetaData.OriginalDimensionHeightRange).value;
-                minSubchunkIndex = Math.floor(heightRange.min.value / 16);
-            } catch (e) {
-                if (e instanceof ReferenceError && e.message === "LevelChunkMetaDataDictionary data not found.") {
-                    minSubchunkIndex = FALLBACK_MIN_SUBCHUNK_INDEX;
-                } else {
-                    // REVIEW: Check if the game actually makes metadata hashes for ALL saved chunks when upgrading worlds to a version with the LevelChunkMetaDataDictionary.
+        try {
+            if (scoreboardIds.has(toLong(entry.ScoreboardId.value))) {
+                if (!entry.FakePlayerName?.value) continue;
+                let commandData: LegacyScoreboardSetBiomeData;
+                try {
+                    commandData = JSON.parse(JSON.parse(`"${entry.FakePlayerName.value}"`)) as LegacyScoreboardSetBiomeData;
+                } catch (e) {
                     console.error(
-                        "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_legacy_getTargetedChunkCount] Skipping entry. Failed to get level chunk meta data for chunk even though the LevelChunkMetaDataDictionary is present. entry:",
+                        "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_legacy_getTargetedChunkCount] Invalid setbiome command data for entry:",
                         entry,
                         "error:",
                         e
                     );
                     continue;
                 }
+                if (!commandData[0].startsWith("wedit:biome,")) continue;
+                targetedChunkCountData.total++;
+                const [, dimension, coordinates] = commandData[0].split(",") as [
+                    id: "wedit:biome",
+                    dimension: `minecraft:${Dimension}`,
+                    coordinates: `${number}_${number}_${number}`,
+                ];
+                const [x, y, z] = coordinates.split("_").map(Number) as [x: number, y: number, z: number];
+                const data3dKey: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(
+                    {
+                        dimension: dimension.split(":")[1] as Dimension,
+                        x,
+                        z,
+                    },
+                    "Data3D"
+                );
+                const rawData3d = await tab.db.get(data3dKey);
+                if (!rawData3d) {
+                    targetedChunkCountData.errorTypes.data3dKeyNotFound++;
+                    continue;
+                }
+                const data3dValue: NBTSchemas.NBTSchemaTypes.Data3D = entryContentTypeToFormatMap.Data3D.parse(rawData3d);
+                let minSubchunkIndex: number;
+                try {
+                    const chunkMetaData = await getLevelChunkMetaDataForChunk(tab.db, { dimension: dimension.split(":")[1] as Dimension, x, z });
+                    const heightRange = (chunkMetaData.LastSavedDimensionHeightRange ?? chunkMetaData.OriginalDimensionHeightRange).value;
+                    minSubchunkIndex = Math.floor(heightRange.min.value / 16);
+                } catch (e) {
+                    if (e instanceof ReferenceError && e.message === "LevelChunkMetaDataDictionary data not found.") {
+                        minSubchunkIndex = FALLBACK_MIN_SUBCHUNK_INDEX;
+                    } else {
+                        // REVIEW: Check if the game actually makes metadata hashes for ALL saved chunks when upgrading worlds to a version with the LevelChunkMetaDataDictionary.
+                        console.error(
+                            "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_legacy_getTargetedChunkCount] Skipping entry. Failed to get level chunk meta data for chunk even though the LevelChunkMetaDataDictionary is present. entry:",
+                            entry,
+                            "error:",
+                            e
+                        );
+                        continue;
+                    }
+                }
+                const biome = data3dValue.value.biomes.value.value[y - minSubchunkIndex];
+                if (!biome) {
+                    targetedChunkCountData.errorTypes.data3dMissingBiomeDataAtIndex++;
+                    continue;
+                }
+                targetedChunkCountData.valid++;
             }
-            const biome = data3dValue.value.biomes.value.value[y - minSubchunkIndex];
-            if (!biome) {
-                targetedChunkCountData.errorTypes.data3dMissingBiomeDataAtIndex++;
-                continue;
-            }
-            targetedChunkCountData.valid++;
+        } catch (e) {
+            console.error(
+                "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_legacy_getTargetedChunkCount] An error occurred while processing the entry. entry:",
+                entry,
+                "error:",
+                e
+            );
         }
     }
     targetedChunkCountData.invalid = targetedChunkCountData.total - targetedChunkCountData.valid;
@@ -224,73 +233,83 @@ async function action_command_setbiome_getTargetedChunkCount(
         },
     };
     for (const biomeChangeProperty of biomeChangeProperties) {
-        const extraPageDataKeys: `__page${number}__biome,minecraft:${Dimension},${number}_${number}_${number}`[] = (
-            Object.keys(addonDP).filter(
-                (k: string): boolean => /^__page\d+__biome,minecraft:(?:overworld|nether|the_end),-?\d+_-?\d+_-?\d+$/.test(k) && k.endsWith(biomeChangeProperty)
-            ) as `__page${number}__biome,minecraft:${Dimension},${number}_${number}_${number}`[]
-        ).sort((a: string, b: string): number => parseInt(a.split("__page")[1]!.split("__")[0]!) - parseInt(b.split("__page")[1]!.split("__")[0]!));
-        let dataString: string = addonDP[biomeChangeProperty]!.value as string;
-        for (const extraPageDataKey of extraPageDataKeys) {
-            dataString += addonDP[extraPageDataKey]!.value as string;
-        }
-        let commandData: ScoreboardSetBiomeData;
         try {
-            commandData = JSON.parse(dataString) as ScoreboardSetBiomeData;
-        } catch (e) {
-            console.error(
-                "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome::checkIfApplicable] Invalid setbiome command data for key:",
-                biomeChangeProperty,
-                "error:",
-                e
-            );
-            continue;
-        }
-        targetedChunkCountData.total++;
-        const [, dimension, coordinates] = biomeChangeProperty.split(",") as [
-            id: "biome",
-            dimension: `minecraft:${Dimension}`,
-            coordinates: `${number}_${number}_${number}`,
-        ];
-        const [x, y, z] = coordinates.split("_").map(Number) as [x: number, y: number, z: number];
-        const data3dKey: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(
-            {
-                dimension: dimension.split(":")[1] as Dimension,
-                x,
-                z,
-            },
-            "Data3D"
-        );
-        const rawData3d = await tab.db.get(data3dKey);
-        if (!rawData3d) {
-            targetedChunkCountData.errorTypes.data3dKeyNotFound++;
-            continue;
-        }
-        const data3dValue: NBTSchemas.NBTSchemaTypes.Data3D = entryContentTypeToFormatMap.Data3D.parse(rawData3d);
-        let minSubchunkIndex: number;
-        try {
-            const chunkMetaData = await getLevelChunkMetaDataForChunk(tab.db, { dimension: dimension.split(":")[1] as Dimension, x, z });
-            const heightRange = (chunkMetaData.LastSavedDimensionHeightRange ?? chunkMetaData.OriginalDimensionHeightRange).value;
-            minSubchunkIndex = Math.floor(heightRange.min.value / 16);
-        } catch (e) {
-            if (e instanceof ReferenceError && e.message === "LevelChunkMetaDataDictionary data not found.") {
-                minSubchunkIndex = FALLBACK_MIN_SUBCHUNK_INDEX;
-            } else {
-                // REVIEW: Check if the game actually makes metadata hashes for ALL saved chunks when upgrading worlds to a version with the LevelChunkMetaDataDictionary.
+            const extraPageDataKeys: `__page${number}__biome,minecraft:${Dimension},${number}_${number}_${number}`[] = (
+                Object.keys(addonDP).filter(
+                    (k: string): boolean =>
+                        /^__page\d+__biome,minecraft:(?:overworld|nether|the_end),-?\d+_-?\d+_-?\d+$/.test(k) && k.endsWith(biomeChangeProperty)
+                ) as `__page${number}__biome,minecraft:${Dimension},${number}_${number}_${number}`[]
+            ).sort((a: string, b: string): number => parseInt(a.split("__page")[1]!.split("__")[0]!) - parseInt(b.split("__page")[1]!.split("__")[0]!));
+            let dataString: string = addonDP[biomeChangeProperty]!.value as string;
+            for (const extraPageDataKey of extraPageDataKeys) {
+                dataString += addonDP[extraPageDataKey]!.value as string;
+            }
+            let commandData: ScoreboardSetBiomeData;
+            try {
+                commandData = JSON.parse(dataString) as ScoreboardSetBiomeData;
+            } catch (e) {
                 console.error(
-                    "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome__getTargetedChunkCount] Skipping entry. Failed to get level chunk meta data for chunk even though the LevelChunkMetaDataDictionary is present. key:",
+                    "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome::checkIfApplicable] Invalid setbiome command data for key:",
                     biomeChangeProperty,
                     "error:",
                     e
                 );
                 continue;
             }
+            targetedChunkCountData.total++;
+            const [, dimension, coordinates] = biomeChangeProperty.split(",") as [
+                id: "biome",
+                dimension: `minecraft:${Dimension}`,
+                coordinates: `${number}_${number}_${number}`,
+            ];
+            const [x, y, z] = coordinates.split("_").map(Number) as [x: number, y: number, z: number];
+            const data3dKey: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(
+                {
+                    dimension: dimension.split(":")[1] as Dimension,
+                    x,
+                    z,
+                },
+                "Data3D"
+            );
+            const rawData3d = await tab.db.get(data3dKey);
+            if (!rawData3d) {
+                targetedChunkCountData.errorTypes.data3dKeyNotFound++;
+                continue;
+            }
+            const data3dValue: NBTSchemas.NBTSchemaTypes.Data3D = entryContentTypeToFormatMap.Data3D.parse(rawData3d);
+            let minSubchunkIndex: number;
+            try {
+                const chunkMetaData = await getLevelChunkMetaDataForChunk(tab.db, { dimension: dimension.split(":")[1] as Dimension, x, z });
+                const heightRange = (chunkMetaData.LastSavedDimensionHeightRange ?? chunkMetaData.OriginalDimensionHeightRange).value;
+                minSubchunkIndex = Math.floor(heightRange.min.value / 16);
+            } catch (e) {
+                if (e instanceof ReferenceError && e.message === "LevelChunkMetaDataDictionary data not found.") {
+                    minSubchunkIndex = FALLBACK_MIN_SUBCHUNK_INDEX;
+                } else {
+                    // REVIEW: Check if the game actually makes metadata hashes for ALL saved chunks when upgrading worlds to a version with the LevelChunkMetaDataDictionary.
+                    console.error(
+                        "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome__getTargetedChunkCount] Skipping entry. Failed to get level chunk meta data for chunk even though the LevelChunkMetaDataDictionary is present. key:",
+                        biomeChangeProperty,
+                        "error:",
+                        e
+                    );
+                    continue;
+                }
+            }
+            const biome = data3dValue.value.biomes.value.value[y - minSubchunkIndex];
+            if (!biome) {
+                targetedChunkCountData.errorTypes.data3dMissingBiomeDataAtIndex++;
+                continue;
+            }
+            targetedChunkCountData.valid++;
+        } catch (e) {
+            console.error(
+                "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome__getTargetedChunkCount] An error occurred while processing the entry. key:",
+                biomeChangeProperty,
+                "error:",
+                e
+            );
         }
-        const biome = data3dValue.value.biomes.value.value[y - minSubchunkIndex];
-        if (!biome) {
-            targetedChunkCountData.errorTypes.data3dMissingBiomeDataAtIndex++;
-            continue;
-        }
-        targetedChunkCountData.valid++;
     }
     targetedChunkCountData.invalid = targetedChunkCountData.total - targetedChunkCountData.valid;
     return targetedChunkCountData;
@@ -463,130 +482,139 @@ const thisIntegration = {
                 const scoreboardIds = new Set<bigint>(gametestDBObjective.Scores.value.value.map((s) => toLong(s.ScoreboardId.value)));
                 let scoreboardModified = false;
                 for (const entry of [...scoreboard.value.Entries.value.value]) {
-                    if (scoreboardIds.has(toLong(entry.ScoreboardId.value))) {
-                        if (!entry.FakePlayerName?.value) continue;
-                        let commandData: LegacyScoreboardSetBiomeData;
-                        try {
-                            commandData = JSON.parse(JSON.parse(`"${entry.FakePlayerName.value}"`)) as LegacyScoreboardSetBiomeData;
-                        } catch (e) {
-                            console.error(
-                                "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::apply] Invalid setbiome command data for entry:",
-                                entry,
-                                "error:",
-                                e
-                            );
-                            continue;
-                        }
-                        if (!commandData[0].startsWith("wedit:biome,")) continue;
-                        const [, dimension, coordinates] = commandData[0].split(",") as [
-                            id: "wedit:biome",
-                            dimension: `minecraft:${Dimension}`,
-                            coordinates: `${number}_${number}_${number}`,
-                        ];
-                        const [x, y, z] = coordinates.split("_").map(Number) as [x: number, y: number, z: number];
-                        const data3dKey: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(
-                            {
-                                dimension: dimension.split(":")[1] as Dimension,
-                                x,
-                                z,
-                            },
-                            "Data3D"
-                        );
-                        const rawData3d = await tab.db.get(data3dKey);
-                        if (!rawData3d) {
-                            console.warn(
-                                "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::apply] Skipping setbiome command entry. Data3D key not found for entry:",
-                                entry
-                            );
-                            continue;
-                        }
-                        const data3dValue: NBTSchemas.NBTSchemaTypes.Data3D = entryContentTypeToFormatMap.Data3D.parse(rawData3d);
-                        let minSubchunkIndex: number;
-                        try {
-                            const chunkMetaData = await getLevelChunkMetaDataForChunk(tab.db, { dimension: dimension.split(":")[1] as Dimension, x, z });
-                            const heightRange = (chunkMetaData.LastSavedDimensionHeightRange ?? chunkMetaData.OriginalDimensionHeightRange).value;
-                            minSubchunkIndex = Math.floor(heightRange.min.value / 16);
-                        } catch (e) {
-                            if (e instanceof ReferenceError && e.message === "LevelChunkMetaDataDictionary data not found.") {
-                                minSubchunkIndex = FALLBACK_MIN_SUBCHUNK_INDEX;
-                            } else {
-                                // REVIEW: Check if the game actually makes metadata hashes for ALL saved chunks when upgrading worlds to a version with the LevelChunkMetaDataDictionary.
+                    try {
+                        if (scoreboardIds.has(toLong(entry.ScoreboardId.value))) {
+                            if (!entry.FakePlayerName?.value) continue;
+                            let commandData: LegacyScoreboardSetBiomeData;
+                            try {
+                                commandData = JSON.parse(JSON.parse(`"${entry.FakePlayerName.value}"`)) as LegacyScoreboardSetBiomeData;
+                            } catch (e) {
                                 console.error(
-                                    "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::apply] Skipping entry. Failed to get level chunk meta data for chunk even though the LevelChunkMetaDataDictionary is present. entry:",
+                                    "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::apply] Invalid setbiome command data for entry:",
                                     entry,
                                     "error:",
                                     e
                                 );
                                 continue;
                             }
-                        }
-                        const biome = data3dValue.value.biomes.value.value[y - minSubchunkIndex];
-                        if (!biome) {
-                            console.warn(
-                                `[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::apply] Skipping setbiome command entry. Data3D for entry is missing biome data at index ${y - minSubchunkIndex} (subchunk index: ${y}). entry:`,
-                                entry
+                            if (!commandData[0].startsWith("wedit:biome,")) continue;
+                            const [, dimension, coordinates] = commandData[0].split(",") as [
+                                id: "wedit:biome",
+                                dimension: `minecraft:${Dimension}`,
+                                coordinates: `${number}_${number}_${number}`,
+                            ];
+                            const [x, y, z] = coordinates.split("_").map(Number) as [x: number, y: number, z: number];
+                            const data3dKey: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(
+                                {
+                                    dimension: dimension.split(":")[1] as Dimension,
+                                    x,
+                                    z,
+                                },
+                                "Data3D"
                             );
-                            continue;
-                        }
-                        const paletteMapping = new Map<number, number>();
-                        for (let i = 0; i < commandData[1].palette.length; i++) {
-                            const biomeId: number | undefined = commandData[1].palette[i];
-                            if (biomeId === undefined) continue;
-                            const existingInstanceIndex: number = biome.palette.value.value.indexOf(biomeId);
-                            if (existingInstanceIndex !== -1) {
-                                paletteMapping.set(i, existingInstanceIndex);
-                                continue;
-                            }
-                            paletteMapping.set(i, biome.palette.value.value.push(biomeId) - 1);
-                        }
-                        for (let i = 0; i < biome.values.value.value.length; i++) {
-                            const paletteIndex: number | undefined = commandData[1].biomes[i];
-                            if (!paletteIndex) continue; // This skipping 0 is intentional.
-                            const resolvedPaletteIndex: number | undefined = paletteMapping.get(paletteIndex - 1);
-                            if (resolvedPaletteIndex === undefined) {
+                            const rawData3d = await tab.db.get(data3dKey);
+                            if (!rawData3d) {
                                 console.warn(
-                                    `[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::apply] Skipping setbiome command entry block index. The paletteMapping has no mapping for index ${paletteIndex}. entry:`,
-                                    entry,
-                                    "block index:",
-                                    i,
-                                    "paletteMapping:",
-                                    paletteMapping
+                                    "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::apply] Skipping setbiome command entry. Data3D key not found for entry:",
+                                    entry
                                 );
                                 continue;
                             }
-                            biome.values.value.value[i] = resolvedPaletteIndex;
+                            const data3dValue: NBTSchemas.NBTSchemaTypes.Data3D = entryContentTypeToFormatMap.Data3D.parse(rawData3d);
+                            let minSubchunkIndex: number;
+                            try {
+                                const chunkMetaData = await getLevelChunkMetaDataForChunk(tab.db, { dimension: dimension.split(":")[1] as Dimension, x, z });
+                                const heightRange = (chunkMetaData.LastSavedDimensionHeightRange ?? chunkMetaData.OriginalDimensionHeightRange).value;
+                                minSubchunkIndex = Math.floor(heightRange.min.value / 16);
+                            } catch (e) {
+                                if (e instanceof ReferenceError && e.message === "LevelChunkMetaDataDictionary data not found.") {
+                                    minSubchunkIndex = FALLBACK_MIN_SUBCHUNK_INDEX;
+                                } else {
+                                    // REVIEW: Check if the game actually makes metadata hashes for ALL saved chunks when upgrading worlds to a version with the LevelChunkMetaDataDictionary.
+                                    console.error(
+                                        "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::apply] Skipping entry. Failed to get level chunk meta data for chunk even though the LevelChunkMetaDataDictionary is present. entry:",
+                                        entry,
+                                        "error:",
+                                        e
+                                    );
+                                    continue;
+                                }
+                            }
+                            const biome = data3dValue.value.biomes.value.value[y - minSubchunkIndex];
+                            if (!biome) {
+                                console.warn(
+                                    `[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::apply] Skipping setbiome command entry. Data3D for entry is missing biome data at index ${y - minSubchunkIndex} (subchunk index: ${y}). entry:`,
+                                    entry
+                                );
+                                continue;
+                            }
+                            const paletteMapping = new Map<number, number>();
+                            for (let i = 0; i < commandData[1].palette.length; i++) {
+                                const biomeId: number | undefined = commandData[1].palette[i];
+                                if (biomeId === undefined) continue;
+                                const existingInstanceIndex: number = biome.palette.value.value.indexOf(biomeId);
+                                if (existingInstanceIndex !== -1) {
+                                    paletteMapping.set(i, existingInstanceIndex);
+                                    continue;
+                                }
+                                paletteMapping.set(i, biome.palette.value.value.push(biomeId) - 1);
+                            }
+                            for (let i = 0; i < biome.values.value.value.length; i++) {
+                                const paletteIndex: number | undefined = commandData[1].biomes[i];
+                                if (!paletteIndex) continue; // This skipping 0 is intentional.
+                                const resolvedPaletteIndex: number | undefined = paletteMapping.get(paletteIndex - 1);
+                                if (resolvedPaletteIndex === undefined) {
+                                    console.warn(
+                                        `[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::apply] Skipping setbiome command entry block index. The paletteMapping has no mapping for index ${paletteIndex}. entry:`,
+                                        entry,
+                                        "block index:",
+                                        i,
+                                        "paletteMapping:",
+                                        paletteMapping
+                                    );
+                                    continue;
+                                }
+                                biome.values.value.value[i] = resolvedPaletteIndex;
+                            }
+                            const valueSet = new Set<number>(biome.values.value.value);
+                            const cleanupMapping = new Map<number, number>();
+                            let currentPaletteIndexOffset = 0;
+                            for (let i = 0; i < biome.palette.value.value.length; i++) {
+                                const biomeId: number | undefined = biome.palette.value.value[i + currentPaletteIndexOffset];
+                                if (biomeId === undefined) continue;
+                                if (valueSet.has(i)) continue;
+                                biome.palette.value.value.splice(i + currentPaletteIndexOffset, 1);
+                                currentPaletteIndexOffset--;
+                                cleanupMapping.set(i, i + currentPaletteIndexOffset);
+                            }
+                            for (let i = 0; i < biome.values.value.value.length; i++) {
+                                const paletteIndex: number | undefined = biome.values.value.value[i];
+                                if (paletteIndex === undefined) continue;
+                                const resolvedPaletteIndex: number = cleanupMapping.get(paletteIndex) ?? paletteIndex;
+                                biome.values.value.value[i] = resolvedPaletteIndex;
+                            }
+                            await tab.db.put(data3dKey, entryContentTypeToFormatMap.Data3D.serialize(data3dValue));
+                            tab.setLevelDBIsModified();
+                            scoreboardModifications: {
+                                const entryIndex: number = scoreboard.value.Entries.value.value.indexOf(entry);
+                                if (entryIndex === -1) break scoreboardModifications;
+                                scoreboardModified = true;
+                                scoreboard.value.Entries.value.value.splice(entryIndex, 1);
+                                const scoreboardId: bigint = toLong(entry.ScoreboardId.value);
+                                const objectiveEntryIndex: number = gametestDBObjective.Scores.value.value.findIndex(
+                                    (s) => toLong(s.ScoreboardId.value) === scoreboardId
+                                );
+                                if (objectiveEntryIndex === -1) break scoreboardModifications;
+                                gametestDBObjective.Scores.value.value.splice(objectiveEntryIndex, 1);
+                            }
                         }
-                        const valueSet = new Set<number>(biome.values.value.value);
-                        const cleanupMapping = new Map<number, number>();
-                        let currentPaletteIndexOffset = 0;
-                        for (let i = 0; i < biome.palette.value.value.length; i++) {
-                            const biomeId: number | undefined = biome.palette.value.value[i + currentPaletteIndexOffset];
-                            if (biomeId === undefined) continue;
-                            if (valueSet.has(i)) continue;
-                            biome.palette.value.value.splice(i + currentPaletteIndexOffset, 1);
-                            currentPaletteIndexOffset--;
-                            cleanupMapping.set(i, i + currentPaletteIndexOffset);
-                        }
-                        for (let i = 0; i < biome.values.value.value.length; i++) {
-                            const paletteIndex: number | undefined = biome.values.value.value[i];
-                            if (paletteIndex === undefined) continue;
-                            const resolvedPaletteIndex: number = cleanupMapping.get(paletteIndex) ?? paletteIndex;
-                            biome.values.value.value[i] = resolvedPaletteIndex;
-                        }
-                        await tab.db.put(data3dKey, entryContentTypeToFormatMap.Data3D.serialize(data3dValue));
-                        tab.setLevelDBIsModified();
-                        scoreboardModifications: {
-                            const entryIndex: number = scoreboard.value.Entries.value.value.indexOf(entry);
-                            if (entryIndex === -1) break scoreboardModifications;
-                            scoreboardModified = true;
-                            scoreboard.value.Entries.value.value.splice(entryIndex, 1);
-                            const scoreboardId: bigint = toLong(entry.ScoreboardId.value);
-                            const objectiveEntryIndex: number = gametestDBObjective.Scores.value.value.findIndex(
-                                (s) => toLong(s.ScoreboardId.value) === scoreboardId
-                            );
-                            if (objectiveEntryIndex === -1) break scoreboardModifications;
-                            gametestDBObjective.Scores.value.value.splice(objectiveEntryIndex, 1);
-                        }
+                    } catch (e) {
+                        console.error(
+                            `[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::apply] Failed to apply setbiome command entry. entry:`,
+                            entry,
+                            "error:",
+                            e
+                        );
                     }
                 }
                 if (scoreboardModified) {
@@ -671,148 +699,159 @@ const thisIntegration = {
                 }
                 let dynamicPropertiesModified = false;
                 for (const biomeChangeProperty of biomeChangeProperties) {
-                    const extraPageDataKeys: `__page${number}__biome,minecraft:${Dimension},${number}_${number}_${number}`[] = (
-                        Object.keys(addonDP).filter(
-                            (k: string): boolean =>
-                                /^__page\d+__biome,minecraft:(?:overworld|nether|the_end),-?\d+_-?\d+_-?\d+$/.test(k) && k.endsWith(biomeChangeProperty)
-                        ) as `__page${number}__biome,minecraft:${Dimension},${number}_${number}_${number}`[]
-                    ).sort((a: string, b: string): number => parseInt(a.split("__page")[1]!.split("__")[0]!) - parseInt(b.split("__page")[1]!.split("__")[0]!));
-                    let dataString: string = addonDP[biomeChangeProperty]!.value as string;
-                    for (const extraPageDataKey of extraPageDataKeys) {
-                        dataString += addonDP[extraPageDataKey]!.value as string;
-                    }
-                    let commandData: ScoreboardSetBiomeData;
                     try {
-                        commandData = JSON.parse(dataString) as ScoreboardSetBiomeData;
-                    } catch (e) {
-                        console.error(
-                            "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome::checkIfApplicable] Invalid setbiome command data for key:",
-                            biomeChangeProperty,
-                            "error:",
-                            e
+                        const extraPageDataKeys: `__page${number}__biome,minecraft:${Dimension},${number}_${number}_${number}`[] = (
+                            Object.keys(addonDP).filter(
+                                (k: string): boolean =>
+                                    /^__page\d+__biome,minecraft:(?:overworld|nether|the_end),-?\d+_-?\d+_-?\d+$/.test(k) && k.endsWith(biomeChangeProperty)
+                            ) as `__page${number}__biome,minecraft:${Dimension},${number}_${number}_${number}`[]
+                        ).sort(
+                            (a: string, b: string): number => parseInt(a.split("__page")[1]!.split("__")[0]!) - parseInt(b.split("__page")[1]!.split("__")[0]!)
                         );
-                        continue;
-                    }
-                    const [, dimension, coordinates] = biomeChangeProperty.split(",") as [
-                        id: "biome",
-                        dimension: `minecraft:${Dimension}`,
-                        coordinates: `${number}_${number}_${number}`,
-                    ];
-                    const [x, y, z] = coordinates.split("_").map(Number) as [x: number, y: number, z: number];
-                    const data3dKey: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(
-                        {
-                            dimension: dimension.split(":")[1] as Dimension,
-                            x,
-                            z,
-                        },
-                        "Data3D"
-                    );
-                    const rawData3d = await tab.db.get(data3dKey);
-                    if (!rawData3d) {
-                        console.warn(
-                            "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome::apply] Skipping setbiome command entry. Data3D key not found for key:",
-                            biomeChangeProperty
-                        );
-                        continue;
-                    }
-                    const data3dValue: NBTSchemas.NBTSchemaTypes.Data3D = entryContentTypeToFormatMap.Data3D.parse(rawData3d);
-                    let minSubchunkIndex: number;
-                    try {
-                        const chunkMetaData = await getLevelChunkMetaDataForChunk(tab.db, { dimension: dimension.split(":")[1] as Dimension, x, z });
-                        const heightRange = (chunkMetaData.LastSavedDimensionHeightRange ?? chunkMetaData.OriginalDimensionHeightRange).value;
-                        minSubchunkIndex = Math.floor(heightRange.min.value / 16);
-                    } catch (e) {
-                        if (e instanceof ReferenceError && e.message === "LevelChunkMetaDataDictionary data not found.") {
-                            minSubchunkIndex = FALLBACK_MIN_SUBCHUNK_INDEX;
-                        } else {
-                            // REVIEW: Check if the game actually makes metadata hashes for ALL saved chunks when upgrading worlds to a version with the LevelChunkMetaDataDictionary.
+                        let dataString: string = addonDP[biomeChangeProperty]!.value as string;
+                        for (const extraPageDataKey of extraPageDataKeys) {
+                            dataString += addonDP[extraPageDataKey]!.value as string;
+                        }
+                        let commandData: ScoreboardSetBiomeData;
+                        try {
+                            commandData = JSON.parse(dataString) as ScoreboardSetBiomeData;
+                        } catch (e) {
                             console.error(
-                                "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome::apply] Skipping entry. Failed to get level chunk meta data for chunk even though the LevelChunkMetaDataDictionary is present. key:",
+                                "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome::checkIfApplicable] Invalid setbiome command data for key:",
                                 biomeChangeProperty,
                                 "error:",
                                 e
                             );
                             continue;
                         }
-                    }
-                    const biome = data3dValue.value.biomes.value.value[y - minSubchunkIndex];
-                    if (!biome) {
-                        console.warn(
-                            `[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome::apply] Skipping setbiome command entry. Data3D for entry is missing biome data at index ${y - minSubchunkIndex} (subchunk index: ${y}). key:`,
-                            biomeChangeProperty
+                        const [, dimension, coordinates] = biomeChangeProperty.split(",") as [
+                            id: "biome",
+                            dimension: `minecraft:${Dimension}`,
+                            coordinates: `${number}_${number}_${number}`,
+                        ];
+                        const [x, y, z] = coordinates.split("_").map(Number) as [x: number, y: number, z: number];
+                        const data3dKey: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(
+                            {
+                                dimension: dimension.split(":")[1] as Dimension,
+                                x,
+                                z,
+                            },
+                            "Data3D"
                         );
-                        continue;
-                    }
-                    const paletteMapping = new Map<number, number>();
-                    for (let i = 0; i < commandData.palette.length; i++) {
-                        const biomeNamespacedId: string | undefined = commandData.palette[i];
-                        if (!biomeNamespacedId) continue;
-                        let biomeId: number | undefined;
-                        if (biomeNamespacedId.startsWith("minecraft:")) {
-                            biomeId = getBiomeIDFromType(biomeNamespacedId as keyof typeof BiomeData.int_map);
-                        } else {
-                            biomeId = customBiomeIdMapping?.value.list.value.value.find((v) => v.name.value === biomeNamespacedId)?.id.value;
-                        }
-                        if (biomeId === undefined) {
+                        const rawData3d = await tab.db.get(data3dKey);
+                        if (!rawData3d) {
                             console.warn(
-                                `[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome::apply] Skipping setbiome command entry palette index. Failed to map biome namespaced ID to numeric ID. key:`,
-                                biomeChangeProperty,
-                                "palette index:",
-                                i,
-                                "biomeNamespacedId:",
-                                biomeNamespacedId
+                                "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome::apply] Skipping setbiome command entry. Data3D key not found for key:",
+                                biomeChangeProperty
                             );
                             continue;
                         }
-                        const existingInstanceIndex: number = biome.palette.value.value.indexOf(biomeId);
-                        if (existingInstanceIndex !== -1) {
-                            paletteMapping.set(i, existingInstanceIndex);
-                            continue;
+                        const data3dValue: NBTSchemas.NBTSchemaTypes.Data3D = entryContentTypeToFormatMap.Data3D.parse(rawData3d);
+                        let minSubchunkIndex: number;
+                        try {
+                            const chunkMetaData = await getLevelChunkMetaDataForChunk(tab.db, { dimension: dimension.split(":")[1] as Dimension, x, z });
+                            const heightRange = (chunkMetaData.LastSavedDimensionHeightRange ?? chunkMetaData.OriginalDimensionHeightRange).value;
+                            minSubchunkIndex = Math.floor(heightRange.min.value / 16);
+                        } catch (e) {
+                            if (e instanceof ReferenceError && e.message === "LevelChunkMetaDataDictionary data not found.") {
+                                minSubchunkIndex = FALLBACK_MIN_SUBCHUNK_INDEX;
+                            } else {
+                                // REVIEW: Check if the game actually makes metadata hashes for ALL saved chunks when upgrading worlds to a version with the LevelChunkMetaDataDictionary.
+                                console.error(
+                                    "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome::apply] Skipping entry. Failed to get level chunk meta data for chunk even though the LevelChunkMetaDataDictionary is present. key:",
+                                    biomeChangeProperty,
+                                    "error:",
+                                    e
+                                );
+                                continue;
+                            }
                         }
-                        paletteMapping.set(i, biome.palette.value.value.push(biomeId) - 1);
-                    }
-                    for (let i = 0; i < biome.values.value.value.length; i++) {
-                        const paletteIndex: number | undefined = commandData.biomes[i];
-                        if (!paletteIndex) continue; // This skipping 0 is intentional.
-                        const resolvedPaletteIndex: number | undefined = paletteMapping.get(paletteIndex - 1);
-                        if (resolvedPaletteIndex === undefined) {
+                        const biome = data3dValue.value.biomes.value.value[y - minSubchunkIndex];
+                        if (!biome) {
                             console.warn(
-                                `[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome::apply] Skipping setbiome command entry block index. The paletteMapping has no mapping for index ${paletteIndex}. key:`,
-                                biomeChangeProperty,
-                                "block index:",
-                                i,
-                                "paletteMapping:",
-                                paletteMapping
+                                `[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome::apply] Skipping setbiome command entry. Data3D for entry is missing biome data at index ${y - minSubchunkIndex} (subchunk index: ${y}). key:`,
+                                biomeChangeProperty
                             );
                             continue;
                         }
-                        biome.values.value.value[i] = resolvedPaletteIndex;
-                    }
-                    const valueSet = new Set<number>(biome.values.value.value);
-                    const cleanupMapping = new Map<number, number>();
-                    let currentPaletteIndexOffset = 0;
-                    for (let i = 0; i < biome.palette.value.value.length; i++) {
-                        const biomeId: number | undefined = biome.palette.value.value[i + currentPaletteIndexOffset];
-                        if (biomeId === undefined) continue;
-                        if (valueSet.has(i)) continue;
-                        biome.palette.value.value.splice(i + currentPaletteIndexOffset, 1);
-                        currentPaletteIndexOffset--;
-                        cleanupMapping.set(i, i + currentPaletteIndexOffset);
-                    }
-                    for (let i = 0; i < biome.values.value.value.length; i++) {
-                        const paletteIndex: number | undefined = biome.values.value.value[i];
-                        if (paletteIndex === undefined) continue;
-                        const resolvedPaletteIndex: number = cleanupMapping.get(paletteIndex) ?? paletteIndex;
-                        biome.values.value.value[i] = resolvedPaletteIndex;
-                    }
-                    await tab.db.put(data3dKey, entryContentTypeToFormatMap.Data3D.serialize(data3dValue));
-                    tab.setLevelDBIsModified();
-                    dynamicPropertiesModifications: {
-                        for (const key of [biomeChangeProperty, ...extraPageDataKeys]) {
-                            delete addonDP[key];
-                            dynamicPropertiesModified = true;
+                        const paletteMapping = new Map<number, number>();
+                        for (let i = 0; i < commandData.palette.length; i++) {
+                            const biomeNamespacedId: string | undefined = commandData.palette[i];
+                            if (!biomeNamespacedId) continue;
+                            let biomeId: number | undefined;
+                            if (biomeNamespacedId.startsWith("minecraft:")) {
+                                biomeId = getBiomeIDFromType(biomeNamespacedId as keyof typeof BiomeData.int_map);
+                            } else {
+                                biomeId = customBiomeIdMapping?.value.list.value.value.find((v) => v.name.value === biomeNamespacedId)?.id.value;
+                            }
+                            if (biomeId === undefined) {
+                                console.warn(
+                                    `[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome::apply] Skipping setbiome command entry palette index. Failed to map biome namespaced ID to numeric ID. key:`,
+                                    biomeChangeProperty,
+                                    "palette index:",
+                                    i,
+                                    "biomeNamespacedId:",
+                                    biomeNamespacedId
+                                );
+                                continue;
+                            }
+                            const existingInstanceIndex: number = biome.palette.value.value.indexOf(biomeId);
+                            if (existingInstanceIndex !== -1) {
+                                paletteMapping.set(i, existingInstanceIndex);
+                                continue;
+                            }
+                            paletteMapping.set(i, biome.palette.value.value.push(biomeId) - 1);
                         }
-                        break dynamicPropertiesModifications;
+                        for (let i = 0; i < biome.values.value.value.length; i++) {
+                            const paletteIndex: number | undefined = commandData.biomes[i];
+                            if (!paletteIndex) continue; // This skipping 0 is intentional.
+                            const resolvedPaletteIndex: number | undefined = paletteMapping.get(paletteIndex - 1);
+                            if (resolvedPaletteIndex === undefined) {
+                                console.warn(
+                                    `[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome::apply] Skipping setbiome command entry block index. The paletteMapping has no mapping for index ${paletteIndex}. key:`,
+                                    biomeChangeProperty,
+                                    "block index:",
+                                    i,
+                                    "paletteMapping:",
+                                    paletteMapping
+                                );
+                                continue;
+                            }
+                            biome.values.value.value[i] = resolvedPaletteIndex;
+                        }
+                        const valueSet = new Set<number>(biome.values.value.value);
+                        const cleanupMapping = new Map<number, number>();
+                        let currentPaletteIndexOffset = 0;
+                        for (let i = 0; i < biome.palette.value.value.length; i++) {
+                            const biomeId: number | undefined = biome.palette.value.value[i + currentPaletteIndexOffset];
+                            if (biomeId === undefined) continue;
+                            if (valueSet.has(i)) continue;
+                            biome.palette.value.value.splice(i + currentPaletteIndexOffset, 1);
+                            currentPaletteIndexOffset--;
+                            cleanupMapping.set(i, i + currentPaletteIndexOffset);
+                        }
+                        for (let i = 0; i < biome.values.value.value.length; i++) {
+                            const paletteIndex: number | undefined = biome.values.value.value[i];
+                            if (paletteIndex === undefined) continue;
+                            const resolvedPaletteIndex: number = cleanupMapping.get(paletteIndex) ?? paletteIndex;
+                            biome.values.value.value[i] = resolvedPaletteIndex;
+                        }
+                        await tab.db.put(data3dKey, entryContentTypeToFormatMap.Data3D.serialize(data3dValue));
+                        tab.setLevelDBIsModified();
+                        dynamicPropertiesModifications: {
+                            for (const key of [biomeChangeProperty, ...extraPageDataKeys]) {
+                                delete addonDP[key];
+                                dynamicPropertiesModified = true;
+                            }
+                            break dynamicPropertiesModifications;
+                        }
+                    } catch (e) {
+                        console.error(
+                            "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome::apply] Failed to apply setbiome command entry. key:",
+                            biomeChangeProperty,
+                            "error:",
+                            e
+                        );
                     }
                 }
                 if (dynamicPropertiesModified) {

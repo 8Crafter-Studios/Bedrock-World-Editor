@@ -1,3 +1,9 @@
+# v1.0.0-beta.16
+
+## Fixes
+
+-   Added a temporary "band-aid" fix for a very rare bug where with some very specific chunks, the WorldEdit Bedrock integration would throw an error upon attempting to apply biome changes to that chunk due to failing to parse the Data3D data of that chunk.
+
 # v1.0.0-beta.15
 
 ## Additions
