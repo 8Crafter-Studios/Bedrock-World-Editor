@@ -10,6 +10,7 @@ import { FuseV1Options, FuseVersion } from "@electron/fuses";
 import { type ChildProcess, spawn } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
 import path from "node:path";
+import type { PublisherGitHubConfig } from "@electron-forge/publisher-github";
 
 const config: ForgeConfig = {
     packagerConfig: {
@@ -24,7 +25,7 @@ const config: ForgeConfig = {
                 schemes: ["bedrock-world-editor"],
             },
         ],
-        icon: "./resources/icon.ico",
+        icon: "./resources/icon",
         overwrite: true,
         extraResource: ["./resources"],
     },
@@ -52,11 +53,11 @@ const config: ForgeConfig = {
                 mimeType: ["x-scheme-handler/bedrock-world-editor"],
             },
         }),
-        new MakerDMG({
+        new MakerDMG((arch: string) => ({
             // background // TODO: Make a background image for the DMG window.
             icon: "resources/icon.png",
-            name: "Bedrock World Editor", // REVIEW: Verify if this should be like this or use dashes instead.
-        }),
+            name: `Bedrock.World.Editor-darwin-${arch}-${(require("./package.json") as typeof import("./package.json")).version}`, // REVIEW: Verify if this should be like this or use the app's display name instead.
+        })),
     ],
     publishers: [
         {
@@ -66,10 +67,10 @@ const config: ForgeConfig = {
                     owner: "8Crafter-Studios",
                     name: "Bedrock-World-Editor",
                 },
-                prerelease: true,
+                prerelease: false,
                 generateReleaseNotes: true,
                 draft: true,
-            },
+            } satisfies PublisherGitHubConfig,
         },
     ],
     plugins: [
@@ -122,13 +123,13 @@ const config: ForgeConfig = {
                 "install",
                 "--no-package-lock",
                 "--no-save",
-                ...(typeof external === "string"
-                    ? external.endsWith(".node")
-                        ? []
-                        : [external]
-                    : external instanceof Array
-                    ? external.filter((external: string | RegExp): external is string => typeof external === "string" && !external.endsWith(".node"))
-                    : []),
+                ...(typeof external === "string" ?
+                    external.endsWith(".node") ?
+                        []
+                    :   [external]
+                : external instanceof Array ?
+                    external.filter((external: string | RegExp): external is string => typeof external === "string" && !external.endsWith(".node"))
+                :   []),
             ];
 
             return new Promise((resolve: (value: void) => void, reject: (reason?: any) => void): void => {
