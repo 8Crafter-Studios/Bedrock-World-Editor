@@ -103,17 +103,20 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                 if (newTabIndex !== tab.openTabs.indexOf(props.tab)) {
                     tab.moveTab(props.tab, newTabIndex);
                 }
-                clonedElement.style.transition = "top 0.2s ease-out, left 0.2s ease-out";
-                const x: number = containerRef.current.offsetLeft;
-                const y: number = containerRef.current.offsetTop;
-                clonedElement.style.left = `${x}px`;
-                clonedElement.style.top = `${y}px`;
-                setTimeout((): void => {
-                    if (!containerRef.current || !clonedElement) return;
-                    clonedElement.remove();
-                    clonedElement = null;
-                    // containerRef.current.style.opacity = "";
-                }, 200);
+                // UNDONE: Removed the transition of the dragged tab.
+                clonedElement.remove();
+                clonedElement = null;
+                // clonedElement.style.transition = "top 0.2s ease-out, left 0.2s ease-out";
+                // const x: number = containerRef.current.offsetLeft;
+                // const y: number = containerRef.current.offsetTop;
+                // clonedElement.style.left = `${x}px`;
+                // clonedElement.style.top = `${y}px`;
+                // setTimeout((): void => {
+                //     if (!containerRef.current || !clonedElement) return;
+                //     clonedElement.remove();
+                //     clonedElement = null;
+                //     // containerRef.current.style.opacity = "";
+                // }, 200);
             }
             $(containerRef.current.parentElement!)
                 .find<HTMLLIElement>(".left-highlight, .right-highlight")
@@ -214,7 +217,7 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                         direction="right"
                         onClose={(): void => void tabContextMenu_setOpen(false)}
                     >
-                        {props.tab.isModified() ? (
+                        {props.tab.isModified() ?
                             <>
                                 <MenuItem
                                     onClick={async (): Promise<void> => {
@@ -250,17 +253,16 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                                     Reset Tab
                                 </MenuItem>
                             </>
-                        ) : (
-                            <MenuItem
+                        :   <MenuItem
                                 onClick={(): void => {
                                     props.tab.close();
                                 }}
                             >
                                 Close Tab
                             </MenuItem>
-                        )}
+                        }
                         <MenuDivider />
-                        {props.tab.isPinned ? (
+                        {props.tab.isPinned ?
                             <MenuItem
                                 onClick={(): void => {
                                     props.tab.isPinned = false;
@@ -269,8 +271,7 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                             >
                                 Unpin Tab
                             </MenuItem>
-                        ) : (
-                            <MenuItem
+                        :   <MenuItem
                                 onClick={(): void => {
                                     props.tab.isPinned = true;
                                     triggerUpdate?.();
@@ -278,7 +279,7 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                             >
                                 Pin Tab
                             </MenuItem>
-                        )}
+                        }
                     </ControlledMenu>
                     <a
                         title={props.tab.name}
@@ -302,27 +303,28 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                                 <img
                                     aria-hidden="true"
                                     src={
-                                        checkIsURIOrPath(props.tab.icon) === "URI"
-                                            ? props.tab.icon
-                                            : `data:${mime.lookup(props.tab.icon)};base64,${readFileSync(props.tab.icon, "base64")}`
+                                        checkIsURIOrPath(props.tab.icon) === "URI" ?
+                                            props.tab.icon
+                                        :   `data:${mime.lookup(props.tab.icon)};base64,${readFileSync(props.tab.icon, "base64")}`
                                     }
                                     style="max-width: 16px; max-height: 16px; margin-right: 0.5em;"
                                 />
                             </div>
                         )}
-                        {props.tab.name.length > 30
-                            ? props.tab.name.slice(0, 30 - Math.min(10, Math.max(0, props.tab.name.length - 45))) +
-                              "..." +
-                              props.tab.name.slice(30 + Math.max(0, props.tab.name.length - 40))
-                            : props.tab.name}
+                        {props.tab.name.length > 40 ?
+                            props.tab.name.slice(0, 30 - Math.min(10, Math.max(0, props.tab.name.length - 45))) +
+                            "..." +
+                            props.tab.name.slice(30 + Math.max(0, props.tab.name.length - 40))
+                        :   props.tab.name}
                         {props.tab.readonly && (
                             <img
-                                aria-hidden="true"
+                                title="Read-only"
                                 src="resource://images/ui/glyphs/Lock-Locked.png"
                                 style="margin-left: 0.5em; width: 18px; height: 18px; vertical-align: middle;"
                             />
                         )}
                         <div
+                            title="Modified"
                             style={{
                                 display: props.tab.isModified() ? undefined : "none",
                                 marginLeft: "0.25em",
@@ -334,7 +336,7 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                         >
                             •
                         </div>
-                        {props.tab.isPinned ? (
+                        {props.tab.isPinned ?
                             <img
                                 title="Unpin"
                                 src="resource://images/ui/glyphs/Pin.png"
@@ -346,9 +348,8 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                                     triggerUpdate?.();
                                 }}
                             />
-                        ) : (
-                            <img
-                                title="Close (Shift to Close Without Saving)"
+                        :   <img
+                                title="Save & Close (Shift to Close Without Saving)"
                                 src="resource://images/ui/glyphs/Close.png"
                                 style="margin-left: 0.5em; width: 10px; height: 10px; vertical-align: middle;"
                                 class="closebtn"
@@ -358,7 +359,7 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                                     props.tab.close();
                                 }}
                             />
-                        )}
+                        }
                     </a>
                 </li>
             </>

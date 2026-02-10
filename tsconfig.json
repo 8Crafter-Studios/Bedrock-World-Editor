@@ -13,6 +13,7 @@
         "resolveJsonModule": true,
         "forceConsistentCasingInFileNames": true,
         "strict": true,
+        "exactOptionalPropertyTypes": true,
         "allowSyntheticDefaultImports": true,
         "checkJs": true,
     },

@@ -9,6 +9,7 @@ import { LoadingScreenContents } from "../app";
 import SNBTEditor from "../components/SNBTEditor";
 import PrismarineNBTEditor from "../components/PrismarineNBTEditor";
 import EditorWidgetOverlayBar, { type EditorWidgetOverlayBarWidgetRegistry } from "../components/EditorWidgetOverlayBar";
+import UnderConstruction from "../components/UnderConstruction";
 
 export interface GenericNBTEditorTabProps {
     tab: TabManagerSubTab;
@@ -127,7 +128,7 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                                             const contentType = getContentTypeFromDBKey(props.tab.target.key);
                                             const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[contentType];
                                             if (!((format.type === "NBT") /*  || (format.type === "custom" && format.resultType === "JSONNBT") */)) return;
-                                            // TO-DO: Make this determine the default values dynamically so as not to insert invalid data.
+                                            // TODO: Make this determine the default values dynamically so as not to insert invalid data.
                                             props.tab.parentTab.db!.put(
                                                 props.tab.target.key,
                                                 NBT.writeUncompressed(
@@ -136,10 +137,10 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                                                         type: "compound",
                                                         value: {},
                                                     },
-                                                    format.type === "NBT"
-                                                        ? ({ BE: "big", LE: "little", LEV: "littleVarint" } as const)[format.format ?? "LE"]
-                                                        : "little"
-                                                ),
+                                                    format.type === "NBT" ?
+                                                        ({ BE: "big", LE: "little", LEV: "littleVarint" } as const)[format.format ?? "LE"]
+                                                    :   "little"
+                                                )
                                             );
                                         }}
                                     >
@@ -156,7 +157,11 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                     errorElement.style.fontFamily = "monospace";
                     errorElement.style.whiteSpace = "pre";
                     errorElement.textContent =
-                        reason instanceof Error ? (reason.stack?.startsWith(reason.toString()) ? reason.stack : reason.toString() + reason.stack) : reason;
+                        reason instanceof Error ?
+                            reason.stack?.startsWith(reason.toString()) ?
+                                reason.stack
+                            :   reason.toString() + reason.stack
+                        :   reason;
                     render(null, containerRef.current);
                     containerRef.current.replaceChildren("Failed to load data:", errorElement);
                 }
@@ -227,7 +232,12 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                     />
                 );
             case "raw":
-                return <span style="color: red;">This view mode is still a work in progress: {String(props.options.viewMode)}</span>;
+                return (
+                    <UnderConstruction
+                        subtitle="This view mode is under construction."
+                        detail={`This view mode is still a work in progress: ${String(props.options.viewMode)}`}
+                    />
+                );
             default:
                 return <span style="color: red;">Unsupported view mode: {String(props.options.viewMode)}</span>;
         }
@@ -296,11 +306,9 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                 </div>
             </EditorWidgetOverlayBar>
             <div style="flex: 1; overflow: auto;" ref={containerRef}>
-                {asyncMode || !props.tab.currentState.options.dataStorageObject ? (
+                {asyncMode || !props.tab.currentState.options.dataStorageObject ?
                     <LoadingScreenContents />
-                ) : (
-                    <Contents props={props} options={props.tab.currentState.options} />
-                )}
+                :   <Contents props={props} options={props.tab.currentState.options} />}
             </div>
         </div>
     );

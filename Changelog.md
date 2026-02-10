@@ -1,3 +1,67 @@
+# v1.0.0-beta.15
+
+## Additions
+
+-   Added a text editor.
+-   Added support for editing the `Digest` content type.
+-   Added support for the `ChunkLoadedRequest` content type.
+-   Added the ability to scroll the debug overlay with `Shift+F3` and `Shift+F4`.
+-   Added a `Discord` button to the `Help` menu.
+-   Added the "Integrations" tab.
+-   Added an integration with the [WorldEdit Bedrock](https://github.com/SIsilicon/WorldEdit-BE) add-on.
+-   The left sidebar is now scrollable.
+-   The lock icon of read-only tabs now has hover text.
+-   The bullet point modified icons of tabs and sub-tabs now have hover text.
+-   Changed the hover text of the close button of sub-tabs from `"Close (Shift to Close Without Saving)"` to `"Save & Close (Shift to Close Without Saving)"`.
+-   Holding Shift while clicking the X button of a tab now closes it without saving without a prompt, holding Ctrl+Shift saves and closes the tab.
+-   Added a warning before opening a world in Direct Mode.
+-   Added the following details to the hover text of worlds in the world selection menu:
+    -   Start Count
+    -   Play Time
+    -   Game Mode
+    -   If the world is in hardcore mode.
+    -   Multiplayer/Singleplayer
+    -   If the world was from a locked template.
+    -   If the world was from a world template.
+    -   If the world is a single use world.
+    -   If the world is only visible in editor mode.
+    -   If the world was created in editor mode.
+-   Added the ability to open sub-tabs in the background instead of immediately switching to them upon opening them by clicking with the scroll wheel instead of double-clicking.
+-   Added an icon for sub-tabs of content type `BiomeData`.
+-   Added an icon for sub-tabs of content type `SchedulerWT`.
+-   Added a DMG build of the app for macOS.
+-   Added the `structureid` search filter to the "Structures" tab.
+-   The `File > Open` submenu in the menu bar is now functional.
+-   Added more options to the add tab popup menu.
+-   All of the options on the add tab popup menu are now functional.
+-   The app now supports opening files and folders in it through a file manager (files only), executable arguments, or URI.
+-   Added a warning when running the x64 build of the app on an ARM64 machine through a translation layer (except on Windows as there is currently no ARM64 build of the app for Windows).
+-   Added recent worlds and folders sections to the taskbar jump list on Windows.
+-   Added the `File > Open Recent` submenu to the menu bar on macOS.
+-   Added a settings menu.
+
+## Changes
+
+-   Removed the transition of dragged tabs in the tab bars.
+-   Redesigned pages and components that are not implemented yet, there is now a graphic and styling instead of just a plain text message saying that it hasn't been implemented yet.
+
+## Fixes
+
+-   Fixed a bug where search filters other than `dbkey` and `nbt` did not support partial matches of the target data, requiring the search query to be exactly the entire target data, which is rarely ever useful.
+-   Fixed a bug where tabs' modes were never actually set in the constructor.
+-   Symlinks no longer can cause duplicates of worlds to appear in the world selection menu when multiple found world folders resolve to the same real path.
+-   Fixed a bug where `TickingArea` sub-tabs opened through the "Ticking Areas" tab had a map icon.
+-   The "Repair Force World Corruption" button now updates the list of cached DB keys to remove the deleted keys.
+-   The "Force Corrupt World" button now updates the list of cached DB keys to add the created keys.
+-   Fixed the search filters for the "Structures" tab.
+-   When clicking an option in the add tab popup menu, it now closes the popup menu.
+-   Fixed a bug where on macOS, the app would not quit when all windows were closed.
+-   Fixed a bug where the app's URI protocol was not functional for any purpose other than opening the app on Windows.
+
+## Performance Improvements
+
+-   Masive load time improvements to the worlds list by only getting the application name for the `minecraft:` and `minecraft-preview:` protocols (checking if Minecraft and Minecraft Preview are installed) once instead of per world.
+
 # v1.0.0-beta.14
 
 ## Additions

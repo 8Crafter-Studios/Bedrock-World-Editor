@@ -26,6 +26,23 @@
         "@typescript-eslint/ban-ts-comment": "off",
         "@typescript-eslint/no-non-null-asserted-optional-chain": "off",
         "@typescript-eslint/no-unnecessary-type-constraint": "off",
+        "@typescript-eslint/no-restricted-imports": [
+            "error",
+            {
+                "paths": [
+                    {
+                        "name": "preact",
+                        "importNames": ["render"],
+                        "message": "Please use render from preact/compat instead."
+                    },
+                    {
+                        "name": "preact",
+                        "importNames": ["hydrate"],
+                        "message": "Please use hydrate from preact/compat instead."
+                    }
+                ]
+            }
+        ],
         "import/no-unresolved": "off",
         "no-inner-declarations": "off",
         "prefer-const": "off",
@@ -38,7 +55,8 @@
         "no-compare-neg-zero": "warn",
         // Unnecessary as it is built in to TypeScript.
         "no-fallthrough": "off",
-        "no-control-regex": "off"
+        "no-control-regex": "off",
+        "preserve-caught-error": "warn"
     }
 }
 

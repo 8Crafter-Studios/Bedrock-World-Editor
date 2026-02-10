@@ -15,18 +15,28 @@ import {
     type EntryContentTypeFormatData,
 } from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
-import type { TreeEditorDataStorageObject } from "../../app/components/TreeEditor";
+import type { TreeEditorDataStorageObjectInput } from "../../app/components/TreeEditor";
 import { LevelDB } from "@8crafter/leveldb-zlib";
 import path from "node:path";
-import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { copyFile, cp, readFile, rm, writeFile } from "node:fs/promises";
 import { APP_DATA_FOLDER_PATH } from "../utils/URLs";
 import type { MapEditorDataStorageObject } from "../../app/components/MapEditor";
-import { app, dialog } from "@electron/remote";
+import { app, dialog, nativeImage } from "@electron/remote";
+import type { NativeImage } from "electron";
+import { padNativeImageToSquare, pngToIco } from "../utils/imageUtils";
+import { defaultWorldIconDataURI } from "../utils/preloadImages";
+import { checkIsURIOrPath } from "../utils/pathUtils";
 
 namespace exports {
     type DefaultEventMap = [never];
-    type Listener<K, T, F> = T extends DefaultEventMap ? F : K extends keyof T ? (T[K] extends unknown[] ? (...args: T[K]) => void : never) : never;
+    type Listener<K, T, F> =
+        T extends DefaultEventMap ? F
+        : K extends keyof T ?
+            T[K] extends unknown[] ?
+                (...args: T[K]) => void
+            :   never
+        :   never;
     type Listener1<K extends keyof T, T> = Listener<K, T, (...args: any[]) => void>;
     type EventMap<T> = Record<keyof T, any[]> | DefaultEventMap;
     type Key<K, T> = T extends DefaultEventMap ? string | symbol : K | keyof T;
@@ -183,7 +193,48 @@ namespace exports {
         isModified: boolean;
     }
 
-    export type TabManagerGenericTabID = "loading";
+    export type TabManagerGenericTabID = "loading" | "settings";
+
+    interface RecentsItem {
+        /**
+         * Description of the task (displayed in a tooltip). Maximum length 260 characters.
+         */
+        description?: string | undefined;
+        /**
+         * The index of the icon in the resource file. If a resource file contains multiple
+         * icons this value can be used to specify the zero-based index of the icon that
+         * should be displayed for this task. If a resource file contains only one icon,
+         * this property should be set to zero.
+         */
+        iconIndex?: number | undefined;
+        /**
+         * The absolute path to an icon to be displayed in a Jump List, which can be an
+         * arbitrary resource file that contains an icon (e.g. `.ico`, `.exe`, `.dll`). You
+         * can usually specify `process.execPath` to show the program icon.
+         */
+        iconPath?: string | undefined;
+        /**
+         * Path of the item.
+         */
+        path?: string | undefined;
+        /**
+         * The text to be displayed for the item in the Jump List.
+         */
+        title?: string | undefined;
+    }
+
+    interface RecentsItem_File extends RecentsItem {
+        /**
+         * The type of the
+         */
+        type?: IpcRendererOpenFileType | undefined;
+    }
+
+    interface RecentsData {
+        worlds: RecentsItem[];
+        folders: RecentsItem[];
+        files: RecentsItem_File[];
+    }
 
     /**
      * Represents a tab manager.
@@ -200,13 +251,211 @@ namespace exports {
             this.openTabs.push(tab);
             this.emit("openTab", { tab });
             this.switchTab(tab);
-            if (tab.path) app.addRecentDocument(tab.path);
+            this.addRecentItem(props, tab);
             return tab;
+        }
+        private addRecentItem(props: Parameters<this["openTab"]>[0], tab: TabManagerTab): void {
+            try {
+                if (tab.path) app.addRecentDocument(tab.path);
+            } catch {}
+            let recentsData: RecentsData = { worlds: [], folders: [], files: [] };
+            recentsReader: if (existsSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"))) {
+                try {
+                    const data: RecentsData = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), "utf-8"));
+                    // IDEA: Add something to validate the recents data.
+                    recentsData = data;
+                } catch (e) {
+                    console.error("Error reading recents.json:", e);
+                    break recentsReader;
+                }
+            }
+            if (tab.type === "world") {
+                const existingWorldRecentEntryIndex: number = recentsData.worlds.findLastIndex((world: RecentsItem): boolean => world.path === tab.path);
+                if (existingWorldRecentEntryIndex !== -1) recentsData.worlds.splice(existingWorldRecentEntryIndex, 1);
+                recentsData.worlds.unshift({ path: tab.path, iconPath: tab.icon ?? undefined, title: tab.name, description: tab.path.slice(-196) });
+                recentsData.worlds.splice(5);
+            } else if (tab.type === "leveldb") {
+                const existingLevelDBRecentEntryIndex: number = recentsData.folders.findLastIndex((folder: RecentsItem): boolean => folder.path === tab.path);
+                if (existingLevelDBRecentEntryIndex !== -1) recentsData.folders.splice(existingLevelDBRecentEntryIndex, 1);
+                recentsData.folders.unshift({ path: tab.path, iconPath: tab.icon ?? undefined, title: tab.name, description: tab.path.slice(-196) });
+                recentsData.folders.splice(5);
+            } else if (tab.type !== "other") {
+                const existingFileRecentEntryIndex: number = recentsData.files.findLastIndex((file: RecentsItem_File): boolean => file.path === tab.path);
+                if (existingFileRecentEntryIndex !== -1) recentsData.files.splice(existingFileRecentEntryIndex, 1);
+                recentsData.files.unshift({
+                    path: tab.path,
+                    iconPath: tab.icon ?? undefined,
+                    title: tab.name,
+                    description: tab.path.slice(-196),
+                    type: tab.type,
+                });
+                recentsData.worlds.splice(5);
+            }
+            writeFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), JSON.stringify(recentsData));
+            this.setJumpListData();
+        }
+        private setJumpListData(): void {
+            if (process.platform !== "win32") return;
+            let recentsData: RecentsData = { worlds: [], folders: [], files: [] };
+            if (existsSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"))) {
+                try {
+                    const data: RecentsData = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), "utf-8"));
+                    // IDEA: Add something to validate the recents data.
+                    recentsData = data;
+                } catch (e) {
+                    console.error("Error reading recents.json:", e);
+                    return;
+                }
+            }
+            const removedItems: Electron.JumpListItem[] = app.getJumpListSettings().removedItems;
+            removedItems.forEach((item: Electron.JumpListItem): void => {
+                if (item.type === "task") {
+                    if (item.args?.startsWith("--allow-file-access-from-files --file-tab-type=world")) {
+                        const itemPath: string | undefined = item.args.match(/(?<=\s").*(?=")/)?.[0];
+                        if (!itemPath) {
+                            console.warn("Unable to find world path in removedItems:", item);
+                            return;
+                        }
+                        const worldsIndex: number = recentsData.worlds.findIndex(
+                            (world: RecentsItem): boolean =>
+                                !!world.path && path.normalize(world.path).replace(/[\\/]$/, "") === path.normalize(itemPath).replace(/[\\/]$/, "")
+                        );
+                        if (worldsIndex !== -1) recentsData.worlds.splice(worldsIndex, 1);
+                        else console.warn("Unable to find world task in removedItems:", item);
+                    } else if (item.args?.startsWith("--allow-file-access-from-files --file-tab-type=leveldb")) {
+                        const itemPath: string | undefined = item.args.match(/(?<=\s").*(?=")/)?.[0];
+                        if (!itemPath) {
+                            console.warn("Unable to find world path in removedItems:", item);
+                            return;
+                        }
+                        const foldersIndex: number = recentsData.folders.findIndex(
+                            (folder: RecentsItem): boolean =>
+                                !!folder.path && path.normalize(folder.path).replace(/[\\/]$/, "") === path.normalize(itemPath).replace(/[\\/]$/, "")
+                        );
+                        if (foldersIndex !== -1) recentsData.folders.splice(foldersIndex, 1);
+                        else console.warn("Unable to find folder task in removedItems:", item);
+                    } else console.warn("Unknown task in removedItems:", item);
+                } else if (item.type === "file") {
+                    const itemPath: string | undefined = item.path;
+                    if (!itemPath) {
+                        console.warn("Unable to find world path in removedItems:", item);
+                        return;
+                    }
+                    const worldsIndex: number = recentsData.worlds.findIndex(
+                        (world: RecentsItem): boolean =>
+                            !!world.path && path.normalize(world.path).replace(/[\\/]$/, "") === path.normalize(itemPath).replace(/[\\/]$/, "")
+                    );
+                    const filesIndex: number = recentsData.files.findIndex(
+                        (file: RecentsItem_File): boolean =>
+                            !!file.path && path.normalize(file.path).replace(/[\\/]$/, "") === path.normalize(itemPath).replace(/[\\/]$/, "")
+                    );
+                    if (filesIndex !== -1) recentsData.files.splice(filesIndex, 1);
+                    else console.warn("Unable to find file in removedItems:", item);
+                } else console.warn("Unknown item in removedItems:", item);
+            });
+            if (removedItems.length) writeFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), JSON.stringify(recentsData));
+            if (!existsSync(path.join(APP_DATA_FOLDER_PATH, "taskbar_user_tasks.json"))) return;
+            try {
+                var userTasksData: Electron.Task[] = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "taskbar_user_tasks.json"), "utf-8"));
+            } catch (e) {
+                console.error("Error reading taskbar_user_tasks.json:", e);
+                return;
+            }
+            const execPath: string | null =
+                process.env.NODE_ENV === "development" ?
+                    (userTasksData.find((task: Electron.Task): boolean => task.title === "New Window")?.program ?? null)
+                :   process.execPath;
+            if (!execPath) return;
+            rmSync(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons"), { recursive: true, force: true });
+            mkdirSync(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons"), { recursive: true });
+            recentsData.worlds.forEach(async (world: RecentsItem, index: number): Promise<void> => {
+                if (world.iconPath && ["ico", "exe", "dll"].includes(path.extname(world.iconPath).slice(1).toLowerCase())) return;
+                if (!world.iconPath && !defaultWorldIconDataURI) return;
+                const img: NativeImage = await padNativeImageToSquare(
+                    world.iconPath ? nativeImage.createFromPath(world.iconPath) : nativeImage.createFromDataURL(defaultWorldIconDataURI!)
+                );
+                writeFileSync(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons", `w${index}.ico`), pngToIco(img.resize({ width: 256, height: 256 }).toPNG()));
+            });
+            recentsData.folders.forEach(async (world: RecentsItem, index: number): Promise<void> => {
+                if (!world.iconPath || ["ico", "exe", "dll"].includes(path.extname(world.iconPath).slice(1).toLowerCase())) return;
+                const img: NativeImage = await padNativeImageToSquare(
+                    checkIsURIOrPath(world.iconPath) === "Path" ?
+                        nativeImage.createFromPath(world.iconPath)
+                    :   nativeImage.createFromBuffer(Buffer.from(await (await fetch(world.iconPath)).arrayBuffer()))
+                );
+                writeFileSync(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons", `d${index}.ico`), pngToIco(img.resize({ width: 256, height: 256 }).toPNG()));
+            });
+            recentsData.files.forEach(async (world: RecentsItem, index: number): Promise<void> => {
+                if (!world.iconPath || ["ico", "exe", "dll"].includes(path.extname(world.iconPath).slice(1).toLowerCase())) return;
+                const img: NativeImage = await padNativeImageToSquare(nativeImage.createFromPath(world.iconPath));
+                writeFileSync(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons", `f${index}.ico`), pngToIco(img.resize({ width: 256, height: 256 }).toPNG()));
+            });
+            try {
+                const jumpListData: Electron.JumpListCategory[] = [
+                    {
+                        type: "custom",
+                        name: "Recent Worlds",
+                        items: recentsData.worlds.map(
+                            (world: RecentsItem): Electron.JumpListItem => ({
+                                type: "task",
+                                description: world.description!,
+                                iconPath:
+                                    world.iconPath && ["ico", "exe", "dll"].includes(path.extname(world.iconPath).slice(1).toLowerCase()) ?
+                                        world.iconPath
+                                    :   path.join(APP_DATA_FOLDER_PATH, "jumplist_icons", `w${recentsData.worlds.indexOf(world)}.ico`),
+                                iconIndex: world.iconIndex ?? 0,
+                                program: execPath,
+                                title: world.title!,
+                                args: `--allow-file-access-from-files --file-tab-type=world "${world.path!}"`,
+                            })
+                        ),
+                    },
+                    {
+                        type: "custom",
+                        name: "Recent Folders",
+                        items: recentsData.folders.map(
+                            (world: RecentsItem): Electron.JumpListItem => ({
+                                type: "task",
+                                description: world.description!,
+                                iconPath:
+                                    !world.iconPath || ["ico", "exe", "dll"].includes(path.extname(world.iconPath).slice(1).toLowerCase()) ?
+                                        (world.iconPath ?? "C:/Windows/explorer.exe")
+                                    :   path.join(APP_DATA_FOLDER_PATH, "jumplist_icons", `d${recentsData.folders.indexOf(world)}.ico`),
+                                iconIndex: world.iconIndex ?? 0,
+                                program: execPath,
+                                title: world.title!,
+                                args: `--allow-file-access-from-files --file-tab-type=leveldb "${world.path!}"`,
+                            })
+                        ),
+                    },
+                    {
+                        type: "recent",
+                    },
+                    {
+                        type: "tasks",
+                        items: userTasksData.map(
+                            (v: Electron.Task): Electron.JumpListItem => ({
+                                args: v.arguments,
+                                description: v.description,
+                                iconIndex: v.iconIndex,
+                                iconPath: v.iconPath,
+                                program: v.program,
+                                title: v.title,
+                                type: "task",
+                                workingDirectory: v.workingDirectory!,
+                            })
+                        ),
+                    },
+                ];
+                app.setJumpList(jumpListData);
+            } catch (e) {
+                console.error("Error setting jump list:", e);
+            }
         }
         public switchTab(tab: TabManagerTab | TabManagerGenericTabID | null): void {
             // console.log(new Error().stack);
             if (tab === this.selectedTab) return;
-            if (tab === null || tab === "loading") getCurrentWindow().setTitle("Bedrock World Editor");
+            if (tab === null || tab === "loading" || tab === "settings") getCurrentWindow().setTitle("Bedrock World Editor");
             else if (typeof tab === "string") getCurrentWindow().setTitle(tab);
             // IDEA: Add a config option to change the template string for the window title, like how it is done in VSCode.
             else getCurrentWindow().setTitle(tab.name);
@@ -255,6 +504,7 @@ namespace exports {
         | "schedulerwt"
         | "view-files"
         | "fun"
+        | "integrations"
         | "repair-forced-world-corruption";
 
     /**
@@ -295,14 +545,14 @@ namespace exports {
                 target: TabManagerSubTab["target"];
                 contentType: DBEntryContentType;
                 name: string;
-                icon?: string;
-                specialTabID?: TabManagerTabGenericSubTabID;
+                icon?: string | undefined;
+                specialTabID?: TabManagerTabGenericSubTabID | undefined;
                 /**
                  * Whether the tab should be set as the active tab upon opening.
                  *
                  * @default false
                  */
-                active?: boolean;
+                active?: boolean | undefined;
             }[];
         };
     };
@@ -334,17 +584,19 @@ namespace exports {
         /**
          * The database that this tab represents.
          */
-        public db?: LevelDB;
+        public db?: LevelDB | undefined;
         /**
          * The search object that is used to search the database.
          */
-        public dbSearch?: TabManagerTab_LevelDBSearch;
+        public dbSearch?: TabManagerTab_LevelDBSearch | undefined;
         /**
          * The keys of the database that are cached.
          */
-        public cachedDBKeys?: {
-            [key in DBEntryContentType]: Buffer[];
-        };
+        public cachedDBKeys?:
+            | {
+                  [key in DBEntryContentType]: Buffer[];
+              }
+            | undefined;
         /**
          * A promise that resolves when the database is open.
          *
@@ -364,11 +616,11 @@ namespace exports {
         /**
          * The file path or URI of the icon.
          */
-        public icon: string;
+        public icon: string | null;
         /**
          * The type of the tab.
          */
-        public type: "world" | "leveldb" | "nbt" | "json" | "other";
+        public type: "world" | "leveldb" | "nbt" | "json" | "xml" | "text" | "binary" | "other";
         /**
          * The mode of the tab.
          *
@@ -417,17 +669,18 @@ namespace exports {
             tabManager: TabManager;
             path: TabManagerTab["path"];
             name: TabManagerTab["name"];
-            icon: TabManagerTab["icon"];
+            icon: TabManagerTab["icon"] | undefined;
             type: TabManagerTab["type"];
-            mode?: TabManagerTabMode;
+            mode?: TabManagerTabMode | undefined;
         }) {
             super();
             this.setMaxListeners(1000000);
             this.tabManager = props.tabManager;
             this.path = props.path;
             this.name = props.name;
-            this.icon = props.icon;
+            this.icon = props.icon ?? null;
             this.type = props.type;
+            if (props.mode) this.mode = props.mode;
             switch (props.mode) {
                 case TabManagerTabMode.Readonly:
                 case TabManagerTabMode.ReadonlyDirect:
@@ -447,19 +700,19 @@ namespace exports {
             return this.type === "world" || this.type === "leveldb";
         }
         public get isFavorited(): boolean {
-            return existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"))
-                ? ((): boolean => {
-                      try {
-                          const favoritedWorldsData: string[] = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8"));
-                          if (favoritedWorldsData.includes(this.path)) {
-                              return true;
-                          }
-                      } catch (e) {
-                          console.error(e);
-                      }
-                      return false;
-                  })()
-                : false;
+            return existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json")) ?
+                    ((): boolean => {
+                        try {
+                            const favoritedWorldsData: string[] = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8"));
+                            if (favoritedWorldsData.includes(this.path)) {
+                                return true;
+                            }
+                        } catch (e) {
+                            console.error(e);
+                        }
+                        return false;
+                    })()
+                :   false;
         }
         public set isFavorited(value: boolean) {
             if (value) {
@@ -636,7 +889,11 @@ namespace exports {
                         else throw e;
                     }
                 }
-                progressBar.detail = `Copying modified files to ${this.type === "world" ? "world" : this.type === "leveldb" ? "LevelDB" : "source"}...`;
+                progressBar.detail = `Copying modified files to ${
+                    this.type === "world" ? "world"
+                    : this.type === "leveldb" ? "LevelDB"
+                    : "source"
+                }...`;
                 if (this.type === "world" || this.type === "leveldb") {
                     console.log(`Copying modified files from ${this.tempPath} to ${this.path}...`);
                     if (!unsafeMode && existsSync(this.path)) await rm(this.path, { recursive: true, force: true });
@@ -678,9 +935,9 @@ namespace exports {
                     (!tab.specialTabID &&
                         !props.specialTabID &&
                         tab.target.type === props.target.type &&
-                        (tab.target.type === "File" && props.target.type === "File"
-                            ? tab.target.path === props.target.path
-                            : tab.target.type === "LevelDBEntry" && props.target.type === "LevelDBEntry" && tab.target.key.equals(props.target.key)))
+                        (tab.target.type === "File" && props.target.type === "File" ?
+                            tab.target.path === props.target.path
+                        :   tab.target.type === "LevelDBEntry" && props.target.type === "LevelDBEntry" && tab.target.key.equals(props.target.key)))
             );
             if (alreadyOpenEquivalentTab) {
                 if (switchToTab && this.selectedTab !== alreadyOpenEquivalentTab) this.switchTab(alreadyOpenEquivalentTab);
@@ -772,7 +1029,7 @@ namespace exports {
             }
             this.openTabs.length = 0;
             this.switchTab(null);
-            this.tabManager.switchTab(index === -1 ? null : this.tabManager.openTabs[index - 1] ?? this.tabManager.openTabs[0] ?? null);
+            this.tabManager.switchTab(index === -1 ? null : (this.tabManager.openTabs[index - 1] ?? this.tabManager.openTabs[0] ?? null));
             this.tabManager.emit("closeTab", { tab: this });
             this.emit("closed");
             if (this.tempPath) {
@@ -812,13 +1069,12 @@ namespace exports {
         [key in Exclude<DBEntryContentType, keyof DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase>]: {
             type: key;
         } & DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsOptionBase &
-            ((typeof entryContentTypeToFormatMap)[key]["type"] extends "NBT"
-                ? { viewMode?: "node" | "jsonnbt" | "snbt" | "raw" }
-                : (typeof entryContentTypeToFormatMap)[key]["type"] extends "custom"
-                ? VerifyConstraint<(typeof entryContentTypeToFormatMap)[key], { type: "custom" }>["resultType"] extends "JSONNBT"
-                    ? { viewMode?: "node" | "jsonnbt" | "snbt" | "raw" }
-                    : unknown
-                : unknown);
+            ((typeof entryContentTypeToFormatMap)[key]["type"] extends "NBT" ? { viewMode?: "node" | "jsonnbt" | "snbt" | "raw" }
+            : (typeof entryContentTypeToFormatMap)[key]["type"] extends "custom" ?
+                VerifyConstraint<(typeof entryContentTypeToFormatMap)[key], { type: "custom" }>["resultType"] extends "JSONNBT" ?
+                    { viewMode?: "node" | "jsonnbt" | "snbt" | "raw" }
+                :   unknown
+            :   unknown);
     } & DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase;
 
     interface DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase {
@@ -837,8 +1093,7 @@ namespace exports {
     }
 
     export interface DBEntryContentTypeToTabManagerSubTabCurrentStateOptions
-        extends DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase,
-            DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase2 {}
+        extends DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase, DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase2 {}
 
     export type TabManagerSubTabCurrentState<ContentType extends DBEntryContentType = DBEntryContentType> = {
         scrollTop: number;
@@ -852,7 +1107,7 @@ namespace exports {
     }
 
     export interface GenericDataStorageObjectNBT {
-        data: Awaited<ReturnTypeWithArgs<(typeof NBT)["parse"], [data: Buffer, nbtType?: NBT.NBTFormat]>>;
+        data: Awaited<ReturnTypeWithArgs<(typeof NBT)["parse"], [data: Buffer, nbtType?: NBT.NBTFormat | undefined]>>;
         dataType: "NBT";
         sourceType: EntryContentTypeFormatData;
     }
@@ -926,20 +1181,22 @@ namespace exports {
         | GenericDataStorageObjectUnknown;
 
     export type DataStorageObject = GenericDataStorageObject &
-        Partial<Omit<TreeEditorDataStorageObject & MapEditorDataStorageObject, KeysOfUnion<GenericDataStorageObject>>>;
+        PartialWU<Omit<TreeEditorDataStorageObjectInput & MapEditorDataStorageObject, KeysOfUnion<GenericDataStorageObject>>>;
 
     const tabManagerSubTabContentTypeToDefaultIconMap: Record<DBEntryContentType, string | undefined> = {
         AABBVolumes: undefined,
         ActorDigestVersion: undefined,
         ActorPrefix: "resource://images/ui/glyphs/icon_panda.png",
         AutonomousEntities: undefined,
-        BiomeData: undefined,
+        BiomeData: "resource://images/ui/glyphs/icon_biome.png",
+        BiomeIdsTable: undefined,
         BiomeState: undefined,
         BlendingBiomeHeight: undefined,
         BlendingData: undefined,
         BlockEntity: undefined,
         BorderBlocks: undefined,
         Checksums: undefined,
+        ChunkLoadedRequest: undefined,
         ConversionData: undefined,
         Data2D: undefined,
         Data2DLegacy: undefined,
@@ -952,24 +1209,30 @@ namespace exports {
         FlatWorldLayers: undefined,
         ForcedWorldCorruption: undefined,
         GeneratedPreCavesAndCliffsBlending: undefined,
+        GenerationSeed: undefined,
         HardcodedSpawners: undefined,
         LegacyBlockExtraData: undefined,
+        LegacyDimension: undefined,
         LegacyTerrain: undefined,
         LegacyVersion: undefined,
         LevelChunkMetaDataDictionary: undefined,
         LevelDat: "resource://images/ui/glyphs/settings_glyph_color_2x.png",
+        LevelSpawnWasFixed: undefined,
         Map: "resource://images/ui/glyphs/icon_map.png",
         MetaDataHash: undefined,
         MobEvents: undefined,
+        MVillages: undefined,
         PendingTicks: undefined,
         Player: "resource://images/ui/glyphs/icon_steve_server.png",
         PlayerClient: "resource://images/ui/glyphs/icon_steve_client.png",
         Portals: "resource://images/ui/glyphs/realmPortalSmall.png",
+        PositionTrackingDB: undefined,
+        PositionTrackingLastId: undefined,
         RandomTicks: undefined,
         RealmsStoriesData: undefined,
-        SchedulerWT: undefined,
+        SchedulerWT: "resource://images/ui/glyphs/icon_wandering_trader.png",
         Scoreboard: "resource://images/ui/glyphs/icon_best3.png",
-        StructureTemplate: undefined,
+        StructureTemplate: "resource://images/ui/glyphs/structure_block.png",
         SubChunkPrefix: undefined,
         TickingArea: undefined,
         Unknown: undefined,
@@ -978,6 +1241,8 @@ namespace exports {
         VillageInfo: undefined,
         VillagePlayers: undefined,
         VillagePOI: undefined,
+        VillageRaid: undefined,
+        Villages: undefined,
     };
 
     export class TabManagerSubTab<ContentType extends DBEntryContentType = DBEntryContentType> {
@@ -986,7 +1251,7 @@ namespace exports {
         public static lastID: bigint = 0n;
         public readonly parentTab: TabManagerTab;
         public name: string;
-        public icon?: LooseAutocomplete<"auto">;
+        public icon?: LooseAutocomplete<"auto"> | undefined;
         public contentType: ContentType;
         public target:
             | {
@@ -1008,19 +1273,19 @@ namespace exports {
          */
         public activeChanges: TabManagerSubTabChange[] = [];
         public currentState: TabManagerSubTabCurrentState<ContentType>;
-        public specialTabID?: TabManagerTabGenericSubTabID;
+        public specialTabID?: TabManagerTabGenericSubTabID | undefined;
         public readonly readonly: boolean = false;
         public readonly id: bigint = TabManagerSubTab.lastID++;
         public isValid: boolean = true;
         public constructor(props: {
             parentTab: TabManagerTab;
             name: TabManagerSubTab<ContentType>["name"];
-            icon?: TabManagerSubTab<ContentType>["icon"];
+            icon?: TabManagerSubTab<ContentType>["icon"] | undefined;
             contentType: ContentType;
             target: TabManagerSubTab<ContentType>["target"];
-            specialTabID?: TabManagerTabGenericSubTabID;
-            isPinned?: boolean;
-            readonly?: boolean;
+            specialTabID?: TabManagerTabGenericSubTabID | undefined;
+            isPinned?: boolean | undefined;
+            readonly?: boolean | undefined;
         }) {
             this.parentTab = props.parentTab;
             this.name = props.name;
@@ -1374,15 +1639,12 @@ namespace exports {
                                 case "NBT": {
                                     rawData = NBT.writeUncompressed(
                                         { name: "", ...data },
-                                        "format" in format
-                                            ? format.format === "LE"
-                                                ? "little"
-                                                : format.format === "BE"
-                                                ? "big"
-                                                : format.format === "LEV"
-                                                ? "littleVarint"
-                                                : "little"
+                                        "format" in format ?
+                                            format.format === "LE" ? "little"
+                                            : format.format === "BE" ? "big"
+                                            : format.format === "LEV" ? "littleVarint"
                                             : "little"
+                                        :   "little"
                                     );
                                     break;
                                 }
@@ -1702,15 +1964,12 @@ namespace exports {
                                 case "NBT": {
                                     rawData = NBT.writeUncompressed(
                                         { name: "", ...data },
-                                        "format" in format
-                                            ? format.format === "LE"
-                                                ? "little"
-                                                : format.format === "BE"
-                                                ? "big"
-                                                : format.format === "LEV"
-                                                ? "littleVarint"
-                                                : "little"
+                                        "format" in format ?
+                                            format.format === "LE" ? "little"
+                                            : format.format === "BE" ? "big"
+                                            : format.format === "LEV" ? "littleVarint"
                                             : "little"
+                                        :   "little"
                                     );
                                     break;
                                 }
@@ -2030,7 +2289,7 @@ namespace exports {
                 this.parentTab.openTabs.splice(this.parentTab.openTabs.indexOf(this), 1);
             }
             if (this.parentTab.selectedTab === this)
-                this.parentTab.switchTab(index === -1 ? null : this.parentTab.openTabs[index - 1] ?? this.parentTab.openTabs[0] ?? null);
+                this.parentTab.switchTab(index === -1 ? null : (this.parentTab.openTabs[index - 1] ?? this.parentTab.openTabs[0] ?? null));
             if (this.target.type === "File" && this.hasUnsavedChanges) {
                 this.parentTab.setFileAsModified(this.target.path, false);
             }
@@ -2044,31 +2303,31 @@ namespace exports {
              *
              * @default undefined
              */
-            path?: string[];
+            path?: string[] | undefined;
             /**
              * Whether or not the path should be case-sensitive.
              *
              * @default true
              */
-            caseSensitivePath?: boolean;
+            caseSensitivePath?: boolean | undefined;
             /**
              * The key of the tag.
              *
              * @default undefined
              */
-            key?: string;
+            key?: string | undefined;
             /**
              * Whether or not the key should be case-sensitive.
              *
              * @default true
              */
-            caseSensitiveKey?: boolean;
+            caseSensitiveKey?: boolean | undefined;
             /**
              * The type of the tag.
              *
              * @default undefined
              */
-            tagType?: `${TagType}`;
+            tagType?: `${TagType}` | undefined;
             /**
              * The value of the tag.
              *
@@ -2076,15 +2335,30 @@ namespace exports {
              *
              * @default undefined
              */
-            value?: NBT.Tags[TagType]["value"] | bigint;
+            value?: NBT.Tags[TagType]["value"] | bigint | undefined;
             /**
              * Whether or not the value should be case-sensitive.
              *
              * @default true
              */
-            caseSensitiveValue?: boolean;
+            caseSensitiveValue?: boolean | undefined;
         };
     }[NBT.TagType];
+    /**
+     *  @todo Implement this.
+     */
+    export interface TabManagerTab_LevelDBSearchQuery_AdvancedSearchConditionEntry {
+        /**
+         * The query to search for.
+         */
+        query: string;
+        /**
+         * Whether it should only match results where the query is equal to the entire data string.
+         *
+         * @default false
+         */
+        fullMatch?: boolean | undefined;
+    }
     export interface TabManagerTab_LevelDBSearchQuery {
         customDataFields?: Record<
             string,
@@ -2214,7 +2488,7 @@ namespace exports {
             | undefined;
     }
     export interface TabManagerTab_LevelDBSearchResult<
-        OriginalObject extends NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number] | undefined = undefined
+        OriginalObject extends NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number] | undefined = undefined,
     > {
         /**
          * The tab associated with the search.
@@ -2277,9 +2551,9 @@ namespace exports {
                     return false;
                 if (
                     query.key &&
-                    (key !== undefined
-                        ? !cmpStrCS(key, query.key, query.caseSensitiveKey ?? true)
-                        : "name" in nbt && !cmpStrCS(query.key, nbt.name, query.caseSensitiveKey ?? true))
+                    (key !== undefined ?
+                        !cmpStrCS(key, query.key, query.caseSensitiveKey ?? true)
+                    :   "name" in nbt && !cmpStrCS(query.key, nbt.name, query.caseSensitiveKey ?? true))
                 )
                     return false;
                 if (query.tagType && !cmpStrCS(query.tagType, nbt.type, false)) return false;
@@ -2338,12 +2612,11 @@ namespace exports {
             yieldUndefined?: YU
         ): Generator<
             | TabManagerTab_LevelDBSearchResult<
-                  T["searchTargets"] extends any[]
-                      ? T["searchTargets"][number]
-                      : {
-                            key: Buffer<ArrayBufferLike>;
-                            contentType: DBEntryContentType;
-                        }
+                  T["searchTargets"] extends any[] ? T["searchTargets"][number]
+                  :   {
+                          key: Buffer<ArrayBufferLike>;
+                          contentType: DBEntryContentType;
+                      }
               >
             | (YU extends true ? undefined : never),
             void
@@ -2359,9 +2632,9 @@ namespace exports {
             const searchTargets: TabManagerTab_LevelDBSearchQuery["searchTargets"] & { contentType: DBEntryContentType; displayKey: string }[] =
                 query.searchTargets
                     ?.map((v) =>
-                        v.contentType
-                            ? (v as typeof v & { contentType: DBEntryContentType; displayKey: string })
-                            : { ...v, contentType: getContentTypeFromDBKey(v.key), displayKey: v.displayKey ?? getKeyDisplayName(v.key) }
+                        v.contentType ?
+                            (v as typeof v & { contentType: DBEntryContentType; displayKey: string })
+                        :   { ...v, contentType: getContentTypeFromDBKey(v.key), displayKey: v.displayKey ?? getKeyDisplayName(v.key) }
                     )
                     .filter(({ contentType }): boolean =>
                         !query.excludeContentTypes?.includes(contentType) && query.contentTypes ? query.contentTypes.includes(contentType) : true
@@ -2376,9 +2649,10 @@ namespace exports {
                 const searchableContents: string[] = searchTarget.searchableContents ?? [searchTarget.displayKey];
                 if (query.displayKeyContents) {
                     const caseSensitive: boolean = query.displayKeyContents.caseSensitive ?? false;
-                    const displayKey: string = caseSensitive
-                        ? searchTarget.displayKey ?? getKeyDisplayName(searchTarget.key)
-                        : (searchTarget.displayKey ?? getKeyDisplayName(searchTarget.key)).toLowerCase();
+                    const displayKey: string =
+                        caseSensitive ?
+                            (searchTarget.displayKey ?? getKeyDisplayName(searchTarget.key))
+                        :   (searchTarget.displayKey ?? getKeyDisplayName(searchTarget.key)).toLowerCase();
                     if (
                         query.displayKeyContents.allOf &&
                         query.displayKeyContents.allOf.length > 0 &&
@@ -2522,6 +2796,7 @@ namespace exports {
                     }
                 }
 
+                // TODO: Implement advanced query entry support (as in entries that are an object).
                 if (query.customDataFields) {
                     for (const customDataField in query.customDataFields) {
                         if (query.customDataFields[customDataField] === undefined) {
@@ -2534,9 +2809,12 @@ namespace exports {
                             query.customDataFields[customDataField].allOf.length > 0 &&
                             (searchTarget.customDataFields?.[customDataField] === undefined ||
                                 !query.customDataFields[customDataField].allOf.every((v: string): boolean =>
-                                    caseSensitive
-                                        ? searchTarget.customDataFields?.[customDataField] === v
-                                        : searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase()
+                                    /* caseSensitive ?
+                                        searchTarget.customDataFields?.[customDataField] === v
+                                    :   searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase() */
+                                    caseSensitive ?
+                                        !!searchTarget.customDataFields?.[customDataField]?.includes(v)
+                                    :   !!searchTarget.customDataFields?.[customDataField]?.toLowerCase()?.includes(v.toLowerCase())
                                 ))
                         ) {
                             if (yieldUndefined) yield undefined!;
@@ -2547,9 +2825,12 @@ namespace exports {
                             query.customDataFields[customDataField].anyOf.length > 0 &&
                             (searchTarget.customDataFields?.[customDataField] === undefined ||
                                 !query.customDataFields[customDataField].anyOf.some((v: string): boolean =>
-                                    caseSensitive
-                                        ? searchTarget.customDataFields?.[customDataField] === v
-                                        : searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase()
+                                    // caseSensitive ?
+                                    //     searchTarget.customDataFields?.[customDataField] === v
+                                    // :   searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase()
+                                    caseSensitive ?
+                                        !!searchTarget.customDataFields?.[customDataField]?.includes(v)
+                                    :   !!searchTarget.customDataFields?.[customDataField]?.toLowerCase()?.includes(v.toLowerCase())
                                 ))
                         ) {
                             if (yieldUndefined) yield undefined!;
@@ -2560,9 +2841,12 @@ namespace exports {
                             query.customDataFields[customDataField].oneOf.length > 0 &&
                             (searchTarget.customDataFields?.[customDataField] === undefined ||
                                 !query.customDataFields[customDataField].oneOf.some((v: string): boolean =>
-                                    caseSensitive
-                                        ? searchTarget.customDataFields?.[customDataField] === v
-                                        : searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase()
+                                    // caseSensitive ?
+                                    //     searchTarget.customDataFields?.[customDataField] === v
+                                    // :   searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase()
+                                    caseSensitive ?
+                                        !!searchTarget.customDataFields?.[customDataField]?.includes(v)
+                                    :   !!searchTarget.customDataFields?.[customDataField]?.toLowerCase()?.includes(v.toLowerCase())
                                 ))
                         ) {
                             if (yieldUndefined) yield undefined!;
@@ -2573,9 +2857,12 @@ namespace exports {
                             query.customDataFields[customDataField].noneOf.length > 0 &&
                             searchTarget.customDataFields?.[customDataField] !== undefined &&
                             query.customDataFields[customDataField].noneOf.some((v: string): boolean =>
-                                caseSensitive
-                                    ? searchTarget.customDataFields?.[customDataField] === v
-                                    : searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase()
+                                // caseSensitive ?
+                                //     searchTarget.customDataFields?.[customDataField] === v
+                                // :   searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase()
+                                caseSensitive ?
+                                    !!searchTarget.customDataFields?.[customDataField]?.includes(v)
+                                :   !!searchTarget.customDataFields?.[customDataField]?.toLowerCase()?.includes(v.toLowerCase())
                             )
                         ) {
                             if (yieldUndefined) yield undefined!;

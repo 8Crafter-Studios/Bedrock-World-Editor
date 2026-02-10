@@ -10,6 +10,7 @@ import SNBTEditor from "../components/SNBTEditor";
 import PrismarineNBTEditor from "../components/PrismarineNBTEditor";
 import EditorWidgetOverlayBar, { type EditorWidgetOverlayBarWidgetRegistry } from "../components/EditorWidgetOverlayBar";
 import { MapEditor } from "../components/MapEditor";
+import UnderConstruction from "../components/UnderConstruction";
 
 export interface GenericNBTEditorTabProps {
     tab: TabManagerSubTab;
@@ -67,7 +68,11 @@ export default function MapEditorTab(props: GenericNBTEditorTabProps): JSX.Speci
                     errorElement.style.fontFamily = "monospace";
                     errorElement.style.whiteSpace = "pre";
                     errorElement.textContent =
-                        reason instanceof Error ? (reason.stack?.startsWith(reason.toString()) ? reason.stack : reason.toString() + reason.stack) : reason;
+                        reason instanceof Error ?
+                            reason.stack?.startsWith(reason.toString()) ?
+                                reason.stack
+                            :   reason.toString() + reason.stack
+                        :   reason;
                     containerRef.current.replaceChildren("Failed to load data:", errorElement);
                 }
                 console.error(reason);
@@ -145,7 +150,12 @@ export default function MapEditorTab(props: GenericNBTEditorTabProps): JSX.Speci
                     />
                 );
             case "raw":
-                return <span style="color: red;">This view mode is still a work in progress: {String(props.options.viewMode)}</span>;
+                return (
+                    <UnderConstruction
+                        subtitle="This view mode is under construction."
+                        detail={`This view mode is still a work in progress: ${String(props.options.viewMode)}`}
+                    />
+                );
             default:
                 return <span style="color: red;">Unsupported view mode: {String(props.options.viewMode)}</span>;
         }
@@ -228,11 +238,9 @@ export default function MapEditorTab(props: GenericNBTEditorTabProps): JSX.Speci
                 </div>
             </EditorWidgetOverlayBar>
             <div style="flex: 1; overflow: auto;" ref={containerRef}>
-                {asyncMode || !props.tab.currentState.options.dataStorageObject ? (
+                {asyncMode || !props.tab.currentState.options.dataStorageObject ?
                     <LoadingScreenContents />
-                ) : (
-                    <Contents props={props} options={props.tab.currentState.options} />
-                )}
+                :   <Contents props={props} options={props.tab.currentState.options} />}
             </div>
         </div>
     );

@@ -25,18 +25,18 @@ export interface MapRendererProps {
     /**
      * The tab associated with this editor.
      */
-    tab?: TabManagerSubTab;
+    tab?: TabManagerSubTab | undefined;
     dataStorageObject: MapEditorDataStorageObject;
     readonly?: boolean | undefined;
-    canvasRef?: RefObject<HTMLCanvasElement>;
-    containerRef?: RefObject<HTMLDivElement>;
-    interactionRef?: RefObject<MapEditorInteraction>;
+    canvasRef?: RefObject<HTMLCanvasElement> | undefined;
+    containerRef?: RefObject<HTMLDivElement> | undefined;
+    interactionRef?: RefObject<MapEditorInteraction> | undefined;
     /**
      * An optional overlay bar widget registry to allow the map editor to register widgets for the overlay bar.
      *
      * @default undefined
      */
-    overlayBarRegistry?: EditorWidgetOverlayBarWidgetRegistry;
+    overlayBarRegistry?: EditorWidgetOverlayBarWidgetRegistry | undefined;
 }
 
 export interface MapEditorInteraction {
@@ -105,7 +105,7 @@ export function MapEditor(props: MapRendererProps): JSX.Element {
             updateMap();
             // stopCurrentInteraction = void function a(): void {};
             stopCurrentInteraction = void function stopCurrentInteractionCallback(): void {
-                // TO-DO
+                // TODO
                 stopCurrentInteraction = undefined;
             };
             if (props.overlayBarRegistry && !props.readonly) {
@@ -193,7 +193,7 @@ export function MapEditor(props: MapRendererProps): JSX.Element {
                         onClick={async (): Promise<void> => {
                             const result: string[] | undefined = dialog.showOpenDialogSync({
                                 buttonLabel: "Replace",
-                                // TO-DO: Add support for other image types.
+                                // TODO: Add support for other image types.
                                 filters: [{ name: "Image", extensions: ["png", "jpg", "jpeg", "webp"] }],
                                 properties: ["openFile", "treatPackageAsDirectory", "showHiddenFiles"],
                                 message: "Select an image to replace this map.",
@@ -206,7 +206,7 @@ export function MapEditor(props: MapRendererProps): JSX.Element {
                             await new Promise((resolve): void => void (imageElement.onload = resolve));
                             const context: CanvasRenderingContext2D = canvasRef.current!.getContext("2d")!;
                             context.drawImage(imageElement, 0, 0, 128, 128);
-                            // TO-DO: Make this convert the bytes from unsigned bytes to signed bytes.
+                            // TODO: Make this convert the bytes from unsigned bytes to signed bytes.
                             data.value.colors.value = Array.from(context.getImageData(0, 0, 128, 128).data).map((value: number): number => (value << 24) >> 24);
                             markTabAsModified();
                             updateMap();

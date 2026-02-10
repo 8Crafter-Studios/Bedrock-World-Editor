@@ -6,7 +6,7 @@ export interface FunTabProps {
     tab: TabManagerTab;
 }
 
-export default function FunTab(props: FunTabProps): JSX.SpecificElement<"center"> {
+export default function FunTab(props: FunTabProps): JSX.SpecificElement<"div"> {
     const forceCorruptWorldButtonRef: React.RefObject<HTMLButtonElement> = React.useRef<HTMLButtonElement>(null);
     let forceCorruptWorldButtonInitiallyDisabled: boolean = !props.tab.cachedDBKeys || props.tab.cachedDBKeys.ForcedWorldCorruption.length > 0;
     React.useEffect((): void => {
@@ -26,7 +26,7 @@ export default function FunTab(props: FunTabProps): JSX.SpecificElement<"center"
                 title="This feature will be added in a future update."
                 class="funTabButton"
                 onClick={(): void => {
-                    // TO-DO
+                    // TODO
                 }}
                 disabled
             >
@@ -42,7 +42,10 @@ export default function FunTab(props: FunTabProps): JSX.SpecificElement<"center"
                     if (!props.tab.db) return;
                     forceCorruptWorldButtonRef.current.disabled = true;
                     try {
-                        await props.tab.db.put("DedicatedServerForcedCorruption", "true");
+                        const keyBuffer: Buffer = Buffer.from("DedicatedServerForcedCorruption");
+                        await props.tab.db.put(keyBuffer, "true");
+                        if (!props.tab.cachedDBKeys.ForcedWorldCorruption.some(key=>key.equals(keyBuffer)))
+                        props.tab.cachedDBKeys.ForcedWorldCorruption.push(keyBuffer);
                         props.tab.setLevelDBIsModified();
                     } catch (e) {
                         console.error(e);

@@ -3,8 +3,8 @@ import { hydrate, render } from "preact/compat";
 import LeftSidebar from "./components/LeftSidebar";
 import DebugOverlay from "./components/DebugOverlay";
 import TabBar from "./components/TabBar";
-import { entryContentTypeToFormatMap, toLong } from "mcbe-leveldb";
-import { Dirent, existsSync, globSync, read, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { entryContentTypeToFormatMap, gameModes, toLong, type NBTSchemas } from "mcbe-leveldb";
+import { Dirent, existsSync, globSync, readdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import NBT from "prismarine-nbt";
 import { useEffect, useRef, useState } from "preact/hooks";
@@ -30,6 +30,11 @@ import { APP_DATA_FOLDER_PATH } from "../src/utils/URLs";
 import TicksTab from "./tabs/ticks";
 import { readdir, stat } from "node:fs/promises";
 import { formatFileSizeBinary, formatFileSizeMetric } from "../src/utils/fileSizeUtils";
+import IntegrationsTab from "./tabs/integrations";
+import TextEditorTab from "./tabs/textEditor";
+import UnderConstruction from "./components/UnderConstruction";
+import { defaultWorldIconDataURI } from "../src/utils/preloadImages";
+import SettingsPage from "./pages/settings";
 // import { Renderer3D } from "./3DRendererV1/3DRenderer";
 const mime = require("mime-types") as typeof import("mime-types");
 
@@ -46,17 +51,15 @@ getCurrentWindow().on("close", async (event: Electron.Event): Promise<void> => {
             const result: number = dialog.showMessageBoxSync(getCurrentWindow(), {
                 type: "warning",
                 title: "Unsaved Changes",
-                ...(unsavedTabs.length === 1
-                    ? {
-                          message: `Do you want to save the changes you made to ${unsavedTabs[0]!.name}?`,
-                          detail: "Your changes will be lost if you don't save them.",
-                      }
-                    : {
-                          message: `Do you want to save the changes to the following ${unsavedTabs.length} tab${unsavedTabs.length === 1 ? "" : "s"}?`,
-                          detail: `${unsavedTabs
-                              .map((tab: TabManagerTab): string => tab.name)
-                              .join("\n")}\n\nYour changes will be lost if you don't save them.`,
-                      }),
+                ...(unsavedTabs.length === 1 ?
+                    {
+                        message: `Do you want to save the changes you made to ${unsavedTabs[0]!.name}?`,
+                        detail: "Your changes will be lost if you don't save them.",
+                    }
+                :   {
+                        message: `Do you want to save the changes to the following ${unsavedTabs.length} tab${unsavedTabs.length === 1 ? "" : "s"}?`,
+                        detail: `${unsavedTabs.map((tab: TabManagerTab): string => tab.name).join("\n")}\n\nYour changes will be lost if you don't save them.`,
+                    }),
                 buttons: ["Save", "Don't Save", "Cancel"],
                 noLink: true,
                 defaultId: 0,
@@ -129,17 +132,15 @@ window.addEventListener("beforeunload", async (event: BeforeUnloadEvent): Promis
             const result: number = dialog.showMessageBoxSync(getCurrentWindow(), {
                 type: "warning",
                 title: "Unsaved Changes",
-                ...(unsavedTabs.length === 1
-                    ? {
-                          message: `Do you want to save the changes you made to ${unsavedTabs[0]!.name}?`,
-                          detail: "Your changes will be lost if you don't save them.",
-                      }
-                    : {
-                          message: `Do you want to save the changes to the following ${unsavedTabs.length} tab${unsavedTabs.length === 1 ? "" : "s"}?`,
-                          detail: `${unsavedTabs
-                              .map((tab: TabManagerTab): string => tab.name)
-                              .join("\n")}\n\nYour changes will be lost if you don't save them.`,
-                      }),
+                ...(unsavedTabs.length === 1 ?
+                    {
+                        message: `Do you want to save the changes you made to ${unsavedTabs[0]!.name}?`,
+                        detail: "Your changes will be lost if you don't save them.",
+                    }
+                :   {
+                        message: `Do you want to save the changes to the following ${unsavedTabs.length} tab${unsavedTabs.length === 1 ? "" : "s"}?`,
+                        detail: `${unsavedTabs.map((tab: TabManagerTab): string => tab.name).join("\n")}\n\nYour changes will be lost if you don't save them.`,
+                    }),
                 buttons: ["Save", "Don't Save", "Cancel"],
                 noLink: true,
                 defaultId: 0,
@@ -228,7 +229,7 @@ export default function App(): JSX.Element {
 export interface MinecraftWorldDisplayDetails {
     name: string;
     path: string;
-    thumbnailPath?: string;
+    thumbnailPath?: string | undefined;
     lastOpenedWithVerison: `v${string}` | null;
     lastPlayed: Date | null;
     favorited: boolean;
@@ -240,9 +241,20 @@ export interface MinecraftWorldDisplayDetails {
      * If getting the sizes was disabled, it will be `undefined`.
      */
     size?: Promise<number> | number | undefined;
+    startCount: bigint;
+    playTime: bigint;
+    gameMode: number;
+    hardcore: boolean;
+    multiplayer: boolean;
+    fromLockedTemplate: boolean;
+    fromWorldTemplate: boolean;
+    singleUseWorld: boolean;
+    editorOnly: boolean;
+    createdInEditor: boolean;
 }
 
 export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean = false): Promise<MinecraftWorldDisplayDetails[]> {
+    const currentRealPaths: string[] = [];
     return (
         await Promise.all(
             (all ? [...new Set([...config.parsedMinecraftDataFolders, ...config.parsedExtraMinecraftDataFolders])] : config.parsedMinecraftDataFolders)
@@ -253,53 +265,73 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
                         .map((dirent: Dirent<string>): string => path.join(folderPath, "minecraftWorlds", dirent.name));
                 })
                 .flat()
+                .filter((_folderPath: string, i: number, a: string[]): boolean => {
+                    // TODO: Rework this to allow favorited worlds to always show up, and if a favorite world shares a real path with a non-favorite world, the non-favorite world should not be shown.
+                    if (i === 0) currentRealPaths.push(...a.map((folderPath: string): string => realpathSync(folderPath)));
+                    return !currentRealPaths.slice(0, i).includes(currentRealPaths[i]!);
+                })
                 .map(async (folderPath: string): Promise<MinecraftWorldDisplayDetails | undefined> => {
                     if (!existsSync(path.join(folderPath, "level.dat"))) return;
                     try {
-                        const levelDat: NBT.NBT = (await NBT.parse(readFileSync(path.join(folderPath, "level.dat"), { encoding: null }))).parsed;
-                        const name: string = existsSync(path.join(folderPath, "levelname.txt"))
-                            ? readFileSync(path.join(folderPath, "levelname.txt"), { encoding: "utf-8" })
-                            : (levelDat.value.LevelName?.value as string) ?? "Unknown Name";
+                        const levelDat: NBTSchemas.NBTSchemaTypes.LevelDat = (
+                            await NBT.parse(readFileSync(path.join(folderPath, "level.dat"), { encoding: null }))
+                        ).parsed;
+                        const name: string =
+                            existsSync(path.join(folderPath, "levelname.txt")) ?
+                                readFileSync(path.join(folderPath, "levelname.txt"), { encoding: "utf-8" })
+                            :   (levelDat.value.LevelName?.value ?? "Unknown Name");
                         // console.log(folderPath, levelDat);
-                        let size: Promise<number> | undefined = getSizes
-                            ? readdir(folderPath, { recursive: true, withFileTypes: true }).then(
-                                  (folderContents: Dirent[]): Promise<number> =>
-                                      Promise.all(
-                                          folderContents.map(
-                                              async (file: Dirent): Promise<number> =>
-                                                  file.isFile() ? (await stat(path.join(file.parentPath, file.name))).size : 0
-                                          )
-                                      )
-                                          .then((sizes: number[]): number => sizes.reduce((total: number, size: number): number => total + size, 0))
-                                          .catch((e: any): number => (console.error(`Error while reading size of world folder ${folderPath}:`, e), NaN))
-                              )
-                            : undefined;
+                        let size: Promise<number> | undefined =
+                            getSizes ?
+                                readdir(folderPath, { recursive: true, withFileTypes: true }).then(
+                                    (folderContents: Dirent[]): Promise<number> =>
+                                        Promise.all(
+                                            folderContents.map(
+                                                async (file: Dirent): Promise<number> =>
+                                                    file.isFile() ? (await stat(path.join(file.parentPath, file.name))).size : 0
+                                            )
+                                        )
+                                            .then((sizes: number[]): number => sizes.reduce((total: number, size: number): number => total + size, 0))
+                                            .catch((e: any): number => (console.error(`Error while reading size of world folder ${folderPath}:`, e), NaN))
+                                )
+                            :   undefined;
                         return {
                             name,
                             path: folderPath,
-                            thumbnailPath: existsSync(path.join(folderPath, "world_icon.jpeg"))
-                                ? path.join(folderPath, "world_icon.jpeg")
-                                : globSync(path.join(folderPath, "world_icon.*"))[0],
-                            lastOpenedWithVerison: levelDat.value.lastOpenedWithVersion
-                                ? `v${(levelDat.value.lastOpenedWithVersion as NBT.List<NBT.TagType.Int>).value.value.join(".")}`
-                                : null,
-                            lastPlayed: levelDat.value.LastPlayed ? new Date(Number(toLong((levelDat.value.LastPlayed as NBT.Long).value) * 1000n)) : null,
-                            favorited: existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"))
-                                ? ((): boolean => {
-                                      try {
-                                          const favoritedWorldsData: string[] = JSON.parse(
-                                              readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8")
-                                          );
-                                          if (favoritedWorldsData.includes(folderPath)) {
-                                              return true;
-                                          }
-                                      } catch (e) {
-                                          console.error(e);
-                                      }
-                                      return false;
-                                  })()
-                                : false,
+                            thumbnailPath:
+                                existsSync(path.join(folderPath, "world_icon.jpeg")) ?
+                                    path.join(folderPath, "world_icon.jpeg")
+                                :   globSync(path.join(folderPath, "world_icon.*"))[0],
+                            lastOpenedWithVerison:
+                                levelDat.value.lastOpenedWithVersion ? `v${levelDat.value.lastOpenedWithVersion.value.value.join(".")}` : null,
+                            lastPlayed: levelDat.value.LastPlayed ? new Date(Number(toLong(levelDat.value.LastPlayed.value) * 1000n)) : null,
+                            favorited:
+                                existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json")) ?
+                                    ((): boolean => {
+                                        try {
+                                            const favoritedWorldsData: string[] = JSON.parse(
+                                                readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8")
+                                            );
+                                            if (favoritedWorldsData.includes(folderPath)) {
+                                                return true;
+                                            }
+                                        } catch (e) {
+                                            console.error(e);
+                                        }
+                                        return false;
+                                    })()
+                                :   false,
                             size,
+                            startCount: 0xffffffffn - toLong(levelDat.value.worldStartCount?.value ?? [0, -1]),
+                            playTime: toLong(levelDat.value.currentTick?.value ?? [0, 0]),
+                            gameMode: levelDat.value.GameType?.value ?? -1,
+                            hardcore: levelDat.value.IsHardcore?.value === 1,
+                            multiplayer: levelDat.value.MultiplayerGameIntent?.value === 1,
+                            fromLockedTemplate: levelDat.value.isFromLockedTemplate?.value === 1,
+                            fromWorldTemplate: levelDat.value.isFromWorldTemplate?.value === 1,
+                            singleUseWorld: levelDat.value.isSingleUseWorld?.value === 1,
+                            editorOnly: levelDat.value.editorWorldType?.value === 1,
+                            createdInEditor: levelDat.value.isCreatedInEditor?.value === 1,
                         };
                     } catch (e) {
                         console.error(e);
@@ -310,11 +342,34 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
     ).filter((world: MinecraftWorldDisplayDetails | undefined): world is MinecraftWorldDisplayDetails => !!world);
 }
 
-let defaultWorldIconDataURI: string | null = null;
-fetch("resource://images/ui/misc/CreateNewWorld.png").then(
-    async (response: Response): Promise<void> =>
-        void (defaultWorldIconDataURI = `data:image/png;base64,${Buffer.from(await (await response.blob()).arrayBuffer()).toString("base64")}`)
-);
+interface PreloadedIconsObject {
+    [key: PropertyKey]: PreloadedIconsObject | string;
+}
+
+export const preloadedIcons = {
+    back: "resource://images/ui/glyphs/Chevron-Left.png",
+} as const satisfies PreloadedIconsObject;
+
+// Preloads the icons.
+{
+    function preloadIcons(object: PreloadedIconsObject): void {
+        Object.entries(object).forEach(([key, value]: [key: PropertyKey, value: PreloadedIconsObject | string]): void => {
+            if (typeof value === "object") {
+                preloadIcons(value);
+                return;
+            }
+
+            fetch(value)
+                .then((response: Response): Promise<Blob> => response.blob())
+                .then(
+                    async (blob: Blob): Promise<void> =>
+                        void (object[key] = `data:${mime.lookup(value)};base64,${Buffer.from(await blob.arrayBuffer()).toString("base64")}`)
+                )
+                .catch((): void => {});
+        });
+    }
+    preloadIcons(preloadedIcons);
+}
 
 export function WorldSelector(): JSX.SpecificElement<"div"> {
     const renderWorldsContainerRef: RefObject<HTMLDivElement> = useRef(null);
@@ -330,9 +385,13 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
     }
     useEffect((): void => void getMinecraftWorlds(false, config.showWorldSizesOnWorldList).then(refreshData), []);
     function RenderWorlds(): JSX.SpecificElement<"div">[] {
+        const mcAppName: string = app.getApplicationNameForProtocol("minecraft:");
+        const mcPreviewAppName: string = app.getApplicationNameForProtocol("minecraft-preview:");
         return data
             .toSorted((a: MinecraftWorldDisplayDetails, b: MinecraftWorldDisplayDetails): number =>
-                a.favorited && !b.favorited ? -1 : b.favorited && !a.favorited ? 1 : b.lastPlayed!.getTime() - a.lastPlayed!.getTime()
+                a.favorited && !b.favorited ? -1
+                : b.favorited && !a.favorited ? 1
+                : b.lastPlayed!.getTime() - a.lastPlayed!.getTime()
             )
             .map((world: MinecraftWorldDisplayDetails, index: number): JSX.SpecificElement<"div"> => {
                 const [worldContextMenu_isOpen, worldContextMenu_setOpen] = useState(false);
@@ -354,14 +413,29 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                         title={`${world.name}\nLast Opened With: ${world.lastOpenedWithVerison}\nLast Played: ${
                             world.lastPlayed?.toLocaleString() ?? "null"
                         }\nPath: ${world.path}${
-                            config.showWorldSizesOnWorldList
-                                ? `\nFolder Size: ${
-                                      typeof world.size === "number"
-                                          ? (config.fileSizeUnits === "binary" ? formatFileSizeBinary : formatFileSizeMetric)(world.size)
-                                          : "Loading..."
-                                  }`
-                                : ""
-                        }`}
+                            config.showWorldSizesOnWorldList ?
+                                `\nFolder Size: ${
+                                    typeof world.size === "number" ?
+                                        (config.fileSizeUnits === "binary" ? formatFileSizeBinary : formatFileSizeMetric)(world.size)
+                                    :   "Loading..."
+                                }`
+                            :   ""
+                        }\nWorld Start Count: ${world.startCount}\nPlay Time: ${(world.playTime / 20n / 60n / 60n / 24n).toString().padStart(2, "0")}:${(
+                            (world.playTime / 20n / 60n / 60n) %
+                            24n
+                        )
+                            .toString()
+                            .padStart(2, "0")}:${((world.playTime / 20n / 60n) % 60n).toString().padStart(2, "0")}:${((world.playTime / 20n) % 60n)
+                            .toString()
+                            .padStart(2, "0")}.${
+                            (world.playTime % 20n) * 5n
+                        }\nGame Mode: ${world.gameMode === -1 ? "Unknown" : (gameModes[world.gameMode] ?? world.gameMode)}${
+                            world.hardcore ? "\nHardcore" : ""
+                        }\n${
+                            world.multiplayer ? "Multiplayer" : "Singleplayer"
+                        }${world.fromLockedTemplate ? "\nFrom Locked Template" : ""}${world.fromWorldTemplate ? "\nFrom World Template" : ""}${
+                            world.singleUseWorld ? "\nSingle Use World" : ""
+                        }${world.editorOnly ? "\nEditor Only" : ""}${world.createdInEditor ? "\nCreated In Editor" : ""}`}
                         class="nsel ndrg"
                         style={{
                             display: "flex",
@@ -393,13 +467,17 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                         <img
                             aria-hidden="true"
                             src={
-                                world.thumbnailPath
-                                    ? `data:${mime.lookup(path.extname(world.thumbnailPath))};base64,${readFileSync(world.thumbnailPath, {
-                                          encoding: "base64",
-                                      })}`
-                                    : defaultWorldIconDataURI ?? "resource://images/ui/misc/CreateNewWorld.png"
+                                world.thumbnailPath ?
+                                    `data:${mime.lookup(path.extname(world.thumbnailPath))};base64,${readFileSync(world.thumbnailPath, {
+                                        encoding: "base64",
+                                    })}`
+                                :   (defaultWorldIconDataURI ?? "resource://images/ui/misc/CreateNewWorld.png")
                             }
-                            style={`margin: 4px; width: ${viewMode === "compact" ? 32 : viewMode === "detailed" ? 64 : 128}px; aspect-ratio: 16 / 9;`}
+                            style={`margin: 4px; width: ${
+                                viewMode === "compact" ? 32
+                                : viewMode === "detailed" ? 64
+                                : 128
+                            }px; aspect-ratio: 16 / 9;`}
                         />
                         <div
                             style={{
@@ -433,9 +511,9 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                                 <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                                     {config.showWorldSizesOnWorldList && (
                                         <span class="worldSelectorListItemWorldSize">
-                                            {typeof world.size === "number"
-                                                ? (config.fileSizeUnits === "binary" ? formatFileSizeBinary : formatFileSizeMetric)(world.size)
-                                                : "Loading..."}{" "}
+                                            {typeof world.size === "number" ?
+                                                (config.fileSizeUnits === "binary" ? formatFileSizeBinary : formatFileSizeMetric)(world.size)
+                                            :   "Loading..."}{" "}
                                         </span>
                                     )}
                                     <span class="worldSelectorListItemWorldVersion">
@@ -483,6 +561,17 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                                 </MenuItem>
                                 <MenuItem
                                     onClick={(): void => {
+                                        if (
+                                            dialog.showMessageBoxSync({
+                                                type: "warning",
+                                                title: "Bedrock World Editor",
+                                                message: `Are you sure you want to open this world in Direct Mode?`,
+                                                detail: "Direct mode is unsafe as any changes are immediately saved directly to your world files, leading to the potential corruption of your world. Using unsafe mode also can behave unpredictably when used while the world is open in Minecraft. Use at your own risk.",
+                                                buttons: ["Proceed", "Cancel"],
+                                                noLink: true,
+                                            })
+                                        )
+                                            return;
                                         tabManager.switchTab("loading");
                                         setTimeout(
                                             (): void =>
@@ -506,9 +595,13 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                                     }}
                                 >
                                     Open World Folder in{" "}
-                                    {process.platform === "win32" ? "File Explorer" : process.platform === "darwin" ? "Finder" : "File Manager"}
+                                    {process.platform === "win32" ?
+                                        "File Explorer"
+                                    : process.platform === "darwin" ?
+                                        "Finder"
+                                    :   "File Manager"}
                                 </MenuItem>
-                                {app.getApplicationNameForProtocol("minecraft:") && (
+                                {mcAppName && (
                                     <MenuItem
                                         onClick={async (): Promise<void> => {
                                             shell.openExternal(`minecraft://?load=${encodeURIComponent(path.basename(world.path))}`);
@@ -517,7 +610,7 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                                         Open World in Minecraft
                                     </MenuItem>
                                 )}
-                                {app.getApplicationNameForProtocol("minecraft-preview:") && (
+                                {mcPreviewAppName && (
                                     <MenuItem
                                         onClick={async (): Promise<void> => {
                                             shell.openExternal(`minecraft-preview://?load=${encodeURIComponent(path.basename(world.path))}`);
@@ -527,7 +620,7 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                                     </MenuItem>
                                 )}
                                 <MenuDivider />
-                                {world.favorited ? (
+                                {world.favorited ?
                                     <MenuItem
                                         onClick={(): void => {
                                             if (!existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"))) return;
@@ -550,8 +643,7 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                                     >
                                         Unfavorite
                                     </MenuItem>
-                                ) : (
-                                    <MenuItem
+                                :   <MenuItem
                                         onClick={(): void => {
                                             try {
                                                 let favoritedWorldsData: string[] = [];
@@ -574,7 +666,7 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                                     >
                                         Favorite
                                     </MenuItem>
-                                )}
+                                }
                             </ControlledMenu>
                         </div>
                         {/* TO-DO: Add a star icon for favorited tabs. */}
@@ -668,7 +760,7 @@ export function LoadingScreenContents(props: LoadingScreenContentsProps): JSX.El
                 <div
                     style="margin-bottom: -1.5em; line-height: 1.5em; font-family: Consolas; font-size: round(down, calc(max(100vw, 300px) / 50), 5.12px);"
                     class="loading-screen-message nsel"
-                    ref={props.messageContainerRef}
+                    ref={props.messageContainerRef!} // XXX: Passing undefined here may actually be bad, look into this at some point.
                 >
                     {props.message ?? "Loading..."}
                 </div>
@@ -740,6 +832,8 @@ export function WorldEditorTabRenderer(props: {
                 return <EntitiesTab tab={props.parentTab} />;
             case "fun":
                 return <FunTab tab={props.parentTab} />;
+            case "integrations":
+                return <IntegrationsTab tab={props.parentTab} />;
             case "maps":
                 return <MapsTab tab={props.parentTab} />;
             case "repair-forced-world-corruption":
@@ -753,7 +847,7 @@ export function WorldEditorTabRenderer(props: {
             case "view-files":
                 return <ViewFilesTab tab={props.parentTab} />;
             default:
-                return <h2>The {props.tab} tab has not been implemented yet.</h2>;
+                return <UnderConstruction detail={`The ${props.tab} tab has not been implemented yet.`} />;
         }
     } else {
         switch (props.tab.contentType) {
@@ -783,7 +877,9 @@ export function WorldEditorTabRenderer(props: {
                             default:
                                 return <HexEditor tab={props.tab} />;
                         }
-                    case "ASCII": // Add text editor tab.
+                    case "ASCII":
+                    case "UTF-8":
+                        return <TextEditorTab tab={props.tab} />;
                     case "int": // Add int editor tab.
                     case "unknown":
                     default:
@@ -836,22 +932,113 @@ tabManager.on("switchTab", ({ previousTab, newTab }: TabManagerSwitchTabEvent): 
     if (!tabContentsElement) return;
     // const tempElement: HTMLDivElement = document.createElement("div");
     render(null, tabContentsElement);
-    if (newTab === null)
+    if (newTab === null) {
         render(
             <div style="width: 100vw; height: 0; flex: 1; display: flex; flex-direction: row;">
                 <StartScreenContents />
             </div>,
             tabContentsElement // tempElement
         );
-    else if (typeof newTab !== "string" && newTab.type === "world") render(<WorldEditor tab={newTab} />, tabContentsElement /* tempElement */);
-    else if (typeof newTab === "string") {
-        if (newTab === "loading") {
-            render(
-                <div style="width: 100vw; height: 0; flex: 1; display: flex; flex-direction: row;">
-                    <LoadingScreenContents />
-                </div>,
-                tabContentsElement // tempElement
-            );
+    } else if (typeof newTab !== "string") {
+        switch (newTab.type) {
+            case "world":
+                render(<WorldEditor tab={newTab} />, tabContentsElement /* tempElement */);
+                break;
+            case "leveldb":
+                render(
+                    <UnderConstruction subtitle="This tab type is under construction." detail="The LevelDB editor has not been implemented yet." />,
+                    tabContentsElement
+                );
+                break;
+            case "nbt":
+                render(
+                    <UnderConstruction subtitle="This tab type is under construction." detail="The NBT editor has not been implemented yet." />,
+                    tabContentsElement
+                );
+                break;
+            case "json":
+                render(
+                    <UnderConstruction subtitle="This tab type is under construction." detail="The JSON editor has not been implemented yet." />,
+                    tabContentsElement
+                );
+                break;
+            case "xml":
+                render(
+                    <UnderConstruction subtitle="This tab type is under construction." detail="The XML editor has not been implemented yet." />,
+                    tabContentsElement
+                );
+                break;
+            case "binary":
+                render(
+                    <UnderConstruction subtitle="This tab type is under construction." detail="The binary editor has not been implemented yet." />,
+                    tabContentsElement
+                );
+                break;
+            case "text":
+                render(
+                    <UnderConstruction subtitle="This tab type is under construction." detail="The text editor has not been implemented yet." />,
+                    tabContentsElement
+                );
+                break;
+            case "other":
+                render(
+                    <center
+                        style={{
+                            display: "inline-block",
+                            width: "-webkit-fill-available",
+                            height: "-webkit-fill-available",
+                        }}
+                    >
+                        <h1>Hmmmmm... There's nothing here.</h1>
+                        <p>How did this happen?</p>
+                        <img
+                            class="piximg ndrg nsel"
+                            style={{ width: "min(calc(100% - mod(100%, 256px)), 256px * 4)" }}
+                            aria-hidden="true"
+                            src="resource://images/ui/art/generic_empty.png"
+                        />
+                        <p>We don't know what do to with a tab type of "other"...</p>
+                    </center>,
+                    tabContentsElement
+                );
+                break;
+            default:
+                render(
+                    <center
+                        style={{
+                            display: "inline-block",
+                            width: "-webkit-fill-available",
+                            height: "-webkit-fill-available",
+                        }}
+                    >
+                        <h1>Error</h1>
+                        <p>Something went wrong...</p>
+                        <img
+                            class="piximg ndrg nsel"
+                            style={{ width: "min(calc(100% - mod(100%, 260px)), 260px * 4)" }}
+                            aria-hidden="true"
+                            src="resource://images/ui/art/generic_error.png"
+                        />
+                        <p>Invalid tab type: {newTab.type}</p>
+                    </center>,
+                    tabContentsElement
+                );
+        }
+    } else {
+        switch (newTab) {
+            case "loading":
+                render(
+                    <div style="width: 100vw; height: 0; flex: 1; display: flex; flex-direction: row;">
+                        <LoadingScreenContents />
+                    </div>,
+                    tabContentsElement // tempElement
+                );
+                break;
+            case "settings":
+                render(
+                    <SettingsPage />,
+                    tabContentsElement // tempElement
+                );
         }
     }
     // tabContentsElement.replaceChildren(...tempElement.children);

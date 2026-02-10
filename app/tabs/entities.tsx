@@ -1,4 +1,4 @@
-import type { JSX, RefObject } from "preact";
+import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef, useState } from "preact/compat";
 import TreeEditor from "../components/TreeEditor";
 import {
@@ -167,8 +167,7 @@ const entitiesTabSearchSyntax: SearchSyntaxHelpInfo = {
             ],
         },
         contents: {
-            description:
-                "Searches the LevelDB entry value as SNBT.",
+            description: "Searches the LevelDB entry value as SNBT.",
         },
         nbt: viewFilesTabSearchSyntax.filters.nbt!,
     },
@@ -192,7 +191,11 @@ export default function EntitiesTab(props: EntitiesTabProps): JSX.SpecificElemen
                 errorElement.style.fontFamily = "monospace";
                 errorElement.style.whiteSpace = "pre";
                 errorElement.textContent =
-                    reason instanceof Error ? (reason.stack?.startsWith(reason.toString()) ? reason.stack : reason.toString() + reason.stack) : reason;
+                    reason instanceof Error ?
+                        reason.stack?.startsWith(reason.toString()) ?
+                            reason.stack
+                        :   reason.toString() + reason.stack
+                    :   reason;
                 containerRef.current.replaceChildren("Failed to load data:", errorElement);
             }
             console.error(reason);
@@ -270,8 +273,7 @@ async function getEntitiesTabContents(tab: TabManagerTab): Promise<JSX.Element> 
                                 // const [columnHeadersContextMenu_anchorPoint, columnHeadersContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
                                 const headerName = ConfigConstants.views.Entities.entitiesTabModeSectionHeaderNames[mode][index];
                                 const sectionMode: ConfigConstants.views.Entities.EntitiesTabSectionMode = (
-                                    sectionID === null ? mode : `${mode}_${sectionID}`
-                                ) as ConfigConstants.views.Entities.EntitiesTabSectionMode;
+                                    sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Entities.EntitiesTabSectionMode;
                                 return (
                                     <>
                                         {/* TO-DO: Add in this context menu once the bug with it is fixed. https://github.com/szhsin/react-menu/issues/1591 */}
@@ -386,7 +388,7 @@ async function getEntitiesTabContents(tab: TabManagerTab): Promise<JSX.Element> 
                                 }
                             })(),
                         },
-                    } as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number])
+                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
             ),
         };
         async function updateTablesContents(reloadData: boolean): Promise<void> {
@@ -400,12 +402,12 @@ async function getEntitiesTabContents(tab: TabManagerTab): Promise<JSX.Element> 
                             await getEntitiesTabContentsRows({
                                 tab,
                                 keys:
-                                    Object.keys(query).length > 1
-                                        ? tab
-                                              .dbSearch!.serach(query)
-                                              .toArray()
-                                              .map((key): KeyData => key.originalObject.data)
-                                        : keys,
+                                    Object.keys(query).length > 1 ?
+                                        tab
+                                            .dbSearch!.serach(query)
+                                            .toArray()
+                                            .map((key): KeyData => key.originalObject.data)
+                                    :   keys,
                                 dynamicProperties,
                                 mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Entities.EntitiesTabSectionMode,
                             })
@@ -810,9 +812,8 @@ async function getEntitiesTabContentsRows(data: {
                         data-key={key.rawKey}
                         onDblClick={(): void => {
                             data.tab.openTab({
-                                // TO-DO: In the future, add support for getting their skin head or profile picture.
                                 contentType: "ActorPrefix",
-                                icon: "resource://images/ui/glyphs/icon_panda.png",
+                                    icon: "auto",
                                 name: key.displayKey,
                                 parentTab: data.tab,
                                 target: {
@@ -820,6 +821,22 @@ async function getEntitiesTabContentsRows(data: {
                                     key: key.rawKey,
                                 },
                             });
+                        }}
+                        onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                            if (event.button !== 1) return;
+                            data.tab.openTab(
+                                {
+                                    contentType: "ActorPrefix",
+                                    icon: "auto",
+                                    name: key.displayKey,
+                                    parentTab: data.tab,
+                                    target: {
+                                        type: "LevelDBEntry",
+                                        key: key.rawKey,
+                                    },
+                                },
+                                false
+                            );
                         }}
                     >
                         {columns.map((column: (typeof columns)[number]): JSX.Element => {
@@ -841,57 +858,47 @@ async function getEntitiesTabContentsRows(data: {
                                 case "UUID":
                                     return (
                                         <td>
-                                            {key.data.parsed.value.UniqueID?.type === "long" ? (
+                                            {key.data.parsed.value.UniqueID?.type === "long" ?
                                                 toLong(key.data.parsed.value.UniqueID.value)
-                                            ) : (
-                                                <span style="color: red;">null</span>
-                                            )}
+                                            :   <span style="color: red;">null</span>}
                                         </td>
                                     );
                                 case "TypeID":
                                     return (
                                         <td>
-                                            {key.data.parsed.value.identifier?.type === "string" ? (
+                                            {key.data.parsed.value.identifier?.type === "string" ?
                                                 key.data.parsed.value.identifier.value
-                                            ) : (
-                                                <span style="color: red;">null</span>
-                                            )}
+                                            :   <span style="color: red;">null</span>}
                                         </td>
                                     );
                                 case "Location":
                                     return (
                                         <td>
-                                            {key.data.parsed.value.Pos?.type === "list" && key.data.parsed.value.Pos.value.type === "float" ? (
+                                            {key.data.parsed.value.Pos?.type === "list" && key.data.parsed.value.Pos.value.type === "float" ?
                                                 `${(key.data.parsed.value.Pos.value.value as number[]).map((v: number): string => v.toFixed(3)).join(", ")} ${
-                                                    key.data.parsed.value.DimensionId?.type === "int"
-                                                        ? dimensions[key.data.parsed.value.DimensionId.value] ?? key.data.parsed.value.DimensionId.value
-                                                        : "Unknown Dimension"
+                                                    key.data.parsed.value.DimensionId?.type === "int" ?
+                                                        (dimensions[key.data.parsed.value.DimensionId.value] ?? key.data.parsed.value.DimensionId.value)
+                                                    :   "Unknown Dimension"
                                                 }`
-                                            ) : (
-                                                <span style="color: red;">null</span>
-                                            )}
+                                            :   <span style="color: red;">null</span>}
                                         </td>
                                     );
                                 case "LocationCompact":
                                     return (
                                         <td>
-                                            {key.data.parsed.value.Pos?.type === "list" && key.data.parsed.value.Pos.value.type === "float" ? (
+                                            {key.data.parsed.value.Pos?.type === "list" && key.data.parsed.value.Pos.value.type === "float" ?
                                                 `${(key.data.parsed.value.Pos.value.value as number[]).map((v: number): string => v.toFixed(0)).join(",")} ${
                                                     key.data.parsed.value.DimensionId?.type === "int" ? key.data.parsed.value.DimensionId.value : "?"
                                                 }`
-                                            ) : (
-                                                <span style="color: red;">null</span>
-                                            )}
+                                            :   <span style="color: red;">null</span>}
                                         </td>
                                     );
                                 case "Rotation":
                                     return (
                                         <td>
-                                            {key.data.parsed.value.Rotation?.type === "list" ? (
+                                            {key.data.parsed.value.Rotation?.type === "list" ?
                                                 key.data.parsed.value.Rotation.value.value.join(", ")
-                                            ) : (
-                                                <span style="color: red;">null</span>
-                                            )}
+                                            :   <span style="color: red;">null</span>}
                                         </td>
                                     );
                             }

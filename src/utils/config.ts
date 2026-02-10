@@ -14,9 +14,9 @@ import { EventEmitter } from "node:events";
 import "../init/JSONB.ts";
 import semver from "semver";
 const nativeTheme =
-    process.type === "browser"
-        ? (require("electron") as typeof import("electron")).nativeTheme
-        : (require("@electron/remote") as typeof import("@electron/remote")).nativeTheme;
+    process.type === "browser" ?
+        (require("electron") as typeof import("electron")).nativeTheme
+    :   (require("@electron/remote") as typeof import("@electron/remote")).nativeTheme;
 
 namespace exports {
     export const volumeCategories: ["master", "ui"] = ["master", "ui"];
@@ -31,7 +31,7 @@ namespace exports {
          * Emitted when the corresponding setting is changed.
          */
         [key in PropertyPathsWithoutOuterContainingProperties<ConfigJSON> as `settingChanged:${Join<key, ".">}`]: [
-            value: GetPropertyValueAtPath<ConfigJSON, key>
+            value: GetPropertyValueAtPath<ConfigJSON, key>,
         ];
     };
     export interface ConfigEventMap extends ConfigEventMap_SettingChangedEvents {
@@ -45,58 +45,61 @@ namespace exports {
         settingChanged: {
             [key in PropertyPathsWithoutOuterContainingProperties<ConfigJSON> as Join<key, ".">]: [
                 key: Join<key, ".">,
-                value: GetPropertyValueAtPath<ConfigJSON, key>
+                value: GetPropertyValueAtPath<ConfigJSON, key>,
             ];
         }[Join<PropertyPathsWithoutOuterContainingProperties<ConfigJSON>, ".">];
     }
+    // OPTIMIZE: These types are EXTREMELY slow and laggy, and make the TypeScript language service unbearably slow whenever this file is open.
     type GetBaseJSONTypeOfConfig_Inner<T extends Config | SubConfigValueTypes> = Omit<
         ExcludeMethods<ExcludeReadonlyProps<T>>,
         "constructor" | keyof EventEmitter
     >;
-    type GetBaseJSONTypeOfConfig<T extends Config | SubConfigValueTypes, P extends boolean = false> = P extends true
-        ? Partial<GetBaseJSONTypeOfConfig_Inner<T>>
-        : GetBaseJSONTypeOfConfig_Inner<T>;
+    type GetBaseJSONTypeOfConfig<T extends Config | SubConfigValueTypes, P extends boolean = false> =
+        P extends true ? PartialWU<GetBaseJSONTypeOfConfig_Inner<T>> : GetBaseJSONTypeOfConfig_Inner<T>;
     type GetSubConfigJSONTypeOfConfig_Inner<T extends Config | SubConfigValueTypes, P extends boolean = false> = Mutable<{
-        [key in Exclude<keyof T, symbol> as T[key] extends SubConfigValueTypes ? key : never]: key extends symbol
-            ? never
-            : T[key] extends SubConfigValueTypes
-            ? GetJSONTypeOfConfig<T[key], P>
-            : never;
+        [key in Exclude<keyof T, symbol> as T[key] extends SubConfigValueTypes ? key : never]: key extends symbol ? never
+        : T[key] extends SubConfigValueTypes ? GetJSONTypeOfConfig<T[key], P>
+        : never;
     }>;
-    type GetSubConfigJSONTypeOfConfig<T extends Config | SubConfigValueTypes, P extends boolean = false> = P extends true
-        ? Partial<GetSubConfigJSONTypeOfConfig_Inner<T, P>>
-        : GetSubConfigJSONTypeOfConfig_Inner<T>;
+    type GetSubConfigJSONTypeOfConfig<T extends Config | SubConfigValueTypes, P extends boolean = false> =
+        P extends true ? PartialWU<GetSubConfigJSONTypeOfConfig_Inner<T, P>> : GetSubConfigJSONTypeOfConfig_Inner<T>;
     type GetJSONTypeOfConfigA<T extends Config | SubConfigValueTypes, P extends boolean = false> = {
         [key in Exclude<NonNullable<keyof GetBaseJSONTypeOfConfig<T, false>>, symbol>]: GetBaseJSONTypeOfConfig<T, P>[key];
     } & {
-        [key in Exclude<NonNullable<keyof GetSubConfigJSONTypeOfConfig<T, false>>, symbol>]: key extends symbol
-            ? never
-            : T[key] extends SubConfigValueTypes
-            ? GetJSONTypeOfConfig<T[key], P>
-            : never;
+        [key in Exclude<NonNullable<keyof GetSubConfigJSONTypeOfConfig<T, false>>, symbol>]: key extends symbol ? never
+        : T[key] extends SubConfigValueTypes ? GetJSONTypeOfConfig<T[key], P>
+        : never;
     };
-    type GetJSONTypeOfConfigB<T extends Config | SubConfigValueTypes, P extends boolean = false> = P extends true
-        ? Partial<MergeObjectTypes<GetJSONTypeOfConfigA<T, P>>>
-        : MergeObjectTypes<GetJSONTypeOfConfigA<T, P>>;
+    // type GetJSONTypeOfConfigB<T extends Config | SubConfigValueTypes, P extends boolean = false> =
+    //     P extends true ? PartialWU<MergeObjectTypes<GetJSONTypeOfConfigA<T, P>>> : MergeObjectTypes<GetJSONTypeOfConfigA<T, P>>;
 
     type GetJSONTypeOfConfigInner<T extends Config | SubConfigValueTypes, P extends boolean = false> = {
-        [key in Exclude<NonNullable<keyof GetBaseJSONTypeOfConfig<T, false> | keyof GetSubConfigJSONTypeOfConfig<T, false>>, symbol> as T[key] extends never
-            ? never
-            : key]: key extends keyof GetSubConfigJSONTypeOfConfig<T>
-            ? T[key] extends SubConfigValueTypes
-                ? GetJSONTypeOfConfig<T[key], P>
-                : never
-            : key extends keyof GetBaseJSONTypeOfConfig<T, false>
-            ? GetBaseJSONTypeOfConfig<T, P>[key]
-            : never;
+        [key in Exclude<NonNullable<keyof GetBaseJSONTypeOfConfig<T, false> | keyof GetSubConfigJSONTypeOfConfig<T, false>>, symbol> as T[key] extends never ?
+            never
+        :   key]: key extends keyof GetSubConfigJSONTypeOfConfig<T> ?
+            T[key] extends SubConfigValueTypes ?
+                GetJSONTypeOfConfig<T[key], P>
+            :   never
+        : key extends keyof GetBaseJSONTypeOfConfig<T, false> ? GetBaseJSONTypeOfConfig<T, P>[key]
+        : never;
     };
-    type GetJSONTypeOfConfig<T extends Config | SubConfigValueTypes, P extends boolean = false> = P extends true
-        ? Partial<GetJSONTypeOfConfigInner<T, P>>
-        : GetJSONTypeOfConfigInner<T>;
-    type ConfigJSONBase<P extends boolean = false> = GetBaseJSONTypeOfConfig<Config, P>;
-    type ConfigJSONSubConfigs<P extends boolean = false> = P extends true
-        ? Partial<Mutable<{ [key in keyof Config as key extends symbol ? never : Config[key] extends SubConfigValueTypes ? key : never]: Config[key] }>>
-        : Mutable<{ [key in keyof Config as key extends symbol ? never : Config[key] extends SubConfigValueTypes ? key : never]: Config[key] }>;
+    type GetJSONTypeOfConfig<T extends Config | SubConfigValueTypes, P extends boolean = false> =
+        P extends true ? PartialWU<GetJSONTypeOfConfigInner<T, P>> : GetJSONTypeOfConfigInner<T>;
+    // type ConfigJSONBase<P extends boolean = false> = GetBaseJSONTypeOfConfig<Config, P>;
+    // type ConfigJSONSubConfigs<P extends boolean = false> =
+    //     P extends true ?
+    //         PartialWU<
+    //             Mutable<{
+    //                 [key in keyof Config as key extends symbol ? never
+    //                 : Config[key] extends SubConfigValueTypes ? key
+    //                 : never]: Config[key];
+    //             }>
+    //         >
+    //     :   Mutable<{
+    //             [key in keyof Config as key extends symbol ? never
+    //             : Config[key] extends SubConfigValueTypes ? key
+    //             : never]: Config[key];
+    //         }>;
     export type ConfigJSON<P extends boolean = false> = GetJSONTypeOfConfig<Config, P>;
     function cullUndefinedProperties<T extends { [key: PropertyKey]: unknown }>(
         obj: T
@@ -104,11 +107,11 @@ namespace exports {
         return Object.fromEntries(Object.entries(obj).filter(([key, value]: [key: string, value: unknown]): boolean => value !== undefined)) as any;
     }
     type DeepSubConfigKeyStructureOfConfig<T extends Config | SubConfigValueTypes> = OmitNeverValueKeys<{
-        [key in keyof T as key extends symbol ? never : T[key] extends SubConfigValueTypes ? key : never]: T[key] extends never
-            ? never
-            : T[key] extends SubConfigValueTypes
-            ? DeepSubConfigKeyStructureOfConfig<T[key]>
-            : never;
+        [key in keyof T as key extends symbol ? never
+        : T[key] extends SubConfigValueTypes ? key
+        : never]: T[key] extends never ? never
+        : T[key] extends SubConfigValueTypes ? DeepSubConfigKeyStructureOfConfig<T[key]>
+        : never;
     }>;
     export const subConfigKeyStructure = {
         volume: {},
@@ -179,6 +182,9 @@ namespace exports {
                 "%appdata%/.minecraft_bedrock/installations/*/packageData",
                 "%appdata%/.minecraft_bedrock/installations/*/*/packageData",
             ],
+            enabledAutoApplyIntegrations: [],
+            disabledAutoApplyIntegrations: [],
+            hiddenIntegrations: [],
             attemptToKeepCurrentConfigWhenUpdatingVersion: false,
             GUIScale: 0,
             GUIScaleOverride: null,
@@ -187,10 +193,6 @@ namespace exports {
             debugHUDDropShadow: false,
             fileSizeUnits: "binary",
             showWorldSizesOnWorldList: false,
-            panorama: "off",
-            panoramaPerspective: 400,
-            panoramaRotateDirection: "counterclockwise",
-            panoramaRotateSpeed: 2.5,
             volume: { master: 100, ui: 100 },
             views: {
                 players: {
@@ -296,17 +298,17 @@ namespace exports {
                     currentMinecraftDataFolders.splice(
                         currentMinecraftDataFolders.indexOf("%AppData%/Minecraft Bedrock Preview/Users/*/games/com.mojang"),
                         1,
-                        ...(currentMinecraftDataFolders.includes("%appdata%/Minecraft Bedrock Preview/Users/*/games/com.mojang")
-                            ? []
-                            : ["%appdata%/Minecraft Bedrock Preview/Users/*/games/com.mojang"])
+                        ...(currentMinecraftDataFolders.includes("%appdata%/Minecraft Bedrock Preview/Users/*/games/com.mojang") ?
+                            []
+                        :   ["%appdata%/Minecraft Bedrock Preview/Users/*/games/com.mojang"])
                     );
                 if (currentMinecraftDataFolders.includes("%AppData%/Minecraft Bedrock Preview/games/com.mojang"))
                     currentMinecraftDataFolders.splice(
                         currentMinecraftDataFolders.indexOf("%AppData%/Minecraft Bedrock Preview/games/com.mojang"),
                         1,
-                        ...(currentMinecraftDataFolders.includes("%appdata%/Minecraft Bedrock Preview/games/com.mojang")
-                            ? []
-                            : ["%appdata%/Minecraft Bedrock Preview/games/com.mojang"])
+                        ...(currentMinecraftDataFolders.includes("%appdata%/Minecraft Bedrock Preview/games/com.mojang") ?
+                            []
+                        :   ["%appdata%/Minecraft Bedrock Preview/games/com.mojang"])
                     );
                 if (
                     currentMinecraftDataFolders.length !== originalItems.length ||
@@ -337,7 +339,7 @@ namespace exports {
             function mergeConfigData<
                 T extends Config | SubConfigValueTypes,
                 Path extends PropertyPathsWithoutOuterContainingProperties<Config> | [] = [],
-                EndPath extends Path[number] = Path[number]
+                EndPath extends Path[number] = Path[number],
             >(oldData: GetJSONTypeOfConfig<T>, newData: GetJSONTypeOfConfig<T, true>, path: Path = [] as unknown as Path): GetJSONTypeOfConfig<T> {
                 let data = { ...oldData, ...newData };
 
@@ -388,7 +390,11 @@ namespace exports {
                     if (
                         [...path, key].reduce(
                             (previousValue: any, currentValue: string | number): any =>
-                                previousValue ? (currentValue in previousValue ? previousValue[currentValue] : undefined) : undefined,
+                                previousValue ?
+                                    currentValue in previousValue ?
+                                        previousValue[currentValue]
+                                    :   undefined
+                                :   undefined,
                             subConfigKeyStructure as any
                         )
                     ) {
@@ -550,6 +556,48 @@ namespace exports {
                 .flat();
         }
         /**
+         * The list of integrations that should be automatically applied without prompting.
+         *
+         * @default
+         * ```typescript
+         * []
+         * ```
+         */
+        public get enabledAutoApplyIntegrations(): ConfigConstants.AutoApplySupportedIntegrationId[] {
+            return this.getConfigData().enabledAutoApplyIntegrations ?? Config.defaults.enabledAutoApplyIntegrations;
+        }
+        public set enabledAutoApplyIntegrations(value: ConfigConstants.AutoApplySupportedIntegrationId[] | undefined) {
+            this.saveChanges({ enabledAutoApplyIntegrations: value ?? Config.defaults.enabledAutoApplyIntegrations });
+        }
+        /**
+         * The list of integrations that should not be automatically applied or prompted for.
+         *
+         * @default
+         * ```typescript
+         * []
+         * ```
+         */
+        public get disabledAutoApplyIntegrations(): ConfigConstants.AutoApplySupportedIntegrationId[] {
+            return this.getConfigData().enabledAutoApplyIntegrations ?? Config.defaults.enabledAutoApplyIntegrations;
+        }
+        public set disabledAutoApplyIntegrations(value: ConfigConstants.AutoApplySupportedIntegrationId[] | undefined) {
+            this.saveChanges({ enabledAutoApplyIntegrations: value ?? Config.defaults.enabledAutoApplyIntegrations });
+        }
+        /**
+         * The list of integrations that should be completely hidden from the integrations sidebar tab.
+         *
+         * @default
+         * ```typescript
+         * []
+         * ```
+         */
+        public get hiddenIntegrations(): ConfigConstants.IntegrationId[] {
+            return this.getConfigData().hiddenIntegrations ?? Config.defaults.hiddenIntegrations;
+        }
+        public set hiddenIntegrations(value: ConfigConstants.IntegrationId[] | undefined) {
+            this.saveChanges({ hiddenIntegrations: value ?? Config.defaults.hiddenIntegrations });
+        }
+        /**
          * The GUI scale of the app.
          *
          * This is added to {@link baseGUIScale} to get the actual GUI scale.
@@ -563,6 +611,7 @@ namespace exports {
         public get GUIScale(): number {
             return this.getConfigData().GUIScale ?? Config.defaults.GUIScale;
         }
+        /** @deprecated */
         public set GUIScale(value: number | undefined) {
             this.saveChanges({ GUIScale: value ?? Config.defaults.GUIScale });
         }
@@ -580,6 +629,7 @@ namespace exports {
         public get GUIScaleOverride(): number | null {
             return this.getConfigData().GUIScaleOverride ?? Config.defaults.GUIScaleOverride;
         }
+        /** @deprecated */
         public set GUIScaleOverride(value: number | null | undefined) {
             this.saveChanges({ GUIScaleOverride: value ?? Config.defaults.GUIScaleOverride });
         }
@@ -643,7 +693,13 @@ namespace exports {
             this.saveChanges({ theme: value ?? Config.defaults.theme });
         }
         public get actualTheme(): "dark" | "light" | "blue" {
-            return this.theme === "auto" ? (nativeTheme.shouldUseDarkColors ? "dark" : "light") : this.theme;
+            return (
+                this.theme === "auto" ?
+                    nativeTheme.shouldUseDarkColors ?
+                        "dark"
+                    :   "light"
+                :   this.theme
+            );
         }
         public get debugHUD(): (typeof ConfigConstants.debugOverlayModeList)[number] {
             return this.getConfigData().debugHUD ?? Config.defaults.debugHUD;
@@ -683,30 +739,6 @@ namespace exports {
         }
         public set showWorldSizesOnWorldList(value: boolean | undefined) {
             this.saveChanges({ showWorldSizesOnWorldList: value ?? Config.defaults.showWorldSizesOnWorldList });
-        }
-        public get panorama(): (typeof ConfigConstants.panoramaList)[number] {
-            return this.getConfigData().panorama ?? Config.defaults.panorama;
-        }
-        public set panorama(value: (typeof ConfigConstants.panoramaList)[number] | undefined) {
-            this.saveChanges({ panorama: value ?? Config.defaults.panorama });
-        }
-        public get panoramaPerspective(): number {
-            return this.getConfigData().panoramaPerspective ?? Config.defaults.panoramaPerspective;
-        }
-        public set panoramaPerspective(value: number | undefined) {
-            this.saveChanges({ panoramaPerspective: value ?? Config.defaults.panoramaPerspective });
-        }
-        public get panoramaRotateDirection(): "clockwise" | "counterclockwise" {
-            return this.getConfigData().panoramaRotateDirection ?? Config.defaults.panoramaRotateDirection;
-        }
-        public set panoramaRotateDirection(value: "clockwise" | "counterclockwise" | undefined) {
-            this.saveChanges({ panoramaRotateDirection: value ?? Config.defaults.panoramaRotateDirection });
-        }
-        public get panoramaRotateSpeed(): number {
-            return this.getConfigData().panoramaRotateSpeed ?? Config.defaults.panoramaRotateSpeed;
-        }
-        public set panoramaRotateSpeed(value: number | undefined) {
-            this.saveChanges({ panoramaRotateSpeed: value ?? Config.defaults.panoramaRotateSpeed });
         }
         /**
          * The volume options.
@@ -806,23 +838,26 @@ namespace exports {
                     public static readonly [subConfigClassSymbol] = (() => {
                         abstract class PlayersViewConfig_ModeSettings_SubConfig<
                             T extends ConfigConstants.views.Players.PlayersTabMode,
-                            M extends (typeof ConfigConstants.views.Players.playersTabModeToSectionIDs)[T] = (typeof ConfigConstants.views.Players.playersTabModeToSectionIDs)[T],
+                            M extends (typeof ConfigConstants.views.Players.playersTabModeToSectionIDs)[T] =
+                                (typeof ConfigConstants.views.Players.playersTabModeToSectionIDs)[T],
                             HasNullSection extends null extends M[number] ? true : false = null extends M[number] ? true : false,
-                            HasNonNullSection extends Extract<M[number], string> extends never ? false : true = Extract<M[number], string> extends never
-                                ? false
-                                : true
+                            HasNonNullSection extends Extract<M[number], string> extends never ? false : true = Extract<M[number], string> extends never ? false
+                            :   true,
                         > extends DeepSubConfig<PlayersViewConfig_ModeSettings> {
                             public readonly modes: M;
-                            public constructor(config: PlayersViewConfig_ModeSettings, public readonly mode: T) {
+                            public constructor(
+                                config: PlayersViewConfig_ModeSettings,
+                                public readonly mode: T
+                            ) {
                                 super(config);
                                 this.modes = ConfigConstants.views.Players.playersTabModeToSectionIDs[mode] as M;
                             }
-                            public get columns(): HasNullSection extends true
-                                ? (typeof ConfigConstants.views.Players.playersTabModeToColumnIDs)[Extract<
-                                      ConfigConstants.views.Players.PlayersTabSectionModeFromPlayersTabModeAndSectionID<T, M[number]>,
-                                      keyof typeof ConfigConstants.views.Players.playersTabModeToColumnIDs
-                                  >][number][]
-                                : never {
+                            public get columns(): HasNullSection extends true ?
+                                (typeof ConfigConstants.views.Players.playersTabModeToColumnIDs)[Extract<
+                                    ConfigConstants.views.Players.PlayersTabSectionModeFromPlayersTabModeAndSectionID<T, M[number]>,
+                                    keyof typeof ConfigConstants.views.Players.playersTabModeToColumnIDs
+                                >][number][]
+                            :   never {
                                 if ((this.modes as M[number][]).includes(null)) {
                                     return ((
                                         this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views
@@ -839,12 +874,12 @@ namespace exports {
                                 }
                             }
                             public set columns(
-                                value: HasNullSection extends true
-                                    ? (typeof ConfigConstants.views.Players.playersTabModeToColumnIDs)[Extract<
-                                          ConfigConstants.views.Players.PlayersTabSectionModeFromPlayersTabModeAndSectionID<T, M[number]>,
-                                          keyof typeof ConfigConstants.views.Players.playersTabModeToColumnIDs
-                                      >][number][]
-                                    : never
+                                value: HasNullSection extends true ?
+                                    (typeof ConfigConstants.views.Players.playersTabModeToColumnIDs)[Extract<
+                                        ConfigConstants.views.Players.PlayersTabSectionModeFromPlayersTabModeAndSectionID<T, M[number]>,
+                                        keyof typeof ConfigConstants.views.Players.playersTabModeToColumnIDs
+                                    >][number][]
+                                :   never
                             ) {
                                 if ((this.modes as M[number][]).includes(null)) {
                                     this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
@@ -852,23 +887,23 @@ namespace exports {
                                     });
                                 }
                             }
-                            public abstract readonly sections: HasNonNullSection extends true
-                                ? DeepSubConfig<any> & {
-                                      [K in NonNullable<M[number]>]: DeepSubConfig<any> & {
-                                          columns: (typeof ConfigConstants.views.Players.playersTabModeToColumnIDs)[Extract<
-                                              ConfigConstants.views.Players.PlayersTabSectionModeFromPlayersTabModeAndSectionID<T, NonNullable<M[number]>>,
-                                              keyof typeof ConfigConstants.views.Players.playersTabModeToColumnIDs
-                                          >][number][];
-                                      };
-                                  }
-                                : never;
+                            public abstract readonly sections: HasNonNullSection extends true ?
+                                DeepSubConfig<any> & {
+                                    [K in NonNullable<M[number]>]: DeepSubConfig<any> & {
+                                        columns: (typeof ConfigConstants.views.Players.playersTabModeToColumnIDs)[Extract<
+                                            ConfigConstants.views.Players.PlayersTabSectionModeFromPlayersTabModeAndSectionID<T, NonNullable<M[number]>>,
+                                            keyof typeof ConfigConstants.views.Players.playersTabModeToColumnIDs
+                                        >][number][];
+                                    };
+                                }
+                            :   never;
                         }
                         return PlayersViewConfig_ModeSettings_SubConfig;
                     })();
                     public readonly simple = new (class PlayersViewConfig_ModeSettings_simple extends PlayersViewConfig_ModeSettings[
                         subConfigClassSymbol
                     ]<"simple"> {
-                        public declare readonly sections: never;
+                        declare public readonly sections: never;
                     })(this, "simple");
                     public readonly raw = new (class PlayersViewConfig_ModeSettings_raw extends PlayersViewConfig_ModeSettings[subConfigClassSymbol]<"raw"> {
                         public readonly sections = new (class PlayersViewConfig_ModeSettings_raw_sections
@@ -988,23 +1023,26 @@ namespace exports {
                     public static readonly [subConfigClassSymbol] = (() => {
                         abstract class EntitiesViewConfig_ModeSettings_SubConfig<
                             T extends ConfigConstants.views.Entities.EntitiesTabMode,
-                            M extends (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[T] = (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[T],
+                            M extends (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[T] =
+                                (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[T],
                             HasNullSection extends null extends M[number] ? true : false = null extends M[number] ? true : false,
-                            HasNonNullSection extends Extract<M[number], string> extends never ? false : true = Extract<M[number], string> extends never
-                                ? false
-                                : true
+                            HasNonNullSection extends Extract<M[number], string> extends never ? false : true = Extract<M[number], string> extends never ? false
+                            :   true,
                         > extends DeepSubConfig<EntitiesViewConfig_ModeSettings> {
                             public readonly modes: M;
-                            public constructor(config: EntitiesViewConfig_ModeSettings, public readonly mode: T) {
+                            public constructor(
+                                config: EntitiesViewConfig_ModeSettings,
+                                public readonly mode: T
+                            ) {
                                 super(config);
                                 this.modes = ConfigConstants.views.Entities.entitiesTabModeToSectionIDs[mode] as M;
                             }
-                            public get columns(): HasNullSection extends true
-                                ? (typeof ConfigConstants.views.Entities.entitiesTabModeToColumnIDs)[Extract<
-                                      ConfigConstants.views.Entities.EntitiesTabSectionModeFromEntitiesTabModeAndSectionID<T, M[number]>,
-                                      keyof typeof ConfigConstants.views.Entities.entitiesTabModeToColumnIDs
-                                  >][number][]
-                                : never {
+                            public get columns(): HasNullSection extends true ?
+                                (typeof ConfigConstants.views.Entities.entitiesTabModeToColumnIDs)[Extract<
+                                    ConfigConstants.views.Entities.EntitiesTabSectionModeFromEntitiesTabModeAndSectionID<T, M[number]>,
+                                    keyof typeof ConfigConstants.views.Entities.entitiesTabModeToColumnIDs
+                                >][number][]
+                            :   never {
                                 if ((this.modes as M[number][]).includes(null)) {
                                     return ((
                                         this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views
@@ -1021,12 +1059,12 @@ namespace exports {
                                 }
                             }
                             public set columns(
-                                value: HasNullSection extends true
-                                    ? (typeof ConfigConstants.views.Entities.entitiesTabModeToColumnIDs)[Extract<
-                                          ConfigConstants.views.Entities.EntitiesTabSectionModeFromEntitiesTabModeAndSectionID<T, M[number]>,
-                                          keyof typeof ConfigConstants.views.Entities.entitiesTabModeToColumnIDs
-                                      >][number][]
-                                    : never
+                                value: HasNullSection extends true ?
+                                    (typeof ConfigConstants.views.Entities.entitiesTabModeToColumnIDs)[Extract<
+                                        ConfigConstants.views.Entities.EntitiesTabSectionModeFromEntitiesTabModeAndSectionID<T, M[number]>,
+                                        keyof typeof ConfigConstants.views.Entities.entitiesTabModeToColumnIDs
+                                    >][number][]
+                                :   never
                             ) {
                                 if ((this.modes as M[number][]).includes(null)) {
                                     this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
@@ -1034,23 +1072,23 @@ namespace exports {
                                     });
                                 }
                             }
-                            public abstract readonly sections: HasNonNullSection extends true
-                                ? DeepSubConfig<any> & {
-                                      [K in NonNullable<M[number]>]: DeepSubConfig<any> & {
-                                          columns: (typeof ConfigConstants.views.Entities.entitiesTabModeToColumnIDs)[Extract<
-                                              ConfigConstants.views.Entities.EntitiesTabSectionModeFromEntitiesTabModeAndSectionID<T, NonNullable<M[number]>>,
-                                              keyof typeof ConfigConstants.views.Entities.entitiesTabModeToColumnIDs
-                                          >][number][];
-                                      };
-                                  }
-                                : never;
+                            public abstract readonly sections: HasNonNullSection extends true ?
+                                DeepSubConfig<any> & {
+                                    [K in NonNullable<M[number]>]: DeepSubConfig<any> & {
+                                        columns: (typeof ConfigConstants.views.Entities.entitiesTabModeToColumnIDs)[Extract<
+                                            ConfigConstants.views.Entities.EntitiesTabSectionModeFromEntitiesTabModeAndSectionID<T, NonNullable<M[number]>>,
+                                            keyof typeof ConfigConstants.views.Entities.entitiesTabModeToColumnIDs
+                                        >][number][];
+                                    };
+                                }
+                            :   never;
                         }
                         return EntitiesViewConfig_ModeSettings_SubConfig;
                     })();
                     public readonly simple = new (class EntitiesViewConfig_ModeSettings_simple extends EntitiesViewConfig_ModeSettings[
                         subConfigClassSymbol
                     ]<"simple"> {
-                        public declare readonly sections: never;
+                        declare public readonly sections: never;
                     })(this, "simple");
                 }
                 return EntitiesViewConfig_ModeSettings;
@@ -1073,23 +1111,26 @@ namespace exports {
                     public static readonly [subConfigClassSymbol] = (() => {
                         abstract class MapsViewConfig_ModeSettings_SubConfig<
                             T extends ConfigConstants.views.Maps.MapsTabMode,
-                            M extends (typeof ConfigConstants.views.Maps.mapsTabModeToSectionIDs)[T] = (typeof ConfigConstants.views.Maps.mapsTabModeToSectionIDs)[T],
+                            M extends (typeof ConfigConstants.views.Maps.mapsTabModeToSectionIDs)[T] =
+                                (typeof ConfigConstants.views.Maps.mapsTabModeToSectionIDs)[T],
                             HasNullSection extends null extends M[number] ? true : false = null extends M[number] ? true : false,
-                            HasNonNullSection extends Extract<M[number], string> extends never ? false : true = Extract<M[number], string> extends never
-                                ? false
-                                : true
+                            HasNonNullSection extends Extract<M[number], string> extends never ? false : true = Extract<M[number], string> extends never ? false
+                            :   true,
                         > extends DeepSubConfig<MapsViewConfig_ModeSettings> {
                             public readonly modes: M;
-                            public constructor(config: MapsViewConfig_ModeSettings, public readonly mode: T) {
+                            public constructor(
+                                config: MapsViewConfig_ModeSettings,
+                                public readonly mode: T
+                            ) {
                                 super(config);
                                 this.modes = ConfigConstants.views.Maps.mapsTabModeToSectionIDs[mode] as M;
                             }
-                            public get columns(): HasNullSection extends true
-                                ? (typeof ConfigConstants.views.Maps.mapsTabModeToColumnIDs)[Extract<
-                                      ConfigConstants.views.Maps.MapsTabSectionModeFromMapsTabModeAndSectionID<T, M[number]>,
-                                      keyof typeof ConfigConstants.views.Maps.mapsTabModeToColumnIDs
-                                  >][number][]
-                                : never {
+                            public get columns(): HasNullSection extends true ?
+                                (typeof ConfigConstants.views.Maps.mapsTabModeToColumnIDs)[Extract<
+                                    ConfigConstants.views.Maps.MapsTabSectionModeFromMapsTabModeAndSectionID<T, M[number]>,
+                                    keyof typeof ConfigConstants.views.Maps.mapsTabModeToColumnIDs
+                                >][number][]
+                            :   never {
                                 if ((this.modes as M[number][]).includes(null)) {
                                     return ((
                                         this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views
@@ -1106,12 +1147,12 @@ namespace exports {
                                 }
                             }
                             public set columns(
-                                value: HasNullSection extends true
-                                    ? (typeof ConfigConstants.views.Maps.mapsTabModeToColumnIDs)[Extract<
-                                          ConfigConstants.views.Maps.MapsTabSectionModeFromMapsTabModeAndSectionID<T, M[number]>,
-                                          keyof typeof ConfigConstants.views.Maps.mapsTabModeToColumnIDs
-                                      >][number][]
-                                    : never
+                                value: HasNullSection extends true ?
+                                    (typeof ConfigConstants.views.Maps.mapsTabModeToColumnIDs)[Extract<
+                                        ConfigConstants.views.Maps.MapsTabSectionModeFromMapsTabModeAndSectionID<T, M[number]>,
+                                        keyof typeof ConfigConstants.views.Maps.mapsTabModeToColumnIDs
+                                    >][number][]
+                                :   never
                             ) {
                                 if ((this.modes as M[number][]).includes(null)) {
                                     this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
@@ -1119,21 +1160,21 @@ namespace exports {
                                     });
                                 }
                             }
-                            public abstract readonly sections: HasNonNullSection extends true
-                                ? DeepSubConfig<any> & {
-                                      [K in NonNullable<M[number]>]: DeepSubConfig<any> & {
-                                          columns: (typeof ConfigConstants.views.Maps.mapsTabModeToColumnIDs)[Extract<
-                                              ConfigConstants.views.Maps.MapsTabSectionModeFromMapsTabModeAndSectionID<T, NonNullable<M[number]>>,
-                                              keyof typeof ConfigConstants.views.Maps.mapsTabModeToColumnIDs
-                                          >][number][];
-                                      };
-                                  }
-                                : never;
+                            public abstract readonly sections: HasNonNullSection extends true ?
+                                DeepSubConfig<any> & {
+                                    [K in NonNullable<M[number]>]: DeepSubConfig<any> & {
+                                        columns: (typeof ConfigConstants.views.Maps.mapsTabModeToColumnIDs)[Extract<
+                                            ConfigConstants.views.Maps.MapsTabSectionModeFromMapsTabModeAndSectionID<T, NonNullable<M[number]>>,
+                                            keyof typeof ConfigConstants.views.Maps.mapsTabModeToColumnIDs
+                                        >][number][];
+                                    };
+                                }
+                            :   never;
                         }
                         return MapsViewConfig_ModeSettings_SubConfig;
                     })();
                     public readonly simple = new (class MapsViewConfig_ModeSettings_simple extends MapsViewConfig_ModeSettings[subConfigClassSymbol]<"simple"> {
-                        public declare readonly sections: never;
+                        declare public readonly sections: never;
                     })(this, "simple");
                 }
                 return MapsViewConfig_ModeSettings;
@@ -1156,23 +1197,26 @@ namespace exports {
                     public static readonly [subConfigClassSymbol] = (() => {
                         abstract class TicksViewConfig_ModeSettings_SubConfig<
                             T extends ConfigConstants.views.Ticks.TicksTabMode,
-                            M extends (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[T] = (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[T],
+                            M extends (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[T] =
+                                (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[T],
                             HasNullSection extends null extends M[number] ? true : false = null extends M[number] ? true : false,
-                            HasNonNullSection extends Extract<M[number], string> extends never ? false : true = Extract<M[number], string> extends never
-                                ? false
-                                : true
+                            HasNonNullSection extends Extract<M[number], string> extends never ? false : true = Extract<M[number], string> extends never ? false
+                            :   true,
                         > extends DeepSubConfig<TicksViewConfig_ModeSettings> {
                             public readonly modes: M;
-                            public constructor(config: TicksViewConfig_ModeSettings, public readonly mode: T) {
+                            public constructor(
+                                config: TicksViewConfig_ModeSettings,
+                                public readonly mode: T
+                            ) {
                                 super(config);
                                 this.modes = ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode] as M;
                             }
-                            public get columns(): HasNullSection extends true
-                                ? (typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs)[Extract<
-                                      ConfigConstants.views.Ticks.TicksTabSectionModeFromTicksTabModeAndSectionID<T, M[number]>,
-                                      keyof typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs
-                                  >][number][]
-                                : never {
+                            public get columns(): HasNullSection extends true ?
+                                (typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs)[Extract<
+                                    ConfigConstants.views.Ticks.TicksTabSectionModeFromTicksTabModeAndSectionID<T, M[number]>,
+                                    keyof typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs
+                                >][number][]
+                            :   never {
                                 if ((this.modes as M[number][]).includes(null as any)) {
                                     return ((
                                         this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views
@@ -1189,12 +1233,12 @@ namespace exports {
                                 }
                             }
                             public set columns(
-                                value: HasNullSection extends true
-                                    ? (typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs)[Extract<
-                                          ConfigConstants.views.Ticks.TicksTabSectionModeFromTicksTabModeAndSectionID<T, M[number]>,
-                                          keyof typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs
-                                      >][number][]
-                                    : never
+                                value: HasNullSection extends true ?
+                                    (typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs)[Extract<
+                                        ConfigConstants.views.Ticks.TicksTabSectionModeFromTicksTabModeAndSectionID<T, M[number]>,
+                                        keyof typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs
+                                    >][number][]
+                                :   never
                             ) {
                                 if ((this.modes as M[number][]).includes(null as any)) {
                                     this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
@@ -1202,16 +1246,16 @@ namespace exports {
                                     });
                                 }
                             }
-                            public abstract readonly sections: HasNonNullSection extends true
-                                ? DeepSubConfig<any> & {
-                                      [K in NonNullable<M[number]>]: DeepSubConfig<any> & {
-                                          columns: (typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs)[Extract<
-                                              ConfigConstants.views.Ticks.TicksTabSectionModeFromTicksTabModeAndSectionID<T, NonNullable<M[number]>>,
-                                              keyof typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs
-                                          >][number][];
-                                      };
-                                  }
-                                : never;
+                            public abstract readonly sections: HasNonNullSection extends true ?
+                                DeepSubConfig<any> & {
+                                    [K in NonNullable<M[number]>]: DeepSubConfig<any> & {
+                                        columns: (typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs)[Extract<
+                                            ConfigConstants.views.Ticks.TicksTabSectionModeFromTicksTabModeAndSectionID<T, NonNullable<M[number]>>,
+                                            keyof typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs
+                                        >][number][];
+                                    };
+                                }
+                            :   never;
                         }
                         return TicksViewConfig_ModeSettings_SubConfig;
                     })();
@@ -1335,23 +1379,26 @@ namespace exports {
                     public static readonly [subConfigClassSymbol] = (() => {
                         abstract class TickingAreasViewConfig_ModeSettings_SubConfig<
                             T extends ConfigConstants.views.TickingAreas.TickingAreasTabMode,
-                            M extends (typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToSectionIDs)[T] = (typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToSectionIDs)[T],
+                            M extends (typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToSectionIDs)[T] =
+                                (typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToSectionIDs)[T],
                             HasNullSection extends null extends M[number] ? true : false = null extends M[number] ? true : false,
-                            HasNonNullSection extends Extract<M[number], string> extends never ? false : true = Extract<M[number], string> extends never
-                                ? false
-                                : true
+                            HasNonNullSection extends Extract<M[number], string> extends never ? false : true = Extract<M[number], string> extends never ? false
+                            :   true,
                         > extends DeepSubConfig<TickingAreasViewConfig_ModeSettings> {
                             public readonly modes: M;
-                            public constructor(config: TickingAreasViewConfig_ModeSettings, public readonly mode: T) {
+                            public constructor(
+                                config: TickingAreasViewConfig_ModeSettings,
+                                public readonly mode: T
+                            ) {
                                 super(config);
                                 this.modes = ConfigConstants.views.TickingAreas.tickingAreasTabModeToSectionIDs[mode] as M;
                             }
-                            public get columns(): HasNullSection extends true
-                                ? (typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToColumnIDs)[Extract<
-                                      ConfigConstants.views.TickingAreas.TickingAreasTabSectionModeFromTickingAreasTabModeAndSectionID<T, M[number]>,
-                                      keyof typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToColumnIDs
-                                  >][number][]
-                                : never {
+                            public get columns(): HasNullSection extends true ?
+                                (typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToColumnIDs)[Extract<
+                                    ConfigConstants.views.TickingAreas.TickingAreasTabSectionModeFromTickingAreasTabModeAndSectionID<T, M[number]>,
+                                    keyof typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToColumnIDs
+                                >][number][]
+                            :   never {
                                 if ((this.modes as M[number][]).includes(null)) {
                                     return ((
                                         this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views
@@ -1368,12 +1415,12 @@ namespace exports {
                                 }
                             }
                             public set columns(
-                                value: HasNullSection extends true
-                                    ? (typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToColumnIDs)[Extract<
-                                          ConfigConstants.views.TickingAreas.TickingAreasTabSectionModeFromTickingAreasTabModeAndSectionID<T, M[number]>,
-                                          keyof typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToColumnIDs
-                                      >][number][]
-                                    : never
+                                value: HasNullSection extends true ?
+                                    (typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToColumnIDs)[Extract<
+                                        ConfigConstants.views.TickingAreas.TickingAreasTabSectionModeFromTickingAreasTabModeAndSectionID<T, M[number]>,
+                                        keyof typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToColumnIDs
+                                    >][number][]
+                                :   never
                             ) {
                                 if ((this.modes as M[number][]).includes(null)) {
                                     this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
@@ -1381,26 +1428,26 @@ namespace exports {
                                     });
                                 }
                             }
-                            public abstract readonly sections: HasNonNullSection extends true
-                                ? DeepSubConfig<any> & {
-                                      [K in NonNullable<M[number]>]: DeepSubConfig<any> & {
-                                          columns: (typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToColumnIDs)[Extract<
-                                              ConfigConstants.views.TickingAreas.TickingAreasTabSectionModeFromTickingAreasTabModeAndSectionID<
-                                                  T,
-                                                  NonNullable<M[number]>
-                                              >,
-                                              keyof typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToColumnIDs
-                                          >][number][];
-                                      };
-                                  }
-                                : never;
+                            public abstract readonly sections: HasNonNullSection extends true ?
+                                DeepSubConfig<any> & {
+                                    [K in NonNullable<M[number]>]: DeepSubConfig<any> & {
+                                        columns: (typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToColumnIDs)[Extract<
+                                            ConfigConstants.views.TickingAreas.TickingAreasTabSectionModeFromTickingAreasTabModeAndSectionID<
+                                                T,
+                                                NonNullable<M[number]>
+                                            >,
+                                            keyof typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToColumnIDs
+                                        >][number][];
+                                    };
+                                }
+                            :   never;
                         }
                         return TickingAreasViewConfig_ModeSettings_SubConfig;
                     })();
                     public readonly simple = new (class TickingAreasViewConfig_ModeSettings_simple extends TickingAreasViewConfig_ModeSettings[
                         subConfigClassSymbol
                     ]<"simple"> {
-                        public declare readonly sections: never;
+                        declare public readonly sections: never;
                     })(this, "simple");
                 }
                 return TickingAreasViewConfig_ModeSettings;
@@ -1423,23 +1470,26 @@ namespace exports {
                     public static readonly [subConfigClassSymbol] = (() => {
                         abstract class StructuresViewConfig_ModeSettings_SubConfig<
                             T extends ConfigConstants.views.Structures.StructuresTabMode,
-                            M extends (typeof ConfigConstants.views.Structures.structuresTabModeToSectionIDs)[T] = (typeof ConfigConstants.views.Structures.structuresTabModeToSectionIDs)[T],
+                            M extends (typeof ConfigConstants.views.Structures.structuresTabModeToSectionIDs)[T] =
+                                (typeof ConfigConstants.views.Structures.structuresTabModeToSectionIDs)[T],
                             HasNullSection extends null extends M[number] ? true : false = null extends M[number] ? true : false,
-                            HasNonNullSection extends Extract<M[number], string> extends never ? false : true = Extract<M[number], string> extends never
-                                ? false
-                                : true
+                            HasNonNullSection extends Extract<M[number], string> extends never ? false : true = Extract<M[number], string> extends never ? false
+                            :   true,
                         > extends DeepSubConfig<StructuresViewConfig_ModeSettings> {
                             public readonly modes: M;
-                            public constructor(config: StructuresViewConfig_ModeSettings, public readonly mode: T) {
+                            public constructor(
+                                config: StructuresViewConfig_ModeSettings,
+                                public readonly mode: T
+                            ) {
                                 super(config);
                                 this.modes = ConfigConstants.views.Structures.structuresTabModeToSectionIDs[mode] as M;
                             }
-                            public get columns(): HasNullSection extends true
-                                ? (typeof ConfigConstants.views.Structures.structuresTabModeToColumnIDs)[Extract<
-                                      ConfigConstants.views.Structures.StructuresTabSectionModeFromStructuresTabModeAndSectionID<T, M[number]>,
-                                      keyof typeof ConfigConstants.views.Structures.structuresTabModeToColumnIDs
-                                  >][number][]
-                                : never {
+                            public get columns(): HasNullSection extends true ?
+                                (typeof ConfigConstants.views.Structures.structuresTabModeToColumnIDs)[Extract<
+                                    ConfigConstants.views.Structures.StructuresTabSectionModeFromStructuresTabModeAndSectionID<T, M[number]>,
+                                    keyof typeof ConfigConstants.views.Structures.structuresTabModeToColumnIDs
+                                >][number][]
+                            :   never {
                                 if ((this.modes as M[number][]).includes(null)) {
                                     return ((
                                         this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views
@@ -1456,12 +1506,12 @@ namespace exports {
                                 }
                             }
                             public set columns(
-                                value: HasNullSection extends true
-                                    ? (typeof ConfigConstants.views.Structures.structuresTabModeToColumnIDs)[Extract<
-                                          ConfigConstants.views.Structures.StructuresTabSectionModeFromStructuresTabModeAndSectionID<T, M[number]>,
-                                          keyof typeof ConfigConstants.views.Structures.structuresTabModeToColumnIDs
-                                      >][number][]
-                                    : never
+                                value: HasNullSection extends true ?
+                                    (typeof ConfigConstants.views.Structures.structuresTabModeToColumnIDs)[Extract<
+                                        ConfigConstants.views.Structures.StructuresTabSectionModeFromStructuresTabModeAndSectionID<T, M[number]>,
+                                        keyof typeof ConfigConstants.views.Structures.structuresTabModeToColumnIDs
+                                    >][number][]
+                                :   never
                             ) {
                                 if ((this.modes as M[number][]).includes(null)) {
                                     this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
@@ -1469,26 +1519,26 @@ namespace exports {
                                     });
                                 }
                             }
-                            public abstract readonly sections: HasNonNullSection extends true
-                                ? DeepSubConfig<any> & {
-                                      [K in NonNullable<M[number]>]: DeepSubConfig<any> & {
-                                          columns: (typeof ConfigConstants.views.Structures.structuresTabModeToColumnIDs)[Extract<
-                                              ConfigConstants.views.Structures.StructuresTabSectionModeFromStructuresTabModeAndSectionID<
-                                                  T,
-                                                  NonNullable<M[number]>
-                                              >,
-                                              keyof typeof ConfigConstants.views.Structures.structuresTabModeToColumnIDs
-                                          >][number][];
-                                      };
-                                  }
-                                : never;
+                            public abstract readonly sections: HasNonNullSection extends true ?
+                                DeepSubConfig<any> & {
+                                    [K in NonNullable<M[number]>]: DeepSubConfig<any> & {
+                                        columns: (typeof ConfigConstants.views.Structures.structuresTabModeToColumnIDs)[Extract<
+                                            ConfigConstants.views.Structures.StructuresTabSectionModeFromStructuresTabModeAndSectionID<
+                                                T,
+                                                NonNullable<M[number]>
+                                            >,
+                                            keyof typeof ConfigConstants.views.Structures.structuresTabModeToColumnIDs
+                                        >][number][];
+                                    };
+                                }
+                            :   never;
                         }
                         return StructuresViewConfig_ModeSettings_SubConfig;
                     })();
                     public readonly simple = new (class StructuresViewConfig_ModeSettings_simple extends StructuresViewConfig_ModeSettings[
                         subConfigClassSymbol
                     ]<"simple"> {
-                        public declare readonly sections: never;
+                        declare public readonly sections: never;
                     })(this, "simple");
                 }
                 return StructuresViewConfig_ModeSettings;
@@ -1515,6 +1565,11 @@ namespace exports {
     const subConfigValueClasses = [VolumeConfig, ViewsConfig, DeepSubConfig] as const;
 
     export namespace ConfigConstants {
+        export type IntegrationId = (keyof typeof import("../../app/integrations/index.ts").integrations);
+        export const AutoApplySupportedIntegrationIds = [
+            "WorldEdit_Bedrock",
+        ] as const satisfies IntegrationId[];
+        export type AutoApplySupportedIntegrationId = (typeof AutoApplySupportedIntegrationIds)[number];
         export const debugOverlayModeList = ["none", "top", "basic", "config", "config_views", "tab"] as const;
         export const debugOverlayModes = {
             none: "Off",
@@ -1609,9 +1664,11 @@ namespace exports {
 
                 export type PlayersTabSectionModeFromPlayersTabModeAndSectionID<
                     M extends PlayersTabMode,
-                    S extends (typeof playersTabModeToSectionIDs)[M][number]
+                    S extends (typeof playersTabModeToSectionIDs)[M][number],
                 > = Extract<
-                    S extends null ? M : null extends S ? M | `${M}_${NonNullable<S>}` : `${M}_${NonNullable<S>}`,
+                    S extends null ? M
+                    : null extends S ? M | `${M}_${NonNullable<S>}`
+                    : `${M}_${NonNullable<S>}`,
                     keyof typeof ConfigConstants.views.Players.playersTabModeToColumnIDs
                 >;
 
@@ -1620,9 +1677,9 @@ namespace exports {
                           [key in PlayersTabMode]: null extends (typeof playersTabModeToSectionIDs)[key][number] ? key : never;
                       }[PlayersTabMode]
                     | {
-                          [key in PlayersTabMode]: Exclude<(typeof playersTabModeToSectionIDs)[key][number], null> extends string
-                              ? `${key}_${Exclude<(typeof playersTabModeToSectionIDs)[key][number], null>}`
-                              : never;
+                          [key in PlayersTabMode]: Exclude<(typeof playersTabModeToSectionIDs)[key][number], null> extends string ?
+                              `${key}_${Exclude<(typeof playersTabModeToSectionIDs)[key][number], null>}`
+                          :   never;
                       }[PlayersTabMode];
 
                 export type PlayersTabModeToColumnType = { [key in PlayersTabSectionMode]: (typeof playersTabModeToColumnIDs)[key][number] };
@@ -1654,9 +1711,11 @@ namespace exports {
 
                 export type EntitiesTabSectionModeFromEntitiesTabModeAndSectionID<
                     M extends EntitiesTabMode,
-                    S extends (typeof entitiesTabModeToSectionIDs)[M][number]
+                    S extends (typeof entitiesTabModeToSectionIDs)[M][number],
                 > = Extract<
-                    S extends null ? M : null extends S ? M | `${M}_${NonNullable<S>}` : `${M}_${NonNullable<S>}`,
+                    S extends null ? M
+                    : null extends S ? M | `${M}_${NonNullable<S>}`
+                    : `${M}_${NonNullable<S>}`,
                     keyof typeof ConfigConstants.views.Entities.entitiesTabModeToColumnIDs
                 >;
 
@@ -1665,9 +1724,9 @@ namespace exports {
                           [key in EntitiesTabMode]: null extends (typeof entitiesTabModeToSectionIDs)[key][number] ? key : never;
                       }[EntitiesTabMode]
                     | {
-                          [key in EntitiesTabMode]: Exclude<(typeof entitiesTabModeToSectionIDs)[key][number], null> extends string
-                              ? `${key}_${Exclude<(typeof entitiesTabModeToSectionIDs)[key][number], null>}`
-                              : never;
+                          [key in EntitiesTabMode]: Exclude<(typeof entitiesTabModeToSectionIDs)[key][number], null> extends string ?
+                              `${key}_${Exclude<(typeof entitiesTabModeToSectionIDs)[key][number], null>}`
+                          :   never;
                       }[EntitiesTabMode];
 
                 export type EntitiesTabModeToColumnType = { [key in EntitiesTabSectionMode]: (typeof entitiesTabModeToColumnIDs)[key][number] };
@@ -1702,9 +1761,11 @@ namespace exports {
 
                 export type MapsTabSectionModeFromMapsTabModeAndSectionID<
                     M extends MapsTabMode,
-                    S extends (typeof mapsTabModeToSectionIDs)[M][number]
+                    S extends (typeof mapsTabModeToSectionIDs)[M][number],
                 > = Extract<
-                    S extends null ? M : null extends S ? M | `${M}_${NonNullable<S>}` : `${M}_${NonNullable<S>}`,
+                    S extends null ? M
+                    : null extends S ? M | `${M}_${NonNullable<S>}`
+                    : `${M}_${NonNullable<S>}`,
                     keyof typeof ConfigConstants.views.Maps.mapsTabModeToColumnIDs
                 >;
 
@@ -1713,9 +1774,9 @@ namespace exports {
                           [key in MapsTabMode]: null extends (typeof mapsTabModeToSectionIDs)[key][number] ? key : never;
                       }[MapsTabMode]
                     | {
-                          [key in MapsTabMode]: Exclude<(typeof mapsTabModeToSectionIDs)[key][number], null> extends string
-                              ? `${key}_${Exclude<(typeof mapsTabModeToSectionIDs)[key][number], null>}`
-                              : never;
+                          [key in MapsTabMode]: Exclude<(typeof mapsTabModeToSectionIDs)[key][number], null> extends string ?
+                              `${key}_${Exclude<(typeof mapsTabModeToSectionIDs)[key][number], null>}`
+                          :   never;
                       }[MapsTabMode];
 
                 export type MapsTabModeToColumnType = { [key in MapsTabSectionMode]: (typeof mapsTabModeToColumnIDs)[key][number] };
@@ -1742,9 +1803,11 @@ namespace exports {
 
                 export type TicksTabSectionModeFromTicksTabModeAndSectionID<
                     M extends TicksTabMode,
-                    S extends (typeof ticksTabModeToSectionIDs)[M][number]
+                    S extends (typeof ticksTabModeToSectionIDs)[M][number],
                 > = Extract<
-                    S extends null ? M : null extends S ? M | `${M}_${NonNullable<S>}` : `${M}_${NonNullable<S>}`,
+                    S extends null ? M
+                    : null extends S ? M | `${M}_${NonNullable<S>}`
+                    : `${M}_${NonNullable<S>}`,
                     keyof typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs
                 >;
 
@@ -1753,9 +1816,9 @@ namespace exports {
                           [key in TicksTabMode]: null extends (typeof ticksTabModeToSectionIDs)[key][number] ? key : never;
                       }[TicksTabMode]
                     | {
-                          [key in TicksTabMode]: Exclude<(typeof ticksTabModeToSectionIDs)[key][number], null> extends string
-                              ? `${key}_${Exclude<(typeof ticksTabModeToSectionIDs)[key][number], null>}`
-                              : never;
+                          [key in TicksTabMode]: Exclude<(typeof ticksTabModeToSectionIDs)[key][number], null> extends string ?
+                              `${key}_${Exclude<(typeof ticksTabModeToSectionIDs)[key][number], null>}`
+                          :   never;
                       }[TicksTabMode];
 
                 export type TicksTabModeToColumnType = { [key in TicksTabSectionMode]: (typeof ticksTabModeToColumnIDs)[key][number] };
@@ -1790,9 +1853,11 @@ namespace exports {
 
                 export type TickingAreasTabSectionModeFromTickingAreasTabModeAndSectionID<
                     M extends TickingAreasTabMode,
-                    S extends (typeof tickingAreasTabModeToSectionIDs)[M][number]
+                    S extends (typeof tickingAreasTabModeToSectionIDs)[M][number],
                 > = Extract<
-                    S extends null ? M : null extends S ? M | `${M}_${NonNullable<S>}` : `${M}_${NonNullable<S>}`,
+                    S extends null ? M
+                    : null extends S ? M | `${M}_${NonNullable<S>}`
+                    : `${M}_${NonNullable<S>}`,
                     keyof typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToColumnIDs
                 >;
 
@@ -1801,9 +1866,9 @@ namespace exports {
                           [key in TickingAreasTabMode]: null extends (typeof tickingAreasTabModeToSectionIDs)[key][number] ? key : never;
                       }[TickingAreasTabMode]
                     | {
-                          [key in TickingAreasTabMode]: Exclude<(typeof tickingAreasTabModeToSectionIDs)[key][number], null> extends string
-                              ? `${key}_${Exclude<(typeof tickingAreasTabModeToSectionIDs)[key][number], null>}`
-                              : never;
+                          [key in TickingAreasTabMode]: Exclude<(typeof tickingAreasTabModeToSectionIDs)[key][number], null> extends string ?
+                              `${key}_${Exclude<(typeof tickingAreasTabModeToSectionIDs)[key][number], null>}`
+                          :   never;
                       }[TickingAreasTabMode];
 
                 export type TickingAreasTabModeToColumnType = { [key in TickingAreasTabSectionMode]: (typeof tickingAreasTabModeToColumnIDs)[key][number] };
@@ -1836,9 +1901,11 @@ namespace exports {
 
                 export type StructuresTabSectionModeFromStructuresTabModeAndSectionID<
                     M extends StructuresTabMode,
-                    S extends (typeof structuresTabModeToSectionIDs)[M][number]
+                    S extends (typeof structuresTabModeToSectionIDs)[M][number],
                 > = Extract<
-                    S extends null ? M : null extends S ? M | `${M}_${NonNullable<S>}` : `${M}_${NonNullable<S>}`,
+                    S extends null ? M
+                    : null extends S ? M | `${M}_${NonNullable<S>}`
+                    : `${M}_${NonNullable<S>}`,
                     keyof typeof ConfigConstants.views.Structures.structuresTabModeToColumnIDs
                 >;
 
@@ -1847,9 +1914,9 @@ namespace exports {
                           [key in StructuresTabMode]: null extends (typeof structuresTabModeToSectionIDs)[key][number] ? key : never;
                       }[StructuresTabMode]
                     | {
-                          [key in StructuresTabMode]: Exclude<(typeof structuresTabModeToSectionIDs)[key][number], null> extends string
-                              ? `${key}_${Exclude<(typeof structuresTabModeToSectionIDs)[key][number], null>}`
-                              : never;
+                          [key in StructuresTabMode]: Exclude<(typeof structuresTabModeToSectionIDs)[key][number], null> extends string ?
+                              `${key}_${Exclude<(typeof structuresTabModeToSectionIDs)[key][number], null>}`
+                          :   never;
                       }[StructuresTabMode];
 
                 export type StructuresTabModeToColumnType = { [key in StructuresTabSectionMode]: (typeof structuresTabModeToColumnIDs)[key][number] };
@@ -1876,9 +1943,11 @@ namespace exports {
 
                 export type ViewFilesTabSectionModeFromViewFilesTabModeAndSectionID<
                     M extends ViewFilesTabMode,
-                    S extends (typeof viewFilesTabModeToSectionIDs)[M][number]
+                    S extends (typeof viewFilesTabModeToSectionIDs)[M][number],
                 > = Extract<
-                    S extends null ? M : null extends S ? M | `${M}_${NonNullable<S>}` : `${M}_${NonNullable<S>}`,
+                    S extends null ? M
+                    : null extends S ? M | `${M}_${NonNullable<S>}`
+                    : `${M}_${NonNullable<S>}`,
                     keyof typeof ConfigConstants.views.ViewFiles.viewFilesTabModeToColumnIDs
                 >;
 
@@ -1887,9 +1956,9 @@ namespace exports {
                           [key in ViewFilesTabMode]: null extends (typeof viewFilesTabModeToSectionIDs)[key][number] ? key : never;
                       }[ViewFilesTabMode]
                     | {
-                          [key in ViewFilesTabMode]: Exclude<(typeof viewFilesTabModeToSectionIDs)[key][number], null> extends string
-                              ? `${key}_${Exclude<(typeof viewFilesTabModeToSectionIDs)[key][number], null>}`
-                              : never;
+                          [key in ViewFilesTabMode]: Exclude<(typeof viewFilesTabModeToSectionIDs)[key][number], null> extends string ?
+                              `${key}_${Exclude<(typeof viewFilesTabModeToSectionIDs)[key][number], null>}`
+                          :   never;
                       }[ViewFilesTabMode];
 
                 export type ViewFilesTabModeToColumnType = { [key in ViewFilesTabSectionMode]: (typeof viewFilesTabModeToColumnIDs)[key][number] };

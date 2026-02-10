@@ -1,4 +1,4 @@
-import type { JSX, RefObject } from "preact";
+import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef, useState } from "preact/compat";
 import TreeEditor from "../components/TreeEditor";
 import {
@@ -284,7 +284,11 @@ export default function ViewFilesTab(props: ViewFilesTabProps): JSX.SpecificElem
                 errorElement.style.fontFamily = "monospace";
                 errorElement.style.whiteSpace = "pre";
                 errorElement.textContent =
-                    reason instanceof Error ? (reason.stack?.startsWith(reason.toString()) ? reason.stack : reason.toString() + reason.stack) : reason;
+                    reason instanceof Error ?
+                        reason.stack?.startsWith(reason.toString()) ?
+                            reason.stack
+                        :   reason.toString() + reason.stack
+                    :   reason;
                 containerRef.current.replaceChildren("Failed to load data:", errorElement);
             }
             console.error(reason);
@@ -489,7 +493,7 @@ async function getViewFilesTabContents(tab: TabManagerTab): Promise<JSX.Element>
                         contentType: key.contentType,
                         data: key,
                         searchableContents: [key.displayKey],
-                    } as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number])
+                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
             ),
         };
         async function updateTablesContents(reloadData: boolean): Promise<void> {
@@ -568,40 +572,41 @@ async function getViewFilesTabContents(tab: TabManagerTab): Promise<JSX.Element>
                                 data: key,
                                 searchableContents: [
                                     key.displayKey,
-                                    ...(key.value
-                                        ? [
-                                              key.valueType.type === "NBT"
-                                                  ? ((): string => {
-                                                        try {
-                                                            // return prettyPrintSNBT(prismarineToSNBT(key.value!), { indent: 0 });
-                                                            // Disable directly searching SNBT.
-                                                            return "";
-                                                        } catch {
-                                                            return "";
-                                                        }
-                                                    })()
-                                                  : typeof key.value !== "function" && typeof key.value !== "object" && typeof key.value !== "symbol"
-                                                  ? String(key.value)
-                                                  : "",
-                                          ]
-                                        : []),
+                                    ...(key.value ?
+                                        [
+                                            key.valueType.type === "NBT" ?
+                                                ((): string => {
+                                                    try {
+                                                        // return prettyPrintSNBT(prismarineToSNBT(key.value!), { indent: 0 });
+                                                        // Disable directly searching SNBT.
+                                                        return "";
+                                                    } catch {
+                                                        return "";
+                                                    }
+                                                })()
+                                            : typeof key.value !== "function" && typeof key.value !== "object" && typeof key.value !== "symbol" ?
+                                                String(key.value)
+                                            :   "",
+                                        ]
+                                    :   []),
                                 ],
                                 customDataFields: {
-                                    contents: key.value
-                                        ? key.valueType.type === "NBT"
-                                            ? ((): string | undefined => {
-                                                  try {
-                                                      return prettyPrintSNBT(prismarineToSNBT(key.value!), { indent: 0 });
-                                                  } catch {
-                                                      return undefined;
-                                                  }
-                                              })()
-                                            : typeof key.value !== "function" && typeof key.value !== "object" && typeof key.value !== "symbol"
-                                            ? String(key.value)
-                                            : undefined
-                                        : undefined,
+                                    contents:
+                                        key.value ?
+                                            key.valueType.type === "NBT" ?
+                                                ((): string | undefined => {
+                                                    try {
+                                                        return prettyPrintSNBT(prismarineToSNBT(key.value!), { indent: 0 });
+                                                    } catch {
+                                                        return undefined;
+                                                    }
+                                                })()
+                                            : typeof key.value !== "function" && typeof key.value !== "object" && typeof key.value !== "symbol" ?
+                                                String(key.value)
+                                            :   undefined
+                                        :   undefined,
                                 },
-                            } as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number])
+                            }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
                     );
                 }
                 tablesContents = await Promise.all(
@@ -610,26 +615,26 @@ async function getViewFilesTabContents(tab: TabManagerTab): Promise<JSX.Element>
                             getViewFilesTabContentsRows({
                                 tab,
                                 keys:
-                                    Object.keys(query).length > 1
-                                        ? await (async (): Promise<KeyData[]> => {
-                                              const iterator = tab.dbSearch!.serach(query, true);
-                                              let i: number = 0;
-                                              let t: number = Date.now();
-                                              const results: KeyData[] = [];
-                                              for (const value of iterator) {
-                                                  i++;
-                                                  if (t + 10 < Date.now()) {
-                                                      if (loadingScreenMessageContainerRef.current)
-                                                          loadingScreenMessageContainerRef.current.textContent = `Searching LevelDB: ${i}/${keys.length}...`;
-                                                      await sleep(10);
-                                                      t = Date.now();
-                                                  }
-                                                  if (!value) continue;
-                                                  results.push(value.originalObject.data);
-                                              }
-                                              return results;
-                                          })()
-                                        : keys,
+                                    Object.keys(query).length > 1 ?
+                                        await (async (): Promise<KeyData[]> => {
+                                            const iterator = tab.dbSearch!.serach(query, true);
+                                            let i: number = 0;
+                                            let t: number = Date.now();
+                                            const results: KeyData[] = [];
+                                            for (const value of iterator) {
+                                                i++;
+                                                if (t + 10 < Date.now()) {
+                                                    if (loadingScreenMessageContainerRef.current)
+                                                        loadingScreenMessageContainerRef.current.textContent = `Searching LevelDB: ${i}/${keys.length}...`;
+                                                    await sleep(10);
+                                                    t = Date.now();
+                                                }
+                                                if (!value) continue;
+                                                results.push(value.originalObject.data);
+                                            }
+                                            return results;
+                                        })()
+                                    :   keys,
                                 dynamicProperties,
                             })
                     )
@@ -960,9 +965,9 @@ async function getViewFilesTabContents(tab: TabManagerTab): Promise<JSX.Element>
                                                 .map((v2): string => v2.value);
                                             showError({
                                                 message: `Unknown content type: ${contentType}, did you mean ${
-                                                    suggestionVals.length === 2
-                                                        ? `${suggestionVals[0]!} or ${suggestionVals[1]!}`
-                                                        : `${suggestionVals.slice(0, -1).join(", ")}, or ${suggestionVals.at(-1)!}`
+                                                    suggestionVals.length === 2 ?
+                                                        `${suggestionVals[0]!} or ${suggestionVals[1]!}`
+                                                    :   `${suggestionVals.slice(0, -1).join(", ")}, or ${suggestionVals.at(-1)!}`
                                                 }?`,
                                             });
                                         } else {
@@ -1102,7 +1107,7 @@ async function getViewFilesTabContentsRows(data: {
             <tr
                 onDblClick={(): void => {
                     data.tab.openTab({
-                        // TO-DO: In the future, add support for getting their skin head or profile picture.
+                        // TODO: In the future, add support for getting their skin head or profile picture.
                         contentType: key.contentType,
                         icon: "auto",
                         name: key.displayKey,
@@ -1112,6 +1117,23 @@ async function getViewFilesTabContentsRows(data: {
                             key: key.rawKey,
                         },
                     });
+                }}
+                onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                    if (event.button !== 1) return;
+                    data.tab.openTab(
+                        {
+                            // TODO: In the future, add support for getting their skin head or profile picture.
+                            contentType: key.contentType,
+                            icon: "auto",
+                            name: key.displayKey,
+                            parentTab: data.tab,
+                            target: {
+                                type: "LevelDBEntry",
+                                key: key.rawKey,
+                            },
+                        },
+                        false
+                    );
                 }}
             >
                 {columns.map((column: (typeof columns)[number]): JSX.Element => {

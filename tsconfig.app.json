@@ -30,7 +30,8 @@
         "noUncheckedIndexedAccess": true,
         "checkJs": true,
         "allowJs": true,
-        "esModuleInterop": true
+        "esModuleInterop": true,
+        "exactOptionalPropertyTypes": true
     },
     "include": ["src", "./app/renderer.tsx", "app"],
     "exclude": ["deprecated/*", "*.asar"]

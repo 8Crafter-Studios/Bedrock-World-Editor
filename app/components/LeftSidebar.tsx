@@ -1,6 +1,5 @@
 import type { JSX } from "preact";
 import _React, { render, useEffect } from "preact/compat";
-import { setActivePage } from "../app";
 
 export interface LeftSidebarProps {
     tab: TabManagerTab;
@@ -77,7 +76,7 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.SpecificElemen
                         //     if (event.currentTarget.hasAttribute("disabled")) return;
                         //     SoundEffects.popB();
                         // }}
-                        style={{ paddingRight: "1px", lineHeight: "1em", textAlign: "left" }}
+                        style={{ paddingRight: "1px", lineHeight: "1em", textAlign: "left", flexShrink: 0 }}
                     >
                         <div style="display: inline-block; vertical-align: middle; width: 36px; height: 36px; text-align: center;">
                             <img
@@ -133,9 +132,10 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.SpecificElemen
             { icon: "resource://images/ui/glyphs/realmPortalSmall.png", id: "portals", name: "Portals", resolution: 10 },
             { icon: "resource://images/ui/glyphs/timer.png", id: "ticks", name: "Ticks", resolution: 11 },
             { icon: "resource://images/ui/glyphs/timer.png", id: "ticking-areas", name: "Ticking Areas", resolution: 11 },
-            { icon: "resource://images/ui/glyphs/Slash-Command.png", id: "schedulerwt", name: "SchedulerWT", resolution: 12 },
+            { icon: "resource://images/ui/glyphs/icon_wandering_trader.png", id: "schedulerwt", name: "SchedulerWT", resolution: 16 },
             { icon: "resource://images/ui/glyphs/Folder-Closed.png", id: "view-files", name: "View Files", resolution: 12 },
             { icon: "resource://images/ui/glyphs/flame_full_image.png", id: "fun", name: "Fun", resolution: 13 },
+            { icon: "resource://images/ui/glyphs/Source.png", id: "integrations", name: "Integrations", resolution: 12 },
             // { icon: "resource://images/ui/glyphs/magnifyingGlass.png", id: "search", name: "Search", resolution: 12 },
             (props.tab.cachedDBKeys?.ForcedWorldCorruption?.length ?? 0) > 0 && {
                 icon: "resource://images/ui/glyphs/anvil-hammer.png",
@@ -146,7 +146,7 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.SpecificElemen
         ] as const satisfies (Tab | false | undefined)[]
     ).filter((tab: Tab | false | undefined): tab is Tab => !!tab) as Tab[];
     return (
-        <div style="display: flex; flex-direction: column; height: 100%; width: 200px;" id="left_sidebar">
+        <div style="display: flex; flex-direction: column; height: 100%; width: 200px; overflow: hidden auto;" id="left_sidebar">
             {tabs.map(
                 (tab: Tab): JSX.SpecificElement<"div"> => (
                     <div
@@ -156,7 +156,7 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.SpecificElemen
                         //     if (event.currentTarget.hasAttribute("disabled")) return;
                         //     SoundEffects.popB();
                         // }}
-                        style={{ paddingRight: "1px", lineHeight: "1em", textAlign: "left" }}
+                        style={{ paddingRight: "1px", lineHeight: "1em", textAlign: "left", flexShrink: 0 }}
                     >
                         <div style="display: inline-block; vertical-align: middle; width: 36px; height: 36px; text-align: center;">
                             <img

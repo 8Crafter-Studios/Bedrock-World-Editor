@@ -17,7 +17,7 @@ interface TreeEditorDataStorageObjectBase {
     };
 }
 
-export type TreeEditorDataStorageObjectInput = GenericDataStorageObject & Partial<TreeEditorDataStorageObjectBase>;
+export type TreeEditorDataStorageObjectInput = Partial<GenericDataStorageObject> & Partial<TreeEditorDataStorageObjectBase>;
 
 export type TreeEditorDataStorageObject = GenericDataStorageObject & TreeEditorDataStorageObjectBase;
 
@@ -68,13 +68,13 @@ export interface TreeEditorProps {
      *
      * @default false
      */
-    readonly?: boolean;
+    readonly?: boolean | undefined;
     /**
      * An optional overlay bar widget registry to allow the tree editor to register widgets for the overlay bar.
      *
      * @default undefined
      */
-    overlayBarRegistry?: EditorWidgetOverlayBarWidgetRegistry;
+    overlayBarRegistry?: EditorWidgetOverlayBarWidgetRegistry | undefined;
 }
 
 export type TreeEditorSupportedDataType = "NBTCompound" | "NBT" | "JSON";
@@ -126,9 +126,8 @@ Object.entries(treeEditorIcons).forEach(([key, value]) => {
             .then((response: Response): Promise<Blob> => response.blob())
             .then(
                 async (blob: Blob): Promise<void> =>
-                    void ((treeEditorIcons[key as keyof typeof treeEditorIcons][
-                        key2 as keyof (typeof treeEditorIcons)[keyof typeof treeEditorIcons]
-                    ] as any) = `data:${mime.lookup(value2)};base64,${Buffer.from(await blob.arrayBuffer()).toString("base64")}`)
+                    void ((treeEditorIcons[key as keyof typeof treeEditorIcons][key2 as keyof (typeof treeEditorIcons)[keyof typeof treeEditorIcons]] as any) =
+                        `data:${mime.lookup(value2)};base64,${Buffer.from(await blob.arrayBuffer()).toString("base64")}`)
             )
             .catch((): void => {});
     });
@@ -195,10 +194,9 @@ export default class TreeEditor extends React.Component<
             if (this.props.overlayBarRegistry) {
                 this.props.overlayBarRegistry.registerWidget(
                     <div class="widget-overlay tabbed-selector float-right" style={{ float: "right" }}>
-                        {this.props.dataStorageObject.dataType === "JSON" ? (
+                        {this.props.dataStorageObject.dataType === "JSON" ?
                             <></>
-                        ) : (
-                            <>
+                        :   <>
                                 <button
                                     type="button"
                                     title="Byte"
@@ -212,7 +210,7 @@ export default class TreeEditor extends React.Component<
                                             ".treeEditorTreeNodeHeader.selected"
                                         )[0];
                                         if (!headerElement) return;
-                                        // TO-DO
+                                        // TODO
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.byte}
@@ -232,7 +230,7 @@ export default class TreeEditor extends React.Component<
                                             ".treeEditorTreeNodeHeader.selected"
                                         )[0];
                                         if (!headerElement) return;
-                                        // TO-DO
+                                        // TODO
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.short}
@@ -252,7 +250,7 @@ export default class TreeEditor extends React.Component<
                                             ".treeEditorTreeNodeHeader.selected"
                                         )[0];
                                         if (!headerElement) return;
-                                        // TO-DO
+                                        // TODO
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.int}
@@ -272,7 +270,7 @@ export default class TreeEditor extends React.Component<
                                             ".treeEditorTreeNodeHeader.selected"
                                         )[0];
                                         if (!headerElement) return;
-                                        // TO-DO
+                                        // TODO
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.long}
@@ -292,7 +290,7 @@ export default class TreeEditor extends React.Component<
                                             ".treeEditorTreeNodeHeader.selected"
                                         )[0];
                                         if (!headerElement) return;
-                                        // TO-DO
+                                        // TODO
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.float}
@@ -312,7 +310,7 @@ export default class TreeEditor extends React.Component<
                                             ".treeEditorTreeNodeHeader.selected"
                                         )[0];
                                         if (!headerElement) return;
-                                        // TO-DO
+                                        // TODO
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.double}
@@ -332,7 +330,7 @@ export default class TreeEditor extends React.Component<
                                             ".treeEditorTreeNodeHeader.selected"
                                         )[0];
                                         if (!headerElement) return;
-                                        // TO-DO
+                                        // TODO
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.byteArray}
@@ -352,7 +350,7 @@ export default class TreeEditor extends React.Component<
                                             ".treeEditorTreeNodeHeader.selected"
                                         )[0];
                                         if (!headerElement) return;
-                                        // TO-DO
+                                        // TODO
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.shortArray}
@@ -372,7 +370,7 @@ export default class TreeEditor extends React.Component<
                                             ".treeEditorTreeNodeHeader.selected"
                                         )[0];
                                         if (!headerElement) return;
-                                        // TO-DO
+                                        // TODO
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.intArray}
@@ -392,7 +390,7 @@ export default class TreeEditor extends React.Component<
                                             ".treeEditorTreeNodeHeader.selected"
                                         )[0];
                                         if (!headerElement) return;
-                                        // TO-DO
+                                        // TODO
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.longArray}
@@ -412,7 +410,7 @@ export default class TreeEditor extends React.Component<
                                             ".treeEditorTreeNodeHeader.selected"
                                         )[0];
                                         if (!headerElement) return;
-                                        // TO-DO
+                                        // TODO
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.list}
@@ -432,7 +430,7 @@ export default class TreeEditor extends React.Component<
                                             ".treeEditorTreeNodeHeader.selected"
                                         )[0];
                                         if (!headerElement) return;
-                                        // TO-DO
+                                        // TODO
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.compound}
@@ -440,7 +438,7 @@ export default class TreeEditor extends React.Component<
                                     <img src={treeEditorIcons.NBT.compound} style={{ width: "16px", imageRendering: "pixelated" }} aria-hidden="true" />
                                 </button>
                             </>
-                        )}
+                        }
                     </div>,
                     widgetId,
                     -1,
@@ -576,7 +574,7 @@ export default class TreeEditor extends React.Component<
                         .reduce((value: any, property: string): any => value?.[property], dataStorageObject.data);
                     if (!(nameTextBoxRef.current.defaultValue in parentObject)) return;
                     if (nameTextBoxRef.current.value in parentObject) {
-                        // TO-DO: Add a popup warning to config if they want to overwrite the property with the same name.
+                        // TODO: Add a popup warning to config if they want to overwrite the property with the same name.
                         console.error("Property name already exists");
                         return;
                     }
@@ -647,7 +645,7 @@ export default class TreeEditor extends React.Component<
                             try {
                                 newValue = BigInt(valueTextBoxRef.current.value);
                             } catch (e) {
-                                // TO-DO: Add a popup warning that they entered invalid input.
+                                // TODO: Add a popup warning that they entered invalid input.
                                 console.error(e);
                                 return;
                             }
@@ -655,7 +653,7 @@ export default class TreeEditor extends React.Component<
                         case "number":
                             newValue = Number(valueTextBoxRef.current.value);
                             if (isNaN(newValue)) {
-                                // TO-DO: Add a popup warning that they entered invalid input.
+                                // TODO: Add a popup warning that they entered invalid input.
                                 console.error("Invalid number input, result is NaN.");
                                 return;
                             }
@@ -667,13 +665,13 @@ export default class TreeEditor extends React.Component<
                             try {
                                 newValue = toLongParts(BigInt(valueTextBoxRef.current.value));
                             } catch (e) {
-                                // TO-DO: Add a popup warning that they entered invalid input.
+                                // TODO: Add a popup warning that they entered invalid input.
                                 console.error(e);
                                 return;
                             }
                             break;
                         case "never":
-                            // TO-DO: Add a popup warning that something went wrong.
+                            // TODO: Add a popup warning that something went wrong.
                             console.error(`Error saving new node value, value type ${JSON.stringify(type)} is not allowed to have its value directly edited.`);
                             return;
                     }
@@ -784,22 +782,20 @@ export default class TreeEditor extends React.Component<
                                 .slice(0, -1)
                                 .reduce((value: any, property: string): any => value[property], this.props.dataStorageObject.data);
                             type =
-                                parentValue.type === "byteArray"
-                                    ? "byte"
-                                    : parentValue.type === "shortArray"
-                                    ? "short"
-                                    : parentValue.type === "intArray"
-                                    ? "int"
-                                    : parentValue.type === "longArray"
-                                    ? "long"
-                                    : parentValue.type;
+                                parentValue.type === "byteArray" ? "byte"
+                                : parentValue.type === "shortArray" ? "short"
+                                : parentValue.type === "intArray" ? "int"
+                                : parentValue.type === "longArray" ? "long"
+                                : parentValue.type;
                             isDirectType =
-                                parentValue.type === "byteArray" ||
-                                parentValue.type === "shortArray" ||
-                                parentValue.type === "intArray" ||
-                                parentValue.type === "longArray"
-                                    ? true
-                                    : isDirectType;
+                                (
+                                    parentValue.type === "byteArray" ||
+                                    parentValue.type === "shortArray" ||
+                                    parentValue.type === "intArray" ||
+                                    parentValue.type === "longArray"
+                                ) ?
+                                    true
+                                :   isDirectType;
                         }
                     } else if (
                         typeof value === "object" &&
@@ -829,22 +825,20 @@ export default class TreeEditor extends React.Component<
                                 .slice(0, -2)
                                 .reduce((value: any, property: string): any => value[property], this.props.dataStorageObject.data);
                             type =
-                                parentParentValue.type === "byteArray"
-                                    ? "byte"
-                                    : parentParentValue.type === "shortArray"
-                                    ? "short"
-                                    : parentParentValue.type === "intArray"
-                                    ? "int"
-                                    : parentParentValue.type === "longArray"
-                                    ? "long"
-                                    : parentParentValue.type;
+                                parentParentValue.type === "byteArray" ? "byte"
+                                : parentParentValue.type === "shortArray" ? "short"
+                                : parentParentValue.type === "intArray" ? "int"
+                                : parentParentValue.type === "longArray" ? "long"
+                                : parentParentValue.type;
                             isDirectType =
-                                parentParentValue.type === "byteArray" ||
-                                parentParentValue.type === "shortArray" ||
-                                parentParentValue.type === "intArray" ||
-                                parentParentValue.type === "longArray"
-                                    ? true
-                                    : isDirectType;
+                                (
+                                    parentParentValue.type === "byteArray" ||
+                                    parentParentValue.type === "shortArray" ||
+                                    parentParentValue.type === "intArray" ||
+                                    parentParentValue.type === "longArray"
+                                ) ?
+                                    true
+                                :   isDirectType;
                         }
                     }
                     break;
@@ -984,9 +978,9 @@ export default class TreeEditor extends React.Component<
                         index: number,
                         array: string[]
                     ): { data?: Record<string, any>; value?: boolean } | boolean =>
-                        !value
-                            ? false
-                            : value === true || (index === array.length - 1 ? value.data?.[property]?.value ?? false : value.data?.[property] ?? false),
+                        !value ? false : (
+                            value === true || (index === array.length - 1 ? (value.data?.[property]?.value ?? false) : (value.data?.[property] ?? false))
+                        ),
                     this.props.dataStorageObject.treeEditor.expansionData ?? {}
                 ) === true;
             let displayValue: string | undefined = undefined;
@@ -1036,7 +1030,8 @@ export default class TreeEditor extends React.Component<
             const children = expanded ? getChildren() : undefined;
             const childrenRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
             return (
-                <div class="treeEditorTreeNode" ref={props.containerRef}>
+                <div class="treeEditorTreeNode" ref={props.containerRef!}>
+                    {/* HACK: Passing undefined here may actually be bad, look into this at some point. */}
                     <div
                         class="treeEditorTreeNodeHeader"
                         onClick={(event: JSX.TargetedMouseEvent<HTMLDivElement>): void => {
@@ -1141,11 +1136,10 @@ export default class TreeEditor extends React.Component<
                                             autoCorrect="false"
                                             spellcheck={false}
                                             inputMode={
-                                                (["byte", "short", "int", "long"] as (typeof type)[]).includes(type)
-                                                    ? "numeric"
-                                                    : (["float", "double"] as (typeof type)[]).includes(type)
-                                                    ? "decimal"
-                                                    : "text" // Type number uses text input mode because it needs to allow for exponentional notation.
+                                                (["byte", "short", "int", "long"] as (typeof type)[]).includes(type) ? "numeric"
+                                                : (["float", "double"] as (typeof type)[]).includes(type) ?
+                                                    "decimal"
+                                                :   "text" // Type number uses text input mode because it needs to allow for exponentional notation.
                                             }
                                             value={props.name}
                                             defaultValue={props.name}
@@ -1186,11 +1180,10 @@ export default class TreeEditor extends React.Component<
                                             autoCorrect="false"
                                             spellcheck={false}
                                             inputMode={
-                                                (["byte", "short", "int", "long"] as (typeof type)[]).includes(type)
-                                                    ? "numeric"
-                                                    : (["float", "double"] as (typeof type)[]).includes(type)
-                                                    ? "decimal"
-                                                    : "text" // Type number uses text input mode because it needs to allow for exponentional notation.
+                                                (["byte", "short", "int", "long"] as (typeof type)[]).includes(type) ? "numeric"
+                                                : (["float", "double"] as (typeof type)[]).includes(type) ?
+                                                    "decimal"
+                                                :   "text" // Type number uses text input mode because it needs to allow for exponentional notation.
                                             }
                                             value={displayValue}
                                             defaultValue={displayValue}

@@ -124,7 +124,7 @@ export default function SNBTEditor(props: SNBTEditorProps): JSX.Element {
             onMount={handleEditorDidMount}
             options={{
                 readOnly: props.readonly || !dataLoaded,
-                readOnlyMessage: props.readonly ? props.readonlyMessage : !dataLoaded ? { value: "Data is not loaded." } : undefined,
+                readOnlyMessage: props.readonly ? props.readonlyMessage! : !dataLoaded ? { value: "Data is not loaded." } : undefined!,
                 tabSize: 4,
                 bracketPairColorization: { enabled: true },
                 automaticLayout: true,

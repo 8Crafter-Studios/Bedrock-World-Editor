@@ -1,4 +1,4 @@
-import type { JSX, RefObject } from "preact";
+import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef, useState } from "preact/compat";
 import TreeEditor from "../components/TreeEditor";
 import {
@@ -76,11 +76,160 @@ const structuresTabSearchSyntax: SearchSyntaxHelpInfo = {
         dbkey: {
             description: "Searches the human-readable LevelDB key (the one displayed in the DB Key column) for the text.",
         },
-        // TO-DO
+        structureid: {
+            description: "Searches the structure ID for the text.",
+        },
+        // TODO
         contents: {
             description: "Searches the LevelDB entry value as SNBT.",
         },
-        nbt: viewFilesTabSearchSyntax.filters.nbt!,
+        nbt: {
+            description:
+                "Searches the NBT data of entries.",
+            extendedDescription: (
+                <>
+                    <p>
+                        Searches the NBT data of entries.
+                    </p>
+                    <p>
+                        Syntax:
+                        <code>nbt:StringifiedNBTFilterJSON</code>
+                        <br />
+                        <br />
+                        <code>StringifiedNBTFilterJSON</code> Type:
+                        <br />
+                        <br />
+                        <code class="multiline">{`{
+    /**
+     * The path to the tag, as it would be in SNBT, not as it is in Prismarine JSON-NBT.
+     *
+     * @default undefined
+     */
+    path?: string[];
+    /**
+     * Whether or not the path should be case-sensitive.
+     *
+     * @default true
+     */
+    caseSensitivePath?: boolean;
+    /**
+     * The key of the tag.
+     *
+     * @default undefined
+     */
+    key?: string;
+    /**
+     * Whether or not the key should be case-sensitive.
+     *
+     * @default true
+     */
+    caseSensitiveKey?: boolean;
+    /**
+     * The type of the tag.
+     *
+     * @default undefined
+     */
+    tagType?: "byte" | "short" | "int" | "long" | "float" | "double" | "string" | "list" | "compound" | "byteArray" | "shortArray" | "intArray" | "longArray";
+    /**
+     * The value of the tag.
+     *
+     * Will be converted to a string before comparison, this can only match byte, short, int, long, float, double, and string tags.
+     *
+     * @default undefined
+     */
+    value?: string | number | bigint;
+    /**
+     * Whether or not the value should be case-sensitive.
+     *
+     * @default true
+     */
+    caseSensitiveValue?: boolean;
+}`}</code>
+                    </p>
+                    <h2>Supported Prefix Operators</h2>
+                    <ul>
+                        <li>"|" - Any Of</li>
+                        <li>"-" - None Of</li>
+                        <li>"^" - One Of</li>
+                        <li>"&" - All Of</li>
+                    </ul>
+                    <p style={{ marginTop: 0 }}>
+                        <h2>Tips</h2>
+                        To generate the value for this filter, you can just run{" "}
+                        <code>{`console.log(\`nbt:\${JSON.stringify(JSON.stringify(NBTFilterJSON))}\`)`}</code> in the devtools console in this app, just press{" "}
+                        <code>F12</code> to open it (if you don't have an <code>F12</code> key, hold down <code>Left Shift</code> and <code>Left Control</code>,
+                        then click <code>Right Control</code> while still holding the other two keys, then press <code>i</code>).
+                        <br />
+                        Example: <code>{`console.log(\`nbt:\${JSON.stringify(JSON.stringify({ value: "minecraft:wheat_seeds" }))}\`)`}</code>
+                    </p>
+                </>
+            ),
+            examples: [
+                <p>
+                    <code>nbt:{JSON.stringify(JSON.stringify({ value: "minecraft:wheat_seeds" }))}</code> - Searches entries for NBT tags with a value of{" "}
+                    <code>minecraft:wheat_seeds</code>.
+                </p>,
+                <p>
+                    <code>|nbt:{JSON.stringify(JSON.stringify({ path: ["Item", "Name"], value: "minecraft:wheat_seeds" }))}</code> - Searches entries for an{" "}
+                    <code>Item</code> NBT tag at the root of the entry with a <code>Name</code> tag with a value of <code>minecraft:wheat_seeds</code>.
+                </p>,
+                <p>
+                    <code>
+                        nbt:{JSON.stringify(JSON.stringify({ path: ["Rotation", "0"], value: 0 }))} nbt:
+                        {JSON.stringify(JSON.stringify({ path: ["Rotation", "1"], value: "0" }))}
+                    </code>{" "}
+                    - Searches entries for a <code>Rotation</code> NBT tag at the root of the entry with NBT tags at indices <code>0</code> and <code>1</code>{" "}
+                    of that tag with at least one having a value of <code>0</code>.
+                </p>,
+                <p>
+                    <code>
+                        nbt:{JSON.stringify(JSON.stringify({ path: ["Rotation", "0"], value: 0 }))} |nbt:
+                        {JSON.stringify(JSON.stringify({ path: ["Rotation", "1"], value: "0" }))}
+                    </code>{" "}
+                    - Searches entries for a <code>Rotation</code> NBT tag at the root of the entry with NBT tags at indices <code>0</code> and <code>1</code>{" "}
+                    of that tag with at least one having a value of <code>0</code>.
+                </p>,
+                <p>
+                    <code>
+                        |nbt:{JSON.stringify(JSON.stringify({ path: ["Rotation", "0"], value: 0 }))} |nbt:
+                        {JSON.stringify(JSON.stringify({ path: ["Rotation", "1"], value: "0" }))}
+                    </code>{" "}
+                    - Searches entries for a <code>Rotation</code> NBT tag at the root of the entry with NBT tags at indices <code>0</code> and <code>1</code>{" "}
+                    of that tag with at least one having a value of <code>0</code>.
+                </p>,
+                <p>
+                    <code>
+                        ^nbt:{JSON.stringify(JSON.stringify({ path: ["Rotation", "0"], value: 0 }))} ^nbt:
+                        {JSON.stringify(JSON.stringify({ path: ["Rotation", "1"], value: "0" }))}
+                    </code>{" "}
+                    - Searches entries for a <code>Rotation</code> NBT tag at the root of the entry with NBT tags at indices <code>0</code> and <code>1</code>{" "}
+                    of that tag exactly one having a value of <code>0</code>.
+                </p>,
+                <p>
+                    <code>
+                        &nbt:{JSON.stringify(JSON.stringify({ path: ["Rotation", "0"], value: 0 }))} &nbt:
+                        {JSON.stringify(JSON.stringify({ path: ["Rotation", "1"], value: "0" }))}
+                    </code>{" "}
+                    - Searches entries for a <code>Rotation</code> NBT tag at the root of the entry with NBT tags at indices <code>0</code> and <code>1</code>{" "}
+                    of that tag with values of <code>0</code>.
+                </p>,
+                <p>
+                    <code>nbt:{JSON.stringify(JSON.stringify({ key: ["0"], value: 0 }))}</code> - Searches entries for NBT tags with keys of <code>0</code> (ex.
+                    a property in a compound with a key of <code>0</code>, or the first item in a list) with values of <code>0</code>.
+                </p>,
+                <p>
+                    <code>^nbt:{JSON.stringify(JSON.stringify({ key: ["0"], value: 0 }))}</code> - Searches for entries that don't have NBT tags with keys of{" "}
+                    <code>0</code> with values of <code>0</code>.
+                </p>,
+                <p>
+                    <code>
+                        ^nbt:{JSON.stringify(JSON.stringify({ value: "minecraft:wheat_seeds" }))} nbt:{JSON.stringify(JSON.stringify({ key: ["0"], value: 0 }))}
+                    </code>{" "}
+                    - Searches for entries that don't have NBT tags with values of <code>minecraft:wheat_seeds</code> but do have NBT tags with keys of{" "}
+                    <code>0</code> and values of <code>0</code>.
+                </p>,
+            ],
+        },
     },
 };
 
@@ -100,7 +249,11 @@ export default function StructuresTab(props: StructuresTabProps): JSX.SpecificEl
                 errorElement.style.fontFamily = "monospace";
                 errorElement.style.whiteSpace = "pre";
                 errorElement.textContent =
-                    reason instanceof Error ? (reason.stack?.startsWith(reason.toString()) ? reason.stack : reason.toString() + reason.stack) : reason;
+                    reason instanceof Error ?
+                        reason.stack?.startsWith(reason.toString()) ?
+                            reason.stack
+                        :   reason.toString() + reason.stack
+                    :   reason;
                 render(null, containerRef.current);
                 containerRef.current.replaceChildren("Failed to load data:", errorElement);
             }
@@ -182,8 +335,7 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                                 // const [columnHeadersContextMenu_anchorPoint, columnHeadersContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
                                 const headerName = ConfigConstants.views.Structures.structuresTabModeSectionHeaderNames[mode][index];
                                 const sectionMode: ConfigConstants.views.Structures.StructuresTabSectionMode = (
-                                    sectionID === null ? mode : `${mode}_${sectionID}`
-                                ) as ConfigConstants.views.Structures.StructuresTabSectionMode;
+                                    sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Structures.StructuresTabSectionMode;
                                 return (
                                     <>
                                         {/* TO-DO: Add in this context menu once the bug with it is fixed. https://github.com/szhsin/react-menu/issues/1591 */}
@@ -294,6 +446,7 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                             })(),
                         ],
                         customDataFields: {
+                            structureid: key.displayKey.replace(/^structuretemplate_/, ""),
                             contents: ((): string => {
                                 try {
                                     return prettyPrintSNBT(prismarineToSNBT(key.data.parsed), { indent: 0 });
@@ -302,7 +455,7 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                                 }
                             })(),
                         },
-                    } as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number])
+                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
             ),
         };
         async function updateTablesContents(reloadData: boolean): Promise<void> {
@@ -316,12 +469,12 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                             getStructuresTabContentsRows({
                                 tab,
                                 keys:
-                                    Object.keys(query).length > 1
-                                        ? tab
-                                              .dbSearch!.serach(query)
-                                              .toArray()
-                                              .map((key): KeyData => key.originalObject.data)
-                                        : keys,
+                                    Object.keys(query).length > 1 ?
+                                        tab
+                                            .dbSearch!.serach(query)
+                                            .toArray()
+                                            .map((key): KeyData => key.originalObject.data)
+                                    :   keys,
                                 dynamicProperties,
                                 mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Structures.StructuresTabSectionMode,
                             })
@@ -381,7 +534,7 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                                     buttonLabel: "Import",
                                     filters: [
                                         { name: "mcstructure", extensions: ["mcstructure"] },
-                                        // { name: "Java Structure", extensions: ["nbt", "schem", "schematic"] }, // TO-DO
+                                        // { name: "Java Structure", extensions: ["nbt", "schem", "schematic"] }, // TODO
                                         { name: "All", extensions: ["*"] },
                                     ],
                                     message: "Select the structure files to import.",
@@ -591,9 +744,9 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                                 });
                                 if (result.canceled) return;
                                 if (!existsSync(result.filePaths[0]!)) await mkdir(result.filePaths[0]!, { recursive: true });
-                                // TO-DO: Add an option to toggle this.
+                                // TODO: Add an option to toggle this.
                                 const filterExportsBySearchQuery: boolean = true;
-                                // TO-DO: Add an option to toggle this.
+                                // TODO: Add an option to toggle this.
                                 const refreshBeforeExporting: boolean = false;
                                 if (refreshBeforeExporting) {
                                     await tab.refreshCachedDBKeys();
@@ -608,21 +761,21 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                                     );
                                 }
                                 const structureKeys: KeyData[] =
-                                    filterExportsBySearchQuery && Object.keys(query).length > 1
-                                        ? tab
-                                              .dbSearch!.serach(query)
-                                              .toArray()
-                                              .map((key): KeyData => key.originalObject.data)
-                                        : keys;
+                                    filterExportsBySearchQuery && Object.keys(query).length > 1 ?
+                                        tab
+                                            .dbSearch!.serach(query)
+                                            .toArray()
+                                            .map((key): KeyData => key.originalObject.data)
+                                    :   keys;
                                 let failedExports: [filePath: string, error?: any][] = [];
                                 await Promise.all(
                                     structureKeys.map(async function exportStructureToFile(key: KeyData): Promise<void> {
                                         try {
                                             const stringKey: string = key.rawKey.toString("utf-8");
                                             const destinationPath: string = `${
-                                                stringKey.startsWith("structuretemplate_mystructure:")
-                                                    ? ""
-                                                    : stringKey.replace(/^structuretemplate_/, "").split(":")[0] + "/"
+                                                stringKey.startsWith("structuretemplate_mystructure:") ? "" : (
+                                                    stringKey.replace(/^structuretemplate_/, "").split(":")[0] + "/"
+                                                )
                                             }${stringKey.replace(/^structuretemplate_[^:]*:/, "")}.mcstructure`.replace(
                                                 /[:*?"<>|\x00-\x1F]/g,
                                                 (char: string): string => {
@@ -683,9 +836,9 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                                     tabTargetTypeFilter: ["world", "leveldb"],
                                 });
                                 if (result.canceled) return;
-                                // TO-DO: Add an option to toggle this.
+                                // TODO: Add an option to toggle this.
                                 const filterExportsBySearchQuery: boolean = true;
-                                // TO-DO: Add an option to toggle this.
+                                // TODO: Add an option to toggle this.
                                 const refreshBeforeExporting: boolean = false;
                                 if (refreshBeforeExporting) {
                                     await tab.refreshCachedDBKeys();
@@ -700,12 +853,12 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                                     );
                                 }
                                 const structureKeys: KeyData[] =
-                                    filterExportsBySearchQuery && Object.keys(query).length > 1
-                                        ? tab
-                                              .dbSearch!.serach(query)
-                                              .toArray()
-                                              .map((key): KeyData => key.originalObject.data)
-                                        : keys;
+                                    filterExportsBySearchQuery && Object.keys(query).length > 1 ?
+                                        tab
+                                            .dbSearch!.serach(query)
+                                            .toArray()
+                                            .map((key): KeyData => key.originalObject.data)
+                                    :   keys;
                                 console.log(`Transferring ${structureKeys.length} structure(s) to tab ${result.tabID} in window ${result.window.id}.`);
                                 const errors: Error[] = (
                                     await Promise.all(
@@ -786,7 +939,7 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                                     // noneOf
                                     "-",
                                 ] as const;
-                                const keywords = ["typeid", "nbt", "uuid", "name", "contents"] as const;
+                                const keywords = ["dbkey", "structureid", "nbt", "contents"] as const;
                                 function getKeywordedOperators<T extends string, O extends string = "" | (typeof keywordPrefixOperators)[number]>(
                                     keywords: readonly T[],
                                     operators: readonly O[] = ["", ...keywordPrefixOperators] as O[]
@@ -826,7 +979,7 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                                     });
                                 }
                                 for (const key in queryData) {
-                                    if ([...getKeywordedOperators(["typeid", "nbt", "uuid", "name", "contents"])].includes(key as any)) continue;
+                                    if ([...getKeywordedOperators(["dbkey", "structureid", "nbt", "contents"])].includes(key as any)) continue;
                                     if (
                                         !keywordPrefixOperators.includes(key.slice(0, 1) as any) &&
                                         keywords.includes(key.slice(1) as any) &&
@@ -842,34 +995,7 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                                     }
                                     return;
                                 }
-                                if (getKeywordedOperators(["typeid", "nbt", "uuid", "name"]).some((key: string): boolean => key in queryData)) {
-                                    function parseTypeIDQueries(queries: string[]): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery[] {
-                                        return queries.map((v: string): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery => {
-                                            return {
-                                                path: ["identifier"],
-                                                value: v,
-                                                caseSensitivePath: true,
-                                            };
-                                        });
-                                    }
-                                    function parseNameQueries(queries: string[]): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery[] {
-                                        return queries.map((v: string): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery => {
-                                            return {
-                                                path: ["CustomName"],
-                                                value: v,
-                                                caseSensitivePath: true,
-                                            };
-                                        });
-                                    }
-                                    function parseUUIDQueries(queries: string[]): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery[] {
-                                        return queries.map((v: string): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery => {
-                                            return {
-                                                path: ["UniqueID"],
-                                                value: v,
-                                                caseSensitivePath: true,
-                                            };
-                                        });
-                                    }
+                                if (getKeywordedOperators(["nbt"]).some((key: string): boolean => key in queryData)) {
                                     function parseNBTQueries(queries: string[]): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery[] {
                                         return queries
                                             .map((v: string): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery | undefined => {
@@ -935,32 +1061,75 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                                     query.nbtTags = {};
                                     if (["-typeid", "-nbt", "-uuid", "-name"].some((key: string): boolean => key in queryData)) {
                                         query.nbtTags.noneOf = [];
-                                        if (queryData["-typeid"]) query.nbtTags.noneOf.push(...parseTypeIDQueries(queryData["-typeid"]));
-                                        if (queryData["-name"]) query.nbtTags.noneOf.push(...parseNameQueries(queryData["-name"]));
-                                        if (queryData["-uuid"]) query.nbtTags.noneOf.push(...parseUUIDQueries(queryData["-uuid"]));
                                         if (queryData["-nbt"]) query.nbtTags.noneOf.push(...parseNBTQueries(queryData["-nbt"]));
                                     }
                                     if (keywords.some((v: string): boolean => v in queryData)) {
                                         query.nbtTags.anyOf = [];
-                                        if (queryData.typeid) query.nbtTags.anyOf.push(...parseTypeIDQueries(queryData.typeid));
-                                        if (queryData.name) query.nbtTags.anyOf.push(...parseNameQueries(queryData.name));
-                                        if (queryData.uuid) query.nbtTags.anyOf.push(...parseUUIDQueries(queryData.uuid));
                                         if (queryData.nbt) query.nbtTags.anyOf.push(...parseNBTQueries(queryData.nbt));
                                     }
                                     if (getKeywordedOperators(keywords, ["^"]).some((v: string): boolean => v in queryData)) {
                                         query.nbtTags.oneOf = [];
-                                        if (queryData["^typeid"]) query.nbtTags.oneOf.push(...parseTypeIDQueries(queryData["^typeid"]));
-                                        if (queryData["^name"]) query.nbtTags.oneOf.push(...parseNameQueries(queryData["^name"]));
-                                        if (queryData["^uuid"]) query.nbtTags.oneOf.push(...parseUUIDQueries(queryData["^uuid"]));
                                         if (queryData["^nbt"]) query.nbtTags.oneOf.push(...parseNBTQueries(queryData["^nbt"]));
                                     }
                                     if (getKeywordedOperators(keywords, ["&"]).some((v: string): boolean => v in queryData)) {
                                         query.nbtTags.allOf = [];
-                                        if (queryData["&typeid"]) query.nbtTags.allOf.push(...parseTypeIDQueries(queryData["&typeid"]));
-                                        if (queryData["&name"]) query.nbtTags.allOf.push(...parseNameQueries(queryData["&name"]));
-                                        if (queryData["&uuid"]) query.nbtTags.allOf.push(...parseUUIDQueries(queryData["&uuid"]));
                                         if (queryData["&nbt"]) query.nbtTags.allOf.push(...parseNBTQueries(queryData["&nbt"]));
                                     }
+                                }
+                                if (queryData["-dbkey"] !== undefined) {
+                                    query.displayKeyContents ??= {};
+                                    query.displayKeyContents.noneOf ??= [];
+                                    query.displayKeyContents.noneOf.push(...queryData["-dbkey"]);
+                                }
+                                if (queryData["|dbkey"] !== undefined) {
+                                    query.displayKeyContents ??= {};
+                                    query.displayKeyContents.anyOf ??= [];
+                                    query.displayKeyContents.anyOf.push(...queryData["|dbkey"]);
+                                }
+                                if (queryData.dbkey !== undefined) {
+                                    query.displayKeyContents ??= {};
+                                    query.displayKeyContents.anyOf ??= [];
+                                    query.displayKeyContents.anyOf.push(...queryData.dbkey);
+                                }
+                                if (queryData["&dbkey"] !== undefined) {
+                                    query.displayKeyContents ??= {};
+                                    query.displayKeyContents.allOf ??= [];
+                                    query.displayKeyContents.allOf.push(...queryData["&dbkey"]);
+                                }
+                                if (queryData["^dbkey"] !== undefined) {
+                                    query.displayKeyContents ??= {};
+                                    query.displayKeyContents.oneOf ??= [];
+                                    query.displayKeyContents.oneOf.push(...queryData["^dbkey"]);
+                                }
+                                if (queryData["-structureid"] !== undefined) {
+                                    query.customDataFields ??= {};
+                                    query.customDataFields.structureid ??= {};
+                                    query.customDataFields.structureid.noneOf ??= [];
+                                    query.customDataFields.structureid.noneOf.push(...queryData["-structureid"]);
+                                }
+                                if (queryData["|structureid"] !== undefined) {
+                                    query.customDataFields ??= {};
+                                    query.customDataFields.structureid ??= {};
+                                    query.customDataFields.structureid.anyOf ??= [];
+                                    query.customDataFields.structureid.anyOf.push(...queryData["|structureid"]);
+                                }
+                                if (queryData.structureid !== undefined) {
+                                    query.customDataFields ??= {};
+                                    query.customDataFields.structureid ??= {};
+                                    query.customDataFields.structureid.anyOf ??= [];
+                                    query.customDataFields.structureid.anyOf.push(...queryData.structureid);
+                                }
+                                if (queryData["&structureid"] !== undefined) {
+                                    query.customDataFields ??= {};
+                                    query.customDataFields.structureid ??= {};
+                                    query.customDataFields.structureid.allOf ??= [];
+                                    query.customDataFields.structureid.allOf.push(...queryData["&structureid"]);
+                                }
+                                if (queryData["^structureid"] !== undefined) {
+                                    query.customDataFields ??= {};
+                                    query.customDataFields.structureid ??= {};
+                                    query.customDataFields.structureid.oneOf ??= [];
+                                    query.customDataFields.structureid.oneOf.push(...queryData["^structureid"]);
                                 }
                                 if (queryData["-contents"] !== undefined) {
                                     query.customDataFields ??= {};
@@ -1100,9 +1269,8 @@ async function getStructuresTabContentsRows(data: {
                             data-key={key.rawKey}
                             onDblClick={(): void => {
                                 data.tab.openTab({
-                                    // TO-DO: In the future, add support for getting their skin head or profile picture.
                                     contentType: "StructureTemplate",
-                                    icon: "resource://images/ui/glyphs/structure_block.png",
+                                    icon: "auto",
                                     name: key.displayKey,
                                     parentTab: data.tab,
                                     target: {
@@ -1110,6 +1278,22 @@ async function getStructuresTabContentsRows(data: {
                                         key: key.rawKey,
                                     },
                                 });
+                            }}
+                            onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                if (event.button !== 1) return;
+                                data.tab.openTab(
+                                    {
+                                        contentType: "StructureTemplate",
+                                        icon: "auto",
+                                        name: key.displayKey,
+                                        parentTab: data.tab,
+                                        target: {
+                                            type: "LevelDBEntry",
+                                            key: key.rawKey,
+                                        },
+                                    },
+                                    false
+                                );
                             }}
                         >
                             {columns.map((column: (typeof columns)[number]): JSX.Element => {
@@ -1121,44 +1305,40 @@ async function getStructuresTabContentsRows(data: {
                                     case "Size":
                                         return (
                                             <td>
-                                                {key.data.parsed.value.size?.type === "list" && key.data.parsed.value.size.value.type === "int" ? (
+                                                {key.data.parsed.value.size?.type === "list" && key.data.parsed.value.size.value.type === "int" ?
                                                     (key.data.parsed.value.size.value.value as number[]).join(", ")
-                                                ) : (
-                                                    <span style="color: red;">null</span>
-                                                )}
+                                                :   <span style="color: red;">null</span>}
                                             </td>
                                         );
                                     case "WorldOrigin":
                                         return (
                                             <td>
-                                                {key.data.parsed.value.size?.type === "list" && key.data.parsed.value.size.value.type === "int" ? (
+                                                {key.data.parsed.value.size?.type === "list" && key.data.parsed.value.size.value.type === "int" ?
                                                     (key.data.parsed.value.size.value.value as number[]).join(", ")
-                                                ) : (
-                                                    <span style="color: red;">null</span>
-                                                )}
+                                                :   <span style="color: red;">null</span>}
                                             </td>
                                         );
                                     case "Entities":
                                         return (
                                             <td>
-                                                {key.data.parsed.value.structure?.value?.entities?.type === "list" &&
-                                                key.data.parsed.value.structure?.value?.entities?.value?.value ? (
+                                                {(
+                                                    key.data.parsed.value.structure?.value?.entities?.type === "list" &&
+                                                    key.data.parsed.value.structure?.value?.entities?.value?.value
+                                                ) ?
                                                     key.data.parsed.value.structure.value.entities.value.value.length
-                                                ) : (
-                                                    <span style="color: red;">null</span>
-                                                )}
+                                                :   <span style="color: red;">null</span>}
                                             </td>
                                         );
                                     case "BlockEntities":
                                         return (
                                             <td>
-                                                {key.data.parsed.value.structure?.value?.palette?.value?.default?.value?.block_position_data?.type ===
-                                                "compound" ? (
+                                                {(
+                                                    key.data.parsed.value.structure?.value?.palette?.value?.default?.value?.block_position_data?.type ===
+                                                    "compound"
+                                                ) ?
                                                     Object.keys(key.data.parsed.value.structure.value.palette.value.default.value.block_position_data.value)
                                                         .length
-                                                ) : (
-                                                    <span style="color: red;">null</span>
-                                                )}
+                                                :   <span style="color: red;">null</span>}
                                             </td>
                                         );
                                 }
@@ -1172,9 +1352,8 @@ async function getStructuresTabContentsRows(data: {
                             data-key={key.rawKey}
                             onDblClick={(): void => {
                                 data.tab.openTab({
-                                    // TO-DO: In the future, add support for getting their skin head or profile picture.
                                     contentType: "StructureTemplate",
-                                    icon: "resource://images/ui/glyphs/structure_block.png",
+                                    icon: "auto",
                                     name: key.displayKey,
                                     parentTab: data.tab,
                                     target: {
@@ -1182,6 +1361,22 @@ async function getStructuresTabContentsRows(data: {
                                         key: key.rawKey,
                                     },
                                 });
+                            }}
+                            onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                if (event.button !== 1) return;
+                                data.tab.openTab(
+                                    {
+                                        contentType: "StructureTemplate",
+                                        icon: "auto",
+                                        name: key.displayKey,
+                                        parentTab: data.tab,
+                                        target: {
+                                            type: "LevelDBEntry",
+                                            key: key.rawKey,
+                                        },
+                                    },
+                                    false
+                                );
                             }}
                         >
                             <td style={{ color: "red" }}>{e as any}</td>

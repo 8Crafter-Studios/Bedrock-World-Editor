@@ -33,3 +33,53 @@ export function testForObjectExtension(objectToTest: object, base: object): bool
         return false;
     });
 }
+
+/**
+ * An observable value.
+ */
+export interface Observable<T> {
+    /**
+     * Gets the current value of the observable.
+     */
+    get(): T;
+    /**
+     * Sets the value of the observable.
+     *
+     * @param newValue The new value to set.
+     */
+    set(newValue: T): void;
+    /**
+     * Observes the value of the observable.
+     *
+     * @param fn The function to call when the value of the observable changes.
+     * @returns A function that can be called to stop observing the value of the observable, returning `true` if the observer was removed, or `false` if the observer was already removed.
+     */
+    observe(fn: (value: T) => void): () => boolean;
+}
+
+/**
+ * Creates an observable value.
+ *
+ * @param initialValue The initial value of the observable.
+ * @returns The observable value.
+ */
+export function createObservable<T>(initialValue: T): Observable<T> {
+    let value: T = initialValue;
+    const listeners: Set<(value: T) => void> = new Set();
+
+    return {
+        get(): T {
+            return value;
+        },
+
+        set(newValue: T): void {
+            value = newValue;
+            for (const fn of listeners) fn(newValue);
+        },
+
+        observe(fn: (value: T) => void): () => boolean {
+            listeners.add(fn);
+            return (): boolean => listeners.delete(fn);
+        },
+    } satisfies Observable<T>;
+}
