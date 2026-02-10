@@ -4,7 +4,19 @@
 
 -   Added a text editor.
 -   Added support for editing the `Digest` content type.
+-   Added support for editing the `LevelChunkMetaDataDictionary` content type.
 -   Added support for the `ChunkLoadedRequest` content type.
+-   Added support for the `BiomeIdsTable` content type.
+-   Added support for the `BiomeIdsTable` NBT schema.
+-   Added support for the `VillageRaid` content type.
+-   Added support for the `VillageRaid` NBT schema.
+-   Added support for the `PositionTrackingDB` content type.
+-   Added support for the `PositionTrackingLastId` content type.
+-   Added support for the `GenerationSeed` content type.
+-   Added support for the `LegacyDimension` content type.
+-   Added support for the `MVillages` content type.
+-   Added support for the `Villages` content type.
+-   Added support for the `LevelSpawnWasFixed` content type.
 -   Added the ability to scroll the debug overlay with `Shift+F3` and `Shift+F4`.
 -   Added a `Discord` button to the `Help` menu.
 -   Added the "Integrations" tab.
@@ -57,6 +69,7 @@
 -   When clicking an option in the add tab popup menu, it now closes the popup menu.
 -   Fixed a bug where on macOS, the app would not quit when all windows were closed.
 -   Fixed a bug where the app's URI protocol was not functional for any purpose other than opening the app on Windows.
+-   Fixed a bug where `MetaDataHash` keys were detected as `BlendingBiomeHeight` keys, `GeneratedPreCavesAndCliffsBlending` keys were detected as `MetaDataHash` keys, and `BlendingBiomeHeight` keys were detected as `GeneratedPreCavesAndCliffsBlending` keys.
 
 ## Performance Improvements
 
