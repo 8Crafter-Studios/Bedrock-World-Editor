@@ -1,3 +1,15 @@
+# v1.0.0-beta.18
+
+## Additions
+
+-   Integration menus now display the integration's name, author, icon, and description.
+-   macOS builds now have icons.
+
+## Changes
+
+-   Header text in integration menus is no longer selectable.
+-   Minor design changes to integration menus.
+
 # v1.0.0-beta.17
 
 ## Critical Fixes

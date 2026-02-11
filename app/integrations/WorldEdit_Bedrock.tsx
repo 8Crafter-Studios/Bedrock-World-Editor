@@ -23,6 +23,7 @@ import { app, clipboard, dialog, shell } from "@electron/remote";
 import type { ShowSelectOpenTabDialogResult } from "../components/SelectOpenTabDialog";
 import showSelectOpenTabDialog from "../components/SelectOpenTabDialog";
 import type { LevelDB } from "@8crafter/leveldb-zlib";
+import Notice from "../components/Notice";
 
 type LegacyScoreboardSetBiomeData = [
     `wedit:biome,minecraft:${Dimension},${number}_${number}_${number}`,
@@ -902,7 +903,12 @@ const thisIntegration = {
         if (props.tab.type !== "world" && props.tab.type !== "leveldb")
             return (
                 <center>
-                    <h2>ERROR: This integration menu does not support the {JSON.stringify(props.tab.type)} tab type.</h2>
+                    <Notice
+                        title="Error"
+                        subtitle="An error has occurred."
+                        detail={`ERROR: This integration menu does not support the ${JSON.stringify(props.tab.type)} tab type.`}
+                        image="generic_error"
+                    />
                 </center>
             );
         const tablesContainerRef: RefObject<HTMLTableElement> = useRef<HTMLTableElement>(null);
@@ -970,7 +976,7 @@ const thisIntegration = {
         function NoApplicableActions(): JSX.Element {
             return (
                 <center>
-                    <h2>This integration has no applicable actions for this tab.</h2>
+                    <h2 class="nsel">This integration has no applicable actions for this tab.</h2>
                 </center>
             );
         }
@@ -984,7 +990,7 @@ const thisIntegration = {
             return (
                 <>
                     <div style={{ marginLeft: "1em" }}>
-                        <h2>Biome Changes</h2>
+                        <h2 class="nsel">Biome Changes</h2>
                         <div style={{ marginLeft: "1em" }}>
                             {(!!targetedChunkCountData.valid || !targetedChunkCountData.invalid) && (
                                 <p>{targetedChunkCountData.valid} chunk(s) with pending biome changes</p>
@@ -1068,7 +1074,7 @@ const thisIntegration = {
             return (
                 <>
                     <div style={{ marginLeft: "1em" }}>
-                        <h2>Biome Changes (Legacy)</h2>
+                        <h2 class="nsel">Biome Changes (Legacy)</h2>
                         <div style={{ marginLeft: "1em" }}>
                             {(!!targetedChunkCountData.valid || !targetedChunkCountData.invalid) && (
                                 <p>{targetedChunkCountData.valid} chunk(s) with pending biome changes</p>
@@ -1147,7 +1153,7 @@ const thisIntegration = {
             return (
                 <>
                     <div style={{ marginLeft: "1em" }}>
-                        <h2>Structure Exports</h2>
+                        <h2 class="nsel">Structure Exports</h2>
                         <div style={{ marginLeft: "1em" }}>
                             {/* IDEA: This text should be clickable and when clicked should show a menu with a list of all of the structures and should use pages like in the "View Files" left sidebar tab */}
                             <p>{structures.length} structures(s) pending export</p>
@@ -1449,7 +1455,7 @@ const thisIntegration = {
                         ),
                     ]
                         .filter(Boolean as unknown as (v: false | JSX.Element) => v is JSX.Element)
-                        .flatMap((v: JSX.Element, i: number): JSX.Element | JSX.Element[] => (i === 0 ? v : [<hr />, v]))}
+                        .flatMap((v: JSX.Element, i: number): JSX.Element | JSX.Element[] => [<hr />, v])}
                 </>,
                 tablesContainerRef.current
             );
@@ -1600,11 +1606,26 @@ const thisIntegration = {
                         </button>
                     </div> */}
                 </div>
+                <div class="nsel ndrg integrationMenu-integrationHeaderInfoContainer" style="display: flex; flex-direction: column;">
+                    <div class="integrationMenu-integrationTitleAndIconContainer" style="display: flex; flex-direction: row;">
+                        <img class="piximg integrationMenu-integrationIcon" aria-hidden="true" src="resource://integrations/WorldEdit-Bedrock/pack_icon.png" />
+                        <div class="integrationMenu-integrationTitleContainer" style="display: flex; flex-direction: column;">
+                            <h2 class="integrationMenu-integrationTitle">{thisIntegration.name}</h2>
+                            <h4 class="integrationMenu-integrationAuthor">
+                                by{" "}
+                                {typeof thisIntegration.author === "string" ?
+                                    (thisIntegration.author as Extract<Integration["author"], string>)
+                                :   (thisIntegration.author as Exclude<Integration["author"], string>).join(", ")}
+                            </h4>
+                        </div>
+                    </div>
+                    <p class="integrationMenu-integrationDescription">{thisIntegration.description}</p>
+                </div>
                 <div style="display: flex; flex-direction: column;">
                     <IntegrationLinks />
                 </div>
                 <div style="display: flex; flex-direction: column;" ref={tablesContainerRef}>
-                    Loading integration actions...
+                    <span class="nsel">Loading integration actions...</span>
                 </div>
             </>
         );
