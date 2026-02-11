@@ -56,7 +56,7 @@ const config: ForgeConfig = {
         new MakerDMG((arch: string) => ({
             // background // TODO: Make a background image for the DMG window.
             icon: "resources/icon.icns",
-            name: `Bedrock.World.Editor-darwin-${arch}-${(require("./package.json") as typeof import("./package.json")).version}`,
+            name: `Bedrock.World.Editor-${arch}`,
         })),
     ],
     publishers: [
