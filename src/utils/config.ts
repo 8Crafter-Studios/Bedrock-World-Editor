@@ -177,6 +177,8 @@ namespace exports {
                 "%appdata%/Minecraft Bedrock Preview/games/com.mojang",
                 "%appdata%/Minecraft Bedrock/Users/*/games/com.mojang",
                 "%appdata%/Minecraft Bedrock/games/com.mojang",
+                "Home/Library/Containers/com.mojang.minecraftpe/Data/Documents/games/com.mojang",
+                "Home/Library/Containers/com.mojang.minecraftpreview/Data/Documents/games/com.mojang",
             ],
             extraMinecraftDataFolders: [
                 "%appdata%/.minecraft_bedrock/installations/*/packageData",
@@ -323,6 +325,15 @@ namespace exports {
                     currentMinecraftDataFolders.push("%appdata%/Minecraft Bedrock/Users/*/games/com.mojang");
                 if (!currentMinecraftDataFolders.includes("%appdata%/Minecraft Bedrock/games/com.mojang"))
                     currentMinecraftDataFolders.push("%appdata%/Minecraft Bedrock/games/com.mojang");
+                if (currentMinecraftDataFolders.length !== originalLength) this.minecraftDataFolders = currentMinecraftDataFolders;
+            }
+            if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.18")) {
+                const currentMinecraftDataFolders: string[] = this.minecraftDataFolders;
+                const originalLength: number = currentMinecraftDataFolders.length;
+                if (!currentMinecraftDataFolders.includes("Home/Library/Containers/com.mojang.minecraftpe/Data/Documents/games/com.mojang"))
+                    currentMinecraftDataFolders.push("Home/Library/Containers/com.mojang.minecraftpe/Data/Documents/games/com.mojang");
+                if (!currentMinecraftDataFolders.includes("Home/Library/Containers/com.mojang.minecraftpreview/Data/Documents/games/com.mojang"))
+                    currentMinecraftDataFolders.push("Home/Library/Containers/com.mojang.minecraftpreview/Data/Documents/games/com.mojang");
                 if (currentMinecraftDataFolders.length !== originalLength) this.minecraftDataFolders = currentMinecraftDataFolders;
             }
             if (semver.compareBuild(currentConfigVersion, VERSION) < 0) {
@@ -1565,10 +1576,8 @@ namespace exports {
     const subConfigValueClasses = [VolumeConfig, ViewsConfig, DeepSubConfig] as const;
 
     export namespace ConfigConstants {
-        export type IntegrationId = (keyof typeof import("../../app/integrations/index.ts").integrations);
-        export const AutoApplySupportedIntegrationIds = [
-            "WorldEdit_Bedrock",
-        ] as const satisfies IntegrationId[];
+        export type IntegrationId = keyof typeof import("../../app/integrations/index.ts").integrations;
+        export const AutoApplySupportedIntegrationIds = ["WorldEdit_Bedrock"] as const satisfies IntegrationId[];
         export type AutoApplySupportedIntegrationId = (typeof AutoApplySupportedIntegrationIds)[number];
         export const debugOverlayModeList = ["none", "top", "basic", "config", "config_views", "tab"] as const;
         export const debugOverlayModes = {

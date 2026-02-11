@@ -4,6 +4,7 @@
 
 -   Integration menus now display the integration's name, author, icon, and description.
 -   macOS builds now have icons.
+-   Added the paths to the world folder locations for Minecraft and Minecraft Preview running through PlayCover on macOS to the config.
 
 ## Changes
 
