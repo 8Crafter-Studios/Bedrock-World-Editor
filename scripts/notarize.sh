@@ -4,7 +4,9 @@ set -euo pipefail
 echo "=== Collecting macOS artifacts for notarization ==="
 
 # Find all .zip files produced by Forge (one per arch)
-ZIP_FILES=($(find out/make -name "*.zip" -type f))
+while IFS= read -r -d '' zip; do
+  ZIP_FILES+=("$zip")
+done < <(find out/make -name "*.zip" -type f -print0)
 
 if [ ${#ZIP_FILES[@]} -eq 0 ]; then
   echo "No ZIP files found. Cannot notarize."
