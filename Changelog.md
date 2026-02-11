@@ -1,3 +1,9 @@
+# v1.0.0-beta.19
+
+## Additions
+
+-   macOS builds are now notarized (signed).
+
 # v1.0.0-beta.18
 
 ## Additions
