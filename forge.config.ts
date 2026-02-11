@@ -28,6 +28,14 @@ const config: ForgeConfig = {
         icon: "./resources/icon",
         overwrite: true,
         extraResource: ["./resources"],
+        osxNotarize:
+            process.env.APPLE_TEAM_ID && process.env.APPLE_ID && process.env.APPLE_ID_APP_SPECIFIC_PASSWORD ?
+                {
+                    appleId: process.env.APPLE_ID,
+                    appleIdPassword: process.env.APPLE_ID_APP_SPECIFIC_PASSWORD,
+                    teamId: process.env.APPLE_TEAM_ID,
+                }
+            :   undefined,
     },
     rebuildConfig: { extraModules: ["@electron/remote"] /* , ignoreModules: ["@8crafter/leveldb-zlib"] */, disablePreGypCopy: false },
     makers: [
@@ -248,4 +256,3 @@ module.exports = bindings
 };
 
 export default config;
-

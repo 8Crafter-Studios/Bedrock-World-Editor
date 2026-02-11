@@ -70,6 +70,9 @@ jobs:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   NODE_OPTIONS: --max-old-space-size=4096
                   LEVELDB_ZLIB_ARCH_OVERRIDE: ${{ matrix.arch }}
+                  APPLE_ID: ${{ secrets.APPLE_ID }}
+                  APPLE_ID_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_ID_APP_SPECIFIC_PASSWORD }}
+                  APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
               run: npm run publish -- --arch="${{ matrix.arch }}"
 
             - name: Debug (Windows)
