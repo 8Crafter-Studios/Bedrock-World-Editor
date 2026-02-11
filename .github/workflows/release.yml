@@ -64,13 +64,10 @@ jobs:
               run: |
                   echo "$MAC_CERT_P12" | base64 --decode > certificate.p12
                   security create-keychain -p "" build.keychain
-                  security import certificate.p12 -k build.keychain -P "$MAC_CERT_PASSWORD" -T /usr/bin/codesign
                   security list-keychains -s build.keychain
-                  security default-keychain -s build.keychain
                   security unlock-keychain -p "" build.keychain
-                  KEY_ID=$(security find-identity -v -p codesigning build.keychain | head -n 1 | awk '{print $2}')
+                  security import certificate.p12 -k build.keychain -P "$MAC_CERT_PASSWORD" -T /usr/bin/codesign
                   security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
-                  security set-key-partition-list -S apple-tool:,apple: -s -k "" -D "$KEY_ID" -t private
               env:
                   MAC_CERT_P12: ${{ secrets.MAC_CERT_P12 }}
                   MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
