@@ -67,7 +67,9 @@ jobs:
                   security list-keychains -s build.keychain
                   security unlock-keychain -p "" build.keychain
                   security import certificate.p12 -k build.keychain -P "$MAC_CERT_PASSWORD" -T /usr/bin/codesign
+                  KEY_HASH=$(security find-identity -v -p codesigning build.keychain | head -n 1 | awk '{print $2}')
                   security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
+                  security set-key-partition-list -S apple-tool:,apple: -s -k "" -D "$KEY_HASH" -t private
               env:
                   MAC_CERT_P12: ${{ secrets.MAC_CERT_P12 }}
                   MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
