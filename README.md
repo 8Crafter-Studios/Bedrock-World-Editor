@@ -1,6 +1,6 @@
 # 8Crafter's Bedrock World Editor
 
-An NBT editor for Minecraft Bedrock Edition.
+An NBT and LevelDB editor for Minecraft Bedrock Edition.
 
 This app is still in beta, so please report any issues you find [here](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues).
 
@@ -53,6 +53,7 @@ If you want to locally run the app without having to wait to the installer to bu
 1.  Clone this repository.
 2.  Run `npm i`.
 3.  Run `npm run start`.
+
 
 
 
