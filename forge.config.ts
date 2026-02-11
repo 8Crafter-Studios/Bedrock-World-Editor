@@ -6,7 +6,7 @@ import { MakerZIP } from "@electron-forge/maker-zip";
 import { FusesPlugin } from "@electron-forge/plugin-fuses";
 import { VitePlugin } from "@electron-forge/plugin-vite";
 import type { PublisherGitHubConfig } from "@electron-forge/publisher-github";
-import type { ForgeConfig, ResolvedForgeConfig } from "@electron-forge/shared-types";
+import type { ForgeConfig, ForgeMakeResult, ResolvedForgeConfig } from "@electron-forge/shared-types";
 import { FuseV1Options, FuseVersion } from "@electron/fuses";
 import { type ChildProcess, spawn } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
@@ -36,14 +36,13 @@ const config: ForgeConfig = {
                     identity: "Developer ID Application: Alexander Zahn (3FUJBBPY76)",
                 }
             :   undefined,
-        osxNotarize:
-            osxSigningEnabled ?
+        osxNotarize: /* osxSigningEnabled ?
                 {
                     appleId: process.env.APPLE_ID!,
                     appleIdPassword: process.env.APPLE_ID_APP_SPECIFIC_PASSWORD!,
                     teamId: process.env.APPLE_TEAM_ID!,
                 }
-            :   undefined,
+            :   */ undefined,
         appBundleId: "com.8crafter.bedrock-world-editor",
         appCategoryType: "public.app-category.developer-tools",
     },
@@ -262,6 +261,15 @@ module.exports = bindings
                 }
             }
         }, */,
+        postMake: async (_forgeConfig: ResolvedForgeConfig, _results: ForgeMakeResult[]) => {
+            if (!osxSigningEnabled || process.platform !== "darwin") return;
+            const { spawn } = require("child_process") as typeof import("child_process");
+
+            await new Promise((resolve: (value: void) => void, reject) => {
+                const p = spawn("./scripts/notarize.sh", [], { stdio: "inherit" });
+                p.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`notarize failed: ${code}`))));
+            });
+        },
     },
 };
 

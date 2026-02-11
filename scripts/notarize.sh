@@ -1,0 +1,79 @@
+#!/bin/bash
+set -euo pipefail
+
+echo "=== Collecting macOS artifacts for notarization ==="
+
+# Find all .zip files produced by Forge (one per arch)
+ZIP_FILES=($(find out/make -name "*.zip" -type f))
+
+if [ ${#ZIP_FILES[@]} -eq 0 ]; then
+  echo "No ZIP files found. Cannot notarize."
+  exit 1
+fi
+
+echo "Found ZIPs:"
+printf ' - %s\n' "${ZIP_FILES[@]}"
+
+# Loop through each ZIP (x64, arm64, or both)
+for ZIP_PATH in "${ZIP_FILES[@]}"; do
+  echo ""
+  echo "=== Submitting $ZIP_PATH to notarytool ==="
+
+  xcrun notarytool submit "$ZIP_PATH" \
+    --apple-id "$APPLE_ID" \
+    --team-id "$APPLE_TEAM_ID" \
+    --password "$APPLE_ID_APP_SPECIFIC_PASSWORD" \
+    --verbose \
+    --output-format json > notarize.json
+
+  SUBMISSION_ID=$(jq -r '.id' notarize.json)
+  echo "Submission ID: $SUBMISSION_ID"
+
+  echo "Polling for notarization result…"
+
+  # Poll with retries
+  for i in {1..30}; do
+    xcrun notarytool log "$SUBMISSION_ID" \
+      --apple-id "$APPLE_ID" \
+      --team-id "$APPLE_TEAM_ID" \
+      --password "$APPLE_ID_APP_SPECIFIC_PASSWORD" \
+      --verbose \
+      --output-format json > log.json
+
+    STATUS=$(jq -r '.status' log.json)
+
+    if [ "$STATUS" = "Accepted" ]; then
+      echo "Notarization succeeded for $ZIP_PATH"
+      break
+    fi
+
+    echo "Status: $STATUS, retrying in 60 seconds…"
+    sleep 60
+  done
+
+  echo "=== Stapling artifacts for this architecture ==="
+
+  # Staple the .app, .dmg, and .zip for this architecture
+  # Find matching .app and .dmg by directory
+  DIR=$(dirname "$ZIP_PATH")
+
+  APP_PATH=$(find "$DIR" -name "*.app" -type d | head -n 1)
+  DMG_PATH=$(find "$DIR" -name "*.dmg" -type f | head -n 1)
+
+  if [ -n "$APP_PATH" ]; then
+    echo "Stapling $APP_PATH"
+    xcrun stapler staple "$APP_PATH"
+  fi
+
+  if [ -n "$DMG_PATH" ]; then
+    echo "Stapling $DMG_PATH"
+    xcrun stapler staple "$DMG_PATH"
+  fi
+
+  echo "Stapling $ZIP_PATH"
+  xcrun stapler staple "$ZIP_PATH"
+
+done
+
+echo ""
+echo "=== All notarization + stapling complete ==="
