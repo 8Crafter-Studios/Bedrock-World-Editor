@@ -65,6 +65,8 @@ jobs:
                   echo "$MAC_CERT_P12" | base64 --decode > certificate.p12
                   security create-keychain -p "" build.keychain
                   security import certificate.p12 -k build.keychain -P "$MAC_CERT_PASSWORD" -T /usr/bin/codesign
+                  openssl pkcs12 -in certificate.p12 -clcerts -nokeys -out signing-cert.cer -passin pass:"$MAC_CERT_PASSWORD"
+                  security add-trusted-cert -d -r trustRoot -k build.keychain signing-cert.cer
                   security list-keychains -s build.keychain
                   security default-keychain -s build.keychain
                   security unlock-keychain -p "" build.keychain
