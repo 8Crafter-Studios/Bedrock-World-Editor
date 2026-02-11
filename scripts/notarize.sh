@@ -36,14 +36,25 @@ for ZIP_PATH in "${ZIP_FILES[@]}"; do
 
   # Poll with retries
   for i in {1..30}; do
-    xcrun notarytool log "$SUBMISSION_ID" \
+    if ! xcrun notarytool log "$SUBMISSION_ID" \
       --apple-id "$APPLE_ID" \
       --team-id "$APPLE_TEAM_ID" \
       --password "$APPLE_ID_APP_SPECIFIC_PASSWORD" \
       --verbose \
-      --output-format json > log.json
+      --output-format json > log.json 2>&1; then
+        # If the failure is the expected 404 case, keep polling
+        if grep -q "Submission log is not yet available" log.json; then
+          echo "Log not ready yet, retrying in 60 seconds…"
+          sleep 60
+          continue
+        fi
 
-    # If Apple hasn't created the log yet, keep waiting
+        echo "Unexpected error from notarytool log:"
+        cat log.json
+        exit 1
+    fi
+
+    # Apple returns 404 for several seconds after upload — this is normal
     if grep -q "Submission log is not yet available" log.json; then
       echo "Log not ready yet, retrying in 60 seconds…"
       sleep 60
