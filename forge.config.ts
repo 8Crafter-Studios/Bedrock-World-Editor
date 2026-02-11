@@ -12,6 +12,8 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
 import path from "node:path";
 
+const osxSigningEnabled = !!(process.env.APPLE_TEAM_ID && process.env.APPLE_ID && process.env.APPLE_ID_APP_SPECIFIC_PASSWORD);
+
 const config: ForgeConfig = {
     packagerConfig: {
         asar: {
@@ -28,13 +30,18 @@ const config: ForgeConfig = {
         icon: "./resources/icon",
         overwrite: true,
         extraResource: ["./resources"],
-        osxSign: {},
-        osxNotarize:
-            process.env.APPLE_TEAM_ID && process.env.APPLE_ID && process.env.APPLE_ID_APP_SPECIFIC_PASSWORD ?
+        osxSign:
+            osxSigningEnabled ?
                 {
-                    appleId: process.env.APPLE_ID,
-                    appleIdPassword: process.env.APPLE_ID_APP_SPECIFIC_PASSWORD,
-                    teamId: process.env.APPLE_TEAM_ID,
+                    identity: "Developer ID Application: Alexander Zahn (3FUJBBPY76)",
+                }
+            :   undefined,
+        osxNotarize:
+            osxSigningEnabled ?
+                {
+                    appleId: process.env.APPLE_ID!,
+                    appleIdPassword: process.env.APPLE_ID_APP_SPECIFIC_PASSWORD!,
+                    teamId: process.env.APPLE_TEAM_ID!,
                 }
             :   undefined,
         appBundleId: "com.8crafter.bedrock-world-editor",
