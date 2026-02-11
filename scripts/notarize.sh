@@ -4,6 +4,7 @@ set -euo pipefail
 echo "=== Collecting macOS artifacts for notarization ==="
 
 # Find all .zip files produced by Forge (one per arch)
+ZIP_FILES=()
 while IFS= read -r -d '' zip; do
   ZIP_FILES+=("$zip")
 done < <(find out/make -name "*.zip" -type f -print0)
@@ -42,14 +43,21 @@ for ZIP_PATH in "${ZIP_FILES[@]}"; do
       --verbose \
       --output-format json > log.json
 
-    STATUS=$(jq -r '.status' log.json)
+    STATUS=$(jq -r '.status // empty' log.json)
 
-    if [ "$STATUS" = "Accepted" ]; then
-      echo "Notarization succeeded for $ZIP_PATH"
-      break
+    # If Apple hasn't created the log yet, keep waiting
+    if grep -q "Submission log is not yet available" log.json; then
+    echo "Log not ready yet, retrying in 60 seconds…"
+    sleep 60
+    continue
     fi
 
-    echo "Status: $STATUS, retrying in 60 seconds…"
+    if [ "$STATUS" = "Accepted" ]; then
+    echo "Notarization succeeded for $ZIP_PATH"
+    break
+    fi
+
+    echo "Status: ${STATUS:-Unknown}, retrying in 60 seconds…"
     sleep 60
   done
 
