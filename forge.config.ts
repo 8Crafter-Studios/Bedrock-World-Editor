@@ -1,16 +1,16 @@
 import { MakerDeb } from "@electron-forge/maker-deb";
+import { MakerDMG } from "@electron-forge/maker-dmg";
 import { MakerRpm } from "@electron-forge/maker-rpm";
 import { MakerSquirrel } from "@electron-forge/maker-squirrel";
 import { MakerZIP } from "@electron-forge/maker-zip";
-import { MakerDMG } from "@electron-forge/maker-dmg";
 import { FusesPlugin } from "@electron-forge/plugin-fuses";
 import { VitePlugin } from "@electron-forge/plugin-vite";
+import type { PublisherGitHubConfig } from "@electron-forge/publisher-github";
 import type { ForgeConfig, ResolvedForgeConfig } from "@electron-forge/shared-types";
 import { FuseV1Options, FuseVersion } from "@electron/fuses";
 import { type ChildProcess, spawn } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
 import path from "node:path";
-import type { PublisherGitHubConfig } from "@electron-forge/publisher-github";
 
 const config: ForgeConfig = {
     packagerConfig: {
