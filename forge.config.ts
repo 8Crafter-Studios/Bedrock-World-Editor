@@ -28,6 +28,7 @@ const config: ForgeConfig = {
         icon: "./resources/icon",
         overwrite: true,
         extraResource: ["./resources"],
+        osxSign: {},
         osxNotarize:
             process.env.APPLE_TEAM_ID && process.env.APPLE_ID && process.env.APPLE_ID_APP_SPECIFIC_PASSWORD ?
                 {
@@ -36,6 +37,8 @@ const config: ForgeConfig = {
                     teamId: process.env.APPLE_TEAM_ID,
                 }
             :   undefined,
+        appBundleId: "com.8crafter.bedrock-world-editor",
+        appCategoryType: "public.app-category.developer-tools",
     },
     rebuildConfig: { extraModules: ["@electron/remote"] /* , ignoreModules: ["@8crafter/leveldb-zlib"] */, disablePreGypCopy: false },
     makers: [
