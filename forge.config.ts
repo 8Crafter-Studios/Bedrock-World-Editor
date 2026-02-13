@@ -11,6 +11,9 @@ import { FuseV1Options, FuseVersion } from "@electron/fuses";
 import { type ChildProcess, spawn } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
 import path from "node:path";
+import { loadEnvFile } from "node:process";
+
+if (existsSync(path.join(__dirname, ".env"))) loadEnvFile(path.join(__dirname, ".env"));
 
 const osxSigningEnabled = !!(process.env.APPLE_TEAM_ID && process.env.APPLE_ID && process.env.APPLE_ID_APP_SPECIFIC_PASSWORD);
 
