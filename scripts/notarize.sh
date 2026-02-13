@@ -41,9 +41,9 @@ for ZIP_PATH in "${ZIP_FILES[@]}"; do
       --team-id "$APPLE_TEAM_ID" \
       --password "$APPLE_ID_APP_SPECIFIC_PASSWORD" \
       --verbose \
-      --output-format json > log.json 2>&1; then
+      --output-format json > log.json 2> log.err; then
         # If the failure is the expected 404 case, keep polling
-        if grep -q "Submission log is not yet available" log.json; then
+        if grep -q "Submission log is not yet available" log.err; then
           echo "Log not ready yet, retrying in 60 seconds…"
           sleep 60
           continue
@@ -55,8 +55,14 @@ for ZIP_PATH in "${ZIP_FILES[@]}"; do
     fi
 
     # Apple returns 404 for several seconds after upload — this is normal
-    if grep -q "Submission log is not yet available" log.json; then
+    if grep -q "Submission log is not yet available" log.err; then
       echo "Log not ready yet, retrying in 60 seconds…"
+      sleep 60
+      continue
+    fi
+
+    if ! jq empty log.json 2>/dev/null; then
+      echo "Log not valid JSON yet, retrying in 60 seconds…"
       sleep 60
       continue
     fi
