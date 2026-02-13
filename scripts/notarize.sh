@@ -35,7 +35,7 @@ for ZIP_PATH in "${ZIP_FILES[@]}"; do
   echo "Polling for notarization result…"
 
   # Poll with retries
-  for i in {1..30}; do
+  for i in {1..60}; do
     if ! xcrun notarytool log "$SUBMISSION_ID" \
       --apple-id "$APPLE_ID" \
       --team-id "$APPLE_TEAM_ID" \
@@ -44,8 +44,8 @@ for ZIP_PATH in "${ZIP_FILES[@]}"; do
       --output-format json > log.json 2> log.err; then
         # If the failure is the expected 404 case, keep polling
         if grep -q "Submission log is not yet available" log.err; then
-          echo "Log not ready yet, retrying in 60 seconds…"
-          sleep 60
+          echo "Log not ready yet, retrying in 30 seconds…"
+          sleep 30
           continue
         fi
 
@@ -56,14 +56,14 @@ for ZIP_PATH in "${ZIP_FILES[@]}"; do
 
     # Apple returns 404 for several seconds after upload — this is normal
     if grep -q "Submission log is not yet available" log.err; then
-      echo "Log not ready yet, retrying in 60 seconds…"
-      sleep 60
+      echo "Log not ready yet, retrying in 30 seconds…"
+      sleep 30
       continue
     fi
 
     if ! jq empty log.json 2>/dev/null; then
-      echo "Log not valid JSON yet, retrying in 60 seconds…"
-      sleep 60
+      echo "Log not valid JSON yet, retrying in 30 seconds…"
+      sleep 30
       continue
     fi
 
@@ -74,8 +74,8 @@ for ZIP_PATH in "${ZIP_FILES[@]}"; do
       break
     fi
 
-    echo "Status: ${STATUS:-Unknown}, retrying in 60 seconds…"
-    sleep 60
+    echo "Status: ${STATUS:-Unknown}, retrying in 30 seconds…"
+    sleep 30
   done
 
   echo "=== Stapling artifacts for this architecture ==="
