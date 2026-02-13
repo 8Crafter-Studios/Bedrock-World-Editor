@@ -90,3 +90,6 @@ typings/
 
 # Electron-Forge
 out/
+
+# Local files
+.local_*
