@@ -9,7 +9,7 @@ import type { PublisherGitHubConfig } from "@electron-forge/publisher-github";
 import type { ForgeConfig, ForgeMakeResult, ResolvedForgeConfig } from "@electron-forge/shared-types";
 import { FuseV1Options, FuseVersion } from "@electron/fuses";
 import { type ChildProcess, spawn } from "node:child_process";
-import { existsSync, rmSync } from "node:fs";
+import { existsSync, renameSync, rmSync } from "node:fs";
 import path from "node:path";
 import { loadEnvFile } from "node:process";
 
@@ -76,7 +76,7 @@ const config: ForgeConfig = {
         new MakerDMG((arch: string) => ({
             // background // TODO: Make a background image for the DMG window.
             icon: "resources/icon.icns",
-            name: `Bedrock.World.Editor-${arch}`,
+            name: "Bedrock World Editor",
         })),
     ],
     publishers: [
@@ -264,8 +264,21 @@ module.exports = bindings
                 }
             }
         }, */,
-        postMake: async (_forgeConfig: ResolvedForgeConfig, _results: ForgeMakeResult[]) => {
-            if (!osxSigningEnabled || process.platform !== "darwin") return;
+        postMake: async (_forgeConfig: ResolvedForgeConfig, results: ForgeMakeResult[]) => {
+            if (process.platform !== "darwin") return;
+
+            renameDMG: {
+                const targetPath: string = path.join(__dirname, "./out/make/Bedrock World Editor.dmg");
+                if (!existsSync(targetPath)) break renameDMG;
+                const targetResult: ForgeMakeResult | undefined = results.find((v: ForgeMakeResult): boolean => v.artifacts.includes(targetPath));
+                if (!targetResult) throw new ReferenceError(`Failed to get arch for "${targetPath}" when attempting to rename DMG.`);
+                renameSync(
+                    "./out/make/Bedrock World Editor.dmg",
+                    `./out/make/Bedrock World Editor-darwin-${targetResult.arch}-${(targetResult.packageJSON as typeof import("./package.json")).version}.dmg`
+                );
+            }
+
+            if (!osxSigningEnabled) return;
             const { spawn } = require("child_process") as typeof import("child_process");
 
             await new Promise((resolve: (value: void) => void, reject) => {
