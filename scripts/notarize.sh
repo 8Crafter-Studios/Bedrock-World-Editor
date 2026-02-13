@@ -97,8 +97,8 @@ for ZIP_PATH in "${ZIP_FILES[@]}"; do
     xcrun stapler staple "$DMG_PATH"
   fi
 
-  echo "Stapling $ZIP_PATH"
-  xcrun stapler staple "$ZIP_PATH"
+  # echo "Stapling $ZIP_PATH"
+  # xcrun stapler staple "$ZIP_PATH"
 
 done
 
