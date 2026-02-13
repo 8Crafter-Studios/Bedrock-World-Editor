@@ -58,6 +58,6 @@
         "no-fallthrough": "off",
         "no-control-regex": "off",
         "preserve-caught-error": "warn"
-    }
+    },
+    "root": true
 }
-
