@@ -2,7 +2,8 @@
 
 ## Additions
 
--   macOS builds are now notarized (signed).
+-   macOS builds are now signed and notarized.
+    -   This also fixes the issue with the recently opened history was not working on macOS.
 
 # v1.0.0-beta.18
 
