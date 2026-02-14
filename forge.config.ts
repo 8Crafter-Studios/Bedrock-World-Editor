@@ -272,10 +272,12 @@ module.exports = bindings
                 if (!existsSync(targetPath)) break renameDMG;
                 const targetResult: ForgeMakeResult | undefined = results.find((v: ForgeMakeResult): boolean => v.artifacts.includes(targetPath));
                 if (!targetResult) throw new ReferenceError(`Failed to get arch for "${targetPath}" when attempting to rename DMG.`);
-                renameSync(
-                    "./out/make/Bedrock World Editor.dmg",
-                    `./out/make/Bedrock World Editor-darwin-${targetResult.arch}-${(targetResult.packageJSON as typeof import("./package.json")).version}.dmg`
+                const newPath: string = path.join(
+                    targetPath,
+                    `../Bedrock World Editor-darwin-${targetResult.arch}-${(targetResult.packageJSON as typeof import("./package.json")).version}.dmg`
                 );
+                targetResult.artifacts.splice(targetResult.artifacts.indexOf(targetPath), 1, newPath);
+                renameSync(targetPath, newPath);
             }
 
             if (!osxSigningEnabled) return;
