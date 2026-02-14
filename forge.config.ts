@@ -54,7 +54,7 @@ const config: ForgeConfig = {
     makers: [
         new MakerSquirrel((arch: string) => ({
             setupIcon: "resources/icon.ico",
-            setupExe: `bedrock-world-editor_${(require("./package.json") as typeof import("./package.json")).version}-win32-${arch} Setup.exe`,
+            setupExe: `Bedrock.World.Editor-win32-${arch}-${(require("./package.json") as typeof import("./package.json")).version} Setup.exe`,
             // setupMsi: `bedrock-world-editor_${arch}_${(require("./package.json") as typeof import("./package.json")).version} Setup.msi`,
             iconUrl: "https://raw.githubusercontent.com/8Crafter-Studios/Bedrock-World-Editor/refs/heads/main/resources/icon.ico",
             // loadingGif // TODO: Make a custom loading GIF for the installer.
@@ -78,11 +78,11 @@ const config: ForgeConfig = {
                 section: "editors",
             },
         }),
-        new MakerDMG((arch: string) => ({
+        new MakerDMG({
             // background // TODO: Make a background image for the DMG window.
             icon: "resources/icon.icns",
             name: "Bedrock World Editor",
-        })),
+        }),
     ],
     publishers: [
         {
