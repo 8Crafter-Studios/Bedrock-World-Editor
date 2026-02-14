@@ -2,6 +2,10 @@
 
 ## Additions
 
+-   Added support for editing the `LegacyTerrain` content type.
+-   Added support for editing the `Data2D` content type.
+-   Added support for editing the `Data2DLegacy` content type.
+-   Added support for editing the versions `0x00`, `0x01`, `0x02`, `0x03`, `0x04`, `0x05`, `0x06`, and `0x07` of the `SubChunkPrefix` content type.
 -   Added full JSON schema support to the Prismarine-NBT editor.
     -   All content types that are editable in the Prismarine-NBT editor have JSON schemas except for `MVillages` and `Villages`.
 -   Clicking on the app's icon on the world selection menu will now refresh the world list.
