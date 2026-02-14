@@ -1,4 +1,4 @@
-import { type JSX, type RefObject } from "preact";
+import { type JSX, type RefObject, type TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef, useState } from "preact/compat";
 import { checkIsURIOrPath } from "../../src/utils/pathUtils";
 const mime = require("mime-types") as typeof import("mime-types");
@@ -7,7 +7,7 @@ import type { NBTSchemas, Vector2 } from "mcbe-leveldb";
 import { dialog, shell } from "@electron/remote";
 import { get } from "jquery";
 import type { MessageBoxReturnValue, OpenDialogReturnValue } from "electron";
-import { ControlledMenu, MenuDivider, MenuItem } from "@szhsin/react-menu";
+import { ControlledMenu, MenuDivider, MenuItem, type ClickEvent } from "@szhsin/react-menu";
 import path from "node:path";
 import * as NBT from "prismarine-nbt";
 
@@ -378,7 +378,7 @@ export default function TabBar(): JSX.Element {
         return (
             <li
                 class={props.tab === tabManager.selectedTab ? "active" : ""}
-                onAuxClick={(event: JSX.TargetedMouseEvent<HTMLLIElement>): void => void (event.button === 2 && onTabRightClick(event))}
+                onContextMenu={(event: TargetedMouseEvent<HTMLLIElement>): void => void onTabRightClick(event)}
                 ref={containerRef}
             >
                 <ControlledMenu
@@ -390,15 +390,17 @@ export default function TabBar(): JSX.Element {
                     {props.tab.isModified() ?
                         <>
                             <MenuItem
-                                onClick={async (event: JSX.TargetedMouseEvent<HTMLDivElement>): Promise<void> => {
-                                    await props.tab.save(false, event.altKey);
+                                title="Save Tab (Alt to save in unsafe mode)"
+                                onClick={async (event: ClickEvent): Promise<void> => {
+                                    await props.tab.save(false, event.syntheticEvent.altKey);
                                 }}
                             >
                                 Save Tab
                             </MenuItem>
                             <MenuItem
-                                onClick={async (event: JSX.TargetedMouseEvent<HTMLDivElement>): Promise<void> => {
-                                    await props.tab.save(false, event.altKey);
+                                title="Save & Close Tab (Alt to save in unsafe mode)"
+                                onClick={async (event: ClickEvent): Promise<void> => {
+                                    await props.tab.save(false, event.syntheticEvent.altKey);
                                     props.tab.close();
                                 }}
                             >
@@ -421,10 +423,11 @@ export default function TabBar(): JSX.Element {
                         </MenuItem>
                     }
                     <MenuItem
-                        onClick={(event: JSX.TargetedMouseEvent<HTMLDivElement>): void => {
+                        title="Save & Close Others (Alt to save in unsafe mode)"
+                        onClick={(event: ClickEvent): void => {
                             tabManager.openTabs.forEach(async (tab: TabManagerTab): Promise<void> => {
                                 if (tab !== props.tab) {
-                                    await tab.save(false, event.altKey);
+                                    await tab.save(false, event.syntheticEvent.altKey);
                                     tab.close();
                                 }
                             });

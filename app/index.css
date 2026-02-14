@@ -1349,7 +1349,10 @@ div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
 }
 
 .integrationsTabIntegrationButton,
-.genericRoundButton {
+.genericRoundButton,
+.genericRoundButtonR,
+.genericRoundButtonH,
+.genericRoundButtonHR {
     padding: 10px;
     background-color: var(--generic-button-bg-color);
     color: var(--generic-button-text-color);
@@ -1373,38 +1376,68 @@ div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
     margin-top: 0;
 }
 
+.genericRoundButtonR:not(:first-of-type) {
+    margin-bottom: 0;
+}
+
+.genericRoundButtonH:not(:first-of-type) {
+    margin-left: 0;
+}
+
+.genericRoundButtonHR:not(:first-of-type) {
+    margin-right: 0;
+}
+
 .integrationsTabIntegrationButton:not(:disabled):active,
-.genericRoundButton:not(:disabled):active {
+.genericRoundButton:not(:disabled):active,
+.genericRoundButtonR:not(:disabled):active,
+.genericRoundButtonH:not(:disabled):active,
+.genericRoundButtonHR:not(:disabled):active {
     background-color: var(--generic-button-pressed-bg-color);
     color: var(--generic-button-pressed-text-color);
 }
 
 .integrationsTabIntegrationButton:not(:disabled):hover:not(:active),
-.genericRoundButton:not(:disabled):hover:not(:active) {
+.genericRoundButton:not(:disabled):hover:not(:active),
+.genericRoundButtonR:not(:disabled):hover:not(:active),
+.genericRoundButtonH:not(:disabled):hover:not(:active),
+.genericRoundButtonHR:not(:disabled):hover:not(:active) {
     background-color: var(--generic-button-hover-bg-color);
     color: var(--generic-button-hover-text-color);
 }
 
 .integrationsTabIntegrationButton.selected,
-.genericRoundButton.selected {
+.genericRoundButton.selected,
+.genericRoundButtonR.selected,
+.genericRoundButtonH.selected,
+.genericRoundButtonHR.selected {
     background-color: var(--generic-button-selected-bg-color);
     color: var(--generic-option-button-text-color);
 }
 
 .integrationsTabIntegrationButton:not(:disabled).selected:active,
-.genericRoundButton:not(:disabled).selected:active {
+.genericRoundButton:not(:disabled).selected:active,
+.genericRoundButtonR:not(:disabled).selected:active,
+.genericRoundButtonH:not(:disabled).selected:active,
+.genericRoundButtonHR:not(:disabled).selected:active {
     background-color: var(--generic-option-selected-pressed-bg-color);
     color: var(--generic-option-selected-pressed-text-color);
 }
 
 .integrationsTabIntegrationButton:not(:disabled).selected:hover:not(:active),
-.genericRoundButton:not(:disabled).selected:hover:not(:active) {
+.genericRoundButton:not(:disabled).selected:hover:not(:active),
+.genericRoundButtonR:not(:disabled).selected:hover:not(:active),
+.genericRoundButtonH:not(:disabled).selected:hover:not(:active),
+.genericRoundButtonHR:not(:disabled).selected:hover:not(:active) {
     background-color: var(--generic-option-selected-hover-bg-color);
     color: var(--generic-option-selected-hover-text-color);
 }
 
 .integrationsTabIntegrationButton:disabled,
-.genericRoundButton:disabled {
+.genericRoundButton:disabled,
+.genericRoundButtonR:disabled,
+.genericRoundButtonH:disabled,
+.genericRoundButtonHR:disabled {
     filter: contrast(0.5) brightness(0.5);
     cursor: not-allowed;
 }
@@ -1435,6 +1468,17 @@ div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
     margin-block: 0 0.5em;
 }
 
+.DBKeyCreationDialogOptionList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+}
+
+.DBKeyCreationDialogOptionList_optionItemGroup {
+    display: flex;
+    flex-direction: column;
+}
+
 .szh-menu-container {
     cursor: auto;
 }
@@ -1450,4 +1494,3 @@ div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
 .add-tab-popup-menu {
     z-index: 100;
 }
-

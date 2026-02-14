@@ -959,6 +959,22 @@ async function getPlayersTabContentsRows(data: {
                 // 8Crafter's Server Utilities & Debug Sticks, and a custom behavior pack advertised here that saved the
                 // player's name to a player dynamic property specifically for being accessed here.
                 // Add a context menu to the individual rows to set player name.
+                function onEntryMiddleClick(_event: TargetedMouseEvent<HTMLTableRowElement>): void {
+                    data.tab.openTab(
+                        {
+                            // TODO: In the future, add support for getting their skin head or profile picture.
+                            contentType: "Player",
+                            icon: "auto",
+                            name: serverKey.displayKey,
+                            parentTab: data.tab,
+                            target: {
+                                type: "LevelDBEntry",
+                                key: serverKey.rawKey,
+                            },
+                        },
+                        false
+                    );
+                }
                 return (
                     <tr
                         onDblClick={(): void => {
@@ -974,22 +990,14 @@ async function getPlayersTabContentsRows(data: {
                                 },
                             });
                         }}
+                        onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                            // Treat Alt+Click as a middle click.
+                            if (!event.altKey) return;
+                            onEntryMiddleClick(event);
+                        }}
                         onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                             if (event.button !== 1) return;
-                            data.tab.openTab(
-                                {
-                                    // TODO: In the future, add support for getting their skin head or profile picture.
-                                    contentType: "Player",
-                                    icon: "auto",
-                                    name: serverKey.displayKey,
-                                    parentTab: data.tab,
-                                    target: {
-                                        type: "LevelDBEntry",
-                                        key: serverKey.rawKey,
-                                    },
-                                },
-                                false
-                            );
+                            onEntryMiddleClick(event);
                         }}
                     >
                         {columns.map((column: (typeof columns)[number]): JSX.Element => {
@@ -1132,6 +1140,22 @@ async function getPlayersTabContentsRows(data: {
             const columns = config.views.players.modeSettings.raw.sections.client.columns;
             return data.clientKeys.map((clientKey: ClientKeyData): JSX.Element => {
                 const serverKey = data.clientToServerKeyMap.get(clientKey.displayKey);
+                function onEntryMiddleClick(_event: TargetedMouseEvent<HTMLTableRowElement>): void {
+                    data.tab.openTab(
+                        {
+                            // TODO: In the future, add support for getting their skin head or profile picture.
+                            contentType: "PlayerClient",
+                            icon: "auto",
+                            name: clientKey.displayKey,
+                            parentTab: data.tab,
+                            target: {
+                                type: "LevelDBEntry",
+                                key: clientKey.rawKey,
+                            },
+                        },
+                        false
+                    );
+                }
                 return (
                     <tr
                         onDblClick={(): void => {
@@ -1147,22 +1171,14 @@ async function getPlayersTabContentsRows(data: {
                                 },
                             });
                         }}
+                        onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                            // Treat Alt+Click as a middle click.
+                            if (!event.altKey) return;
+                            onEntryMiddleClick(event);
+                        }}
                         onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                             if (event.button !== 1) return;
-                            data.tab.openTab(
-                                {
-                                    // TODO: In the future, add support for getting their skin head or profile picture.
-                                    contentType: "PlayerClient",
-                                    icon: "auto",
-                                    name: clientKey.displayKey,
-                                    parentTab: data.tab,
-                                    target: {
-                                        type: "LevelDBEntry",
-                                        key: clientKey.rawKey,
-                                    },
-                                },
-                                false
-                            );
+                            onEntryMiddleClick(event);
                         }}
                     >
                         {columns.map((column: (typeof columns)[number]): JSX.Element => {
@@ -1246,6 +1262,21 @@ async function getPlayersTabContentsRows(data: {
         case "raw_server": {
             const columns = config.views.players.modeSettings.raw.sections.server.columns;
             return data.serverKeys.map((serverKey: ServerKeyData): JSX.Element => {
+                function onEntryMiddleClick(_event: TargetedMouseEvent<HTMLTableRowElement>): void {
+                    data.tab.openTab(
+                        {
+                            // TODO: In the future, add support for getting their skin head or profile picture.
+                            contentType: "Player",
+                            icon: "resource://images/ui/glyphs/icon_steve_server.png",
+                            name: serverKey.displayKey,
+                            target: {
+                                type: "LevelDBEntry",
+                                key: serverKey.rawKey,
+                            },
+                        },
+                        false
+                    );
+                }
                 return (
                     <tr
                         onDblClick={(): void => {
@@ -1260,21 +1291,14 @@ async function getPlayersTabContentsRows(data: {
                                 },
                             });
                         }}
+                        onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                            // Treat Alt+Click as a middle click.
+                            if (!event.altKey) return;
+                            onEntryMiddleClick(event);
+                        }}
                         onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                             if (event.button !== 1) return;
-                            data.tab.openTab(
-                                {
-                                    // TODO: In the future, add support for getting their skin head or profile picture.
-                                    contentType: "Player",
-                                    icon: "resource://images/ui/glyphs/icon_steve_server.png",
-                                    name: serverKey.displayKey,
-                                    target: {
-                                        type: "LevelDBEntry",
-                                        key: serverKey.rawKey,
-                                    },
-                                },
-                                false
-                            );
+                            onEntryMiddleClick(event);
                         }}
                     >
                         {columns.map((column: (typeof columns)[number]): JSX.Element => {

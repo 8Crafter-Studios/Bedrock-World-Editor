@@ -1,21 +1,13 @@
 import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef, useState } from "preact/compat";
-import TreeEditor from "../components/TreeEditor";
 import {
-    dimensions,
     entryContentTypeToFormatMap,
-    gameModes,
+    generateChunkKeyFromIndices,
     getKeyDisplayName,
-    getKeysOfType,
     prettyPrintSNBT,
     prismarineToSNBT,
-    toLong,
-    type Vector3,
 } from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { testForObjectExtension } from "../../src/utils/miscUtils";
 import { ControlledMenu, MenuItem } from "@szhsin/react-menu";
 import { LoadingScreenContents } from "../app";
 import type { SearchSyntaxHelpInfo } from "../components/SearchSyntaxHelpMenu";
@@ -24,6 +16,8 @@ import SearchSyntaxHelpMenu from "../components/SearchSyntaxHelpMenu";
 import SearchString from "search-string";
 import { PageNavigation } from "../components/PageNavigation";
 import EditorWidgetOverlayBar from "../components/EditorWidgetOverlayBar";
+import { dialog } from "@electron/remote";
+import showDBKeyCreationDialog from "../components/DBKeyCreationDialog";
 
 export interface TicksTabProps {
     tab: TabManagerTab;
@@ -124,6 +118,13 @@ interface PendingTickKeyData {
     data: { parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata };
 }
 
+enum UpdateTablesContentsMode {
+    None = 0,
+    ReloadTablesContents = 1,
+    ReloadKeysAndTablesContents = 2,
+    ReloadAll = 3,
+}
+
 async function getTicksTabContents(tab: TabManagerTab): Promise<JSX.Element> {
     if (!tab.db) return <div>The ticks sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
     tab.db.isOpen() || (await tab.awaitDBOpen!);
@@ -161,6 +162,7 @@ async function getTicksTabContents(tab: TabManagerTab): Promise<JSX.Element> {
         ]);
     }
     await reloadKeys();
+    let currentUpdateTablesContentsFunction: ((mode: UpdateTablesContentsMode) => Promise<void>) | null = null;
     let mode: ConfigConstants.views.Ticks.TicksTabMode = config.views.ticks.mode;
     let tablesContents: JSX.Element[][] = await Promise.all(
         ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode].map(
@@ -170,6 +172,9 @@ async function getTicksTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                     randomTickKeys,
                     pendingTickKeys,
                     mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Ticks.TicksTabSectionMode,
+                    get updateTablesContents(): ((mode: UpdateTablesContentsMode) => Promise<void>) | null {
+                        return currentUpdateTablesContentsFunction;
+                    },
                 })
         )
     );
@@ -280,12 +285,6 @@ async function getTicksTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                 </>
             );
         }
-        enum UpdateTablesContentsMode {
-            None = 0,
-            ReloadTablesContents = 1,
-            ReloadKeysAndTablesContents = 2,
-            ReloadAll = 3,
-        }
         async function updateTablesContents(updateMode: UpdateTablesContentsMode): Promise<void> {
             if (!tablesContainerRef.current) return;
             if (updateMode >= 3) {
@@ -316,6 +315,9 @@ async function getTicksTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                                             .map((key): PendingTickKeyData => key.originalObject.data)
                                     :   pendingTickKeys,
                                 mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Ticks.TicksTabSectionMode,
+                                get updateTablesContents(): ((mode: UpdateTablesContentsMode) => Promise<void>) | null {
+                                    return currentUpdateTablesContentsFunction;
+                                },
                             })
                     )
                 );
@@ -325,6 +327,7 @@ async function getTicksTabContents(tab: TabManagerTab): Promise<JSX.Element> {
             render(<TablesContents />, tablesContainerRef.current /* tempElement */);
             // tablesContainerRef.current.replaceChildren(...tempElement.children);
         }
+        currentUpdateTablesContentsFunction = updateTablesContents;
         let randomTickQuery: Omit<TabManagerTab_LevelDBSearchQuery, "searchTargets"> & {
             searchTargets: {
                 key: Buffer<ArrayBufferLike>;
@@ -585,6 +588,130 @@ async function getTicksTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                                 aria-hidden="true"
                             />
                             Clear All Ticks
+                        </button>
+                    </div>
+                    <div class="widget-overlay tabbed-selector">
+                        <button
+                            type="button"
+                            title="New RandomTicks Entry"
+                            onClick={async (): Promise<void> => {
+                                try {
+                                    if (!tab.db) return;
+                                    if (!tab.db.isOpen()) return;
+                                    if (!tab.cachedDBKeys) return;
+                                    const creationOptions = await showDBKeyCreationDialog({
+                                        options: ["chunkX", "chunkZ", "dimension"],
+                                        message: "Please enter the paremters for the new RandomTicks entry.",
+                                    });
+                                    if (creationOptions.canceled) return;
+                                    const key: Buffer = generateChunkKeyFromIndices(
+                                        { x: creationOptions.data.chunkX, z: creationOptions.data.chunkZ, dimension: creationOptions.data.dimension },
+                                        "RandomTicks"
+                                    );
+                                    if (await tab.db.get(key)) {
+                                        dialog.showMessageBox({
+                                            type: "error",
+                                            title: "Duplicate Key",
+                                            message: `Unable to create a new RandomTicks entry at chunk ${creationOptions.data.chunkX} ${creationOptions.data.chunkZ} in dimension ${creationOptions.data.dimension}.`,
+                                            detail: "There is already a RandomTicks entry at this location.",
+                                            buttons: ["OK"],
+                                            noLink: true,
+                                        });
+                                        return;
+                                    }
+                                    await tab.db.put(key, entryContentTypeToFormatMap.RandomTicks.defaultValue);
+                                    tab.setLevelDBIsModified();
+                                    tab.cachedDBKeys.RandomTicks.push(key);
+                                    tab.openTab({
+                                        contentType: "RandomTicks",
+                                        icon: "auto",
+                                        name: getKeyDisplayName(key),
+                                        parentTab: tab,
+                                        target: {
+                                            type: "LevelDBEntry",
+                                            key,
+                                        },
+                                    });
+                                } catch (e) {
+                                    dialog.showMessageBox({
+                                        type: "error",
+                                        title: "Error",
+                                        message: `An error occurred while creating the RandomTicks entry.`,
+                                        detail: e instanceof Error ? (e.stack ?? String(e)) : String(e),
+                                        buttons: ["OK"],
+                                        noLink: true,
+                                    });
+                                }
+                            }}
+                        >
+                            <img
+                                src="resource://images/ui/glyphs/Data-Empty.png"
+                                style={{ width: "12px", imageRendering: "pixelated", margin: "-1.5px 5px -1.5px 0" }}
+                                aria-hidden="true"
+                            />
+                            New RandomTicks Entry
+                        </button>
+                    </div>
+                    <div class="widget-overlay tabbed-selector">
+                        <button
+                            type="button"
+                            title="New PendingTicks Entry"
+                            onClick={async (): Promise<void> => {
+                                try {
+                                    if (!tab.db) return;
+                                    if (!tab.db.isOpen()) return;
+                                    if (!tab.cachedDBKeys) return;
+                                    const creationOptions = await showDBKeyCreationDialog({
+                                        options: ["chunkX", "chunkZ", "dimension"],
+                                        message: "Please enter the paremters for the new PendingTicks entry.",
+                                    });
+                                    if (creationOptions.canceled) return;
+                                    const key: Buffer = generateChunkKeyFromIndices(
+                                        { x: creationOptions.data.chunkX, z: creationOptions.data.chunkZ, dimension: creationOptions.data.dimension },
+                                        "PendingTicks"
+                                    );
+                                    if (await tab.db.get(key)) {
+                                        dialog.showMessageBox({
+                                            type: "error",
+                                            title: "Duplicate Key",
+                                            message: `Unable to create a new PendingTicks entry at chunk ${creationOptions.data.chunkX} ${creationOptions.data.chunkZ} in dimension ${creationOptions.data.dimension}.`,
+                                            detail: "There is already a PendingTicks entry at this location.",
+                                            buttons: ["OK"],
+                                            noLink: true,
+                                        });
+                                        return;
+                                    }
+                                    await tab.db.put(key, entryContentTypeToFormatMap.PendingTicks.defaultValue);
+                                    tab.setLevelDBIsModified();
+                                    tab.cachedDBKeys.PendingTicks.push(key);
+                                    tab.openTab({
+                                        contentType: "PendingTicks",
+                                        icon: "auto",
+                                        name: getKeyDisplayName(key),
+                                        parentTab: tab,
+                                        target: {
+                                            type: "LevelDBEntry",
+                                            key,
+                                        },
+                                    });
+                                } catch (e) {
+                                    dialog.showMessageBox({
+                                        type: "error",
+                                        title: "Error",
+                                        message: `An error occurred while creating the PendingTicks entry.`,
+                                        detail: e instanceof Error ? (e.stack ?? String(e)) : String(e),
+                                        buttons: ["OK"],
+                                        noLink: true,
+                                    });
+                                }
+                            }}
+                        >
+                            <img
+                                src="resource://images/ui/glyphs/Data-Empty.png"
+                                style={{ width: "12px", imageRendering: "pixelated", margin: "-1.5px 5px -1.5px 0" }}
+                                aria-hidden="true"
+                            />
+                            New PendingTicks Entry
                         </button>
                     </div>
                 </EditorWidgetOverlayBar>
@@ -954,60 +1081,127 @@ async function getTicksTabContentsRows(data: {
      * The mode of the tab.
      */
     mode: ConfigConstants.views.Ticks.TicksTabSectionMode;
+    get updateTablesContents(): ((mode: UpdateTablesContentsMode) => void) | null;
 }): Promise<JSX.Element[]> {
     // const columns = config
     switch (data.mode) {
         case "simple_randomTicks": {
             const columns = config.views.ticks.modeSettings.simple.sections.randomTicks.columns;
             return data.randomTickKeys.map((randomTickKey: RandomTickKeyData): JSX.Element => {
-                return (
-                    <tr
-                        onDblClick={(): void => {
-                            data.tab.openTab({
+                function Row(): JSX.Element {
+                    const [entryContextMenu_isOpen, entryContextMenu_setOpen] = useState(false);
+                    const [entryContextMenu_anchorPoint, entryContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
+                    function onEntryRightClick(event: JSX.TargetedMouseEvent<HTMLTableRowElement>): void {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        const clickPosition: { x: number; y: number } = {
+                            x: event.clientX,
+                            y: event.clientY,
+                        };
+                        // console.log(clickPosition);
+
+                        entryContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
+                        entryContextMenu_setOpen(true);
+                    }
+                    function onEntryMiddleClick(_event: TargetedMouseEvent<HTMLTableRowElement>): void {
+                        data.tab.openTab(
+                            {
                                 contentType: "RandomTicks",
-                                    icon: "auto",
+                                icon: "auto",
                                 name: randomTickKey.displayKey,
                                 parentTab: data.tab,
                                 target: {
                                     type: "LevelDBEntry",
                                     key: randomTickKey.rawKey,
                                 },
-                            });
-                        }}
-                        onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
-                            if (event.button !== 1) return;
-                            data.tab.openTab(
-                                {
-                                    contentType: "RandomTicks",
-                                    icon: "auto",
-                                    name: randomTickKey.displayKey,
-                                    parentTab: data.tab,
-                                    target: {
-                                        type: "LevelDBEntry",
-                                        key: randomTickKey.rawKey,
-                                    },
-                                },
-                                false
-                            );
-                        }}
-                    >
-                        {columns.map((column: (typeof columns)[number]): JSX.Element => {
-                            switch (column) {
-                                case "DBKey":
-                                    return <td>{randomTickKey.displayKey}</td>;
-                            }
-                        })}
-                    </tr>
-                );
+                            },
+                            false
+                        );
+                    }
+                    return (
+                        <>
+                            <ControlledMenu
+                                anchorPoint={entryContextMenu_anchorPoint}
+                                state={entryContextMenu_isOpen ? "open" : "closed"}
+                                direction="right"
+                                onClose={(): void => void entryContextMenu_setOpen(false)}
+                            >
+                                <MenuItem
+                                    onClick={async (): Promise<void> => {
+                                        if (!data.tab.db) return;
+                                        if (!data.tab.db.isOpen()) return;
+                                        if (!data.tab.cachedDBKeys) return;
+                                        // IDEA: Add a confirmation dialog here before deleting the entry, and make it able to be disabled in the config.
+                                        await data.tab.db.delete(randomTickKey.rawKey);
+                                        data.tab.setLevelDBIsModified();
+                                        const cachedIndex: number = data.tab.cachedDBKeys.RandomTicks.findIndex((key: Buffer): boolean =>
+                                            randomTickKey.rawKey.equals(key)
+                                        );
+                                        if (cachedIndex !== -1) data.tab.cachedDBKeys.RandomTicks.splice(cachedIndex, 1);
+                                        data.updateTablesContents?.(UpdateTablesContentsMode.ReloadKeysAndTablesContents);
+                                    }}
+                                >
+                                    Delete LevelDB Entry
+                                </MenuItem>
+                            </ControlledMenu>
+                            <tr
+                                onDblClick={(): void => {
+                                    data.tab.openTab({
+                                        contentType: "RandomTicks",
+                                        icon: "auto",
+                                        name: randomTickKey.displayKey,
+                                        parentTab: data.tab,
+                                        target: {
+                                            type: "LevelDBEntry",
+                                            key: randomTickKey.rawKey,
+                                        },
+                                    });
+                                }}
+                                onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                    // Treat Alt+Click as a middle click.
+                                    if (!event.altKey) return;
+                                    onEntryMiddleClick(event);
+                                }}
+                                onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                    if (event.button !== 1) return;
+                                    onEntryMiddleClick(event);
+                                }}
+                                onContextMenu={onEntryRightClick}
+                            >
+                                {columns.map((column: (typeof columns)[number]): JSX.Element => {
+                                    switch (column) {
+                                        case "DBKey":
+                                            return <td>{randomTickKey.displayKey}</td>;
+                                    }
+                                })}
+                            </tr>
+                        </>
+                    );
+                }
+                return <Row />;
             });
         }
         case "simple_pendingTicks": {
             const columns = config.views.ticks.modeSettings.simple.sections.pendingTicks.columns;
             return data.pendingTickKeys.map((pendingTickKey: PendingTickKeyData): JSX.Element => {
-                return (
-                    <tr
-                        onDblClick={(): void => {
-                            data.tab.openTab({
+                function Row(): JSX.Element {
+                    const [entryContextMenu_isOpen, entryContextMenu_setOpen] = useState(false);
+                    const [entryContextMenu_anchorPoint, entryContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
+                    function onEntryRightClick(event: JSX.TargetedMouseEvent<HTMLTableRowElement>): void {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        const clickPosition: { x: number; y: number } = {
+                            x: event.clientX,
+                            y: event.clientY,
+                        };
+                        // console.log(clickPosition);
+
+                        entryContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
+                        entryContextMenu_setOpen(true);
+                    }
+                    function onEntryMiddleClick(_event: TargetedMouseEvent<HTMLTableRowElement>): void {
+                        data.tab.openTab(
+                            {
                                 contentType: "PendingTicks",
                                 icon: "auto",
                                 name: pendingTickKey.displayKey,
@@ -1016,33 +1210,71 @@ async function getTicksTabContentsRows(data: {
                                     type: "LevelDBEntry",
                                     key: pendingTickKey.rawKey,
                                 },
-                            });
-                        }}
-                        onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
-                            if (event.button !== 1) return;
-                            data.tab.openTab(
-                                {
-                                    contentType: "PendingTicks",
-                                    icon: "auto",
-                                    name: pendingTickKey.displayKey,
-                                    parentTab: data.tab,
-                                    target: {
-                                        type: "LevelDBEntry",
-                                        key: pendingTickKey.rawKey,
-                                    },
-                                },
-                                false
-                            );
-                        }}
-                    >
-                        {columns.map((column: (typeof columns)[number]): JSX.Element => {
-                            switch (column) {
-                                case "DBKey":
-                                    return <td>{pendingTickKey.displayKey}</td>;
-                            }
-                        })}
-                    </tr>
-                );
+                            },
+                            false
+                        );
+                    }
+                    return (
+                        <>
+                            <ControlledMenu
+                                anchorPoint={entryContextMenu_anchorPoint}
+                                state={entryContextMenu_isOpen ? "open" : "closed"}
+                                direction="right"
+                                onClose={(): void => void entryContextMenu_setOpen(false)}
+                            >
+                                <MenuItem
+                                    onClick={async (): Promise<void> => {
+                                        if (!data.tab.db) return;
+                                        if (!data.tab.db.isOpen()) return;
+                                        if (!data.tab.cachedDBKeys) return;
+                                        // IDEA: Add a confirmation dialog here before deleting the entry, and make it able to be disabled in the config.
+                                        await data.tab.db.delete(pendingTickKey.rawKey);
+                                        data.tab.setLevelDBIsModified();
+                                        const cachedIndex: number = data.tab.cachedDBKeys.PendingTicks.findIndex((key: Buffer): boolean =>
+                                            pendingTickKey.rawKey.equals(key)
+                                        );
+                                        if (cachedIndex !== -1) data.tab.cachedDBKeys.PendingTicks.splice(cachedIndex, 1);
+                                        data.updateTablesContents?.(UpdateTablesContentsMode.ReloadKeysAndTablesContents);
+                                    }}
+                                >
+                                    Delete LevelDB Entry
+                                </MenuItem>
+                            </ControlledMenu>
+                            <tr
+                                onDblClick={(): void => {
+                                    data.tab.openTab({
+                                        contentType: "PendingTicks",
+                                        icon: "auto",
+                                        name: pendingTickKey.displayKey,
+                                        parentTab: data.tab,
+                                        target: {
+                                            type: "LevelDBEntry",
+                                            key: pendingTickKey.rawKey,
+                                        },
+                                    });
+                                }}
+                                onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                    // Treat Alt+Click as a middle click.
+                                    if (!event.altKey) return;
+                                    onEntryMiddleClick(event);
+                                }}
+                                onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                    if (event.button !== 1) return;
+                                    onEntryMiddleClick(event);
+                                }}
+                                onContextMenu={onEntryRightClick}
+                            >
+                                {columns.map((column: (typeof columns)[number]): JSX.Element => {
+                                    switch (column) {
+                                        case "DBKey":
+                                            return <td>{pendingTickKey.displayKey}</td>;
+                                    }
+                                })}
+                            </tr>
+                        </>
+                    );
+                }
+                return <Row />;
             });
         }
     }

@@ -1,10 +1,13 @@
-import { type JSX, type RefObject } from "preact";
+import { type JSX, type RefObject, type TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef, useState } from "preact/compat";
 import { checkIsURIOrPath } from "../../src/utils/pathUtils";
 const mime = require("mime-types") as typeof import("mime-types");
-import { readFileSync } from "node:fs";
-import type { Vector2 } from "mcbe-leveldb";
-import { ControlledMenu, MenuDivider, MenuItem } from "@szhsin/react-menu";
+import { readFileSync, writeFileSync } from "node:fs";
+import { entryContentTypeToFormatMap, prettyPrintSNBT, prismarineToSNBT, type EntryContentTypeFormatData, type Vector2 } from "mcbe-leveldb";
+import { ControlledMenu, MenuDivider, MenuItem, SubMenu, type SubMenuProps } from "@szhsin/react-menu";
+import { app, dialog } from "@electron/remote";
+import type { SaveDialogReturnValue } from "electron";
+import path from "node:path";
 
 export interface SubTabBarProps {
     tab: TabManagerTab;
@@ -204,11 +207,13 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
             tabContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
             tabContextMenu_setOpen(true);
         }
+        const tabContentsFormat: EntryContentTypeFormatData = entryContentTypeToFormatMap[props.tab.contentType] as EntryContentTypeFormatData;
+        let tabDataStorageObject: DataStorageObject | undefined = props.tab.currentState.options.dataStorageObject;
         return (
             <>
                 <li
                     class={props.tab === tab.selectedTab ? "active" : ""}
-                    onAuxClick={(event: JSX.TargetedMouseEvent<HTMLLIElement>): void => void (event.button === 2 && onTabRightClick(event))}
+                    onContextMenu={(event: TargetedMouseEvent<HTMLLIElement>): void => void (onTabRightClick(event))}
                     ref={containerRef}
                 >
                     <ControlledMenu
@@ -261,6 +266,277 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                                 Close Tab
                             </MenuItem>
                         }
+                        <MenuDivider />
+                        <SubMenu label="Export As...">
+                            <MenuItem
+                                onClick={async (): Promise<void> => {
+                                    tabDataStorageObject = props.tab.currentState.options.dataStorageObject;
+                                    const supportsNBTBinary: boolean =
+                                        !!tabDataStorageObject && (tabDataStorageObject.dataType === "NBT" || tabDataStorageObject.dataType === "NBTCompound");
+                                    const saveResult: SaveDialogReturnValue = await dialog.showSaveDialog({
+                                        buttonLabel: "Export",
+                                        defaultPath: path.join(app.getPath("downloads"), `${props.tab.name}.${supportsNBTBinary ? "dat" : "bin"}`),
+                                        properties: ["showHiddenFiles", "showOverwriteConfirmation", "treatPackageAsDirectory"],
+                                        title: "Export Binary",
+                                        message: "Select a location to export the data to.",
+                                        filters: [
+                                            ...(supportsNBTBinary ? [{ name: "NBT Binary", extensions: ["dat"] }] : []),
+                                            { name: "Binary", extensions: ["bin"] },
+                                        ],
+                                    });
+                                    if (saveResult.canceled) return;
+                                    writeFileSync(saveResult.filePath, await props.tab.exportRawData(true));
+                                }}
+                            >
+                                Binary
+                            </MenuItem>
+                            {tabDataStorageObject && (tabDataStorageObject.dataType === "NBT" || tabDataStorageObject.dataType === "NBTCompound") && (
+                                <MenuItem
+                                    onClick={async (): Promise<void> => {
+                                        tabDataStorageObject = props.tab.currentState.options.dataStorageObject;
+                                        if (!tabDataStorageObject) {
+                                            dialog.showMessageBoxSync({
+                                                type: "error",
+                                                title: "No Data",
+                                                message: `Unable to export the data of the sub-tab "${props.tab.name}" as Prismarine-NBT JSON.`,
+                                                detail: "There is no loaded data to export.",
+                                                buttons: ["OK"],
+                                                noLink: true,
+                                            });
+                                            return;
+                                        }
+                                        if (tabDataStorageObject.dataType !== "NBT" && tabDataStorageObject.dataType !== "NBTCompound") {
+                                            dialog.showMessageBoxSync({
+                                                type: "error",
+                                                title: "Invalid Data Type",
+                                                message: `Unable to export the data of the sub-tab "${props.tab.name}" as Prismarine-NBT JSON.`,
+                                                detail: `The data type of the loaded data is not supported for this export type: "${tabDataStorageObject.dataType}".`,
+                                                buttons: ["OK"],
+                                                noLink: true,
+                                            });
+                                            return;
+                                        }
+                                        const saveResult: SaveDialogReturnValue = await dialog.showSaveDialog({
+                                            buttonLabel: "Export",
+                                            defaultPath: path.join(app.getPath("downloads"), `${props.tab.name}.json`),
+                                            properties: ["showHiddenFiles", "showOverwriteConfirmation", "treatPackageAsDirectory"],
+                                            title: "Export Prismarine-NBT JSON",
+                                            message: "Select a location to export the data to.",
+                                            filters: [{ name: "JSON", extensions: ["json", "jsonc"] }],
+                                        });
+                                        if (saveResult.canceled) return;
+                                        switch (tabDataStorageObject.dataType) {
+                                            case "NBT":
+                                                writeFileSync(saveResult.filePath, JSON.stringify(tabDataStorageObject.data.parsed, null, 0));
+                                                break;
+                                            case "NBTCompound":
+                                                writeFileSync(saveResult.filePath, JSON.stringify(tabDataStorageObject.data, null, 0));
+                                                break;
+                                        }
+                                    }}
+                                >
+                                    Prismarine-NBT JSON
+                                </MenuItem>
+                            )}
+                            {tabDataStorageObject && tabDataStorageObject.dataType === "NBT" && (
+                                <MenuItem
+                                    onClick={async (): Promise<void> => {
+                                        tabDataStorageObject = props.tab.currentState.options.dataStorageObject;
+                                        if (!tabDataStorageObject) {
+                                            dialog.showMessageBoxSync({
+                                                type: "error",
+                                                title: "No Data",
+                                                message: `Unable to export the data of the sub-tab "${props.tab.name}" as Prismarine-NBT JSON (+Metadata).`,
+                                                detail: "There is no loaded data to export.",
+                                                buttons: ["OK"],
+                                                noLink: true,
+                                            });
+                                            return;
+                                        }
+                                        if (tabDataStorageObject.dataType !== "NBT") {
+                                            dialog.showMessageBoxSync({
+                                                type: "error",
+                                                title: "Invalid Data Type",
+                                                message: `Unable to export the data of the sub-tab "${props.tab.name}" as Prismarine-NBT JSON (+Metadata).`,
+                                                detail: `The data type of the loaded data is not supported for this export type: "${tabDataStorageObject.dataType}".`,
+                                                buttons: ["OK"],
+                                                noLink: true,
+                                            });
+                                            return;
+                                        }
+                                        const saveResult: SaveDialogReturnValue = await dialog.showSaveDialog({
+                                            buttonLabel: "Export",
+                                            defaultPath: path.join(app.getPath("downloads"), `${props.tab.name}.json`),
+                                            properties: ["showHiddenFiles", "showOverwriteConfirmation", "treatPackageAsDirectory"],
+                                            title: "Export Prismarine-NBT JSON (+Metadata)",
+                                            message: "Select a location to export the data to.",
+                                            filters: [{ name: "JSON", extensions: ["json", "jsonc"] }],
+                                        });
+                                        if (saveResult.canceled) return;
+                                        switch (tabDataStorageObject.dataType) {
+                                            case "NBT":
+                                                writeFileSync(saveResult.filePath, JSON.stringify(tabDataStorageObject.data, null, 0));
+                                                break;
+                                        }
+                                    }}
+                                >
+                                    Prismarine-NBT JSON (+Metadata)
+                                </MenuItem>
+                            )}
+                            {tabDataStorageObject && (tabDataStorageObject.dataType === "NBT" || tabDataStorageObject.dataType === "NBTCompound") && (
+                                <MenuItem
+                                    onClick={async (): Promise<void> => {
+                                        tabDataStorageObject = props.tab.currentState.options.dataStorageObject;
+                                        if (!tabDataStorageObject) {
+                                            dialog.showMessageBoxSync({
+                                                type: "error",
+                                                title: "No Data",
+                                                message: `Unable to export the data of the sub-tab "${props.tab.name}" as SNBT.`,
+                                                detail: "There is no loaded data to export.",
+                                                buttons: ["OK"],
+                                                noLink: true,
+                                            });
+                                            return;
+                                        }
+                                        if (tabDataStorageObject.dataType !== "NBT" && tabDataStorageObject.dataType !== "NBTCompound") {
+                                            dialog.showMessageBoxSync({
+                                                type: "error",
+                                                title: "Invalid Data Type",
+                                                message: `Unable to export the data of the sub-tab "${props.tab.name}" as SNBT.`,
+                                                detail: `The data type of the loaded data is not supported for this export type: "${tabDataStorageObject.dataType}".`,
+                                                buttons: ["OK"],
+                                                noLink: true,
+                                            });
+                                            return;
+                                        }
+                                        const saveResult: SaveDialogReturnValue = await dialog.showSaveDialog({
+                                            buttonLabel: "Export",
+                                            defaultPath: path.join(app.getPath("downloads"), `${props.tab.name}.snbt`),
+                                            properties: ["showHiddenFiles", "showOverwriteConfirmation", "treatPackageAsDirectory"],
+                                            title: "Export SNBT",
+                                            message: "Select a location to export the data to.",
+                                            filters: [{ name: "SNBT", extensions: ["snbt"] }],
+                                        });
+                                        if (saveResult.canceled) return;
+                                        switch (tabDataStorageObject.dataType) {
+                                            case "NBT":
+                                                writeFileSync(
+                                                    saveResult.filePath,
+                                                    prettyPrintSNBT(prismarineToSNBT(tabDataStorageObject.data.parsed), { indent: 4 })
+                                                );
+                                                break;
+                                            case "NBTCompound":
+                                                writeFileSync(saveResult.filePath, prettyPrintSNBT(prismarineToSNBT(tabDataStorageObject.data), { indent: 4 }));
+                                                break;
+                                        }
+                                    }}
+                                >
+                                    SNBT
+                                </MenuItem>
+                            )}
+                            {tabDataStorageObject && tabDataStorageObject.dataType === "JSON" && (
+                                <MenuItem
+                                    onClick={async (): Promise<void> => {
+                                        tabDataStorageObject = props.tab.currentState.options.dataStorageObject;
+                                        if (!tabDataStorageObject) {
+                                            dialog.showMessageBoxSync({
+                                                type: "error",
+                                                title: "No Data",
+                                                message: `Unable to export the data of the sub-tab "${props.tab.name}" as JSON.`,
+                                                detail: "There is no loaded data to export.",
+                                                buttons: ["OK"],
+                                                noLink: true,
+                                            });
+                                            return;
+                                        }
+                                        if (tabDataStorageObject.dataType !== "JSON") {
+                                            dialog.showMessageBoxSync({
+                                                type: "error",
+                                                title: "Invalid Data Type",
+                                                message: `Unable to export the data of the sub-tab "${props.tab.name}" as JSON.`,
+                                                detail: `The data type of the loaded data is not supported for this export type: "${tabDataStorageObject.dataType}".`,
+                                                buttons: ["OK"],
+                                                noLink: true,
+                                            });
+                                            return;
+                                        }
+                                        const saveResult: SaveDialogReturnValue = await dialog.showSaveDialog({
+                                            buttonLabel: "Export",
+                                            defaultPath: path.join(app.getPath("downloads"), `${props.tab.name}.json`),
+                                            properties: ["showHiddenFiles", "showOverwriteConfirmation", "treatPackageAsDirectory"],
+                                            title: "Export JSON",
+                                            message: "Select a location to export the data to.",
+                                            filters: [{ name: "JSON", extensions: ["json", "jsonc"] }],
+                                        });
+                                        if (saveResult.canceled) return;
+                                        switch (tabDataStorageObject.dataType) {
+                                            case "JSON":
+                                                writeFileSync(saveResult.filePath, JSON.stringify(tabDataStorageObject.data.parsed, null, 0));
+                                                break;
+                                        }
+                                    }}
+                                >
+                                    JSON
+                                </MenuItem>
+                            )}
+                            {tabDataStorageObject &&
+                                (tabDataStorageObject.dataType === "ASCII" ||
+                                    tabDataStorageObject.dataType === "UTF-8" ||
+                                    tabDataStorageObject.dataType === "binaryPlainText" ||
+                                    tabDataStorageObject.dataType === "hex") && (
+                                    <MenuItem
+                                        onClick={async (): Promise<void> => {
+                                            tabDataStorageObject = props.tab.currentState.options.dataStorageObject;
+                                            if (!tabDataStorageObject) {
+                                                dialog.showMessageBoxSync({
+                                                    type: "error",
+                                                    title: "No Data",
+                                                    message: `Unable to export the data of the sub-tab "${props.tab.name}" as plain text.`,
+                                                    detail: "There is no loaded data to export.",
+                                                    buttons: ["OK"],
+                                                    noLink: true,
+                                                });
+                                                return;
+                                            }
+                                            if (
+                                                tabDataStorageObject.dataType !== "ASCII" &&
+                                                tabDataStorageObject.dataType !== "UTF-8" &&
+                                                tabDataStorageObject.dataType !== "binaryPlainText" &&
+                                                tabDataStorageObject.dataType !== "hex"
+                                            ) {
+                                                dialog.showMessageBoxSync({
+                                                    type: "error",
+                                                    title: "Invalid Data Type",
+                                                    message: `Unable to export the data of the sub-tab "${props.tab.name}" as plain text.`,
+                                                    detail: `The data type of the loaded data is not supported for this export type: "${tabDataStorageObject.dataType}".`,
+                                                    buttons: ["OK"],
+                                                    noLink: true,
+                                                });
+                                                return;
+                                            }
+                                            const saveResult: SaveDialogReturnValue = await dialog.showSaveDialog({
+                                                buttonLabel: "Export",
+                                                defaultPath: path.join(app.getPath("downloads"), `${props.tab.name}.txt`),
+                                                properties: ["showHiddenFiles", "showOverwriteConfirmation", "treatPackageAsDirectory"],
+                                                title: "Export Plain Text",
+                                                message: "Select a location to export the data to.",
+                                                filters: [{ name: "Plain Text", extensions: ["txt"] }],
+                                            });
+                                            if (saveResult.canceled) return;
+                                            switch (tabDataStorageObject.dataType) {
+                                                case "ASCII":
+                                                case "UTF-8":
+                                                case "binaryPlainText":
+                                                case "hex":
+                                                    writeFileSync(saveResult.filePath, tabDataStorageObject.data);
+                                                    break;
+                                            }
+                                        }}
+                                    >
+                                        Plain Text
+                                    </MenuItem>
+                                )}
+                        </SubMenu>
                         <MenuDivider />
                         {props.tab.isPinned ?
                             <MenuItem

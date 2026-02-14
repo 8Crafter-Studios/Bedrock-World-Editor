@@ -15,13 +15,13 @@ export interface ShowSelectOpenTabDialogOptions {
      *
      * @default "Select an open tab."
      */
-    message?: string;
+    message?: string | undefined;
     /**
      * The text of the cancel button.
      *
      * @default "Cancel"
      */
-    cancelButtonText?: string;
+    cancelButtonText?: string | undefined;
     /**
      * A list of tab types to include.
      *
@@ -29,7 +29,7 @@ export interface ShowSelectOpenTabDialogOptions {
      *
      * @default undefined
      */
-    tabTargetTypeFilter?: TabManagerTab["type"][];
+    tabTargetTypeFilter?: TabManagerTab["type"][] | undefined;
 }
 
 export type ShowSelectOpenTabDialogResult =

@@ -245,6 +245,7 @@ namespace exports {
         public constructor() {
             super();
             this.setMaxListeners(1000000);
+            this.setJumpListData();
         }
         public openTab(props: Omit<ConstructorParameters<typeof TabManagerTab>[0], "tabManager">): TabManagerTab {
             const tab = new TabManagerTab({ tabManager: this, ...props });
@@ -1202,7 +1203,6 @@ namespace exports {
         Data2DLegacy: undefined,
         Data3D: undefined,
         Digest: undefined,
-        Dimension: undefined,
         DynamicProperties: undefined,
         Entity: undefined,
         FinalizedState: undefined,
@@ -1212,8 +1212,10 @@ namespace exports {
         GenerationSeed: undefined,
         HardcodedSpawners: undefined,
         LegacyBlockExtraData: undefined,
-        LegacyDimension: undefined,
+        LegacyNether: undefined,
+        LegacyOverworld: undefined,
         LegacyTerrain: undefined,
+        LegacyTheEnd: undefined,
         LegacyVersion: undefined,
         LevelChunkMetaDataDictionary: undefined,
         LevelDat: "resource://images/ui/glyphs/settings_glyph_color_2x.png",
@@ -1222,6 +1224,8 @@ namespace exports {
         MetaDataHash: undefined,
         MobEvents: undefined,
         MVillages: undefined,
+        Nether: undefined,
+        Overworld: undefined,
         PendingTicks: undefined,
         Player: "resource://images/ui/glyphs/icon_steve_server.png",
         PlayerClient: "resource://images/ui/glyphs/icon_steve_client.png",
@@ -1234,6 +1238,7 @@ namespace exports {
         Scoreboard: "resource://images/ui/glyphs/icon_best3.png",
         StructureTemplate: "resource://images/ui/glyphs/structure_block.png",
         SubChunkPrefix: undefined,
+        TheEnd: undefined,
         TickingArea: undefined,
         Unknown: undefined,
         Version: undefined,
@@ -1620,14 +1625,16 @@ namespace exports {
                 }
             }
         }
-        public async save(): Promise<void> {
-            if (!this.hasUnsavedChanges) return;
-            targetTypeSwitcher: switch (this.target.type) {
+        public async exportRawData(loadIfNotLoaded: boolean = false): Promise<Buffer> {
+            if (!this.currentState.options.dataStorageObject) {
+                if (!loadIfNotLoaded) throw new Error("This sub-tab has no data.");
+                await this.loadData();
+                if (!this.currentState.options.dataStorageObject) throw new Error("Failed to load data for this sub-tab.");
+            }
+            switch (this.target.type) {
                 case "LevelDBEntry": {
                     if (!this.parentTab.db) throw new Error("The parent tab has no associated LevelDB.");
                     if (!this.parentTab.db.isOpen()) throw new Error("LevelDB is not open.");
-
-                    if (!this.currentState.options.dataStorageObject) throw new Error("This sub-tab has no data.");
 
                     const format: EntryContentTypeFormatData = this.currentState.options.dataStorageObject.sourceType;
 
@@ -1719,7 +1726,7 @@ namespace exports {
                                         }
                                         case "SNBT": {
                                             rawData = Buffer.from(prettyPrintSNBT(prismarineToSNBT(data), { indent: 0 }), "binary");
-                                            break targetTypeSwitcher;
+                                            break formatTypeSwitcher;
                                         }
                                         case "buffer": {
                                             console.warn(
@@ -1755,8 +1762,7 @@ namespace exports {
                                         `Unsupported conversion from data type ${this.currentState.options.dataStorageObject.dataType} to ${format.type}.`
                                     );
                             }
-                            await this.parentTab.db!.put(this.target.key, rawData);
-                            break targetTypeSwitcher;
+                            return rawData;
                         }
                         case "NBT": {
                             const data = this.currentState.options.dataStorageObject.data;
@@ -1885,33 +1891,27 @@ namespace exports {
                                         `Unsupported conversion from data type ${this.currentState.options.dataStorageObject.dataType} to ${format.type}.`
                                     );
                             }
-                            await this.parentTab.db!.put(this.target.key, rawData);
-                            break targetTypeSwitcher;
+                            return rawData;
                         }
                         case "JSON": {
                             const data = this.currentState.options.dataStorageObject.data;
-                            await this.parentTab.db!.put(this.target.key, JSON.stringify(data));
-                            break targetTypeSwitcher;
+                            return Buffer.from(JSON.stringify(data), "binary");
                         }
                         case "ASCII": {
                             const data = this.currentState.options.dataStorageObject.data;
-                            await this.parentTab.db!.put(this.target.key, Buffer.from(data, "ascii"));
-                            break targetTypeSwitcher;
+                            return Buffer.from(data, "ascii");
                         }
                         case "UTF-8": {
                             const data = this.currentState.options.dataStorageObject.data;
-                            await this.parentTab.db!.put(this.target.key, Buffer.from(data, "utf-8"));
-                            break targetTypeSwitcher;
+                            return Buffer.from(data, "utf-8");
                         }
                         case "hex": {
                             const data = this.currentState.options.dataStorageObject.data;
-                            await this.parentTab.db!.put(this.target.key, Buffer.from(data, "hex"));
-                            break targetTypeSwitcher;
+                            return Buffer.from(data, "hex");
                         }
                         case "binaryPlainText": {
                             const data = this.currentState.options.dataStorageObject.data;
-                            await this.parentTab.db!.put(this.target.key, Buffer.from(data, "binary"));
-                            break targetTypeSwitcher;
+                            return Buffer.from(data, "binary");
                         }
                         case "int": {
                             if (format.type !== "int")
@@ -1921,22 +1921,16 @@ namespace exports {
                                     }.`
                                 );
                             const data = this.currentState.options.dataStorageObject.data;
-                            await this.parentTab.db!.put(
-                                this.target.key,
-                                writeSpecificIntType(Buffer.alloc(format.bytes), data, format.bytes, format.format, format.signed, 0, { wrap: true })
-                            );
-                            break targetTypeSwitcher;
+                            return writeSpecificIntType(Buffer.alloc(format.bytes), data, format.bytes, format.format, format.signed, 0, { wrap: true });
                         }
                         case "binary": {
                             const data = this.currentState.options.dataStorageObject.data;
-                            await this.parentTab.db!.put(this.target.key, data);
-                            break targetTypeSwitcher;
+                            return data;
                         }
                         case "unknown": {
                             if (format.type === "custom" && format.resultType === "unknown") {
                                 const data = this.currentState.options.dataStorageObject.data;
-                                await this.parentTab.db!.put(this.target.key, await format.serialize(data));
-                                break targetTypeSwitcher;
+                                return await format.serialize(data);
                             }
                             throw new Error(
                                 `Unsupported conversion from data type ${this.currentState.options.dataStorageObject.dataType} to ${
@@ -2080,8 +2074,7 @@ namespace exports {
                                         `Unsupported conversion from data type ${this.currentState.options.dataStorageObject.dataType} to ${format.type}.`
                                     );
                             }
-                            await writeFile(path.join(this.parentTab.tempPath ?? this.parentTab.path, this.target.path), rawData);
-                            break targetTypeSwitcher;
+                            return rawData;
                         }
                         case "NBT": {
                             const data = this.currentState.options.dataStorageObject.data;
@@ -2210,33 +2203,27 @@ namespace exports {
                                         `Unsupported conversion from data type ${this.currentState.options.dataStorageObject.dataType} to ${format.type}.`
                                     );
                             }
-                            await writeFile(path.join(this.parentTab.tempPath ?? this.parentTab.path, this.target.path), rawData);
-                            break targetTypeSwitcher;
+                            return rawData;
                         }
                         case "JSON": {
                             const data = this.currentState.options.dataStorageObject.data;
-                            await writeFile(path.join(this.parentTab.tempPath ?? this.parentTab.path, this.target.path), JSON.stringify(data));
-                            break targetTypeSwitcher;
+                            return Buffer.from(JSON.stringify(data), "binary");
                         }
                         case "ASCII": {
                             const data = this.currentState.options.dataStorageObject.data;
-                            await writeFile(path.join(this.parentTab.tempPath ?? this.parentTab.path, this.target.path), Buffer.from(data, "ascii"));
-                            break targetTypeSwitcher;
+                            return Buffer.from(data, "ascii");
                         }
                         case "UTF-8": {
                             const data = this.currentState.options.dataStorageObject.data;
-                            await writeFile(path.join(this.parentTab.tempPath ?? this.parentTab.path, this.target.path), Buffer.from(data, "utf-8"));
-                            break targetTypeSwitcher;
+                            return Buffer.from(data, "utf-8");
                         }
                         case "hex": {
                             const data = this.currentState.options.dataStorageObject.data;
-                            await writeFile(path.join(this.parentTab.tempPath ?? this.parentTab.path, this.target.path), Buffer.from(data, "hex"));
-                            break targetTypeSwitcher;
+                            return Buffer.from(data, "hex");
                         }
                         case "binaryPlainText": {
                             const data = this.currentState.options.dataStorageObject.data;
-                            await writeFile(path.join(this.parentTab.tempPath ?? this.parentTab.path, this.target.path), Buffer.from(data, "binary"));
-                            break targetTypeSwitcher;
+                            return Buffer.from(data, "binary");
                         }
                         case "int": {
                             if (format.type !== "int")
@@ -2246,22 +2233,16 @@ namespace exports {
                                     }.`
                                 );
                             const data = this.currentState.options.dataStorageObject.data;
-                            await writeFile(
-                                path.join(this.parentTab.tempPath ?? this.parentTab.path, this.target.path),
-                                writeSpecificIntType(Buffer.alloc(format.bytes), data, format.bytes, format.format, format.signed, 0, { wrap: true })
-                            );
-                            break targetTypeSwitcher;
+                            return writeSpecificIntType(Buffer.alloc(format.bytes), data, format.bytes, format.format, format.signed, 0, { wrap: true });
                         }
                         case "binary": {
                             const data = this.currentState.options.dataStorageObject.data;
-                            await writeFile(path.join(this.parentTab.tempPath ?? this.parentTab.path, this.target.path), data);
-                            break targetTypeSwitcher;
+                            return data;
                         }
                         case "unknown": {
                             if (format.type === "custom" && format.resultType === "unknown") {
                                 const data = this.currentState.options.dataStorageObject.data;
-                                await writeFile(path.join(this.parentTab.tempPath ?? this.parentTab.path, this.target.path), await format.serialize(data));
-                                break targetTypeSwitcher;
+                                return await format.serialize(data);
                             }
                             throw new Error(
                                 `Unsupported conversion from data type ${this.currentState.options.dataStorageObject.dataType} to ${
@@ -2273,6 +2254,30 @@ namespace exports {
                             throw new Error(`Unsupported data type: ${format.type}`);
                     }
                 }
+                default:
+                    throw new Error(`Unsupported target type: ${this.target["type"]}`);
+            }
+        }
+        public async save(): Promise<void> {
+            if (!this.hasUnsavedChanges) return;
+            switch (this.target.type) {
+                case "LevelDBEntry": {
+                    if (!this.parentTab.db) throw new Error("The parent tab has no associated LevelDB.");
+                    if (!this.parentTab.db.isOpen()) throw new Error("LevelDB is not open.");
+
+                    await this.parentTab.db!.put(this.target.key, await this.exportRawData(false));
+                    break;
+                }
+                case "File": {
+                    if (!existsSync(path.join(this.parentTab.tempPath ?? this.parentTab.path, this.target.path))) {
+                        throw new ReferenceError(`The file associated with this sub-tab does not exist: ${this.target.path}`);
+                    }
+
+                    await writeFile(path.join(this.parentTab.tempPath ?? this.parentTab.path, this.target.path), await this.exportRawData(false));
+                    break;
+                }
+                default:
+                    throw new Error(`Unsupported target type: ${this.target["type"]}`);
             }
             this.hasUnsavedChanges = false;
             if (
@@ -2937,6 +2942,7 @@ declare global {
     export import TabManagerSubTabCurrentState = exports.TabManagerSubTabCurrentState;
     export import TabManagerTabGenericSubTabID = exports.TabManagerTabGenericSubTabID;
     export import TabManagerGenericTabID = exports.TabManagerGenericTabID;
+    export import DataStorageObject = exports.DataStorageObject;
     export import GenericDataStorageObjectNBTCompound = exports.GenericDataStorageObjectNBTCompound;
     export import GenericDataStorageObjectNBT = exports.GenericDataStorageObjectNBT;
     export import GenericDataStorageObjectJSON = exports.GenericDataStorageObjectJSON;

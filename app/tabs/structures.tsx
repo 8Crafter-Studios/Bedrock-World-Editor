@@ -84,13 +84,10 @@ const structuresTabSearchSyntax: SearchSyntaxHelpInfo = {
             description: "Searches the LevelDB entry value as SNBT.",
         },
         nbt: {
-            description:
-                "Searches the NBT data of entries.",
+            description: "Searches the NBT data of entries.",
             extendedDescription: (
                 <>
-                    <p>
-                        Searches the NBT data of entries.
-                    </p>
+                    <p>Searches the NBT data of entries.</p>
                     <p>
                         Syntax:
                         <code>nbt:StringifiedNBTFilterJSON</code>
@@ -1263,6 +1260,21 @@ async function getStructuresTabContentsRows(data: {
         case "simple": {
             const columns = config.views.structures.modeSettings.simple.columns;
             return data.keys.map((key: KeyData): JSX.Element => {
+                function onEntryMiddleClick(_event: TargetedMouseEvent<HTMLTableRowElement>): void {
+                    data.tab.openTab(
+                        {
+                            contentType: "StructureTemplate",
+                            icon: "auto",
+                            name: key.displayKey,
+                            parentTab: data.tab,
+                            target: {
+                                type: "LevelDBEntry",
+                                key: key.rawKey,
+                            },
+                        },
+                        false
+                    );
+                }
                 try {
                     return (
                         <tr
@@ -1279,21 +1291,14 @@ async function getStructuresTabContentsRows(data: {
                                     },
                                 });
                             }}
+                            onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                // Treat Alt+Click as a middle click.
+                                if (!event.altKey) return;
+                                onEntryMiddleClick(event);
+                            }}
                             onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                                 if (event.button !== 1) return;
-                                data.tab.openTab(
-                                    {
-                                        contentType: "StructureTemplate",
-                                        icon: "auto",
-                                        name: key.displayKey,
-                                        parentTab: data.tab,
-                                        target: {
-                                            type: "LevelDBEntry",
-                                            key: key.rawKey,
-                                        },
-                                    },
-                                    false
-                                );
+                                onEntryMiddleClick(event);
                             }}
                         >
                             {columns.map((column: (typeof columns)[number]): JSX.Element => {
@@ -1362,21 +1367,14 @@ async function getStructuresTabContentsRows(data: {
                                     },
                                 });
                             }}
+                            onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                // Treat Alt+Click as a middle click.
+                                if (!event.altKey) return;
+                                onEntryMiddleClick(event);
+                            }}
                             onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                                 if (event.button !== 1) return;
-                                data.tab.openTab(
-                                    {
-                                        contentType: "StructureTemplate",
-                                        icon: "auto",
-                                        name: key.displayKey,
-                                        parentTab: data.tab,
-                                        target: {
-                                            type: "LevelDBEntry",
-                                            key: key.rawKey,
-                                        },
-                                    },
-                                    false
-                                );
+                                onEntryMiddleClick(event);
                             }}
                         >
                             <td style={{ color: "red" }}>{e as any}</td>

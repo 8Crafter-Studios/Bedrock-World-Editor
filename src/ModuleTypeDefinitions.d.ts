@@ -1,3 +1,5 @@
+import React from "react";
+
 declare module "electron-progressbar" {
     import { app, BrowserWindowConstructorOptions } from "electron";
 
@@ -120,8 +122,10 @@ declare module "electron-progressbar" {
 declare global {
     namespace React {
         /**
-         * An alias for {@link React.ElementType | React.ElementType\<P\>} to fix the component types of {@link https://www.npmjs.com/package/@szhsin/react-menu | @szhsin/react-menu}.
+         * An alias for {@link FunctionComponent | FunctionComponent\<P\>} to fix the component types of {@link https://www.npmjs.com/package/@szhsin/react-menu | @szhsin/react-menu}.
          */
-        export type NamedExoticComponent<P = any> = React.ElementType<P>;
+        export type NamedExoticComponent<P = {}> =  FunctionComponent<P> & {
+            displayName?: string;
+        };
     }
 }

@@ -810,6 +810,21 @@ async function getMapsTabContentsRows(data: {
         case "simple": {
             const columns = config.views.maps.modeSettings.simple.columns;
             return data.keys.map((key: KeyData): JSX.Element => {
+                function onEntryMiddleClick(_event: TargetedMouseEvent<HTMLTableRowElement>): void {
+                    data.tab.openTab(
+                        {
+                            contentType: "Map",
+                            icon: "auto",
+                            name: key.displayKey,
+                            parentTab: data.tab,
+                            target: {
+                                type: "LevelDBEntry",
+                                key: key.rawKey,
+                            },
+                        },
+                        false
+                    );
+                }
                 try {
                     return (
                         <tr
@@ -826,21 +841,14 @@ async function getMapsTabContentsRows(data: {
                                     },
                                 });
                             }}
+                            onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                // Treat Alt+Click as a middle click.
+                                if (!event.altKey) return;
+                                onEntryMiddleClick(event);
+                            }}
                             onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                                 if (event.button !== 1) return;
-                                data.tab.openTab(
-                                    {
-                                        contentType: "Map",
-                                        icon: "auto",
-                                        name: key.displayKey,
-                                        parentTab: data.tab,
-                                        target: {
-                                            type: "LevelDBEntry",
-                                            key: key.rawKey,
-                                        },
-                                    },
-                                    false
-                                );
+                                onEntryMiddleClick(event);
                             }}
                         >
                             {columns.map((column: (typeof columns)[number]): JSX.Element => {
@@ -965,21 +973,14 @@ async function getMapsTabContentsRows(data: {
                                     },
                                 });
                             }}
+                            onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                // Treat Alt+Click as a middle click.
+                                if (!event.altKey) return;
+                                onEntryMiddleClick(event);
+                            }}
                             onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                                 if (event.button !== 1) return;
-                                data.tab.openTab(
-                                    {
-                                        contentType: "Map",
-                                        icon: "auto",
-                                        name: key.displayKey,
-                                        parentTab: data.tab,
-                                        target: {
-                                            type: "LevelDBEntry",
-                                            key: key.rawKey,
-                                        },
-                                    },
-                                    false
-                                );
+                                onEntryMiddleClick(event);
                             }}
                         >
                             <td style={{ color: "red" }}>{e as any}</td>

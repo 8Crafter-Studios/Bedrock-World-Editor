@@ -455,7 +455,7 @@ interface DemoScopeNameInfo extends ScopeNameInfo {
 main("snbt");
 
 declare global {
-    var MonacoEnvironment: monaco.Environment;
+    var MonacoEnvironment: monaco.Environment | undefined;
 }
 
 globalThis.MonacoEnvironment = {
@@ -541,19 +541,763 @@ async function main(language: LanguageId): Promise<void> {
     registerLanguages(languages, (language: LanguageId): Promise<LanguageInfo> => provider.fetchLanguageInfo(language), monaco);
     monaco.editor.defineTheme(themeTomorrowNightBlue.details.id, themeTomorrowNightBlue.monaco);
 
-    monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
-        schemas: [
-            {
-                uri: "inmemory://schemas/json/LevelDat",
-                fileMatch: ["level.dat", "*?contentType=LevelDat", "*?contentType=LevelDat&*"],
-                schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(NBTSchemas.nbtSchemas.LevelDat),
-            },
-        ],
+    function setJSONSchemas(attempt: number = 0, actionIfExistingSchemas: "skip" | "append" | "overwrite" = "overwrite"): void {
+        if (actionIfExistingSchemas === "skip" && monaco.languages.json.jsonDefaults.diagnosticsOptions.schemas?.length) {
+            setTimeout(setJSONSchemas.bind(void 0, 0, "skip"), 500);
+            return;
+        }
+        monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+            ...monaco.languages.json.jsonDefaults.diagnosticsOptions,
+            schemas: [
+                ...(actionIfExistingSchemas === "append" && monaco.languages.json.jsonDefaults.diagnosticsOptions.schemas?.length ?
+                    monaco.languages.json.jsonDefaults.diagnosticsOptions.schemas
+                :   []),
+                {
+                    uri: "inmemory://schemas/json/LevelDat",
+                    fileMatch: [
+                        "level.dat",
+                        "**?contentType=LevelDat",
+                        "**?contentType=LevelDat&*",
+                        "**/JSONSchema/LevelDat",
+                        "**/ContentType:LevelDat",
+                        "**/ContentType:LevelDat/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.LevelDat,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/Data3D",
+                    fileMatch: [
+                        "**?contentType=Data3D",
+                        "**?contentType=Data3D&*",
+                        "**/JSONSchema/Data3D",
+                        "**/ContentType:Data3D",
+                        "**/ContentType:Data3D/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.Data3D,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/Data2D",
+                    fileMatch: [
+                        "**?contentType=Data2D",
+                        "**?contentType=Data2D&*",
+                        "**/JSONSchema/Data2D",
+                        "**/ContentType:Data2D",
+                        "**/ContentType:Data2D/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.Data2D,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/Data2DLegacy",
+                    fileMatch: [
+                        "**?contentType=Data2DLegacy",
+                        "**?contentType=Data2DLegacy&*",
+                        "**/JSONSchema/Data2DLegacy",
+                        "**/ContentType:Data2DLegacy",
+                        "**/ContentType:Data2DLegacy/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.Data2DLegacy,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/SubChunkPrefix",
+                    fileMatch: [
+                        "**?contentType=SubChunkPrefix",
+                        "**?contentType=SubChunkPrefix&*",
+                        "**/JSONSchema/SubChunkPrefix",
+                        "**/ContentType:SubChunkPrefix",
+                        "**/ContentType:SubChunkPrefix/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.SubChunkPrefix,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/LegacyTerrain",
+                    fileMatch: [
+                        "**?contentType=LegacyTerrain",
+                        "**?contentType=LegacyTerrain&*",
+                        "**/JSONSchema/LegacyTerrain",
+                        "**/ContentType:LegacyTerrain",
+                        "**/ContentType:LegacyTerrain/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.LegacyTerrain,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/BlockEntity",
+                    fileMatch: [
+                        "**?contentType=BlockEntity",
+                        "**?contentType=BlockEntity&*",
+                        "**/JSONSchema/BlockEntity",
+                        "**/ContentType:BlockEntity",
+                        "**/ContentType:BlockEntity/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        {
+                            description: "A list of block entities associated with a chunk.",
+                            type: "compound",
+                            required: ["blockEntities"],
+                            properties: {
+                                blockEntities: {
+                                    title: "Block Entities",
+                                    description: "The list of block entities associated with this chunk.",
+                                    type: "list",
+                                    items: { $ref: "BlockEntity" },
+                                },
+                            },
+                        },
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/Entity",
+                    fileMatch: [
+                        "**?contentType=Entity",
+                        "**?contentType=Entity&*",
+                        "**/JSONSchema/Entity",
+                        "**/ContentType:Entity",
+                        "**/ContentType:Entity/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        {
+                            description: "A list of entities associated with a chunk.",
+                            type: "compound",
+                            required: ["entities"],
+                            properties: {
+                                entities: {
+                                    title: "Entities",
+                                    description: "The list of entities associated with this chunk.",
+                                    type: "list",
+                                    items: { $ref: "ActorPrefix" },
+                                },
+                            },
+                        },
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/PendingTicks",
+                    fileMatch: [
+                        "**?contentType=PendingTicks",
+                        "**?contentType=PendingTicks&*",
+                        "**/JSONSchema/PendingTicks",
+                        "**/ContentType:PendingTicks",
+                        "**/ContentType:PendingTicks/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.PendingTicks,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/RandomTicks",
+                    fileMatch: [
+                        "**?contentType=RandomTicks",
+                        "**?contentType=RandomTicks&*",
+                        "**/JSONSchema/RandomTicks",
+                        "**/ContentType:RandomTicks",
+                        "**/ContentType:RandomTicks/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.RandomTicks,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                // TODO: Uncomment this when this schema is implemented.
+                // {
+                //     uri: "inmemory://schemas/json/MVillages",
+                //     fileMatch: [
+                //         "**?contentType=MVillages",
+                //         "**?contentType=MVillages&*",
+                //         "**/JSONSchema/MVillages",
+                //         "**/ContentType:MVillages",
+                //         "**/ContentType:MVillages/**",
+                //     ],
+                //     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                //         NBTSchemas.nbtSchemas.MVillages,
+                //         undefined,
+                //         { makeValueSchema: true },
+                //         true
+                //     ),
+                // },
+                // TODO: Uncomment this when this schema is implemented.
+                // {
+                //     uri: "inmemory://schemas/json/Villages",
+                //     fileMatch: [
+                //         "**?contentType=Villages",
+                //         "**?contentType=Villages&*",
+                //         "**/JSONSchema/Villages",
+                //         "**/ContentType:Villages",
+                //         "**/ContentType:Villages/**",
+                //     ],
+                //     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                //         NBTSchemas.nbtSchemas.Villages,
+                //         undefined,
+                //         { makeValueSchema: true },
+                //         true
+                //     ),
+                // },
+                {
+                    uri: "inmemory://schemas/json/VillageDwellers",
+                    fileMatch: [
+                        "**?contentType=VillageDwellers",
+                        "**?contentType=VillageDwellers&*",
+                        "**/JSONSchema/VillageDwellers",
+                        "**/ContentType:VillageDwellers",
+                        "**/ContentType:VillageDwellers/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.VillageDwellers,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/VillageInfo",
+                    fileMatch: [
+                        "**?contentType=VillageInfo",
+                        "**?contentType=VillageInfo&*",
+                        "**/JSONSchema/VillageInfo",
+                        "**/ContentType:VillageInfo",
+                        "**/ContentType:VillageInfo/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.VillageInfo,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/VillagePOI",
+                    fileMatch: [
+                        "**?contentType=VillagePOI",
+                        "**?contentType=VillagePOI&*",
+                        "**/JSONSchema/VillagePOI",
+                        "**/ContentType:VillagePOI",
+                        "**/ContentType:VillagePOI/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.VillagePOI,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/VillagePlayers",
+                    fileMatch: [
+                        "**?contentType=VillagePlayers",
+                        "**?contentType=VillagePlayers&*",
+                        "**/JSONSchema/VillagePlayers",
+                        "**/ContentType:VillagePlayers",
+                        "**/ContentType:VillagePlayers/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.VillagePlayers,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/VillageRaid",
+                    fileMatch: [
+                        "**?contentType=VillageRaid",
+                        "**?contentType=VillageRaid&*",
+                        "**/JSONSchema/VillageRaid",
+                        "**/ContentType:VillageRaid",
+                        "**/ContentType:VillageRaid/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.VillageRaid,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/Player",
+                    fileMatch: [
+                        "**?contentType=Player",
+                        "**?contentType=Player&*",
+                        "**/JSONSchema/Player",
+                        "**/ContentType:Player",
+                        "**/ContentType:Player/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.Player,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/PlayerClient",
+                    fileMatch: [
+                        "**?contentType=PlayerClient",
+                        "**?contentType=PlayerClient&*",
+                        "**/JSONSchema/PlayerClient",
+                        "**/ContentType:PlayerClient",
+                        "**/ContentType:PlayerClient/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.PlayerClient,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/ActorPrefix",
+                    fileMatch: [
+                        "**?contentType=ActorPrefix",
+                        "**?contentType=ActorPrefix&*",
+                        "**/JSONSchema/ActorPrefix",
+                        "**/ContentType:ActorPrefix",
+                        "**/ContentType:ActorPrefix/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.ActorPrefix,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/Digest",
+                    fileMatch: [
+                        "**?contentType=Digest",
+                        "**?contentType=Digest&*",
+                        "**/JSONSchema/Digest",
+                        "**/ContentType:Digest",
+                        "**/ContentType:Digest/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.Digest,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/Map",
+                    fileMatch: ["**?contentType=Map", "**?contentType=Map&*", "**/JSONSchema/Map", "**/ContentType:Map", "**/ContentType:Map/**"],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.Map,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/Portals",
+                    fileMatch: [
+                        "**?contentType=Portals",
+                        "**?contentType=Portals&*",
+                        "**/JSONSchema/Portals",
+                        "**/ContentType:Portals",
+                        "**/ContentType:Portals/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.Portals,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/SchedulerWT",
+                    fileMatch: [
+                        "**?contentType=SchedulerWT",
+                        "**?contentType=SchedulerWT&*",
+                        "**/JSONSchema/SchedulerWT",
+                        "**/ContentType:SchedulerWT",
+                        "**/ContentType:SchedulerWT/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.SchedulerWT,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/StructureTemplate",
+                    fileMatch: [
+                        "**?contentType=StructureTemplate",
+                        "**?contentType=StructureTemplate&*",
+                        "**/JSONSchema/StructureTemplate",
+                        "**/ContentType:StructureTemplate",
+                        "**/ContentType:StructureTemplate/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.StructureTemplate,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/TickingArea",
+                    fileMatch: [
+                        "**?contentType=TickingArea",
+                        "**?contentType=TickingArea&*",
+                        "**/JSONSchema/TickingArea",
+                        "**/ContentType:TickingArea",
+                        "**/ContentType:TickingArea/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.TickingArea,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/PositionTrackingDB",
+                    fileMatch: [
+                        "**?contentType=PositionTrackingDB",
+                        "**?contentType=PositionTrackingDB&*",
+                        "**/JSONSchema/PositionTrackingDB",
+                        "**/ContentType:PositionTrackingDB",
+                        "**/ContentType:PositionTrackingDB/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.PositionTrackingDB,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/PositionTrackingLastId",
+                    fileMatch: [
+                        "**?contentType=PositionTrackingLastId",
+                        "**?contentType=PositionTrackingLastId&*",
+                        "**/JSONSchema/PositionTrackingLastId",
+                        "**/ContentType:PositionTrackingLastId",
+                        "**/ContentType:PositionTrackingLastId/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.PositionTrackingLastId,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/Scoreboard",
+                    fileMatch: [
+                        "**?contentType=Scoreboard",
+                        "**?contentType=Scoreboard&*",
+                        "**/JSONSchema/Scoreboard",
+                        "**/ContentType:Scoreboard",
+                        "**/ContentType:Scoreboard/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.Scoreboard,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/LegacyOverworld",
+                    fileMatch: [
+                        "**?contentType=LegacyOverworld",
+                        "**?contentType=LegacyOverworld&*",
+                        "**/JSONSchema/LegacyOverworld",
+                        "**/ContentType:LegacyOverworld",
+                        "**/ContentType:LegacyOverworld/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.LegacyOverworld,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/LegacyNether",
+                    fileMatch: [
+                        "**?contentType=LegacyNether",
+                        "**?contentType=LegacyNether&*",
+                        "**/JSONSchema/LegacyNether",
+                        "**/ContentType:LegacyNether",
+                        "**/ContentType:LegacyNether/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.LegacyNether,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/LegacyTheEnd",
+                    fileMatch: [
+                        "**?contentType=LegacyTheEnd",
+                        "**?contentType=LegacyTheEnd&*",
+                        "**/JSONSchema/LegacyTheEnd",
+                        "**/ContentType:LegacyTheEnd",
+                        "**/ContentType:LegacyTheEnd/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.LegacyTheEnd,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/Overworld",
+                    fileMatch: [
+                        "**?contentType=Overworld",
+                        "**?contentType=Overworld&*",
+                        "**/JSONSchema/Overworld",
+                        "**/ContentType:Overworld",
+                        "**/ContentType:Overworld/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.Overworld,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/Nether",
+                    fileMatch: [
+                        "**?contentType=Nether",
+                        "**?contentType=Nether&*",
+                        "**/JSONSchema/Nether",
+                        "**/ContentType:Nether",
+                        "**/ContentType:Nether/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.Nether,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/TheEnd",
+                    fileMatch: [
+                        "**?contentType=TheEnd",
+                        "**?contentType=TheEnd&*",
+                        "**/JSONSchema/TheEnd",
+                        "**/ContentType:TheEnd",
+                        "**/ContentType:TheEnd/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.TheEnd,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/AutonomousEntities",
+                    fileMatch: [
+                        "**?contentType=AutonomousEntities",
+                        "**?contentType=AutonomousEntities&*",
+                        "**/JSONSchema/AutonomousEntities",
+                        "**/ContentType:AutonomousEntities",
+                        "**/ContentType:AutonomousEntities/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.AutonomousEntities,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/BiomeData",
+                    fileMatch: [
+                        "**?contentType=BiomeData",
+                        "**?contentType=BiomeData&*",
+                        "**/JSONSchema/BiomeData",
+                        "**/ContentType:BiomeData",
+                        "**/ContentType:BiomeData/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.BiomeData,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/BiomeIdsTable",
+                    fileMatch: [
+                        "**?contentType=BiomeIdsTable",
+                        "**?contentType=BiomeIdsTable&*",
+                        "**/JSONSchema/BiomeIdsTable",
+                        "**/ContentType:BiomeIdsTable",
+                        "**/ContentType:BiomeIdsTable/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.BiomeIdsTable,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/MobEvents",
+                    fileMatch: [
+                        "**?contentType=MobEvents",
+                        "**?contentType=MobEvents&*",
+                        "**/JSONSchema/MobEvents",
+                        "**/ContentType:MobEvents",
+                        "**/ContentType:MobEvents/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.MobEvents,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/LevelDat",
+                    fileMatch: [
+                        "**?contentType=LevelDat",
+                        "**?contentType=LevelDat&*",
+                        "**/JSONSchema/LevelDat",
+                        "**/ContentType:LevelDat",
+                        "**/ContentType:LevelDat/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.LevelDat,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/DynamicProperties",
+                    fileMatch: [
+                        "**?contentType=DynamicProperties",
+                        "**?contentType=DynamicProperties&*",
+                        "**/JSONSchema/DynamicProperties",
+                        "**/ContentType:DynamicProperties",
+                        "**/ContentType:DynamicProperties/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.DynamicProperties,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/LevelChunkMetaDataDictionary",
+                    fileMatch: [
+                        "**?contentType=LevelChunkMetaDataDictionary",
+                        "**?contentType=LevelChunkMetaDataDictionary&*",
+                        "**/JSONSchema/LevelChunkMetaDataDictionary",
+                        "**/ContentType:LevelChunkMetaDataDictionary",
+                        "**/ContentType:LevelChunkMetaDataDictionary/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.LevelChunkMetaDataDictionary,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/ChunkLoadedRequest",
+                    fileMatch: [
+                        "**?contentType=ChunkLoadedRequest",
+                        "**?contentType=ChunkLoadedRequest&*",
+                        "**/JSONSchema/ChunkLoadedRequest",
+                        "**/ContentType:ChunkLoadedRequest",
+                        "**/ContentType:ChunkLoadedRequest/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.ChunkLoadedRequest,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                ...[1, 2, 3, 4, 6, 8, 16, 32]
+                    .flatMap(
+                        (v: number) =>
+                            [
+                                { bits: v, signed: false, range: [0, 2 ** v - 1] },
+                                { bits: v, signed: true, range: [-(2 ** (v - 1)), 2 ** (v - 1) - 1] },
+                            ] as const
+                    )
+                    .map((v) => ({
+                        uri: `inmemory://schemas/json/${v.signed ? "" : "u"}int${v.bits}`,
+                        fileMatch: [`**/JSONSchema/${v.signed ? "" : "u"}int${v.bits}`],
+                        schema: {
+                            type: "number",
+                            minimum: v.range[0],
+                            maximum: v.range[1],
+                        } satisfies monaco.languages.json.JSONSchema,
+                    })),
+            ],
+        });
+        if ((monaco.languages.json.jsonDefaults.diagnosticsOptions.schemas?.length ?? 0) > 0) {
+            console.debug("Set JSON schemas.", monaco.languages.json.jsonDefaults);
+            setTimeout(setJSONSchemas.bind(void 0, 0, "skip"), 500);
+        } else {
+            console.debug("Failed to set JSON schemas, retrying in 50ms (attempt " + (attempt + 1) + ").", monaco.languages.json.jsonDefaults);
+            setTimeout(setJSONSchemas.bind(void 0, attempt + 1), 50);
+        }
+    }
+
+    monaco.languages.onLanguage("json", () => {
+        setTimeout(setJSONSchemas, 50);
     });
 
     function getSNBTErrorMessageFromErrorOrType(error: SNBTParseError<true> | SNBTParseErrorType): string {
         const errorType =
-            typeof error === "string" ? error : "error" in error.cause.stack[0] && error.cause.stack[0].error ? error.cause.stack[0].error.type : undefined;
+            typeof error === "string" ? error
+            : "error" in error.cause.stack[0] && error.cause.stack[0].error ? error.cause.stack[0].error.type
+            : undefined;
         const err: SNBTParseError<true> | undefined = typeof error === "string" ? undefined : error;
 
         switch (errorType) {
@@ -592,7 +1336,7 @@ async function main(language: LanguageId): Promise<void> {
                     endLineNumber: endLineNumber,
                     endColumn: endColumn,
                     message: errorMessage,
-                    code: errorType ? SNBTParseErrorTypeToCode[errorType] : undefined,
+                    code: errorType ? SNBTParseErrorTypeToCode[errorType] : undefined!,
                     source: SNBTParseErrorDisplayNamespace,
                     origin: "a",
                 });

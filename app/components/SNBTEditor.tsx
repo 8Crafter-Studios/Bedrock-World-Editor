@@ -131,7 +131,7 @@ export default function SNBTEditor(props: SNBTEditorProps): JSX.Element {
                 fontFamily: "Consolas",
                 matchBrackets: "always",
                 fixedOverflowWidgets: true,
-                allowOverflow: false,
+                allowOverflow: true,
             }}
             path={
                 props.path

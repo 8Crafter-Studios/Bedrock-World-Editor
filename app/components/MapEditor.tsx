@@ -6,7 +6,7 @@ import mergeRefs from "merge-refs";
 import { readFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { JSX, RefObject } from "preact";
+import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import { useEffect, useRef, useState } from "preact/compat";
 import * as NBT from "prismarine-nbt";
 import type { EditorWidgetOverlayBarWidgetRegistry } from "./EditorWidgetOverlayBar";
@@ -52,20 +52,14 @@ export function MapEditor(props: MapRendererProps): JSX.Element {
 
     let stopCurrentInteraction: (() => void) | undefined = undefined;
     let data: NBTSchemas.NBTSchemaTypes.Map = (
-        props.dataStorageObject.dataType === "NBT"
-            ? props.dataStorageObject.data.parsed
-            : props.dataStorageObject.dataType === "NBTCompound"
-            ? props.dataStorageObject.data
-            : (props.dataStorageObject as any).data
-    ) as NBTSchemas.NBTSchemaTypes.Map;
+        props.dataStorageObject.dataType === "NBT" ? props.dataStorageObject.data.parsed
+        : props.dataStorageObject.dataType === "NBTCompound" ? props.dataStorageObject.data
+        : (props.dataStorageObject as any).data) as NBTSchemas.NBTSchemaTypes.Map;
     function updateMap(): void {
         data = (
-            props.dataStorageObject.dataType === "NBT"
-                ? props.dataStorageObject.data.parsed
-                : props.dataStorageObject.dataType === "NBTCompound"
-                ? props.dataStorageObject.data
-                : props.dataStorageObject.data
-        ) as NBTSchemas.NBTSchemaTypes.Map;
+            props.dataStorageObject.dataType === "NBT" ? props.dataStorageObject.data.parsed
+            : props.dataStorageObject.dataType === "NBTCompound" ? props.dataStorageObject.data
+            : props.dataStorageObject.data) as NBTSchemas.NBTSchemaTypes.Map;
         const canvas: HTMLCanvasElement = canvasRef.current!;
         const context: CanvasRenderingContext2D = canvas.getContext("2d")!;
         context.clearRect(0, 0, canvas.width, canvas.height);
@@ -254,7 +248,7 @@ export function MapEditor(props: MapRendererProps): JSX.Element {
                     class="map-renderer-canvas piximg"
                     style="max-width: round(down, 100%, 128px); max-height: round(down, 100%, 128px);"
                     ref={canvasRef}
-                    onAuxClick={(event): void => void (event.button === 2 && onCanvasRightClick(event))}
+                    onContextMenu={(event: TargetedMouseEvent<HTMLCanvasElement>): void => void onCanvasRightClick(event)}
                 />
             </div>
         </div>

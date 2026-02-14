@@ -1,3 +1,40 @@
+# v1.0.0-beta.20
+
+## Additions
+
+-   Added full JSON schema support to the Prismarine-NBT editor.
+    -   All content types that are editable in the Prismarine-NBT editor have JSON schemas except for `MVillages` and `Villages`.
+-   Clicking on the app's icon on the world selection menu will now refresh the world list.
+-   Added an "Export As..." submenu to the context menu of sub-tabs to allow for exporting the contents of a LevelDB entry to a file.
+    -   It currently supports the following formats:
+        -   Binary
+        -   Prismarine-NBT JSON
+        -   Prismarine-NBT JSON (+Metadata)
+        -   SNBT
+        -   JSON
+        -   Plain Text
+-   Added hover text to a few options in the context menu of tabs to tell you that holding ALT while clicking the option causes the option to save the tab in unsafe mode.
+-   Added the ability to open sub-tabs in the background instead of immediately switching to them upon opening them by clicking on them while holding ALT (as an alternative for people who don't have a scroll wheel button).
+-   Added two new button to the "Ticks" tab to allow creating new `PendingTicks` and `RandomTicks` LevelDB entries (a similar feature will be added to other tabs in the future).
+-   LevelDB entries in the "Ticks" tab now have a context menu with an option to delete them (this feature will be added to other tabs in the future).
+-   Added support for Control+Click (macOS only) and the context menu key being able to open context menus like right-clicking.
+
+## Changes
+
+-   The `Dimension` content type has been split up into three new content types:
+    -   `Overworld`
+    -   `Nether`
+    -   `TheEnd`
+-   The `LegacyDimension` content type has been split up into three new content types:
+    -   `LegacyOverworld`
+    -   `LegacyNether`
+    -   `LegacyTheEnd`
+
+## Fixes
+
+-   Fixed a bug where widgets in the Prismarine-NBT and SNBT editors were cut off by the edges of the editor instead of overflowing.
+-   Fixed a bug where the recent worlds and folders sections on the taskbar jump list on Windows were removed upon opening the app and were only restored when a tab was opened.
+
 # v1.0.0-beta.19
 
 ## Additions

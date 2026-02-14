@@ -1103,6 +1103,22 @@ async function getViewFilesTabContentsRows(data: {
 }): Promise<JSX.Element[]> {
     const columns = ConfigConstants.views.ViewFiles.viewFilesTabModeToColumnIDs["simple"];
     return data.keys.map((key: KeyData): JSX.Element => {
+        function onEntryMiddleClick(_event: TargetedMouseEvent<HTMLTableRowElement>): void {
+            data.tab.openTab(
+                {
+                    // TODO: In the future, add support for getting their skin head or profile picture.
+                    contentType: key.contentType,
+                    icon: "auto",
+                    name: key.displayKey,
+                    parentTab: data.tab,
+                    target: {
+                        type: "LevelDBEntry",
+                        key: key.rawKey,
+                    },
+                },
+                false
+            );
+        }
         return (
             <tr
                 onDblClick={(): void => {
@@ -1118,22 +1134,14 @@ async function getViewFilesTabContentsRows(data: {
                         },
                     });
                 }}
+                onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                    // Treat Alt+Click as a middle click.
+                    if (!event.altKey) return;
+                    onEntryMiddleClick(event);
+                }}
                 onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                     if (event.button !== 1) return;
-                    data.tab.openTab(
-                        {
-                            // TODO: In the future, add support for getting their skin head or profile picture.
-                            contentType: key.contentType,
-                            icon: "auto",
-                            name: key.displayKey,
-                            parentTab: data.tab,
-                            target: {
-                                type: "LevelDBEntry",
-                                key: key.rawKey,
-                            },
-                        },
-                        false
-                    );
+                    onEntryMiddleClick(event);
                 }}
             >
                 {columns.map((column: (typeof columns)[number]): JSX.Element => {

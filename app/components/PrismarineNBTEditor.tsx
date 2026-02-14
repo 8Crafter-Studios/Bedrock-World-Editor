@@ -105,13 +105,13 @@ export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JS
             onChange={handleEditorValueChanged}
             language="json"
             value={
-                dataLoaded
-                    ? JSON.stringify(
-                          props.dataStorageObject.data.type === "compound" ? props.dataStorageObject.data.value : props.dataStorageObject.data.parsed.value,
-                          null,
-                          4
-                      )
-                    : "Data is not loaded."
+                dataLoaded ?
+                    JSON.stringify(
+                        props.dataStorageObject.data.type === "compound" ? props.dataStorageObject.data.value : props.dataStorageObject.data.parsed.value,
+                        null,
+                        4
+                    )
+                :   "Data is not loaded."
             }
             // overrideServices={{
             //     productService: IProductService,
@@ -119,19 +119,27 @@ export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JS
             onMount={handleEditorDidMount}
             options={{
                 readOnly: props.readonly || !dataLoaded,
-                readOnlyMessage: props.readonly ? props.readonlyMessage : !dataLoaded ? { value: "Data is not loaded." } : undefined,
+                readOnlyMessage:
+                    props.readonly ? props.readonlyMessage!
+                    : !dataLoaded ? { value: "Data is not loaded." }
+                    : undefined!,
                 tabSize: 4,
                 bracketPairColorization: { enabled: true },
                 automaticLayout: true,
                 fontFamily: "Consolas",
                 matchBrackets: "always",
                 fixedOverflowWidgets: true,
-                allowOverflow: false,
+                allowOverflow: true,
             }}
             path={
-                props.path
-                    ? props.path + (props.path.includes("?") ? "&" : "?") + editorParams.toString()
-                    : `unlinked-editor://${Date.now()}?${editorParams.toString()}`
+                props.path ?
+                    (props.path.includes("/ContentType:") ? props.path
+                    : props.path.includes("?") ?
+                        props.path.split("?")[0] + `/ContentType:${props.contentType ?? "Unknown"}` + props.path.split("?").slice(1).join("")
+                    :   props.path + `/ContentType:${props.contentType ?? "Unknown"}`) +
+                    (props.path.includes("?") ? "&?" : "?") +
+                    editorParams.toString()
+                :   `unlinked-editor://${Date.now()}/ContentType:${props.contentType ?? "Unknown"}?${editorParams.toString()}`
             }
             ref={editorRef}
         />

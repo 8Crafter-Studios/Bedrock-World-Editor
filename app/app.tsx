@@ -3,7 +3,7 @@ import { hydrate, render } from "preact/compat";
 import LeftSidebar from "./components/LeftSidebar";
 import DebugOverlay from "./components/DebugOverlay";
 import TabBar from "./components/TabBar";
-import { entryContentTypeToFormatMap, gameModes, toLong, type NBTSchemas } from "mcbe-leveldb";
+import { entryContentTypeToFormatMap, gameModes, toLong, type EntryContentTypeFormatData, type NBTSchemas } from "mcbe-leveldb";
 import { Dirent, existsSync, globSync, readdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import NBT from "prismarine-nbt";
@@ -371,7 +371,11 @@ export const preloadedIcons = {
     preloadIcons(preloadedIcons);
 }
 
-export function WorldSelector(): JSX.SpecificElement<"div"> {
+export interface WorldSelectorProps {
+    forceTriggerUpdateRef?: RefObject<() => void>;
+}
+
+export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"div"> {
     const renderWorldsContainerRef: RefObject<HTMLDivElement> = useRef(null);
     const viewMode: "compact" | "detailed" | "grid" = "detailed";
     let [data, updateData] = useState<MinecraftWorldDisplayDetails[]>([]);
@@ -384,6 +388,9 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
         updateData(data);
     }
     useEffect((): void => void getMinecraftWorlds(false, config.showWorldSizesOnWorldList).then(refreshData), []);
+    if (props.forceTriggerUpdateRef) {
+        props.forceTriggerUpdateRef.current = (): void => void getMinecraftWorlds(false, config.showWorldSizesOnWorldList).then(refreshData);
+    }
     function RenderWorlds(): JSX.SpecificElement<"div">[] {
         const mcAppName: string = app.getApplicationNameForProtocol("minecraft:");
         const mcPreviewAppName: string = app.getApplicationNameForProtocol("minecraft-preview:");
@@ -461,7 +468,7 @@ export function WorldSelector(): JSX.SpecificElement<"div"> {
                                 10
                             );
                         }}
-                        onAuxClick={(event: JSX.TargetedMouseEvent<HTMLDivElement>): void => void (event.button === 2 && onWorldRightClick(event))}
+                        onContextMenu={(event: JSX.TargetedMouseEvent<HTMLDivElement>): void => void onWorldRightClick(event)}
                         key={JSON.stringify({ path: world.path })}
                     >
                         <img
@@ -718,20 +725,29 @@ export function StartScreen(): JSX.SpecificElement<"div"> {
 }
 
 export function StartScreenContents(): JSX.Element {
+    const forceTriggerUpdateRef: RefObject<() => void> = useRef(null);
     return (
         <>
             <div
                 class="nsel ndrg"
                 style="width: 200px; height: -webkit-fill-available; display: flex; flex-direction: column; background-color: #87CEEB22; overflow: hidden; overflow-y: scroll; overflow: auto; align-items: center; gap: 1em; text-align: center; flex-shrink: 0;"
             >
-                <img aria-hidden="true" src="resource://icon.png" style="margin-top: 35px; width: 128px" />
+                <img
+                    aria-hidden="true"
+                    src="resource://icon.png"
+                    style="margin-top: 35px; width: 128px; cursor: pointer;"
+                    title="Reload world list"
+                    onClick={(): void => {
+                        forceTriggerUpdateRef.current?.();
+                    }}
+                />
                 <div style="flex: 1; overflow: auto; line-height: 1.25em;">
                     Bedrock World Editor
                     <br />v{VERSION}
                 </div>
             </div>
             <div style="flex: 1; overflow: auto; min-width: 300px;">
-                <WorldSelector />
+                <WorldSelector forceTriggerUpdateRef={forceTriggerUpdateRef} />
             </div>
         </>
     );
@@ -851,22 +867,12 @@ export function WorldEditorTabRenderer(props: {
         }
     } else {
         switch (props.tab.contentType) {
-            case "ActorPrefix":
-            case "AutonomousEntities":
-            case "BiomeData":
-            case "BlockEntity":
-            case "Dimension":
-            case "DynamicProperties":
-            case "Entity":
-            case "Scoreboard":
-            case "SchedulerWT":
-                return <GenericNBTEditorTab tab={props.tab} />;
             case "LevelDat":
                 return <WorldSettingsTab tab={props.tab} />;
             case "Map":
                 return <MapEditorTab tab={props.tab} />;
             default: {
-                const format = entryContentTypeToFormatMap[props.tab.contentType];
+                const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[props.tab.contentType] as EntryContentTypeFormatData;
                 switch (format.type) {
                     case "NBT":
                         return <GenericNBTEditorTab tab={props.tab} />;
