@@ -48,6 +48,7 @@ const config: ForgeConfig = {
             :   */ undefined,
         appBundleId: "com.8crafter.bedrock-world-editor",
         appCategoryType: "public.app-category.developer-tools",
+        appCopyright: "Copyright © 2025-2026 8Crafter Studios",
     },
     rebuildConfig: { extraModules: ["@electron/remote"] /* , ignoreModules: ["@8crafter/leveldb-zlib"] */, disablePreGypCopy: false },
     makers: [
@@ -56,6 +57,7 @@ const config: ForgeConfig = {
             setupExe: `bedrock-world-editor_${(require("./package.json") as typeof import("./package.json")).version}-win32-${arch} Setup.exe`,
             // setupMsi: `bedrock-world-editor_${arch}_${(require("./package.json") as typeof import("./package.json")).version} Setup.msi`,
             iconUrl: "https://raw.githubusercontent.com/8Crafter-Studios/Bedrock-World-Editor/refs/heads/main/resources/icon.ico",
+            // loadingGif // TODO: Make a custom loading GIF for the installer.
         })),
         new MakerZIP({}),
         new MakerRpm(
@@ -63,6 +65,7 @@ const config: ForgeConfig = {
                 options: {
                     icon: "resources/icon.png",
                     mimeType: ["x-scheme-handler/bedrock-world-editor"],
+                    categories: ["Development", "Utility"],
                 },
             },
             ["linux"]
@@ -71,6 +74,8 @@ const config: ForgeConfig = {
             options: {
                 icon: "resources/icon.png",
                 mimeType: ["x-scheme-handler/bedrock-world-editor"],
+                categories: ["Development", "Utility"],
+                section: "editors",
             },
         }),
         new MakerDMG((arch: string) => ({
