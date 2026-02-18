@@ -194,6 +194,7 @@ namespace exports {
             debugHUD: "none",
             debugHUDDropShadow: false,
             fileSizeUnits: "binary",
+            quitOnCloseAllWindows: false,
             showWorldSizesOnWorldList: false,
             volume: { master: 100, ui: 100 },
             views: {
@@ -723,6 +724,17 @@ namespace exports {
         }
         public set debugHUDDropShadow(value: boolean | undefined) {
             this.saveChanges({ debugHUDDropShadow: value ?? Config.defaults.debugHUDDropShadow });
+        }
+        /**
+         * Whether to quit the application when all windows are closed.
+         *
+         * @platform darwin
+         */
+        public get quitOnCloseAllWindows(): boolean {
+            return this.getConfigData().quitOnCloseAllWindows ?? Config.defaults.quitOnCloseAllWindows;
+        }
+        public set quitOnCloseAllWindows(value: boolean | undefined) {
+            this.saveChanges({ quitOnCloseAllWindows: value ?? Config.defaults.quitOnCloseAllWindows });
         }
         /**
          * The file size units to use.
