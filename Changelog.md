@@ -15,7 +15,7 @@
 
 ## Fixes
 
--   Fixed a bug where the export structures feature of the WorldEdit Bedrock integration did not work properly for structrues with custom namespaces or structures that fit within a single structure chunk (less than or equal to 64x128x64 blocks in size).
+-   Fixed a bug where the export structures feature of the WorldEdit Bedrock integration did not work properly for structures with custom namespaces or structures that fit within a single structure chunk (less than or equal to 64x128x64 blocks in size).
 -   Fixed the application name on Linux being "bedrock-world-editor" instead of "Bedrock World Editor".
 -   The language service and editor workers for Monaco Editor are now functional in production builds.
 
