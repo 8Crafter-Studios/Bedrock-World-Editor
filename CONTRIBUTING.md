@@ -39,6 +39,7 @@ If you want to locally run the app without having to wait to the installer to bu
 -   Optional properties **SHOULD** either have a `@default` TSDoc tag or specify what happens if the property is not provided.
 -   `@example` TSDoc tags are **ENCOURAGED**.
 -   `@example` TSDoc tags **MUST** be placed after `@default` TSDoc tags.
+-   Read-only properties **SHOULD** have a `@readonly` TSDoc tag in addition to the `readonly` modifier.
 
 ### Code Comment Labels
 
