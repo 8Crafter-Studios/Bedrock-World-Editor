@@ -1,6 +1,4 @@
-import { type ConfigEnv, defineConfig } from "vite";
-import path from "node:path";
-import commonjsExternals from "vite-plugin-commonjs-externals";
+import { type ConfigEnv, defineConfig, type LibraryOptions } from "vite";
 
 // https://vitejs.dev/config
 export default defineConfig((env: ConfigEnv) => ({
@@ -14,6 +12,17 @@ export default defineConfig((env: ConfigEnv) => ({
         sourcemap: true,
         rollupOptions: {
             treeshake: false,
+        },
+        lib: {
+            entry: [
+                "node_modules/monaco-editor/esm/vs/editor/editor.worker.js",
+                "node_modules/monaco-editor/esm/vs/language/json/json.worker",
+                "node_modules/monaco-editor/esm/vs/language/css/css.worker",
+                "node_modules/monaco-editor/esm/vs/language/html/html.worker",
+                "node_modules/monaco-editor/esm/vs/language/typescript/ts.worker",
+            ],
+            formats: ["es"] satisfies LibraryOptions["formats"],
+            fileName: (_format, entryName: string): string => `${entryName}.js`,
         },
     },
     esbuild: {
@@ -35,4 +44,3 @@ export default defineConfig((env: ConfigEnv) => ({
         },
     },
 }));
-

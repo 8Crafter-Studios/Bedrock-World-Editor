@@ -729,6 +729,8 @@ namespace exports {
          * Whether to quit the application when all windows are closed.
          *
          * @platform darwin
+         *
+         * @default false
          */
         public get quitOnCloseAllWindows(): boolean {
             return this.getConfigData().quitOnCloseAllWindows ?? Config.defaults.quitOnCloseAllWindows;

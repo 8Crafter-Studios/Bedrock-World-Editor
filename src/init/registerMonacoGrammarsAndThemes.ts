@@ -461,16 +461,31 @@ declare global {
 globalThis.MonacoEnvironment = {
     getWorkerUrl: function (moduleId: string, label: string) {
         if (label === "json") {
+            if (location.protocol === "file:" && location.pathname.includes("/app.asar/.vite/")) {
+                return location.href.slice(0, location.href.indexOf("/app.asar/.vite/")) + "/app.asar/.vite/build/json.worker.js";
+            }
             return "node_modules/monaco-editor/esm/vs/language/json/json.worker.js";
         }
         if (label === "css") {
+            if (location.protocol === "file:" && location.pathname.includes("/app.asar/.vite/")) {
+                return location.href.slice(0, location.href.indexOf("/app.asar/.vite/")) + "/app.asar/.vite/build/css.worker.js";
+            }
             return "node_modules/monaco-editor/esm/vs/language/css/css.worker.js";
         }
         if (label === "html") {
+            if (location.protocol === "file:" && location.pathname.includes("/app.asar/.vite/")) {
+                return location.href.slice(0, location.href.indexOf("/app.asar/.vite/")) + "/app.asar/.vite/build/html.worker.js";
+            }
             return "node_modules/monaco-editor/esm/vs/language/html/html.worker.js";
         }
         if (label === "typescript" || label === "javascript") {
+            if (location.protocol === "file:" && location.pathname.includes("/app.asar/.vite/")) {
+                return location.href.slice(0, location.href.indexOf("/app.asar/.vite/")) + "/app.asar/.vite/build/ts.worker.js";
+            }
             return "node_modules/monaco-editor/esm/vs/language/typescript/ts.worker.js";
+        }
+        if (location.protocol === "file:" && location.pathname.includes("/app.asar/.vite/")) {
+            return location.href.slice(0, location.href.indexOf("/app.asar/.vite/")) + "/app.asar/.vite/build/editor.worker.js";
         }
         return "node_modules/monaco-editor/esm/vs/editor/editor.worker.js";
     },

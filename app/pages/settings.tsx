@@ -90,6 +90,26 @@ function SettingsTabRenderer(props: SettingsTabRendererProps): JSX.Element {
                             Metric (kB, MB, GB, etc.)
                         </option>
                     </select>
+                    {process.platform === "darwin" && (
+                        <>
+                            <br class="nsel ndrg" />
+                            <label
+                                for="settings_general_quitOnCloseAllWindows"
+                                class="nsel ndrg"
+                                title="Whether to quit the application when all windows are closed. (Darwin (macOS) only)"
+                            >
+                                <input
+                                    id="settings_general_quitOnCloseAllWindows"
+                                    type="checkbox"
+                                    checked={config.quitOnCloseAllWindows}
+                                    onChange={(event: TargetedEvent<HTMLInputElement, Event>): void => {
+                                        config.quitOnCloseAllWindows = event.currentTarget.checked;
+                                    }}
+                                />
+                                Quit When All Windows Are Closed
+                            </label>
+                        </>
+                    )}
                 </div>
             );
         case "video":

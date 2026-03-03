@@ -30,6 +30,7 @@ import { updateElectronApp } from "update-electron-app";
 import CommentJSON from "comment-json";
 import { Octokit } from "@octokit/rest";
 import semver from "semver";
+const mime = require("mime-types") as typeof import("mime-types");
 // import { setupTitlebar, attachTitlebarToWindow } from "custom-electron-titlebar/main";
 const openAboutWindow_function = require("about-window").default as typeof import("about-window").default;
 function openAboutWindow(parentWindow?: BrowserWindow): BrowserWindow {
@@ -769,12 +770,20 @@ if (!startup && !started) {
                 );
             }); */
                 // return await fetch(new URL(path.posix.join("resources", url.hostname, url.pathname), MAIN_WINDOW_VITE_DEV_SERVER_URL));
-                return new Response(readFileSync(path.join(__dirname, "../../", "resources", url.hostname, url.pathname === "/" ? "" : url.pathname)));
+                return new Response(readFileSync(path.join(__dirname, "../../", "resources", url.hostname, url.pathname === "/" ? "" : url.pathname)), {
+                    headers: {
+                        "Content-Type": mime.lookup(path.join(url.hostname, url.pathname === "/" ? "" : url.pathname)) || "application/octet-stream",
+                    },
+                });
             } else {
                 /* BrowserWindow.getAllWindows().forEach((window: BrowserWindow): void => {
                 window.webContents.send<1, "log">("console-action", "log", path.join(__dirname, "../", "resources", url.hostname, url.pathname));
             }); */
-                return new Response(readFileSync(path.join(__dirname, "../../../", "resources", url.hostname, url.pathname === "/" ? "" : url.pathname)));
+                return new Response(readFileSync(path.join(__dirname, "../../../", "resources", url.hostname, url.pathname === "/" ? "" : url.pathname)), {
+                    headers: {
+                        "Content-Type": mime.lookup(path.join(url.hostname, url.pathname === "/" ? "" : url.pathname)) || "application/octet-stream",
+                    },
+                });
             }
         });
         protocol.handle("resource-image", async (request: GlobalRequest): Promise<GlobalResponse> => {
@@ -1085,9 +1094,14 @@ if (!startup && !started) {
         }
     });
 
-    // Quit when all windows are closed.
+    // Quit when all windows are closed, except on macOS (unless the
+    // config.quitOnCloseAllWindows config option is set to true). There, it's
+    // common for applications and their menu bar to stay active until the user
+    // quits explicitly with Cmd + Q.
     app.on("window-all-closed", (): void => {
-        app.quit();
+        if (process.platform !== "darwin" || config.quitOnCloseAllWindows) {
+            app.quit();
+        }
     });
 
     if (!isSecondInstance) {
@@ -1201,4 +1215,3 @@ if (!startup && !started) {
     // In this file you can include the rest of your app's specific main process
     // code. You can also put them in separate files and import them here.
 }
-

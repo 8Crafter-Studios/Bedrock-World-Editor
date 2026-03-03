@@ -115,10 +115,6 @@ const config: ForgeConfig = {
                     target: "preload",
                 },
                 { entry: "node_modules/monaco-editor/esm/vs/editor/editor.worker.js", config: "vite.misc.worker.config.ts" },
-                { entry: "node_modules/monaco-editor/esm/vs/language/json/json.worker", config: "vite.misc.worker.config.ts" },
-                { entry: "node_modules/monaco-editor/esm/vs/language/css/css.worker", config: "vite.misc.worker.config.ts" },
-                { entry: "node_modules/monaco-editor/esm/vs/language/html/html.worker", config: "vite.misc.worker.config.ts" },
-                { entry: "node_modules/monaco-editor/esm/vs/language/typescript/ts.worker", config: "vite.misc.worker.config.ts" },
             ],
             renderer: [
                 {

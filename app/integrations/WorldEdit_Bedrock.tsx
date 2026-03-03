@@ -364,16 +364,18 @@ async function action_export_structures_getStructures(tab: TabManagerTab, signal
         if (scoreboardIds.has(toLong(entry.ScoreboardId.value))) {
             if (!entry.FakePlayerName?.value) continue;
             const structureId: string = entry.FakePlayerName.value;
-            const structureName: string | undefined = structureId.split(":")[1];
-            if (structureName === undefined) continue;
+            const structureName: [namespace: string, name: string] | undefined = structureId.split(":") as [namespace: string, name: string];
+            if (structureName.length < 2) continue;
             structures.push({
                 structureId,
                 scoreboardId: toLong(entry.ScoreboardId.value),
                 individualStructures: structureKeys.filter((key: Buffer): true | void => {
                     const k: string = key.toString();
-                    if (k === `structuretemplate_wedit:weditstructmeta_${structureName}`) return true;
-                    if (k === `structuretemplate_mystructure:weditstructref_${structureName}`) return true;
-                    if (new RegExp(String.raw`^structuretemplate_wedit:weditstructexport_${RegExp.escape(structureName)}_\d+_\d+_\d+$`).test(k)) return true;
+                    if (k === `structuretemplate_${structureName[0]}:weditstructmeta_${structureName[1]}`) return true;
+                    if (k === `structuretemplate_mystructure:weditstructref_${structureName[1]}`) return true;
+                    // Placeholder in case this issue is fixed in the future to use a namespace for the ref.
+                    if (k === `structuretemplate_${structureName[0]}:weditstructref_${structureName[1]}`) return true;
+                    if (new RegExp(String.raw`^structuretemplate_${RegExp.escape(structureName[0])}:weditstructexport_${RegExp.escape(structureName[1])}(?:_\d+_\d+_\d+)?$`).test(k)) return true;
                 }),
             });
         }

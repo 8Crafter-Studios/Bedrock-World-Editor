@@ -1,3 +1,28 @@
+# v1.0.0-beta.21
+
+## Additions
+
+-   Added a "Reload Tab" option to the context menu of tabs to close and re-open the tab, discarding any unsaved changes and reloading the data to use the latest world data.
+-   Added a new setting on macOS to set whether the app should automatically quit when all windows are closed (this setting is disabled by default).
+-   LevelDB entries in the "View Files" tab now have a context menu with an option to delete them.
+    -   NOTE: This feature is currently bugged for the "View Files" tab where it does not correctly refresh the tab to remove the deleted entry from the list, so you will have to switch to another tab and back to the "View Files" tab for it to update properly.
+-   Added additional metadata to the RPM and DEB builds.
+-   Added the `appCopyright` metadata field.
+
+### NBT Schemas
+
+-   Added the `y_2026_drop_1` property to the `experiments` property of the `LevelDat` NBT schema.
+
+## Fixes
+
+-   Fixed a bug where the export structures feature of the WorldEdit Bedrock integration did not work properly for structrues with custom namespaces or structures that fit within a single structure chunk (less than or equal to 64x128x64 blocks in size).
+-   Fixed the application name on Linux being "bedrock-world-editor" instead of "Bedrock World Editor".
+-   The language service and editor workers for Monaco Editor are now functional in production builds.
+
+### NBT Schemas
+
+-   Fixed many markdown links in the NBT schemas that had spaces instead of underscores.
+
 # v1.0.0-beta.20
 
 ## Additions

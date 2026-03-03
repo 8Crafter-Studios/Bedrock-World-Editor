@@ -387,6 +387,38 @@ export default function TabBar(): JSX.Element {
                     direction="right"
                     onClose={(): void => void tabContextMenu_setOpen(false)}
                 >
+                    <MenuItem
+                        onClick={async (): Promise<void> => {
+                            if (props.tab.isModified()) {
+                                const result: MessageBoxReturnValue = await dialog.showMessageBox(getCurrentWindow(), {
+                                    type: "warning",
+                                    title: "Unsaved Changes",
+                                    message: `${props.tab.name} has unsaved changes.`,
+                                    detail: "Your changes will be lost if you don't save them first.",
+                                    buttons: ["Proceed", "Cancel"],
+                                    noLink: true,
+                                    defaultId: 0,
+                                    cancelId: 1,
+                                });
+                                if (result.response === 1) return;
+                            }
+                            // TODO: Add a proper reload feature where it keeps the tab open but just reloads the data.
+                            const data: Parameters<typeof tabManager.openTab>[0] = {
+                                icon: props.tab.icon,
+                                name: props.tab.name,
+                                path: props.tab.path,
+                                type: props.tab.type,
+                                mode: props.tab.mode,
+                            };
+                            const tabIndex: number = props.tab.index;
+                            await props.tab.close();
+                            const newTab: TabManagerTab = tabManager.openTab(data);
+                            if (tabIndex !== -1) tabManager.moveTab(newTab, tabIndex);
+                        }}
+                    >
+                        Reload Tab
+                    </MenuItem>
+                    <MenuDivider />
                     {props.tab.isModified() ?
                         <>
                             <MenuItem

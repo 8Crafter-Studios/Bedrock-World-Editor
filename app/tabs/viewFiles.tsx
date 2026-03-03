@@ -375,11 +375,15 @@ async function getViewFilesTabContents(tab: TabManagerTab): Promise<JSX.Element>
         )
         .catch((e: any): undefined => (console.error(e), undefined));
     // console.log(dynamicProperties);
+    let currentUpdateTablesContentsFunction: ((reloadData: boolean) => Promise<void>) | null = null;
     let tablesContents: JSX.Element[][] = [
         await getViewFilesTabContentsRows({
             tab,
             keys,
             dynamicProperties,
+            get updateTablesContents(): ((reloadData: boolean) => Promise<void>) | null {
+                return currentUpdateTablesContentsFunction;
+            },
         }),
     ];
     function Contents(): JSX.Element {
@@ -611,7 +615,7 @@ async function getViewFilesTabContents(tab: TabManagerTab): Promise<JSX.Element>
                 }
                 tablesContents = await Promise.all(
                     ConfigConstants.views.ViewFiles.viewFilesTabModeToSectionIDs["simple"].map(
-                        async (sectionID: (typeof ConfigConstants.views.ViewFiles.viewFilesTabModeToSectionIDs)["simple"][number]): Promise<JSX.Element[]> =>
+                        async (_sectionID: (typeof ConfigConstants.views.ViewFiles.viewFilesTabModeToSectionIDs)["simple"][number]): Promise<JSX.Element[]> =>
                             getViewFilesTabContentsRows({
                                 tab,
                                 keys:
@@ -636,6 +640,9 @@ async function getViewFilesTabContents(tab: TabManagerTab): Promise<JSX.Element>
                                         })()
                                     :   keys,
                                 dynamicProperties,
+                                get updateTablesContents(): ((reloadData: boolean) => Promise<void>) | null {
+                                    return currentUpdateTablesContentsFunction;
+                                },
                             })
                     )
                 );
@@ -644,6 +651,7 @@ async function getViewFilesTabContents(tab: TabManagerTab): Promise<JSX.Element>
             render(<TablesContents />, tempElement);
             tablesContainerRef.current.replaceChildren(...tempElement.children);
         }
+        currentUpdateTablesContentsFunction = updateTablesContents;
         let lastHideErrorPopupFunction: (() => void) | undefined = undefined;
         return (
             <>
@@ -1100,29 +1108,28 @@ async function getViewFilesTabContentsRows(data: {
      */
     keys: KeyData[];
     dynamicProperties?: NBT.NBT | undefined;
+    get updateTablesContents(): ((reloadData: boolean) => Promise<void>) | null;
 }): Promise<JSX.Element[]> {
     const columns = ConfigConstants.views.ViewFiles.viewFilesTabModeToColumnIDs["simple"];
     return data.keys.map((key: KeyData): JSX.Element => {
-        function onEntryMiddleClick(_event: TargetedMouseEvent<HTMLTableRowElement>): void {
-            data.tab.openTab(
-                {
-                    // TODO: In the future, add support for getting their skin head or profile picture.
-                    contentType: key.contentType,
-                    icon: "auto",
-                    name: key.displayKey,
-                    parentTab: data.tab,
-                    target: {
-                        type: "LevelDBEntry",
-                        key: key.rawKey,
-                    },
-                },
-                false
-            );
-        }
-        return (
-            <tr
-                onDblClick={(): void => {
-                    data.tab.openTab({
+        function Row(): JSX.Element {
+            const [entryContextMenu_isOpen, entryContextMenu_setOpen] = useState(false);
+            const [entryContextMenu_anchorPoint, entryContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
+            function onEntryRightClick(event: JSX.TargetedMouseEvent<HTMLTableRowElement>): void {
+                event.preventDefault();
+                event.stopPropagation();
+                const clickPosition: { x: number; y: number } = {
+                    x: event.clientX,
+                    y: event.clientY,
+                };
+                // console.log(clickPosition);
+
+                entryContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
+                entryContextMenu_setOpen(true);
+            }
+            function onEntryMiddleClick(_event: TargetedMouseEvent<HTMLTableRowElement>): void {
+                data.tab.openTab(
+                    {
                         // TODO: In the future, add support for getting their skin head or profile picture.
                         contentType: key.contentType,
                         icon: "auto",
@@ -1132,27 +1139,73 @@ async function getViewFilesTabContentsRows(data: {
                             type: "LevelDBEntry",
                             key: key.rawKey,
                         },
-                    });
-                }}
-                onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
-                    // Treat Alt+Click as a middle click.
-                    if (!event.altKey) return;
-                    onEntryMiddleClick(event);
-                }}
-                onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
-                    if (event.button !== 1) return;
-                    onEntryMiddleClick(event);
-                }}
-            >
-                {columns.map((column: (typeof columns)[number]): JSX.Element => {
-                    switch (column) {
-                        case "DBKey":
-                            return <td>{key.displayKey}</td>;
-                        case "ContentType":
-                            return <td>{getContentTypeFromDBKey(key.rawKey)}</td>;
-                    }
-                })}
-            </tr>
-        );
+                    },
+                    false
+                );
+            }
+            return (
+                <>
+                    <ControlledMenu
+                        anchorPoint={entryContextMenu_anchorPoint}
+                        state={entryContextMenu_isOpen ? "open" : "closed"}
+                        direction="right"
+                        onClose={(): void => void entryContextMenu_setOpen(false)}
+                    >
+                        <MenuItem
+                            onClick={async (): Promise<void> => {
+                                if (!data.tab.db) return;
+                                if (!data.tab.db.isOpen()) return;
+                                if (!data.tab.cachedDBKeys) return;
+                                // IDEA: Add a confirmation dialog here before deleting the entry, and make it able to be disabled in the config.
+                                await data.tab.db.delete(key.rawKey);
+                                data.tab.setLevelDBIsModified();
+                                const cachedIndex: number = data.tab.cachedDBKeys[key.contentType].findIndex((cachedKey: Buffer): boolean =>
+                                    key.rawKey.equals(cachedKey)
+                                );
+                                if (cachedIndex !== -1) data.tab.cachedDBKeys[key.contentType].splice(cachedIndex, 1);
+                                data.updateTablesContents?.(true);
+                            }}
+                        >
+                            Delete LevelDB Entry
+                        </MenuItem>
+                    </ControlledMenu>
+                    <tr
+                        onDblClick={(): void => {
+                            data.tab.openTab({
+                                // TODO: In the future, add support for getting their skin head or profile picture.
+                                contentType: key.contentType,
+                                icon: "auto",
+                                name: key.displayKey,
+                                parentTab: data.tab,
+                                target: {
+                                    type: "LevelDBEntry",
+                                    key: key.rawKey,
+                                },
+                            });
+                        }}
+                        onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                            // Treat Alt+Click as a middle click.
+                            if (!event.altKey) return;
+                            onEntryMiddleClick(event);
+                        }}
+                        onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                            if (event.button !== 1) return;
+                            onEntryMiddleClick(event);
+                        }}
+                        onContextMenu={onEntryRightClick}
+                    >
+                        {columns.map((column: (typeof columns)[number]): JSX.Element => {
+                            switch (column) {
+                                case "DBKey":
+                                    return <td>{key.displayKey}</td>;
+                                case "ContentType":
+                                    return <td>{getContentTypeFromDBKey(key.rawKey)}</td>;
+                            }
+                        })}
+                    </tr>
+                </>
+            );
+        }
+        return <Row />;
     });
 }

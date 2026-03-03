@@ -638,10 +638,14 @@ namespace exports {
         public tempFilePath?: string;
         /**
          * Whether the tab is read-only.
+         *
+         * @readonly
          */
         public readonly readonly: boolean = false;
         /**
          * Whether saving is enabled for the tab.
+         *
+         * @readonly
          */
         public readonly saveEnabled: boolean = true;
         /**
@@ -660,6 +664,8 @@ namespace exports {
         public isSaving: boolean = false;
         /**
          * The ID of the tab.
+         *
+         * @readonly
          */
         public readonly id: bigint = TabManagerTab.lastID++;
         /**
@@ -697,9 +703,17 @@ namespace exports {
                 this.openTab({ ...tab, isPinned: true }, tab.active || (!a.some((tab) => tab.active) && i === a.length - 1))
             );
         }
+        /**
+         * Whether the tab has a sub-tab bar.
+         *
+         * @readonly
+         */
         public get hasTabBar(): boolean {
             return this.type === "world" || this.type === "leveldb";
         }
+        /**
+         * Whether the tab is favorited.
+         */
         public get isFavorited(): boolean {
             return existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json")) ?
                     ((): boolean => {
@@ -732,6 +746,16 @@ namespace exports {
                     writeFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), JSON.stringify(favoritedWorldsData));
                 }
             }
+        }
+        /**
+         * The index of the tab.
+         *
+         * If the tab is not in the list of open tabs, the index will be `-1`.
+         *
+         * @readonly
+         */
+        public get index(): number {
+            return this.tabManager.openTabs.indexOf(this);
         }
         private initAccess(mode: TabManagerTabMode): void {
             switch (mode) {
@@ -1034,7 +1058,7 @@ namespace exports {
             this.tabManager.emit("closeTab", { tab: this });
             this.emit("closed");
             if (this.tempPath) {
-                this.db && this.db.isOpen() && (await this.db.close());
+                if (this.db && this.db.isOpen()) await this.db.close();
                 await rm(this.tempPath, { recursive: true, force: true });
             }
         }
