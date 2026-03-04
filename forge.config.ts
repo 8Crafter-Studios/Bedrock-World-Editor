@@ -12,6 +12,7 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { existsSync, renameSync, rmSync } from "node:fs";
 import path from "node:path";
 import { loadEnvFile } from "node:process";
+import MakerAppImage from "@reforged/maker-appimage";
 
 if (existsSync(path.join(__dirname, ".env"))) loadEnvFile(path.join(__dirname, ".env"));
 
@@ -77,6 +78,13 @@ const config: ForgeConfig = {
                 categories: ["Development", "Utility"],
                 section: "editors",
             },
+        }),
+        new MakerAppImage({
+            options: {
+                icon: "resources/icon.png",
+                mimeType: ["x-scheme-handler/bedrock-world-editor"],
+                categories: ["Development", "Utility"]
+            }
         }),
         new MakerDMG({
             // background // TODO: Make a background image for the DMG window.

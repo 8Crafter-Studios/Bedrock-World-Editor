@@ -53,6 +53,7 @@
         "@electron-forge/plugin-vite": "^7.11.1",
         "@electron-forge/publisher-github": "^7.11.1",
         "@electron/fuses": "^1.8.0",
+        "@reforged/maker-appimage": "^5.2.0",
         "@types/debug": "^4.1.12",
         "@types/electron-progressbar": "^2.2.0",
         "@types/electron-squirrel-startup": "^1.0.2",
