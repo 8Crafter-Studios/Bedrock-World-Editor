@@ -41,20 +41,32 @@ interface ScoreboardSetBiomeData {
 interface Action_Command_setbiome_Legacy_TargetedChunkCountData {
     total: number;
     valid: number;
+    warnings: number;
     invalid: number;
     errorTypes: {
         data3dKeyNotFound: number;
         data3dMissingBiomeDataAtIndex: number;
+        metaDataHashMissingUninferrable: number;
+        unableToGetLevelChunkMetaData: number;
+    };
+    warningTypes: {
+        metaDataHashMissing: number;
     };
 }
 
 interface Action_Command_setbiome_TargetedChunkCountData {
     total: number;
     valid: number;
+    warnings: number;
     invalid: number;
     errorTypes: {
         data3dKeyNotFound: number;
         data3dMissingBiomeDataAtIndex: number;
+        metaDataHashMissingUninferrable: number;
+        unableToGetLevelChunkMetaData: number;
+    };
+    warningTypes: {
+        metaDataHashMissing: number;
     };
 }
 
@@ -95,10 +107,16 @@ async function action_command_setbiome_legacy_getTargetedChunkCount(
     const targetedChunkCountData: Action_Command_setbiome_Legacy_TargetedChunkCountData = {
         total: 0,
         valid: 0,
+        warnings: 0,
         invalid: 0,
         errorTypes: {
             data3dKeyNotFound: 0,
             data3dMissingBiomeDataAtIndex: 0,
+            metaDataHashMissingUninferrable: 0,
+            unableToGetLevelChunkMetaData: 0,
+        },
+        warningTypes: {
+            metaDataHashMissing: 0,
         },
     };
     for (const entry of [...scoreboard.value.Entries.value.value]) {
@@ -146,16 +164,46 @@ async function action_command_setbiome_legacy_getTargetedChunkCount(
                     minSubchunkIndex = Math.floor(heightRange.min.value / 16);
                 } catch (e) {
                     if (e instanceof ReferenceError && e.message === "LevelChunkMetaDataDictionary data not found.") {
-                        minSubchunkIndex = FALLBACK_MIN_SUBCHUNK_INDEX;
+                        minSubchunkIndex =
+                            [8, 16].includes(data3dValue.value.biomes.value.value.length) ? 0
+                            : data3dValue.value.biomes.value.value.length === 24 ? -4
+                            : FALLBACK_MIN_SUBCHUNK_INDEX;
                     } else {
-                        // REVIEW: Check if the game actually makes metadata hashes for ALL saved chunks when upgrading worlds to a version with the LevelChunkMetaDataDictionary.
-                        console.error(
-                            "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_legacy_getTargetedChunkCount] Skipping entry. Failed to get level chunk meta data for chunk even though the LevelChunkMetaDataDictionary is present. entry:",
-                            entry,
-                            "error:",
-                            e
-                        );
-                        continue;
+                        if (e instanceof ReferenceError && e.message === "Level chunk meta data hash not found.") {
+                            if ([8, 16, 24].includes(data3dValue.value.biomes.value.value.length)) {
+                                minSubchunkIndex =
+                                    [8, 16].includes(data3dValue.value.biomes.value.value.length) ? 0
+                                    : data3dValue.value.biomes.value.value.length === 24 ? -4
+                                    : NaN;
+                                console.warn(
+                                    `[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_legacy_getTargetedChunkCount] Warning for entry. Failed to get level chunk meta data hash for chunk even though the LevelChunkMetaDataDictionary is present, but the height range is able to be inferred from the Data3D biome subchunk array's length (inferred minimum subchunk index: ${minSubchunkIndex}). entry:`,
+                                    entry,
+                                    "error:",
+                                    e
+                                );
+                                targetedChunkCountData.warningTypes.metaDataHashMissing++;
+                                targetedChunkCountData.warnings++;
+                            } else {
+                                console.error(
+                                    "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_legacy_getTargetedChunkCount] Skipping entry. Failed to get level chunk meta data hash for chunk even though the LevelChunkMetaDataDictionary is present, and the height range is unable to be inferred from the Data3D biome subchunk array's length. entry:",
+                                    entry,
+                                    "error:",
+                                    e
+                                );
+                                targetedChunkCountData.errorTypes.metaDataHashMissingUninferrable++;
+                                continue;
+                            }
+                        } else {
+                            // REVIEW: Check if the game actually makes metadata hashes for ALL saved chunks when upgrading worlds to a version with the LevelChunkMetaDataDictionary.
+                            console.error(
+                                "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_legacy_getTargetedChunkCount] Skipping entry. Failed to get level chunk meta data for chunk even though the LevelChunkMetaDataDictionary is present. entry:",
+                                entry,
+                                "error:",
+                                e
+                            );
+                            targetedChunkCountData.errorTypes.unableToGetLevelChunkMetaData++;
+                            continue;
+                        }
                     }
                 }
                 const biome = data3dValue.value.biomes.value.value[y - minSubchunkIndex];
@@ -227,10 +275,16 @@ async function action_command_setbiome_getTargetedChunkCount(
     const targetedChunkCountData: Action_Command_setbiome_TargetedChunkCountData = {
         total: 0,
         valid: 0,
+        warnings: 0,
         invalid: 0,
         errorTypes: {
             data3dKeyNotFound: 0,
             data3dMissingBiomeDataAtIndex: 0,
+            metaDataHashMissingUninferrable: 0,
+            unableToGetLevelChunkMetaData: 0,
+        },
+        warningTypes: {
+            metaDataHashMissing: 0,
         },
     };
     for (const biomeChangeProperty of biomeChangeProperties) {
@@ -285,16 +339,46 @@ async function action_command_setbiome_getTargetedChunkCount(
                 minSubchunkIndex = Math.floor(heightRange.min.value / 16);
             } catch (e) {
                 if (e instanceof ReferenceError && e.message === "LevelChunkMetaDataDictionary data not found.") {
-                    minSubchunkIndex = FALLBACK_MIN_SUBCHUNK_INDEX;
+                    minSubchunkIndex =
+                        [8, 16].includes(data3dValue.value.biomes.value.value.length) ? 0
+                        : data3dValue.value.biomes.value.value.length === 24 ? -4
+                        : FALLBACK_MIN_SUBCHUNK_INDEX;
                 } else {
-                    // REVIEW: Check if the game actually makes metadata hashes for ALL saved chunks when upgrading worlds to a version with the LevelChunkMetaDataDictionary.
-                    console.error(
-                        "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome__getTargetedChunkCount] Skipping entry. Failed to get level chunk meta data for chunk even though the LevelChunkMetaDataDictionary is present. key:",
-                        biomeChangeProperty,
-                        "error:",
-                        e
-                    );
-                    continue;
+                    if (e instanceof ReferenceError && e.message === "Level chunk meta data hash not found.") {
+                        if ([8, 16, 24].includes(data3dValue.value.biomes.value.value.length)) {
+                            minSubchunkIndex =
+                                [8, 16].includes(data3dValue.value.biomes.value.value.length) ? 0
+                                : data3dValue.value.biomes.value.value.length === 24 ? -4
+                                : NaN;
+                            console.warn(
+                                `[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_getTargetedChunkCount] Warning for entry. Failed to get level chunk meta data hash for chunk even though the LevelChunkMetaDataDictionary is present, but the height range is able to be inferred from the Data3D biome subchunk array's length (inferred minimum subchunk index: ${minSubchunkIndex}). entry:`,
+                                biomeChangeProperty,
+                                "error:",
+                                e
+                            );
+                            targetedChunkCountData.warningTypes.metaDataHashMissing++;
+                            targetedChunkCountData.warnings++;
+                        } else {
+                            console.error(
+                                "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_getTargetedChunkCount] Skipping entry. Failed to get level chunk meta data hash for chunk even though the LevelChunkMetaDataDictionary is present, and the height range is unable to be inferred from the Data3D biome subchunk array's length. entry:",
+                                biomeChangeProperty,
+                                "error:",
+                                e
+                            );
+                            targetedChunkCountData.errorTypes.metaDataHashMissingUninferrable++;
+                            continue;
+                        }
+                    } else {
+                        // REVIEW: Check if the game actually makes metadata hashes for ALL saved chunks when upgrading worlds to a version with the LevelChunkMetaDataDictionary.
+                        console.error(
+                            "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_getTargetedChunkCount] Skipping entry. Failed to get level chunk meta data for chunk even though the LevelChunkMetaDataDictionary is present. entry:",
+                            biomeChangeProperty,
+                            "error:",
+                            e
+                        );
+                        targetedChunkCountData.errorTypes.unableToGetLevelChunkMetaData++;
+                        continue;
+                    }
                 }
             }
             const biome = data3dValue.value.biomes.value.value[y - minSubchunkIndex];
@@ -305,7 +389,7 @@ async function action_command_setbiome_getTargetedChunkCount(
             targetedChunkCountData.valid++;
         } catch (e) {
             console.error(
-                "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome__getTargetedChunkCount] An error occurred while processing the entry. key:",
+                "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_getTargetedChunkCount] An error occurred while processing the entry. key:",
                 biomeChangeProperty,
                 "error:",
                 e
@@ -375,7 +459,12 @@ async function action_export_structures_getStructures(tab: TabManagerTab, signal
                     if (k === `structuretemplate_mystructure:weditstructref_${structureName[1]}`) return true;
                     // Placeholder in case this issue is fixed in the future to use a namespace for the ref.
                     if (k === `structuretemplate_${structureName[0]}:weditstructref_${structureName[1]}`) return true;
-                    if (new RegExp(String.raw`^structuretemplate_${RegExp.escape(structureName[0])}:weditstructexport_${RegExp.escape(structureName[1])}(?:_\d+_\d+_\d+)?$`).test(k)) return true;
+                    if (
+                        new RegExp(
+                            String.raw`^structuretemplate_${RegExp.escape(structureName[0])}:weditstructexport_${RegExp.escape(structureName[1])}(?:_\d+_\d+_\d+)?$`
+                        ).test(k)
+                    )
+                        return true;
                 }),
             });
         }
@@ -391,7 +480,7 @@ async function action_export_structures_getStructures(tab: TabManagerTab, signal
  * @returns The level chunk meta data.
  *
  * @throws {ReferenceError} If the LevelChunkMetaDataDictionary data is not found, the message will be `"LevelChunkMetaDataDictionary data not found."`.
- * @throws {ReferenceError} If the level chunk meta data hash is not found.
+ * @throws {ReferenceError} If the level chunk meta data hash is not found, the message will be `"Level chunk meta data hash not found."`.
  * @throws {ReferenceError} If the LevelChunkMetaDataDictionary did not contain mapping for the meta data hash.
  * @throws {unknown} If an error occurs.
  */
@@ -469,7 +558,8 @@ const thisIntegration = {
                 }
                 return false;
             },
-            async apply(tab: TabManagerTab): Promise<void> {
+            // TODO: Add a config option to always attempt to infer the minimum height from chunks that are missing their meta data hash if possible.
+            async apply(tab: TabManagerTab, inferMinimumHeight: boolean = false): Promise<void> {
                 if (tab.type !== "world" && tab.type !== "leveldb") return;
                 if (!tab.db) return;
                 await tab.awaitDBOpen;
@@ -531,7 +621,35 @@ const thisIntegration = {
                                 minSubchunkIndex = Math.floor(heightRange.min.value / 16);
                             } catch (e) {
                                 if (e instanceof ReferenceError && e.message === "LevelChunkMetaDataDictionary data not found.") {
-                                    minSubchunkIndex = FALLBACK_MIN_SUBCHUNK_INDEX;
+                                    minSubchunkIndex =
+                                        [8, 16].includes(data3dValue.value.biomes.value.value.length) ? 0
+                                        : data3dValue.value.biomes.value.value.length === 24 ? -4
+                                        : FALLBACK_MIN_SUBCHUNK_INDEX;
+                                } else if (e instanceof ReferenceError && e.message === "Level chunk meta data hash not found.") {
+                                    if ([8, 16, 24].includes(data3dValue.value.biomes.value.value.length)) {
+                                        if (inferMinimumHeight) {
+                                            minSubchunkIndex =
+                                                [8, 16].includes(data3dValue.value.biomes.value.value.length) ? 0
+                                                : data3dValue.value.biomes.value.value.length === 24 ? -4
+                                                : NaN;
+                                        } else {
+                                            console.error(
+                                                "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::apply] Skipping entry. Failed to get level chunk meta data hash for chunk even though the LevelChunkMetaDataDictionary is present, and even though the height range is able to be inferred from the Data3D biome subchunk array's length, inferring height ranges has been disabled. entry:",
+                                                entry,
+                                                "error:",
+                                                e
+                                            );
+                                            continue;
+                                        }
+                                    } else {
+                                        console.error(
+                                            "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::apply] Skipping entry. Failed to get level chunk meta data hash for chunk even though the LevelChunkMetaDataDictionary is present, and the height range is unable to be inferred from the Data3D biome subchunk array's length. entry:",
+                                            entry,
+                                            "error:",
+                                            e
+                                        );
+                                        continue;
+                                    }
                                 } else {
                                     // REVIEW: Check if the game actually makes metadata hashes for ALL saved chunks when upgrading worlds to a version with the LevelChunkMetaDataDictionary.
                                     console.error(
@@ -674,7 +792,8 @@ const thisIntegration = {
                 }
                 return false;
             },
-            async apply(tab: TabManagerTab): Promise<void> {
+            // TODO: Add a config option to always attempt to infer the minimum height from chunks that are missing their meta data hash if possible.
+            async apply(tab: TabManagerTab, inferMinimumHeight: boolean = false): Promise<void> {
                 const ADDON_UUID = "3cdb2ddf-662e-4f8f-a0a1-1293b91ccb2f";
                 if (tab.type !== "world" && tab.type !== "leveldb") return;
                 if (!tab.db) return;
@@ -757,11 +876,39 @@ const thisIntegration = {
                             minSubchunkIndex = Math.floor(heightRange.min.value / 16);
                         } catch (e) {
                             if (e instanceof ReferenceError && e.message === "LevelChunkMetaDataDictionary data not found.") {
-                                minSubchunkIndex = FALLBACK_MIN_SUBCHUNK_INDEX;
+                                minSubchunkIndex =
+                                    [8, 16].includes(data3dValue.value.biomes.value.value.length) ? 0
+                                    : data3dValue.value.biomes.value.value.length === 24 ? -4
+                                    : FALLBACK_MIN_SUBCHUNK_INDEX;
+                            } else if (e instanceof ReferenceError && e.message === "Level chunk meta data hash not found.") {
+                                if ([8, 16, 24].includes(data3dValue.value.biomes.value.value.length)) {
+                                    if (inferMinimumHeight) {
+                                        minSubchunkIndex =
+                                            [8, 16].includes(data3dValue.value.biomes.value.value.length) ? 0
+                                            : data3dValue.value.biomes.value.value.length === 24 ? -4
+                                            : NaN;
+                                    } else {
+                                        console.error(
+                                            "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome::apply] Skipping entry. Failed to get level chunk meta data hash for chunk even though the LevelChunkMetaDataDictionary is present, and even though the height range is able to be inferred from the Data3D biome subchunk array's length, inferring height ranges has been disabled. entry:",
+                                            biomeChangeProperty,
+                                            "error:",
+                                            e
+                                        );
+                                        continue;
+                                    }
+                                } else {
+                                    console.error(
+                                        "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome::apply] Skipping entry. Failed to get level chunk meta data hash for chunk even though the LevelChunkMetaDataDictionary is present, and the height range is unable to be inferred from the Data3D biome subchunk array's length. entry:",
+                                        biomeChangeProperty,
+                                        "error:",
+                                        e
+                                    );
+                                    continue;
+                                }
                             } else {
                                 // REVIEW: Check if the game actually makes metadata hashes for ALL saved chunks when upgrading worlds to a version with the LevelChunkMetaDataDictionary.
                                 console.error(
-                                    "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome::apply] Skipping entry. Failed to get level chunk meta data for chunk even though the LevelChunkMetaDataDictionary is present. key:",
+                                    "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome::apply] Skipping entry. Failed to get level chunk meta data for chunk even though the LevelChunkMetaDataDictionary is present. entry:",
                                     biomeChangeProperty,
                                     "error:",
                                     e
@@ -995,7 +1142,26 @@ const thisIntegration = {
                         <h2 class="nsel">Biome Changes</h2>
                         <div style={{ marginLeft: "1em" }}>
                             {(!!targetedChunkCountData.valid || !targetedChunkCountData.invalid) && (
-                                <p>{targetedChunkCountData.valid} chunk(s) with pending biome changes</p>
+                                <>
+                                    <p>{targetedChunkCountData.valid} chunk(s) with pending biome changes</p>
+                                    {!!targetedChunkCountData.warnings && (
+                                        <ul>
+                                            <li>
+                                                <p>{targetedChunkCountData.warnings} chunk(s) with warnings</p>
+                                                <ul>
+                                                    {...Object.entries(targetedChunkCountData.warningTypes).map(
+                                                        ([errorType, count]: [string, number]): false | JSX.Element =>
+                                                            !!count && (
+                                                                <li>
+                                                                    {count} chunk(s) with warning of type {errorType}
+                                                                </li>
+                                                            )
+                                                    )}
+                                                </ul>
+                                            </li>
+                                        </ul>
+                                    )}
+                                </>
                             )}
                             {!!targetedChunkCountData.invalid && (
                                 <>
@@ -1027,13 +1193,27 @@ const thisIntegration = {
                                     buttons: ["Yes", "No"],
                                     noLink: true,
                                 })
-                            )
+                            ) {
                                 return;
+                            }
                             event.currentTarget.blur();
                             event.currentTarget.disabled = true;
                             event.currentTarget.textContent = "Applying Changes...";
+                            let inferMinimumHeight: boolean = false;
+                            if (
+                                targetedChunkCountData.warningTypes.metaDataHashMissing &&
+                                !dialog.showMessageBoxSync(getCurrentWindow(), {
+                                    type: "info",
+                                    title: "Bedrock World Editor",
+                                    message: `Even though the LevelChunkMetaDataDictionary data is present, ${targetedChunkCountData.warningTypes.metaDataHashMissing} chunk(s) are missing meta data hashes but their minimum height ranges can be inferred based on the length of the biome subchunk array of their Data3D entries. Would you like the application to apply changes to these chunks based on inferred height ranges?`,
+                                    buttons: ["Yes", "No"],
+                                    noLink: true,
+                                })
+                            ) {
+                                inferMinimumHeight = true;
+                            }
                             const action_command_setbiome = thisIntegration.autoApplyActions.find((a) => a.id === "command_setbiome")!;
-                            await action_command_setbiome.apply(props.tab);
+                            await action_command_setbiome.apply(props.tab, inferMinimumHeight);
                             abortController?.signal.throwIfAborted();
                             {
                                 const applicableActionsIndex: number = applicableActions.indexOf("command_setbiome");
@@ -1079,7 +1259,26 @@ const thisIntegration = {
                         <h2 class="nsel">Biome Changes (Legacy)</h2>
                         <div style={{ marginLeft: "1em" }}>
                             {(!!targetedChunkCountData.valid || !targetedChunkCountData.invalid) && (
-                                <p>{targetedChunkCountData.valid} chunk(s) with pending biome changes</p>
+                                <>
+                                    <p>{targetedChunkCountData.valid} chunk(s) with pending biome changes</p>
+                                    {!!targetedChunkCountData.warnings && (
+                                        <ul>
+                                            <li>
+                                                <p>{targetedChunkCountData.warnings} chunk(s) with warnings</p>
+                                                <ul>
+                                                    {...Object.entries(targetedChunkCountData.warningTypes).map(
+                                                        ([errorType, count]: [string, number]): false | JSX.Element =>
+                                                            !!count && (
+                                                                <li>
+                                                                    {count} chunk(s) with warning of type {errorType}
+                                                                </li>
+                                                            )
+                                                    )}
+                                                </ul>
+                                            </li>
+                                        </ul>
+                                    )}
+                                </>
                             )}
                             {!!targetedChunkCountData.invalid && (
                                 <>
@@ -1116,8 +1315,21 @@ const thisIntegration = {
                             event.currentTarget.blur();
                             event.currentTarget.disabled = true;
                             event.currentTarget.textContent = "Applying Changes...";
+                            let inferMinimumHeight: boolean = false;
+                            if (
+                                targetedChunkCountData.warningTypes.metaDataHashMissing &&
+                                !dialog.showMessageBoxSync(getCurrentWindow(), {
+                                    type: "info",
+                                    title: "Bedrock World Editor",
+                                    message: `Even though the LevelChunkMetaDataDictionary data is present, ${targetedChunkCountData.warningTypes.metaDataHashMissing} chunk(s) are missing meta data hashes but their minimum height ranges can be inferred based on the length of the biome subchunk array of their Data3D entries. Would you like the application to apply changes to these chunks based on inferred height ranges?`,
+                                    buttons: ["Yes", "No"],
+                                    noLink: true,
+                                })
+                            ) {
+                                inferMinimumHeight = true;
+                            }
                             const action_command_setbiome_legacy = thisIntegration.autoApplyActions.find((a) => a.id === "command_setbiome_legacy")!;
-                            await action_command_setbiome_legacy.apply(props.tab);
+                            await action_command_setbiome_legacy.apply(props.tab, inferMinimumHeight);
                             abortController?.signal.throwIfAborted();
                             {
                                 const applicableActionsIndex: number = applicableActions.indexOf("command_setbiome_legacy");

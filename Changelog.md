@@ -1,3 +1,11 @@
+# v1.0.0-beta.22
+
+## Additions
+
+-   Added more error types when applying pending biome changes for the WorldEdit Bedrock integration.
+-   Added warning types when applying pending biome changes for the WorldEdit Bedrock integration.
+-   When applying pending biome changes for the WorldEdit Bedrock integration, if the LevelChunkMetaDataDictionary is present, but the chunk has no meta data hash, the application will attempt to infer the minimum height of the chunk from the length of the biome subchunk array of the Data3D entry and show a warning if it was able to infer it and an error otherwise. When applying the changes, if any chunkks have this warning, a popup will be shown asking users whether they would like the application to use the inferred minimum height of the chunk to apply the changes to it. This should add support for worlds converted from Java to Bedrock which may not have meta data hashes set for some chunks depending on the converter.
+
 # v1.0.0-beta.21
 
 ## Additions
