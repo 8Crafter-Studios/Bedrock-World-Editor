@@ -1,13 +1,14 @@
 import { toLong, toLongParts } from "mcbe-leveldb";
-import { render, type ComponentChild, type ComponentChildren, type JSX, type RefObject, type RenderableProps } from "preact";
-import React, { useEffect, useRef } from "preact/compat";
+import { type ComponentChild, type ComponentChildren, type JSX, type RefObject, type RenderableProps } from "preact";
+import React, { render, useEffect, useRef } from "preact/compat";
 import NBT from "prismarine-nbt";
 import "./treeEditor.css";
 import type { EditorWidgetOverlayBarWidgetRegistry } from "./EditorWidgetOverlayBar";
 const mime = require("mime-types") as typeof import("mime-types");
 
 export interface TreeEditorDataStorageObjectExpansionData {
-    [key: string]: { data?: TreeEditorDataStorageObjectExpansionData; value?: boolean };
+    data?: { [key: string]: TreeEditorDataStorageObjectExpansionData };
+    value?: boolean;
 }
 
 interface TreeEditorDataStorageObjectBase {
@@ -971,18 +972,20 @@ export default class TreeEditor extends React.Component<
             };
             let expanded: boolean =
                 hasChildren &&
-                props.propertyPath.reduce(
-                    (
-                        value: { data?: Record<string, any>; value?: boolean } | boolean,
-                        property: string,
-                        index: number,
-                        array: string[]
-                    ): { data?: Record<string, any>; value?: boolean } | boolean =>
-                        !value ? false : (
-                            value === true || (index === array.length - 1 ? (value.data?.[property]?.value ?? false) : (value.data?.[property] ?? false))
-                        ),
-                    this.props.dataStorageObject.treeEditor.expansionData ?? {}
-                ) === true;
+                (props.propertyPath.length === 0 ?
+                    (this.props.dataStorageObject.treeEditor.expansionData ?? {}).value === true
+                :   props.propertyPath.reduce(
+                        (
+                            value: { data?: Record<string, any>; value?: boolean } | boolean,
+                            property: string,
+                            index: number,
+                            array: string[]
+                        ): { data?: Record<string, any>; value?: boolean } | boolean =>
+                            !value ? false : (
+                                value === true || (index === array.length - 1 ? (value.data?.[property]?.value ?? false) : (value.data?.[property] ?? false))
+                            ),
+                        this.props.dataStorageObject.treeEditor.expansionData ?? {}
+                    ) === true);
             let displayValue: string | undefined = undefined;
             switch (type) {
                 case "byteArray":
@@ -1073,34 +1076,38 @@ export default class TreeEditor extends React.Component<
                                         event.stopPropagation();
                                         expanded = !expanded;
                                         this.props.dataStorageObject.treeEditor.expansionData ??= { data: {} };
-                                        props.propertyPath.reduce(
-                                            (
-                                                value: { data?: Record<string, any>; value?: boolean } | boolean,
-                                                property: string,
-                                                index: number,
-                                                array: string[]
-                                            ): { data?: Record<string, any>; value?: boolean } | boolean => {
-                                                if (typeof value === "boolean") {
-                                                    return value;
-                                                }
-                                                value["data"] ??= {};
-                                                if (index === array.length - 1) {
-                                                    value["data"][property] ??= { data: {} };
-                                                    value["data"][property]["value"] = expanded;
-                                                    return value["data"][property]["value"];
-                                                }
-                                                return (value["data"][property] ??= { data: {} });
-                                            },
-                                            this.props.dataStorageObject.treeEditor.expansionData
-                                        );
+                                        if (props.propertyPath.length === 0) {
+                                            this.props.dataStorageObject.treeEditor.expansionData.value = expanded;
+                                        } else {
+                                            props.propertyPath.reduce(
+                                                (
+                                                    value: { data?: Record<string, any>; value?: boolean } | boolean,
+                                                    property: string,
+                                                    index: number,
+                                                    array: string[]
+                                                ): { data?: Record<string, any>; value?: boolean } | boolean => {
+                                                    if (typeof value === "boolean") {
+                                                        return value;
+                                                    }
+                                                    value["data"] ??= {};
+                                                    if (index === array.length - 1) {
+                                                        value["data"][property] ??= { data: {} };
+                                                        value["data"][property]["value"] = expanded;
+                                                        return value["data"][property]["value"];
+                                                    }
+                                                    return (value["data"][property] ??= { data: {} });
+                                                },
+                                                this.props.dataStorageObject.treeEditor.expansionData
+                                            );
+                                        }
                                         if (expanded) {
                                             // let tempElement: HTMLDivElement = document.createElement("div");
-                                            childrenRef.current && render(null, childrenRef.current);
-                                            childrenRef.current && render(getChildren(), childrenRef.current /* tempElement */);
+                                            if (childrenRef.current) render(null, childrenRef.current);
+                                            if (childrenRef.current) render(getChildren(), childrenRef.current /* tempElement */);
                                             // childrenRef.current?.replaceChildren(...tempElement.children);
                                             event.currentTarget.querySelector("img")?.setAttribute("src", treeEditorIcons.generic.arrowExpanded);
                                         } else {
-                                            childrenRef.current && render(null, childrenRef.current);
+                                            if (childrenRef.current) render(null, childrenRef.current);
                                             // childrenRef.current?.replaceChildren();
                                             event.currentTarget.querySelector("img")?.setAttribute("src", treeEditorIcons.generic.arrowCollapsed);
                                         }

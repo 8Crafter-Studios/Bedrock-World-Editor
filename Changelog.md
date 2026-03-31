@@ -13,6 +13,11 @@
 -   The following tabs now have more informative loading screens:
     -   "Entities"
 
+## Fixes
+
+-   Fixed a bug where entries in the Node editor could not be collapsed after switching tabs or editors ([#24](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/24)).
+-   Fixed a bug where the expansion state of the top level of the Node editor for data types other than `NBT` was not saved when switching tabs or editors.
+
 # v1.0.0-beta.22
 
 ## Additions
