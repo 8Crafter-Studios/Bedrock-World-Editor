@@ -10,6 +10,8 @@
     -   Async Mode Entry Threshold
     -   Async Mode Total Key Count Threshold
     -   No Lookup Entity Dimension Digest Key Threshold
+-   The following tabs now have more informative loading screens:
+    -   "Entities"
 
 # v1.0.0-beta.22
 
