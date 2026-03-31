@@ -196,6 +196,10 @@ namespace exports {
             fileSizeUnits: "binary",
             quitOnCloseAllWindows: false,
             showWorldSizesOnWorldList: false,
+            useAsyncModeInEntryViews: "auto",
+            asyncModeEntryThreshold: 2_500,
+            asyncModeTotalKeyCountThreshold: 5_000_000,
+            noLookupEntityDimensionDigestKeyThreshold: 100_000,
             volume: { master: 100, ui: 100 },
             views: {
                 players: {
@@ -764,6 +768,59 @@ namespace exports {
         }
         public set showWorldSizesOnWorldList(value: boolean | undefined) {
             this.saveChanges({ showWorldSizesOnWorldList: value ?? Config.defaults.showWorldSizesOnWorldList });
+        }
+        /**
+         * Whether to use async mode in entry views.
+         *
+         * Async mode loads NBT data for entries only when the page containing them is selected or when searching through them.
+         *
+         * It loads data as needed and unloads it after, this makes the initial view load faster and dramatically reduces memory usage,
+         * but makes it slightly slower to switch between pages, and makes searching through entries a lot slower.
+         *
+         * - `"auto"`: Automatically determine whether async mode should be used based on the number of entries in the view and the total number of LevelDB keys in the world.
+         * - `true`: Use async mode in entry views.
+         * - `false`: Don't use async mode in entry views.
+         *
+         * @default "auto"
+         */
+        public get useAsyncModeInEntryViews(): "auto" | boolean {
+            return this.getConfigData().useAsyncModeInEntryViews ?? Config.defaults.useAsyncModeInEntryViews;
+        }
+        public set useAsyncModeInEntryViews(value: "auto" | boolean | undefined) {
+            this.saveChanges({ useAsyncModeInEntryViews: value ?? Config.defaults.useAsyncModeInEntryViews });
+        }
+        /**
+         * When {@link useAsyncModeInEntryViews} is `"auto"`, this is the number of entries in the view before async mode is used.
+         *
+         * @default 2500
+         */
+        public get asyncModeEntryThreshold(): number {
+            return this.getConfigData().asyncModeEntryThreshold ?? Config.defaults.asyncModeEntryThreshold;
+        }
+        public set asyncModeEntryThreshold(value: number | undefined) {
+            this.saveChanges({ asyncModeEntryThreshold: value ?? Config.defaults.asyncModeEntryThreshold });
+        }
+        /**
+         * When {@link useAsyncModeInEntryViews} is `"auto"`, this is the total number of LevelDB keys in the world before async mode is used.
+         *
+         * @default 5000000
+         */
+        public get asyncModeTotalKeyCountThreshold(): number {
+            return this.getConfigData().asyncModeTotalKeyCountThreshold ?? Config.defaults.asyncModeTotalKeyCountThreshold;
+        }
+        public set asyncModeTotalKeyCountThreshold(value: number | undefined) {
+            this.saveChanges({ asyncModeTotalKeyCountThreshold: value ?? Config.defaults.asyncModeTotalKeyCountThreshold });
+        }
+        /**
+         * The number of Digest LevelDB keys in the world that will disable looking up the dimension of entities in the Entities left sidebar tab.
+         *
+         * @default 100000
+         */
+        public get noLookupEntityDimensionDigestKeyThreshold(): number {
+            return this.getConfigData().noLookupEntityDimensionDigestKeyThreshold ?? Config.defaults.noLookupEntityDimensionDigestKeyThreshold;
+        }
+        public set noLookupEntityDimensionDigestKeyThreshold(value: number | undefined) {
+            this.saveChanges({ noLookupEntityDimensionDigestKeyThreshold: value ?? Config.defaults.noLookupEntityDimensionDigestKeyThreshold });
         }
         /**
          * The volume options.

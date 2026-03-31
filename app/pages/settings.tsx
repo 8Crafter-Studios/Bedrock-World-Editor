@@ -115,11 +115,11 @@ function SettingsTabRenderer(props: SettingsTabRendererProps): JSX.Element {
         case "video":
             return (
                 <div style="width: -webkit-fill-available; height: -webkit-fill-available; padding: 10px; display: flex; flex-direction: column; overflow: auto;">
-                    <label for="settings_video_fileSizeUnits" class="nsel ndrg">
+                    <label for="settings_video_theme" class="nsel ndrg">
                         Theme
                     </label>
                     <select
-                        id="settings_video_fileSizeUnits"
+                        id="settings_video_theme"
                         class="nsel ndrg"
                         style="width: auto;"
                         onChange={(event: TargetedEvent<HTMLSelectElement, Event>): void => {
@@ -156,12 +156,91 @@ function SettingsTabRenderer(props: SettingsTabRendererProps): JSX.Element {
             );
         case "advanced":
             return (
-                <Notice
-                    title="No Settings"
-                    subtitle="This settings tab is empty."
-                    detail={`The ${props.selectedTab} settings tab does not have any settings.`}
-                    image="generic_empty"
-                />
+                <div style="width: -webkit-fill-available; height: -webkit-fill-available; padding: 10px; display: flex; flex-direction: column; overflow: auto;">
+                    <label for="settings_advanced_useAsyncModeInEntryViews" class="nsel ndrg">
+                        Use Async Mode in Entry Views
+                    </label>
+                    <select
+                        id="settings_advanced_useAsyncModeInEntryViews"
+                        class="nsel ndrg"
+                        title="Whether to use async mode in entry views.
+
+Async mode loads NBT data for entries only when the page containing them is selected or when searching through them.
+
+It loads data as needed and unloads it after, this makes the initial view load faster and dramatically reduces memory usage, but makes it slightly slower to switch between pages, and makes searching through entries a lot slower.
+
+- Auto: Automatically determine whether async mode should be used based on the number of entries in the view and the total number of LevelDB keys in the world.
+- Always: Use async mode in entry views.
+- Never: Don't use async mode in entry views."
+                        onChange={(event: TargetedEvent<HTMLSelectElement, Event>): void => {
+                            config.useAsyncModeInEntryViews = event.currentTarget.value === "auto" ? "auto" : event.currentTarget.value === "true";
+                        }}
+                    >
+                        <option value="auto" selected={config.useAsyncModeInEntryViews === "auto"}>
+                            Auto
+                        </option>
+                        <option value="true" selected={config.useAsyncModeInEntryViews === true}>
+                            Always
+                        </option>
+                        <option value="false" selected={config.useAsyncModeInEntryViews === false}>
+                            Never
+                        </option>
+                    </select>
+                    <br class="nsel ndrg" />
+                    <label
+                        for="settings_advanced_asyncModeEntryThreshold"
+                        class="nsel ndrg"
+                        title='When useAsyncModeInEntryViews is "auto", this is the number of entries in the view before async mode is used.'
+                    >
+                        Async Mode Entry Threshold
+                    </label>
+                    <input
+                        id="settings_advanced_asyncModeEntryThreshold"
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={config.asyncModeEntryThreshold}
+                        onChange={(event: TargetedEvent<HTMLInputElement, Event>): void => {
+                            config.asyncModeEntryThreshold = event.currentTarget.valueAsNumber;
+                        }}
+                    />
+                    <br class="nsel ndrg" />
+                    <label
+                        for="settings_advanced_asyncModeTotalKeyCountThreshold"
+                        class="nsel ndrg"
+                        title='When useAsyncModeInEntryViews is "auto", this is the total number of LevelDB keys in the world before async mode is used.'
+                    >
+                        Async Mode Total Key Count Threshold
+                    </label>
+                    <input
+                        id="settings_advanced_asyncModeTotalKeyCountThreshold"
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={config.asyncModeTotalKeyCountThreshold}
+                        onChange={(event: TargetedEvent<HTMLInputElement, Event>): void => {
+                            config.asyncModeEntryThreshold = event.currentTarget.valueAsNumber;
+                        }}
+                    />
+                    <br class="nsel ndrg" />
+                    <label
+                        for="settings_advanced_noLookupEntityDimensionDigestKeyThreshold"
+                        class="nsel ndrg"
+                        title="The number of Digest LevelDB keys in the world that will disable looking up the dimension of entities in the Entities left sidebar tab."
+                    >
+                        No Lookup Entity Dimension Digest Key Threshold
+                    </label>
+                    <input
+                        id="settings_advanced_noLookupEntityDimensionDigestKeyThreshold"
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={config.noLookupEntityDimensionDigestKeyThreshold}
+                        onChange={(event: TargetedEvent<HTMLInputElement, Event>): void => {
+                            config.noLookupEntityDimensionDigestKeyThreshold = event.currentTarget.valueAsNumber;
+                        }}
+                    />
+                </div>
             );
         case "debug":
             return (

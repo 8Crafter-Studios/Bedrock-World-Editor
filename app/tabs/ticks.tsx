@@ -303,14 +303,14 @@ async function getTicksTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                                 randomTickKeys:
                                     Object.keys(randomTickQuery).length > 1 ?
                                         tab
-                                            .dbSearch!.serach(randomTickQuery)
+                                            .dbSearch!.search(randomTickQuery)
                                             .toArray()
                                             .map((key): RandomTickKeyData => key.originalObject.data)
                                     :   randomTickKeys,
                                 pendingTickKeys:
                                     Object.keys(pendingTickQuery).length > 1 ?
                                         tab
-                                            .dbSearch!.serach(pendingTickQuery)
+                                            .dbSearch!.search(pendingTickQuery)
                                             .toArray()
                                             .map((key): PendingTickKeyData => key.originalObject.data)
                                     :   pendingTickKeys,

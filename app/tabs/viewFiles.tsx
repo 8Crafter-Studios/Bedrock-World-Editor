@@ -312,8 +312,8 @@ interface KeyData {
 
 async function getViewFilesTabContents(tab: TabManagerTab): Promise<JSX.Element> {
     if (!tab.db) return <div>The view files sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
-    tab.db.isOpen() || (await tab.awaitDBOpen!);
-    tab.cachedDBKeys || (await tab.awaitCachedDBKeys);
+    if (!tab.db.isOpen()) await tab.awaitDBOpen!;
+    if (!tab.cachedDBKeys) await tab.awaitCachedDBKeys;
     const keys: KeyData[] = (Object.keys(tab.cachedDBKeys!) as (keyof typeof tab.cachedDBKeys)[])
         .flatMap((contentType: keyof NonNullable<typeof tab.cachedDBKeys>): { contentType: DBEntryContentType; key: Buffer }[] =>
             tab.cachedDBKeys![contentType].map((key: Buffer): { contentType: DBEntryContentType; key: Buffer } => ({
@@ -621,7 +621,7 @@ async function getViewFilesTabContents(tab: TabManagerTab): Promise<JSX.Element>
                                 keys:
                                     Object.keys(query).length > 1 ?
                                         await (async (): Promise<KeyData[]> => {
-                                            const iterator = tab.dbSearch!.serach(query, true);
+                                            const iterator = tab.dbSearch!.search(query, true);
                                             let i: number = 0;
                                             let t: number = Date.now();
                                             const results: KeyData[] = [];

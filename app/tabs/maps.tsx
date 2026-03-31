@@ -217,8 +217,8 @@ interface KeyData {
 
 async function getMapsTabContents(tab: TabManagerTab): Promise<JSX.Element> {
     if (!tab.db) return <div>The maps sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
-    tab.db.isOpen() || (await tab.awaitDBOpen!);
-    tab.cachedDBKeys || (await tab.awaitCachedDBKeys);
+    if (!tab.db.isOpen()) await tab.awaitDBOpen!;
+    if (!tab.cachedDBKeys) await tab.awaitCachedDBKeys;
     const rawKeys: Buffer[] = tab.cachedDBKeys!.Map;
     const keys: KeyData[] = await Promise.all(
         rawKeys.map(
@@ -407,7 +407,7 @@ async function getMapsTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                                 keys:
                                     Object.keys(query).length > 1 ?
                                         tab
-                                            .dbSearch!.serach(query)
+                                            .dbSearch!.search(query)
                                             .toArray()
                                             .map((key): KeyData => key.originalObject.data)
                                     :   keys,

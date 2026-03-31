@@ -6,18 +6,21 @@ import {
     dimensions,
     entryContentTypeToFormatMap,
     gameModes,
+    getChunkKeyIndices,
+    getInt32Val,
     getKeyDisplayName,
     getKeysOfType,
     prettyPrintSNBT,
     prismarineToSNBT,
     toLong,
     type DBEntryContentType,
+    type Dimension,
     type Vector3,
 } from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { testForObjectExtension } from "../../src/utils/miscUtils";
+import { createObservable, testForObjectExtension, type Observable } from "../../src/utils/miscUtils";
 import { ControlledMenu, MenuItem } from "@szhsin/react-menu";
 import { LoadingScreenContents } from "../app";
 import SearchString from "search-string";
@@ -201,9 +204,34 @@ export default function EntitiesTab(props: EntitiesTabProps): JSX.SpecificElemen
             console.error(reason);
         }
     );
+    const loadingScreenMessageContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
+    if (!props.tab.db.isOpen()) {
+        props.tab.awaitDBOpen!.then(async (): Promise<void> => {
+            if (loadingScreenMessageContainerRef.current && !props.tab.cachedDBKeys) {
+                loadingScreenMessageContainerRef.current.textContent = `Reading LevelDB keys...`;
+                await props.tab.awaitCachedDBKeys;
+                if (loadingScreenMessageContainerRef.current) loadingScreenMessageContainerRef.current.textContent = "";
+            }
+        });
+        return (
+            <div style="width: 100%; height: 100%; display: flex; flex-direction: column;" ref={containerRef}>
+                <LoadingScreenContents message="Opening the LevelDB..." messageContainerRef={loadingScreenMessageContainerRef} />
+            </div>
+        );
+    }
+    if (!props.tab.cachedDBKeys) {
+        props.tab.awaitCachedDBKeys!.then((): void => {
+            if (loadingScreenMessageContainerRef.current) loadingScreenMessageContainerRef.current.textContent = "";
+        });
+        return (
+            <div style="width: 100%; height: 100%; display: flex; flex-direction: column;" ref={containerRef}>
+                <LoadingScreenContents message="Reading LevelDB keys..." messageContainerRef={loadingScreenMessageContainerRef} />
+            </div>
+        );
+    }
     return (
         <div style="width: 100%; height: 100%; display: flex; flex-direction: column;" ref={containerRef}>
-            <LoadingScreenContents />
+            <LoadingScreenContents messageContainerRef={loadingScreenMessageContainerRef} />
         </div>
     );
 }
@@ -211,23 +239,34 @@ export default function EntitiesTab(props: EntitiesTabProps): JSX.SpecificElemen
 interface KeyData {
     rawKey: Buffer;
     displayKey: string;
-    data: { parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata };
+    data?: { parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata } | null | undefined;
 }
 
 async function getEntitiesTabContents(tab: TabManagerTab): Promise<JSX.Element> {
     if (!tab.db) return <div>The entities sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
-    tab.db.isOpen() || (await tab.awaitDBOpen!);
-    tab.cachedDBKeys || (await tab.awaitCachedDBKeys);
+    if (!tab.db.isOpen()) await tab.awaitDBOpen!;
+    if (!tab.cachedDBKeys) await tab.awaitCachedDBKeys!;
     const rawKeys: Buffer[] = tab.cachedDBKeys!.ActorPrefix;
+    let asyncMode: boolean =
+        "__FORCE_ASYNC_KEY_MODE__" in window ? !!window["__FORCE_ASYNC_KEY_MODE__"]
+        : config.useAsyncModeInEntryViews === "auto" ?
+            rawKeys.length >= config.asyncModeEntryThreshold ||
+            Object.values(tab.cachedDBKeys!).reduce((a: number, b: Buffer[]): number => a + b.length, 0) >= config.asyncModeTotalKeyCountThreshold
+        :   config.useAsyncModeInEntryViews;
     const keys: KeyData[] = await Promise.all(
         rawKeys.map(
             async (key: Buffer): Promise<KeyData> => ({
                 rawKey: key,
                 displayKey: getKeyDisplayName(key),
-                data: await NBT.parse((await tab.db!.get(key))!),
+                data: asyncMode ? undefined : await NBT.parse((await tab.db!.get(key))!),
             })
         )
     );
+    const entityDimensionMappings: Record<Dimension, bigint[]> =
+        (tab.cachedDBKeys?.Digest.length ?? 0) >= config.noLookupEntityDimensionDigestKeyThreshold ?
+            (Object.fromEntries(dimensions.map((dimension: Dimension): [Dimension, bigint[]] => [dimension, []])) as Record<Dimension, bigint[]>)
+        :   await getEntityDimensionMappings(tab);
+    let targetKeys: KeyData[] = keys;
     // globalThis.a = keys;
     let dynamicProperties: NBT.NBT | undefined = await tab
         .db!.get("DynamicProperties")
@@ -237,17 +276,22 @@ async function getEntitiesTabContents(tab: TabManagerTab): Promise<JSX.Element> 
         .catch((e: any): undefined => (console.error(e), undefined));
     // console.log(dynamicProperties);
     let mode: ConfigConstants.views.Entities.EntitiesTabMode = config.views.entities.mode;
-    let tablesContents: JSX.Element[][] = await Promise.all(
-        ConfigConstants.views.Entities.entitiesTabModeToSectionIDs[mode].map(
-            async (sectionID: (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[typeof mode][number]): Promise<JSX.Element[]> =>
-                await getEntitiesTabContentsRows({
-                    tab,
-                    keys,
-                    dynamicProperties,
-                    mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Entities.EntitiesTabSectionMode,
-                })
-        )
-    );
+    let emptyTablesContents: JSX.Element[][] =
+        asyncMode ?
+            [[]]
+        :   await Promise.all(
+                ConfigConstants.views.Entities.entitiesTabModeToSectionIDs[mode].map(
+                    async (sectionID: (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[typeof mode][number]): Promise<JSX.Element[]> =>
+                        await getEntitiesTabContentsRows({
+                            tab,
+                            keys,
+                            dynamicProperties,
+                            mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Entities.EntitiesTabSectionMode,
+                            entityDimensionMappings,
+                        })
+                )
+            );
+    let tablesContents: JSX.Element[][] = emptyTablesContents;
     function Contents(): JSX.Element {
         const tablesContainerRef: RefObject<HTMLTableElement> = useRef<HTMLTableElement>(null);
         const loadingScreenMessageContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
@@ -262,13 +306,65 @@ async function getEntitiesTabContents(tab: TabManagerTab): Promise<JSX.Element> 
             viewOptionsContainer: useRef<HTMLDivElement>(null),
             viewOptionsTabbedSelector: useRef<HTMLDivElement>(null),
         };
+        async function getTablesContentsInRange(sectionIndex: number, start: number, end: number): Promise<JSX.Element[]> {
+            const sectionID: (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[typeof mode][number] =
+                ConfigConstants.views.Entities.entitiesTabModeToSectionIDs[mode][sectionIndex]!;
+            return await getEntitiesTabContentsRows({
+                tab,
+                keys: await Promise.all(
+                    targetKeys
+                        .slice(start, end)
+                        .map(async (key: KeyData): Promise<KeyData> => ({ ...key, data: await NBT.parse((await tab.db!.get(key.rawKey))!) }))
+                ),
+                dynamicProperties,
+                mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Entities.EntitiesTabSectionMode,
+                entityDimensionMappings,
+            });
+        }
+        async function loadTablesContentsInRange(sectionIndex: number, start: number, end: number): Promise<void> {
+            if (!asyncMode) return;
+            const sectionID: (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[typeof mode][number] =
+                ConfigConstants.views.Entities.entitiesTabModeToSectionIDs[mode][sectionIndex]!;
+            tablesContents = [...tablesContents];
+            tablesContents[sectionIndex] = [...emptyTablesContents[sectionIndex]!];
+            tablesContents[sectionIndex].splice(start, end - start, ...(await getTablesContentsInRange(sectionIndex, start, end)));
+        }
+        function getSectionEntryCounts(): number[] {
+            return ConfigConstants.views.Entities.entitiesTabModeToSectionIDs[mode].map(
+                (sectionID: (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[typeof mode][number]): number => {
+                    switch (sectionID) {
+                        case null:
+                            return targetKeys.length;
+                    }
+                }
+            );
+        }
         function TablesContents(): JSX.Element {
+            let localTablesContents: Observable<JSX.Element[][]> = createObservable([[]]);
+            if (asyncMode) {
+                Promise.all(
+                    ConfigConstants.views.Entities.entitiesTabModeToSectionIDs[mode].map(
+                        async (
+                            _sectionID: (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[typeof mode][number],
+                            index: number
+                        ): Promise<JSX.Element[]> => getTablesContentsInRange(index, 0, 20)
+                    )
+                ).then((tablesContents: JSX.Element[][]): void => {
+                    localTablesContents.set(tablesContents);
+                });
+            }
             return (
                 <>
                     {...ConfigConstants.views.Entities.entitiesTabModeToSectionIDs[mode].map(
                         (sectionID: (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[typeof mode][number], index: number): JSX.Element => {
                             function Test1(): JSX.Element {
                                 const bodyRef: RefObject<HTMLTableSectionElement> = useRef<HTMLTableSectionElement>(null);
+                                localTablesContents.observe((tablesContents: JSX.Element[][]): void => {
+                                    if (!asyncMode || !bodyRef.current) return;
+                                    let tempElement: HTMLDivElement = document.createElement("div");
+                                    render(<>{...tablesContents[index]!}</>, tempElement);
+                                    bodyRef.current.replaceChildren(...tempElement.children);
+                                });
                                 // const [columnHeadersContextMenu_isOpen, columnHeadersContextMenu_setOpen] = useState(false);
                                 // const [columnHeadersContextMenu_anchorPoint, columnHeadersContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
                                 const headerName = ConfigConstants.views.Entities.entitiesTabModeSectionHeaderNames[mode][index];
@@ -315,16 +411,33 @@ async function getEntitiesTabContents(tab: TabManagerTab): Promise<JSX.Element> 
                                                     )}
                                                 </tr>
                                             </thead>
-                                            <tbody ref={bodyRef}>{...tablesContents[index]!.slice(0, 20)}</tbody>
+                                            <tbody ref={bodyRef}>
+                                                {...asyncMode ? localTablesContents.get()[index]! : tablesContents[index]!.slice(0, 20)}
+                                            </tbody>
                                             <tfoot>
                                                 <tr class="table-footer-row-page-navigation">
                                                     <td colSpan={ConfigConstants.views.Entities.entitiesTabModeToColumnIDs[sectionMode].length}>
                                                         <PageNavigation
-                                                            totalPages={Math.ceil(tablesContents[index]!.length / 20)}
-                                                            onPageChange={(page: number): void => {
+                                                            totalPages={Math.ceil(getSectionEntryCounts()[index]! / 20)}
+                                                            onPageChange={async (page: number): Promise<void> => {
                                                                 if (!bodyRef.current) return;
+                                                                // await loadTablesContentsInRange(index, (page - 1) * 20, page * 20);
+                                                                if (asyncMode) {
+                                                                    localTablesContents.get()[index] = await getTablesContentsInRange(
+                                                                        index,
+                                                                        (page - 1) * 20,
+                                                                        page * 20
+                                                                    );
+                                                                }
                                                                 let tempElement: HTMLDivElement = document.createElement("div");
-                                                                render(<>{...tablesContents[index]!.slice((page - 1) * 20, page * 20)}</>, tempElement);
+                                                                render(
+                                                                    <>
+                                                                        {...asyncMode ?
+                                                                            localTablesContents.get()[index]!
+                                                                        :   tablesContents[index]!.slice((page - 1) * 20, page * 20)}
+                                                                    </>,
+                                                                    tempElement
+                                                                );
                                                                 bodyRef.current.replaceChildren(...tempElement.children);
                                                             }}
                                                         />
@@ -341,15 +454,17 @@ async function getEntitiesTabContents(tab: TabManagerTab): Promise<JSX.Element> 
                 </>
             );
         }
-        let query: Omit<TabManagerTab_LevelDBSearchQuery, "searchTargets"> & {
+        let query: Omit<TabManagerTab_LevelDBSearchQuery<true>, "searchTargets"> & {
             searchTargets: {
                 key: Buffer<ArrayBufferLike>;
                 displayKey: string;
-                value: {
-                    parsed: NBT.NBT;
-                    type: NBT.NBTFormat;
-                    metadata: NBT.Metadata;
-                };
+                value:
+                    | {
+                          parsed: NBT.NBT;
+                          type: NBT.NBTFormat;
+                          metadata: NBT.Metadata;
+                      }
+                    | (() => Promise<{ parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata }>);
                 valueType: {
                     readonly type: "NBT";
                 };
@@ -363,7 +478,7 @@ async function getEntitiesTabContents(tab: TabManagerTab): Promise<JSX.Element> 
                     ({
                         key: key.rawKey,
                         displayKey: key.displayKey,
-                        value: key.data,
+                        value: asyncMode ? async () => await NBT.parse((await tab.db!.get(key.rawKey))!) : key.data!,
                         valueType: entryContentTypeToFormatMap.ActorPrefix,
                         contentType: "ActorPrefix",
                         data: key,
@@ -380,15 +495,24 @@ async function getEntitiesTabContents(tab: TabManagerTab): Promise<JSX.Element> 
                             })(),
                         ],
                         customDataFields: {
-                            contents: ((): string => {
-                                try {
-                                    return prettyPrintSNBT(prismarineToSNBT(key.data.parsed), { indent: 0 });
-                                } catch {
-                                    return "";
-                                }
-                            })(),
+                            contents:
+                                asyncMode ?
+                                    async (): Promise<string> => {
+                                        try {
+                                            return prettyPrintSNBT(prismarineToSNBT((await NBT.parse((await tab.db!.get(key.rawKey))!)).parsed), { indent: 0 });
+                                        } catch {
+                                            return "";
+                                        }
+                                    }
+                                :   ((): string => {
+                                        try {
+                                            return prettyPrintSNBT(prismarineToSNBT(key.data!.parsed), { indent: 0 });
+                                        } catch {
+                                            return "";
+                                        }
+                                    })(),
                         },
-                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
+                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery<true>["searchTargets"]>[number]
             ),
         };
         async function updateTablesContents(reloadData: boolean): Promise<void> {
@@ -396,23 +520,51 @@ async function getEntitiesTabContents(tab: TabManagerTab): Promise<JSX.Element> 
             if (reloadData) {
                 mode = config.views.entities.mode;
                 console.debug(query);
-                tablesContents = await Promise.all(
-                    ConfigConstants.views.Entities.entitiesTabModeToSectionIDs[mode].map(
-                        async (sectionID: (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[typeof mode][number]): Promise<JSX.Element[]> =>
-                            await getEntitiesTabContentsRows({
-                                tab,
-                                keys:
-                                    Object.keys(query).length > 1 ?
-                                        tab
-                                            .dbSearch!.serach(query)
-                                            .toArray()
-                                            .map((key): KeyData => key.originalObject.data)
-                                    :   keys,
-                                dynamicProperties,
-                                mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Entities.EntitiesTabSectionMode,
-                            })
-                    )
-                );
+                if (asyncMode) {
+                    targetKeys =
+                        Object.keys(query).length > 1 ?
+                            await (async (): Promise<KeyData[]> => {
+                                const iterator = tab.dbSearch!.searchAsync(query, true);
+                                let i: number = 0;
+                                let t: number = Date.now();
+                                const results: KeyData[] = [];
+                                for await (const value of iterator) {
+                                    i++;
+                                    if (t + 10 < Date.now()) {
+                                        if (loadingScreenMessageContainerRef.current)
+                                            loadingScreenMessageContainerRef.current.textContent = `Searching LevelDB: ${i}/${keys.length}...`;
+                                        await sleep(10);
+                                        t = Date.now();
+                                    }
+                                    if (!value) continue;
+                                    results.push(value.originalObject.data);
+                                }
+                                return results;
+                            })()
+                        :   keys;
+                } else {
+                    emptyTablesContents = await Promise.all(
+                        ConfigConstants.views.Entities.entitiesTabModeToSectionIDs[mode].map(
+                            async (
+                                sectionID: (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[typeof mode][number]
+                            ): Promise<JSX.Element[]> =>
+                                await getEntitiesTabContentsRows({
+                                    tab,
+                                    keys:
+                                        Object.keys(query).length > 1 ?
+                                            tab
+                                                .dbSearch!.search(query)
+                                                .toArray()
+                                                .map((key): KeyData => key.originalObject.data)
+                                        :   keys,
+                                    dynamicProperties,
+                                    mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Entities.EntitiesTabSectionMode,
+                                    entityDimensionMappings,
+                                })
+                        )
+                    );
+                    tablesContents = emptyTablesContents;
+                }
             }
             const tempElement: HTMLDivElement = document.createElement("div");
             render(<TablesContents />, tempElement);
@@ -787,6 +939,48 @@ async function getEntitiesTabContents(tab: TabManagerTab): Promise<JSX.Element> 
     return <Contents />;
 }
 
+async function getEntityDimension(tab: TabManagerTab, key: Buffer): Promise<Dimension | undefined> {
+    const id: [number, number] = [getInt32Val(key, key.length - 8), getInt32Val(key, key.length - 4)];
+    if (!tab.db) throw new ReferenceError("tab.db is not defined.");
+    if (!tab.cachedDBKeys) throw new ReferenceError("tab.cachedDBKeys is not defined.");
+    for (const digest of tab.cachedDBKeys.Digest) {
+        const entityIds: [number, number][] = (await entryContentTypeToFormatMap.Digest.parse((await tab.db.get(digest))!)).value.entityIds.value.value;
+        if (entityIds.some((entityId: [number, number]): boolean => entityId[0] === id[0] && entityId[1] === id[1])) {
+            return getChunkKeyIndices(digest).dimension;
+        }
+    }
+    return undefined;
+}
+
+async function getEntityDimensionMappings(tab: TabManagerTab): Promise<Record<Dimension, bigint[]>> {
+    if (!tab.db) throw new ReferenceError("tab.db is not defined.");
+    if (!tab.cachedDBKeys) throw new ReferenceError("tab.cachedDBKeys is not defined.");
+    const entityDimensionMappings: Record<Dimension, bigint[]> = {
+        overworld: [],
+        nether: [],
+        the_end: [],
+    };
+    for (const digest of tab.cachedDBKeys.Digest) {
+        const dimension: Dimension = getChunkKeyIndices(digest).dimension;
+        entityDimensionMappings[dimension].push(
+            ...(await entryContentTypeToFormatMap.Digest.parse((await tab.db.get(digest))!)).value.entityIds.value.value.map((v: [number, number]): bigint =>
+                toLong(v)
+            )
+        );
+    }
+    return entityDimensionMappings;
+}
+
+function getEntityDimensionFromMappings(key: Buffer, entityDimensionMappings: Record<Dimension, bigint[]>): Dimension | undefined {
+    const entityId: bigint = toLong([getInt32Val(key, key.length - 8), getInt32Val(key, key.length - 4)]);
+    for (const dimension of dimensions) {
+        if (entityDimensionMappings[dimension].includes(entityId)) {
+            return dimension;
+        }
+    }
+    return undefined;
+}
+
 async function getEntitiesTabContentsRows(data: {
     /**
      * The tab manager tab.
@@ -801,6 +995,7 @@ async function getEntitiesTabContentsRows(data: {
      * The mode of the tab.
      */
     mode: ConfigConstants.views.Entities.EntitiesTabSectionMode;
+    entityDimensionMappings?: Record<Dimension, bigint[]> | undefined;
 }): Promise<JSX.Element[]> {
     // const columns = config
     switch (data.mode) {
@@ -852,6 +1047,20 @@ async function getEntitiesTabContentsRows(data: {
                                 case "DBKey":
                                     return <td>{key.displayKey}</td>;
                                 case "Name": {
+                                    if (key.data === undefined) {
+                                        return (
+                                            <td>
+                                                <span style="color: yellow;">Loading...</span>
+                                            </td>
+                                        );
+                                    }
+                                    if (key.data === null) {
+                                        return (
+                                            <td>
+                                                <span style="color: red;">N/A</span>
+                                            </td>
+                                        );
+                                    }
                                     const entityName: string | null =
                                         key.data.parsed.value.CustomName?.type === "string" ? key.data.parsed.value.CustomName.value : null;
                                     if (!entityName) {
@@ -864,6 +1073,20 @@ async function getEntitiesTabContentsRows(data: {
                                     return <td>{entityName}</td>;
                                 }
                                 case "UUID":
+                                    if (key.data === undefined) {
+                                        return (
+                                            <td>
+                                                <span style="color: yellow;">Loading...</span>
+                                            </td>
+                                        );
+                                    }
+                                    if (key.data === null) {
+                                        return (
+                                            <td>
+                                                <span style="color: red;">N/A</span>
+                                            </td>
+                                        );
+                                    }
                                     return (
                                         <td>
                                             {key.data.parsed.value.UniqueID?.type === "long" ?
@@ -872,6 +1095,20 @@ async function getEntitiesTabContentsRows(data: {
                                         </td>
                                     );
                                 case "TypeID":
+                                    if (key.data === undefined) {
+                                        return (
+                                            <td>
+                                                <span style="color: yellow;">Loading...</span>
+                                            </td>
+                                        );
+                                    }
+                                    if (key.data === null) {
+                                        return (
+                                            <td>
+                                                <span style="color: red;">N/A</span>
+                                            </td>
+                                        );
+                                    }
                                     return (
                                         <td>
                                             {key.data.parsed.value.identifier?.type === "string" ?
@@ -880,28 +1117,78 @@ async function getEntitiesTabContentsRows(data: {
                                         </td>
                                     );
                                 case "Location":
+                                    if (key.data === undefined) {
+                                        return (
+                                            <td>
+                                                <span style="color: yellow;">Loading...</span>
+                                            </td>
+                                        );
+                                    }
+                                    if (key.data === null) {
+                                        return (
+                                            <td>
+                                                <span style="color: red;">N/A</span>
+                                            </td>
+                                        );
+                                    }
                                     return (
                                         <td>
                                             {key.data.parsed.value.Pos?.type === "list" && key.data.parsed.value.Pos.value.type === "float" ?
                                                 `${(key.data.parsed.value.Pos.value.value as number[]).map((v: number): string => v.toFixed(3)).join(", ")} ${
                                                     key.data.parsed.value.DimensionId?.type === "int" ?
                                                         (dimensions[key.data.parsed.value.DimensionId.value] ?? key.data.parsed.value.DimensionId.value)
-                                                    :   "Unknown Dimension"
+                                                    :   ((data.entityDimensionMappings &&
+                                                            getEntityDimensionFromMappings(key.rawKey, data.entityDimensionMappings)) ??
+                                                        "Unknown Dimension")
                                                 }`
                                             :   <span style="color: red;">null</span>}
                                         </td>
                                     );
                                 case "LocationCompact":
+                                    if (key.data === undefined) {
+                                        return (
+                                            <td>
+                                                <span style="color: yellow;">Loading...</span>
+                                            </td>
+                                        );
+                                    }
+                                    if (key.data === null) {
+                                        return (
+                                            <td>
+                                                <span style="color: red;">N/A</span>
+                                            </td>
+                                        );
+                                    }
                                     return (
                                         <td>
                                             {key.data.parsed.value.Pos?.type === "list" && key.data.parsed.value.Pos.value.type === "float" ?
                                                 `${(key.data.parsed.value.Pos.value.value as number[]).map((v: number): string => v.toFixed(0)).join(",")} ${
-                                                    key.data.parsed.value.DimensionId?.type === "int" ? key.data.parsed.value.DimensionId.value : "?"
+                                                    key.data.parsed.value.DimensionId?.type === "int" ? key.data.parsed.value.DimensionId.value
+                                                    : (
+                                                        !data.entityDimensionMappings ||
+                                                        getEntityDimensionFromMappings(key.rawKey, data.entityDimensionMappings) === undefined
+                                                    ) ?
+                                                        "?"
+                                                    :   dimensions.indexOf(getEntityDimensionFromMappings(key.rawKey, data.entityDimensionMappings)!)
                                                 }`
                                             :   <span style="color: red;">null</span>}
                                         </td>
                                     );
                                 case "Rotation":
+                                    if (key.data === undefined) {
+                                        return (
+                                            <td>
+                                                <span style="color: yellow;">Loading...</span>
+                                            </td>
+                                        );
+                                    }
+                                    if (key.data === null) {
+                                        return (
+                                            <td>
+                                                <span style="color: red;">N/A</span>
+                                            </td>
+                                        );
+                                    }
                                     return (
                                         <td>
                                             {key.data.parsed.value.Rotation?.type === "list" ?

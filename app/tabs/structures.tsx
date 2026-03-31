@@ -468,7 +468,7 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                                 keys:
                                     Object.keys(query).length > 1 ?
                                         tab
-                                            .dbSearch!.serach(query)
+                                            .dbSearch!.search(query)
                                             .toArray()
                                             .map((key): KeyData => key.originalObject.data)
                                     :   keys,
@@ -760,7 +760,7 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                                 const structureKeys: KeyData[] =
                                     filterExportsBySearchQuery && Object.keys(query).length > 1 ?
                                         tab
-                                            .dbSearch!.serach(query)
+                                            .dbSearch!.search(query)
                                             .toArray()
                                             .map((key): KeyData => key.originalObject.data)
                                     :   keys;
@@ -852,7 +852,7 @@ async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element
                                 const structureKeys: KeyData[] =
                                     filterExportsBySearchQuery && Object.keys(query).length > 1 ?
                                         tab
-                                            .dbSearch!.serach(query)
+                                            .dbSearch!.search(query)
                                             .toArray()
                                             .map((key): KeyData => key.originalObject.data)
                                     :   keys;

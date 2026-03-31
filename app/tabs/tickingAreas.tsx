@@ -380,7 +380,7 @@ async function getTickingAreasTabContents(tab: TabManagerTab): Promise<JSX.Eleme
                                 keys:
                                     Object.keys(query).length > 1 ?
                                         tab
-                                            .dbSearch!.serach(query)
+                                            .dbSearch!.search(query)
                                             .toArray()
                                             .map((key): KeyData => key.originalObject.data)
                                     :   keys,

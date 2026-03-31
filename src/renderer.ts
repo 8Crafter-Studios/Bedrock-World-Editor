@@ -29,4 +29,3 @@
 import "../app/renderer.tsx";
 import "./api/renderer.ts";
 import "./init/registerMonacoGrammarsAndThemes.ts";
-

@@ -2388,7 +2388,7 @@ namespace exports {
          */
         fullMatch?: boolean | undefined;
     }
-    export interface TabManagerTab_LevelDBSearchQuery {
+    export interface TabManagerTab_LevelDBSearchQuery<AsyncMode extends boolean = false> {
         customDataFields?: Record<
             string,
             | {
@@ -2498,10 +2498,10 @@ namespace exports {
                         contentType?: DBEntryContentType;
                         displayKey?: string;
                         valueType: (typeof entryContentTypeToFormatMap)[DBEntryContentType];
-                        value: any;
+                        value: any | (AsyncMode extends true ? () => any | Promise<any> : never);
                         data?: unknown;
                         searchableContents?: string[];
-                        customDataFields?: Record<string, string | undefined>;
+                        customDataFields?: Record<string, string | (AsyncMode extends true ? () => string | Promise<string> : never) | undefined>;
                     }
                   | {
                         key: Buffer;
@@ -2511,7 +2511,7 @@ namespace exports {
                         value?: undefined;
                         data?: unknown;
                         searchableContents?: string[];
-                        customDataFields?: Record<string, string | undefined>;
+                        customDataFields?: Record<string, string | (AsyncMode extends true ? () => string | Promise<string> : never) | undefined>;
                     }
               )[]
             | undefined;
@@ -2636,7 +2636,7 @@ namespace exports {
                     return false;
             }
         }
-        public *serach<T extends TabManagerTab_LevelDBSearchQuery, YU extends boolean = false>(
+        public *search<T extends TabManagerTab_LevelDBSearchQuery, YU extends boolean = false>(
             query: T,
             yieldUndefined?: YU
         ): Generator<
@@ -2892,6 +2892,270 @@ namespace exports {
                                 caseSensitive ?
                                     !!searchTarget.customDataFields?.[customDataField]?.includes(v)
                                 :   !!searchTarget.customDataFields?.[customDataField]?.toLowerCase()?.includes(v.toLowerCase())
+                            )
+                        ) {
+                            if (yieldUndefined) yield undefined!;
+                            continue searchLoop;
+                        }
+                    }
+                }
+
+                yield {
+                    tab: this.tab,
+                    key: searchTarget.key,
+                    originalObject: searchTarget,
+                };
+            }
+        }
+        public async *searchAsync<T extends TabManagerTab_LevelDBSearchQuery<true>, YU extends boolean = false>(
+            query: T,
+            yieldUndefined?: YU
+        ): AsyncGenerator<
+            | TabManagerTab_LevelDBSearchResult<
+                  T["searchTargets"] extends any[] ? T["searchTargets"][number]
+                  :   {
+                          key: Buffer<ArrayBufferLike>;
+                          contentType: DBEntryContentType;
+                      }
+              >
+            | (YU extends true ? undefined : never),
+            void
+        > {
+            if (!query.searchTargets) {
+                if (!this.tab.db) {
+                    throw new Error("This tab has no associated LevelDB.");
+                }
+                if (!this.tab.cachedDBKeys) {
+                    throw new Error("LevelDB key cache not loaded.");
+                }
+            }
+            const searchTargets: TabManagerTab_LevelDBSearchQuery<true>["searchTargets"] & { contentType: DBEntryContentType; displayKey: string }[] =
+                query.searchTargets
+                    ?.map((v) =>
+                        v.contentType ?
+                            (v as typeof v & { contentType: DBEntryContentType; displayKey: string })
+                        :   { ...v, contentType: getContentTypeFromDBKey(v.key), displayKey: v.displayKey ?? getKeyDisplayName(v.key) }
+                    )
+                    .filter(({ contentType }): boolean =>
+                        !query.excludeContentTypes?.includes(contentType) && query.contentTypes ? query.contentTypes.includes(contentType) : true
+                    ) ??
+                (Object.entries(this.tab.cachedDBKeys!) as [DBEntryContentType, Buffer[]][])
+                    .filter(([contentType]): boolean =>
+                        !query.excludeContentTypes?.includes(contentType) && query.contentTypes ? query.contentTypes.includes(contentType) : true
+                    )
+                    .flatMap(([contentType, keys]) => keys.map((key) => ({ key, contentType, displayKey: getKeyDisplayName(key) })));
+            // console.log(5);
+            searchLoop: for (const searchTarget of searchTargets) {
+                const searchableContents: string[] = searchTarget.searchableContents ?? [searchTarget.displayKey];
+                if (query.displayKeyContents) {
+                    const caseSensitive: boolean = query.displayKeyContents.caseSensitive ?? false;
+                    const displayKey: string =
+                        caseSensitive ?
+                            (searchTarget.displayKey ?? getKeyDisplayName(searchTarget.key))
+                        :   (searchTarget.displayKey ?? getKeyDisplayName(searchTarget.key)).toLowerCase();
+                    if (
+                        query.displayKeyContents.allOf &&
+                        query.displayKeyContents.allOf.length > 0 &&
+                        !query.displayKeyContents.allOf.every((v: string): boolean => displayKey.includes(caseSensitive ? v : v.toLowerCase()))
+                    ) {
+                        if (yieldUndefined) yield undefined!;
+                        continue;
+                    }
+                    if (
+                        query.displayKeyContents.anyOf &&
+                        query.displayKeyContents.anyOf.length > 0 &&
+                        !query.displayKeyContents.anyOf.some((v: string): boolean => displayKey.includes(caseSensitive ? v : v.toLowerCase()))
+                    ) {
+                        if (yieldUndefined) yield undefined!;
+                        continue;
+                    }
+                    if (query.displayKeyContents.oneOf && query.displayKeyContents.oneOf.length > 0) {
+                        let foundMatchingOneOf: boolean = false;
+                        for (const v of query.displayKeyContents.oneOf) {
+                            if (displayKey.includes(caseSensitive ? v : v.toLowerCase())) {
+                                if (foundMatchingOneOf) {
+                                    if (yieldUndefined) yield undefined!;
+                                    continue searchLoop;
+                                }
+                                foundMatchingOneOf = true;
+                            }
+                        }
+                    }
+                    if (
+                        query.displayKeyContents.noneOf &&
+                        query.displayKeyContents.noneOf.length > 0 &&
+                        query.displayKeyContents.noneOf.some((v: string): boolean => displayKey.includes(caseSensitive ? v : v.toLowerCase()))
+                    ) {
+                        if (yieldUndefined) yield undefined!;
+                        continue;
+                    }
+                }
+                if (query.nbtTags) {
+                    if (
+                        (query.nbtTags.excludeNonNBTResults ?? true) &&
+                        (!searchTarget.valueType ||
+                            !searchTarget.value ||
+                            !(
+                                searchTarget.valueType.type === "NBT" ||
+                                (searchTarget.valueType.type === "custom" && searchTarget.valueType.resultType === "JSONNBT")
+                            ))
+                    ) {
+                        if (yieldUndefined) yield undefined!;
+                        continue;
+                    }
+                    const rawTargetValue = searchTarget.value instanceof Function ? await searchTarget.value() : searchTarget.value;
+                    const targetValue: NBT.NBT | NBT.Compound =
+                        "parsed" in rawTargetValue ? (rawTargetValue.parsed as NBT.NBT) : (rawTargetValue as NBT.NBT | NBT.Compound);
+                    if (
+                        query.nbtTags.allOf &&
+                        query.nbtTags.allOf.length > 0 &&
+                        !query.nbtTags.allOf.every((v: TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery): boolean => this.findMatchingNBTTag(targetValue, v))
+                    ) {
+                        if (yieldUndefined) yield undefined!;
+                        continue;
+                    }
+                    if (
+                        query.nbtTags.anyOf &&
+                        query.nbtTags.anyOf.length > 0 &&
+                        !query.nbtTags.anyOf.some((v: TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery): boolean => this.findMatchingNBTTag(targetValue, v))
+                    ) {
+                        if (yieldUndefined) yield undefined!;
+                        continue;
+                    }
+                    if (query.nbtTags.oneOf && query.nbtTags.oneOf.length > 0) {
+                        let foundMatchingOneOf: boolean = false;
+                        for (const v of query.nbtTags.oneOf) {
+                            if (this.findMatchingNBTTag(targetValue, v)) {
+                                if (foundMatchingOneOf) {
+                                    if (yieldUndefined) yield undefined!;
+                                    continue searchLoop;
+                                }
+                                foundMatchingOneOf = true;
+                            }
+                        }
+                        if (!foundMatchingOneOf) {
+                            if (yieldUndefined) yield undefined!;
+                            continue;
+                        }
+                    }
+                    if (
+                        query.nbtTags.noneOf &&
+                        query.nbtTags.noneOf.length > 0 &&
+                        query.nbtTags.noneOf.some((v: TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery): boolean => this.findMatchingNBTTag(targetValue, v))
+                    ) {
+                        if (yieldUndefined) yield undefined!;
+                        continue;
+                    }
+                }
+                if (query.contentsStringContents) {
+                    const caseSensitive: boolean = query.contentsStringContents.caseSensitive ?? false;
+                    if (
+                        query.contentsStringContents.allOf &&
+                        query.contentsStringContents.allOf.length > 0 &&
+                        !query.contentsStringContents.allOf.every((v: string): boolean =>
+                            searchableContents.some((c: string): boolean => (caseSensitive ? c.includes(v) : c.toLowerCase().includes(v.toLowerCase())))
+                        )
+                    ) {
+                        if (yieldUndefined) yield undefined!;
+                        continue;
+                    }
+                    if (
+                        query.contentsStringContents.anyOf &&
+                        query.contentsStringContents.anyOf.length > 0 &&
+                        !query.contentsStringContents.anyOf.some((v: string): boolean =>
+                            searchableContents.some((c: string): boolean => (caseSensitive ? c.includes(v) : c.toLowerCase().includes(v.toLowerCase())))
+                        )
+                    ) {
+                        if (yieldUndefined) yield undefined!;
+                        continue;
+                    }
+                    if (query.contentsStringContents.oneOf && query.contentsStringContents.oneOf.length > 0) {
+                        let foundMatchingOneOf: boolean = false;
+                        for (const v of query.contentsStringContents.oneOf) {
+                            if (searchableContents.some((c: string): boolean => (caseSensitive ? c.includes(v) : c.toLowerCase().includes(v.toLowerCase())))) {
+                                if (foundMatchingOneOf) {
+                                    if (yieldUndefined) yield undefined!;
+                                    continue searchLoop;
+                                }
+                                foundMatchingOneOf = true;
+                            }
+                        }
+                    }
+                    if (
+                        query.contentsStringContents.noneOf &&
+                        query.contentsStringContents.noneOf.length > 0 &&
+                        query.contentsStringContents.noneOf.some((v: string): boolean =>
+                            searchableContents.some((c: string): boolean => (caseSensitive ? c.includes(v) : c.toLowerCase().includes(v.toLowerCase())))
+                        )
+                    ) {
+                        if (yieldUndefined) yield undefined!;
+                        continue;
+                    }
+                }
+
+                // TODO: Implement advanced query entry support (as in entries that are an object).
+                if (query.customDataFields) {
+                    for (const customDataField in query.customDataFields) {
+                        if (query.customDataFields[customDataField] === undefined) {
+                            if (yieldUndefined) yield undefined!;
+                            continue;
+                        }
+                        const fieldValue: string | undefined =
+                            searchTarget.customDataFields?.[customDataField] instanceof Function ?
+                                await searchTarget.customDataFields[customDataField]()
+                            :   searchTarget.customDataFields?.[customDataField];
+                        const caseSensitive: boolean = query.customDataFields[customDataField].caseSensitive ?? false;
+                        if (
+                            query.customDataFields[customDataField].allOf &&
+                            query.customDataFields[customDataField].allOf.length > 0 &&
+                            (fieldValue === undefined ||
+                                !query.customDataFields[customDataField].allOf.every((v: string): boolean =>
+                                    /* caseSensitive ?
+                                        fieldValue === v
+                                    :   fieldValue?.toLowerCase() === v.toLowerCase() */
+                                    caseSensitive ? !!fieldValue?.includes(v) : !!fieldValue?.toLowerCase()?.includes(v.toLowerCase())
+                                ))
+                        ) {
+                            if (yieldUndefined) yield undefined!;
+                            continue searchLoop;
+                        }
+                        if (
+                            query.customDataFields[customDataField].anyOf &&
+                            query.customDataFields[customDataField].anyOf.length > 0 &&
+                            (fieldValue === undefined ||
+                                !query.customDataFields[customDataField].anyOf.some((v: string): boolean =>
+                                    // caseSensitive ?
+                                    //     fieldValue === v
+                                    // :   fieldValue?.toLowerCase() === v.toLowerCase()
+                                    caseSensitive ? !!fieldValue?.includes(v) : !!fieldValue?.toLowerCase()?.includes(v.toLowerCase())
+                                ))
+                        ) {
+                            if (yieldUndefined) yield undefined!;
+                            continue searchLoop;
+                        }
+                        if (
+                            query.customDataFields[customDataField].oneOf &&
+                            query.customDataFields[customDataField].oneOf.length > 0 &&
+                            (fieldValue === undefined ||
+                                !query.customDataFields[customDataField].oneOf.some((v: string): boolean =>
+                                    // caseSensitive ?
+                                    //     fieldValue === v
+                                    // :   fieldValue?.toLowerCase() === v.toLowerCase()
+                                    caseSensitive ? !!fieldValue?.includes(v) : !!fieldValue?.toLowerCase()?.includes(v.toLowerCase())
+                                ))
+                        ) {
+                            if (yieldUndefined) yield undefined!;
+                            continue searchLoop;
+                        }
+                        if (
+                            query.customDataFields[customDataField].noneOf &&
+                            query.customDataFields[customDataField].noneOf.length > 0 &&
+                            fieldValue !== undefined &&
+                            query.customDataFields[customDataField].noneOf.some((v: string): boolean =>
+                                // caseSensitive ?
+                                //     fieldValue === v
+                                // :   fieldValue?.toLowerCase() === v.toLowerCase()
+                                caseSensitive ? !!fieldValue?.includes(v) : !!fieldValue?.toLowerCase()?.includes(v.toLowerCase())
                             )
                         ) {
                             if (yieldUndefined) yield undefined!;

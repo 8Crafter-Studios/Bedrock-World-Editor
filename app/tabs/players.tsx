@@ -407,14 +407,14 @@ async function getPlayersTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                                 clientKeys:
                                     Object.keys(clientQuery).length > 1 ?
                                         tab
-                                            .dbSearch!.serach(clientQuery)
+                                            .dbSearch!.search(clientQuery)
                                             .toArray()
                                             .map((key): ClientKeyData => key.originalObject.data)
                                     :   clientKeys,
                                 serverKeys:
                                     Object.keys(serverQuery).length > 1 ?
                                         tab
-                                            .dbSearch!.serach(serverQuery)
+                                            .dbSearch!.search(serverQuery)
                                             .toArray()
                                             .map((key): ServerKeyData => key.originalObject.data)
                                     :   serverKeys,
