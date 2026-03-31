@@ -761,6 +761,12 @@ export interface LoadingScreenContentsProps {
      */
     message?: string;
     messageContainerRef?: RefObject<HTMLDivElement>;
+    /**
+     * Whether to preserve the text offset.
+     *
+     * @default false
+     */
+    preserveTextOffset?: boolean;
 }
 
 export function LoadingScreenContents(props: LoadingScreenContentsProps): JSX.Element {
@@ -774,7 +780,7 @@ export function LoadingScreenContents(props: LoadingScreenContentsProps): JSX.El
                     style="vertical-align: middle; width: round(down, calc(max(100vw, 300px) / 4), 64px); background-color: #0008; padding: calc(round(down, calc(max(100vw, 300px) / 4), 64px) / 16);"
                 />
                 <div
-                    style="margin-bottom: -1.5em; line-height: 1.5em; font-family: Consolas; font-size: round(down, calc(max(100vw, 300px) / 50), 5.12px);"
+                    style={`${props.preserveTextOffset ? "" : "margin-bottom: -1.5em; "}line-height: 1.5em; font-family: Consolas; font-size: round(down, calc(max(100vw, 300px) / 50), 5.12px);`}
                     class="loading-screen-message nsel"
                     ref={props.messageContainerRef!} // XXX: Passing undefined here may actually be bad, look into this at some point.
                 >

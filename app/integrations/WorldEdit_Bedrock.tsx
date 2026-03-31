@@ -18,7 +18,7 @@ import {
     type Integration,
     type IntegrationMenuProps,
 } from ".";
-import { preloadedIcons } from "../app";
+import { LoadingScreenContents, preloadedIcons } from "../app";
 import { app, clipboard, dialog, shell } from "@electron/remote";
 import type { ShowSelectOpenTabDialogResult } from "../components/SelectOpenTabDialog";
 import showSelectOpenTabDialog from "../components/SelectOpenTabDialog";
@@ -1667,6 +1667,7 @@ const thisIntegration = {
                                 key="actionMenu:WorldEdit_Bedrock:export_structures"
                             />
                         ),
+                        loadingActions.length > 0 && <LoadingScreenContents message="Loading integration actions..." preserveTextOffset={true} />,
                     ]
                         .filter(Boolean as unknown as (v: false | JSX.Element) => v is JSX.Element)
                         .flatMap((v: JSX.Element, i: number): JSX.Element | JSX.Element[] => [<hr />, v])}
@@ -1839,7 +1840,7 @@ const thisIntegration = {
                     <IntegrationLinks />
                 </div>
                 <div style="display: flex; flex-direction: column;" ref={tablesContainerRef}>
-                    <span class="nsel">Loading integration actions...</span>
+                    <LoadingScreenContents message="Loading integration actions..." preserveTextOffset={true} />
                 </div>
             </>
         );

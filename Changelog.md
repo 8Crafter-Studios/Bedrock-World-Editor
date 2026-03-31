@@ -12,6 +12,8 @@
     -   No Lookup Entity Dimension Digest Key Threshold
 -   The following tabs now have more informative loading screens:
     -   "Entities"
+-   Added a loading message when only some but not all integration actions in an integration menu have loaded.
+-   The loading message when no integration actions have finished loading yet now has an animation.
 
 ## Fixes
 
