@@ -21,6 +21,8 @@
 
 -   Fixed a bug where entries in the Node editor could not be collapsed after switching tabs or editors ([#24](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/24)).
 -   Fixed a bug where the expansion state of the top level of the Node editor for data types other than `NBT` was not saved when switching tabs or editors.
+-   Fixed a bug where numerical values of `0` in NBT searches would result in the value check being skipped, causing all values to match.
+-   Fixed a bug where path-specific NBT searches were validated against all values of ByteArrays, ShortArrays, IntArrays, and LongArrays, even if the paths did not match, resulting in a value match in any of those arrays being counted.
 
 # v1.0.0-beta.22
 

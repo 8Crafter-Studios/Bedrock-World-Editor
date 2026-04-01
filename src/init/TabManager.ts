@@ -2579,7 +2579,7 @@ namespace exports {
                 )
                     return false;
                 if (
-                    query.key &&
+                    query.key !== undefined &&
                     (key !== undefined ?
                         !cmpStrCS(key, query.key, query.caseSensitiveKey ?? true)
                     :   "name" in nbt && !cmpStrCS(query.key, nbt.name, query.caseSensitiveKey ?? true))
@@ -2587,7 +2587,7 @@ namespace exports {
                     return false;
                 if (query.tagType && !cmpStrCS(query.tagType, nbt.type, false)) return false;
                 if (
-                    query.value &&
+                    query.value !== undefined &&
                     !compareNBTTagValues(
                         query.value,
                         nbt.type === "long" && typeof nbt.value === "object" ? toLong(nbt.value) : nbt.value,
@@ -2597,7 +2597,7 @@ namespace exports {
                     return false;
                 return true;
             }
-            if (doesThisMatch()) return true;
+            if (doesThisMatch()) return (console.log(true, query, nbt), true);
             switch (nbt.type) {
                 case NBT.TagType.Compound:
                     return Object.entries(nbt.value).some((v): boolean =>
@@ -2627,6 +2627,18 @@ namespace exports {
                         if (nbt.type === NBT.TagType.LongArray && query.tagType !== NBT.TagType.Long) return false;
                     }
                     return nbt.value.some((v: number | [high: number, low: number], i: number): boolean => {
+                        const currentPath: string[] = [...path, String(i)];
+                        if (
+                            query.path &&
+                            (!query.path.every(
+                                (v: string, i: number): boolean =>
+                                    v === "*?" ||
+                                    (i in currentPath &&
+                                        (v === "*" || cmpStrCS(v, currentPath[i]!.replaceAll(/\\\*\??/g, "*?"), query.caseSensitivePath ?? true)))
+                            ) ||
+                                query.path.length !== currentPath.length)
+                        )
+                            return false;
                         if (query.key && cmpStrCS(query.key, i.toString(), query.caseSensitiveKey ?? true)) return false;
                         if (query.value && !compareNBTTagValues(query.value, typeof v === "number" ? v : toLong(v), query.caseSensitiveValue ?? true))
                             return false;
