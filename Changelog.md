@@ -16,6 +16,12 @@
     -   Maps
 -   Added a loading message when only some but not all integration actions in an integration menu have loaded.
 -   The loading message when no integration actions have finished loading yet now has an animation.
+-   Added search filters to the "Maps" tab:
+    -   `dimension`
+    -   `id`
+    -   `parentid`
+    -   `locked`
+    -   `scale`
 
 ## Fixes
 

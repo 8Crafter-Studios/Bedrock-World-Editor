@@ -13,6 +13,7 @@ import {
     prismarineToSNBT,
     toLong,
     type DBEntryContentType,
+    type Dimension,
     type Vector3,
 } from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
@@ -71,11 +72,11 @@ const mapsTabSearchSyntax: SearchSyntaxHelpInfo = {
         dbkey: {
             description: "Searches the human-readable LevelDB key (the one displayed in the DB Key column) for the text.",
         },
-        typeid: {
+        dimension: {
             description: "Searches for maps by the namespaced ID (the one displayed in the Type ID column).",
             extendedDescription: (
                 <>
-                    <p>Searches for maps by the namespaced ID (the one displayed in the Type ID column).</p>
+                    <p>Searches for maps by the dimension the map is of.</p>
                     <p>
                         Supported prefix operators:
                         <ul>
@@ -89,26 +90,24 @@ const mapsTabSearchSyntax: SearchSyntaxHelpInfo = {
             ),
             examples: [
                 <p>
-                    <code>typeid:minecraft:sheep</code> - Searches for maps with a namespaced ID of <code>minecraft:sheep</code>.
+                    <code>dimension:0</code> - Searches for maps of the Overworld.
                 </p>,
                 <p>
-                    <code>|typeid:minecraft:sheep</code> - Searches for maps with a namespaced ID of <code>minecraft:sheep</code>.
+                    <code>|dimension:1</code> - Searches for maps of the Nether.
                 </p>,
                 <p>
-                    <code>typeid:minecraft:sheep typeid:minecraft:item</code> - Searches for maps with a namespaced ID of <code>minecraft:sheep</code> or{" "}
-                    <code>minecraft:item</code>.
+                    <code>dimension:2 dimension:overworld</code> - Searches for maps of the End or the Overworld.
                 </p>,
                 <p>
-                    <code>-typeid:minecraft:sheep -typeid:minecraft:item</code> - Searches for maps that do not have a namespaced ID of{" "}
-                    <code>minecraft:sheep</code> or <code>minecraft:item</code>.
+                    <code>-dimension:the_end -dimension:nether</code> - Searches for maps that are not of the End or the Nether.
                 </p>,
             ],
         },
-        uuid: {
-            description: "Searches for maps by their UUID (the one displayed in the UUID column).",
+        id: {
+            description: "Searches for maps by their ID (the one displayed in the ID column).",
             extendedDescription: (
                 <>
-                    <p>Searches for maps by their UUID (the one displayed in the UUID column).</p>
+                    <p>Searches for maps by their ID (the one displayed in the ID column).</p>
                     <p>
                         Supported prefix operators:
                         <ul>
@@ -122,26 +121,24 @@ const mapsTabSearchSyntax: SearchSyntaxHelpInfo = {
             ),
             examples: [
                 <p>
-                    <code>typeid:-42949666731</code> - Searches for maps with a UUID <code>-42949666731</code>.
+                    <code>id:-8589934591</code> - Searches for maps with an ID of <code>-8589934591</code>.
                 </p>,
                 <p>
-                    <code>|typeid:-180388626396</code> - Searches for maps with a UUID <code>-180388626396</code>.
+                    <code>|id:-23457</code> - Searches for maps with an ID of <code>-23457</code>.
                 </p>,
                 <p>
-                    <code>typeid:-42949666731 typeid:-180388626396</code> - Searches for maps with a UUID <code>-42949666731</code> or{" "}
-                    <code>-180388626396</code>.
+                    <code>id:56 id:-72</code> - Searches for maps with an ID of <code>56</code> or <code>-72</code>.
                 </p>,
                 <p>
-                    <code>-typeid:-42949666731 -typeid:-180388626396</code> - Searches for maps that do not have a UUID <code>-42949666731</code> or{" "}
-                    <code>-180388626396</code>.
+                    <code>-id:2001 -id:-16437</code> - Searches for maps that do not have an ID of <code>2001</code> or <code>-16437</code>.
                 </p>,
             ],
         },
-        name: {
-            description: "Searches for maps by their name tag (the one displayed in the Name column).",
+        parentid: {
+            description: "Searches for maps by their parent map's ID (the one displayed in the Parent Map ID column).",
             extendedDescription: (
                 <>
-                    <p>Searches for maps by their name tag (the one displayed in the Name column).</p>
+                    <p>Searches for maps by their parent map's ID (the one displayed in the Parent Map ID column).</p>
                     <p>
                         Supported prefix operators:
                         <ul>
@@ -155,16 +152,78 @@ const mapsTabSearchSyntax: SearchSyntaxHelpInfo = {
             ),
             examples: [
                 <p>
-                    <code>name:Jeff</code> - Searches for maps with a name tag of "Jeff".
+                    <code>id:-8589934591</code> - Searches for maps whose parent map has an ID of <code>-8589934591</code>.
                 </p>,
                 <p>
-                    <code>|name:Joey</code> - Searches for maps with a name tag of "Joey".
+                    <code>|id:-23457</code> - Searches for maps whose parent map has an ID of <code>-23457</code>.
                 </p>,
                 <p>
-                    <code>name:Maria name:Joey</code> - Searches for maps with a name tag of "Maria" or "Joey".
+                    <code>id:56 id:-72</code> - Searches for maps whose parent map has an ID of <code>56</code> or <code>-72</code>.
                 </p>,
                 <p>
-                    <code>-name:Doggo -name:Fluffy</code> - Searches for maps that do not have a name tag of "Doggo" or "Fluffy".
+                    <code>-id:2001 -id:-16437</code> - Searches for maps whose parent map does not have an ID of <code>2001</code> or <code>-16437</code>.
+                </p>,
+            ],
+        },
+        locked: {
+            description: "Searches for maps by whether or not they are locked.",
+            extendedDescription: (
+                <>
+                    <p>Searches for maps by whether or not they are locked.</p>
+                    <p>
+                        Supported prefix operators:
+                        <ul>
+                            <li>"|" - Any Of</li>
+                            <li>"-" - None Of</li>
+                            <li>"^" - One Of</li>
+                            <li>"&" - All Of</li>
+                        </ul>
+                    </p>
+                </>
+            ),
+            examples: [
+                <p>
+                    <code>locked:true</code> - Searches for maps that are locked.
+                </p>,
+                <p>
+                    <code>|locked:0</code> - Searches for maps that are not locked.
+                </p>,
+                <p>
+                    <code>locked:0 locked:true</code> - Searches for maps that do not have an invalid value in the <code>locked</code> NBT tag.
+                </p>,
+                <p>
+                    <code>-locked:false -locked:true</code> - Searches for maps that have an invalid value in the <code>locked</code> NBT tag.
+                </p>,
+            ],
+        },
+        scale: {
+            description: "Searches for maps by their scale (the one displayed in the Scale column).",
+            extendedDescription: (
+                <>
+                    <p>Searches for maps by their scale (the one displayed in the Scale column).</p>
+                    <p>
+                        Supported prefix operators:
+                        <ul>
+                            <li>"|" - Any Of</li>
+                            <li>"-" - None Of</li>
+                            <li>"^" - One Of</li>
+                            <li>"&" - All Of</li>
+                        </ul>
+                    </p>
+                </>
+            ),
+            examples: [
+                <p>
+                    <code>scale:1</code> - Searches for maps with a scale of <code>1</code>.
+                </p>,
+                <p>
+                    <code>|scale:0</code> - Searches for maps with a scale of <code>0</code>.
+                </p>,
+                <p>
+                    <code>scale:3 scale:4</code> - Searches for maps with a scale of <code>3</code> or <code>4</code>.
+                </p>,
+                <p>
+                    <code>-scale:2 -scale:0</code> - Searches for maps that do not have a scale of <code>2</code> or <code>0</code>.
                 </p>,
             ],
         },
@@ -638,7 +697,7 @@ async function getMapsTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                                     // noneOf
                                     "-",
                                 ] as const;
-                                const keywords = ["typeid", "nbt", "uuid", "name", "contents"] as const;
+                                const keywords = ["dimension", "nbt", "id", "parentid", "locked", "scale", "contents"] as const;
                                 function getKeywordedOperators<T extends string, O extends string = "" | (typeof keywordPrefixOperators)[number]>(
                                     keywords: readonly T[],
                                     operators: readonly O[] = ["", ...keywordPrefixOperators] as O[]
@@ -678,7 +737,7 @@ async function getMapsTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                                     });
                                 }
                                 for (const key in queryData) {
-                                    if ([...getKeywordedOperators(["typeid", "nbt", "uuid", "name", "contents"])].includes(key as any)) continue;
+                                    if ([...getKeywordedOperators(["dimension", "nbt", "id", "parentid", "locked", "scale", "contents"])].includes(key as any)) continue;
                                     if (
                                         !keywordPrefixOperators.includes(key.slice(0, 1) as any) &&
                                         keywords.includes(key.slice(1) as any) &&
@@ -695,30 +754,55 @@ async function getMapsTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                                     return;
                                 }
                                 // TODO: Replace these filters with ones for maps.
-                                if (getKeywordedOperators(["typeid", "nbt", "uuid", "name"]).some((key: string): boolean => key in queryData)) {
-                                    function parseTypeIDQueries(queries: string[]): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery[] {
+                                if (
+                                    getKeywordedOperators(["dimension", "nbt", "id", "parentid", "locked", "scale"]).some(
+                                        (key: string): boolean => key in queryData
+                                    )
+                                ) {
+                                    function parseDimensionQueries(queries: string[]): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery[] {
                                         return queries.map((v: string): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery => {
                                             return {
-                                                path: ["identifier"],
+                                                path: ["dimension"],
+                                                value: /^\d+$/.test(v) ? Number(v) : dimensions.indexOf(v as Dimension),
+                                                caseSensitivePath: true,
+                                            };
+                                        });
+                                    }
+                                    function parseIdQueries(queries: string[]): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery[] {
+                                        return queries.map((v: string): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery => {
+                                            return {
+                                                path: ["mapId"],
                                                 value: v,
                                                 caseSensitivePath: true,
                                             };
                                         });
                                     }
-                                    function parseNameQueries(queries: string[]): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery[] {
+                                    function parseParentIdQueries(queries: string[]): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery[] {
                                         return queries.map((v: string): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery => {
                                             return {
-                                                path: ["CustomName"],
+                                                path: ["parentMapId"],
                                                 value: v,
                                                 caseSensitivePath: true,
                                             };
                                         });
                                     }
-                                    function parseUUIDQueries(queries: string[]): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery[] {
+                                    function parseLockedQueries(queries: string[]): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery[] {
                                         return queries.map((v: string): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery => {
                                             return {
-                                                path: ["UniqueID"],
-                                                value: v,
+                                                path: ["locked"],
+                                                value:
+                                                    /^\d+$/i.test(v) ? Number(v)
+                                                    : v === "true" ? 1
+                                                    : 0,
+                                                caseSensitivePath: true,
+                                            };
+                                        });
+                                    }
+                                    function parseScaleQueries(queries: string[]): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery[] {
+                                        return queries.map((v: string): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery => {
+                                            return {
+                                                path: ["scale"],
+                                                value: Number(v),
                                                 caseSensitivePath: true,
                                             };
                                         });
@@ -786,32 +870,40 @@ async function getMapsTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                                             );
                                     }
                                     query.nbtTags = {};
-                                    if (["-typeid", "-nbt", "-uuid", "-name"].some((key: string): boolean => key in queryData)) {
+                                    if (["-dimension", "-nbt", "-id", "-parentid", "-locked", "-scale"].some((key: string): boolean => key in queryData)) {
                                         query.nbtTags.noneOf = [];
-                                        if (queryData["-typeid"]) query.nbtTags.noneOf.push(...parseTypeIDQueries(queryData["-typeid"]));
-                                        if (queryData["-name"]) query.nbtTags.noneOf.push(...parseNameQueries(queryData["-name"]));
-                                        if (queryData["-uuid"]) query.nbtTags.noneOf.push(...parseUUIDQueries(queryData["-uuid"]));
+                                        if (queryData["-dimension"]) query.nbtTags.noneOf.push(...parseDimensionQueries(queryData["-dimension"]));
+                                        if (queryData["-id"]) query.nbtTags.noneOf.push(...parseIdQueries(queryData["-id"]));
+                                        if (queryData["-parentid"]) query.nbtTags.noneOf.push(...parseParentIdQueries(queryData["-parentid"]));
+                                        if (queryData["-locked"]) query.nbtTags.noneOf.push(...parseLockedQueries(queryData["-locked"]));
+                                        if (queryData["-scale"]) query.nbtTags.noneOf.push(...parseScaleQueries(queryData["-scale"]));
                                         if (queryData["-nbt"]) query.nbtTags.noneOf.push(...parseNBTQueries(queryData["-nbt"]));
                                     }
                                     if (keywords.some((v: string): boolean => v in queryData)) {
                                         query.nbtTags.anyOf = [];
-                                        if (queryData.typeid) query.nbtTags.anyOf.push(...parseTypeIDQueries(queryData.typeid));
-                                        if (queryData.name) query.nbtTags.anyOf.push(...parseNameQueries(queryData.name));
-                                        if (queryData.uuid) query.nbtTags.anyOf.push(...parseUUIDQueries(queryData.uuid));
+                                        if (queryData.dimension) query.nbtTags.anyOf.push(...parseDimensionQueries(queryData.dimension));
+                                        if (queryData.id) query.nbtTags.anyOf.push(...parseIdQueries(queryData.id));
+                                        if (queryData.parentid) query.nbtTags.anyOf.push(...parseParentIdQueries(queryData.parentid));
+                                        if (queryData.locked) query.nbtTags.anyOf.push(...parseLockedQueries(queryData.locked));
+                                        if (queryData.scale) query.nbtTags.anyOf.push(...parseScaleQueries(queryData.scale));
                                         if (queryData.nbt) query.nbtTags.anyOf.push(...parseNBTQueries(queryData.nbt));
                                     }
                                     if (getKeywordedOperators(keywords, ["^"]).some((v: string): boolean => v in queryData)) {
                                         query.nbtTags.oneOf = [];
-                                        if (queryData["^typeid"]) query.nbtTags.oneOf.push(...parseTypeIDQueries(queryData["^typeid"]));
-                                        if (queryData["^name"]) query.nbtTags.oneOf.push(...parseNameQueries(queryData["^name"]));
-                                        if (queryData["^uuid"]) query.nbtTags.oneOf.push(...parseUUIDQueries(queryData["^uuid"]));
+                                        if (queryData["^dimension"]) query.nbtTags.oneOf.push(...parseDimensionQueries(queryData["^dimension"]));
+                                        if (queryData["^id"]) query.nbtTags.oneOf.push(...parseIdQueries(queryData["^id"]));
+                                        if (queryData["^parentid"]) query.nbtTags.oneOf.push(...parseParentIdQueries(queryData["^parentid"]));
+                                        if (queryData["^locked"]) query.nbtTags.oneOf.push(...parseLockedQueries(queryData["^locked"]));
+                                        if (queryData["^scale"]) query.nbtTags.oneOf.push(...parseScaleQueries(queryData["^scale"]));
                                         if (queryData["^nbt"]) query.nbtTags.oneOf.push(...parseNBTQueries(queryData["^nbt"]));
                                     }
                                     if (getKeywordedOperators(keywords, ["&"]).some((v: string): boolean => v in queryData)) {
                                         query.nbtTags.allOf = [];
-                                        if (queryData["&typeid"]) query.nbtTags.allOf.push(...parseTypeIDQueries(queryData["&typeid"]));
-                                        if (queryData["&name"]) query.nbtTags.allOf.push(...parseNameQueries(queryData["&name"]));
-                                        if (queryData["&uuid"]) query.nbtTags.allOf.push(...parseUUIDQueries(queryData["&uuid"]));
+                                        if (queryData["&dimension"]) query.nbtTags.allOf.push(...parseDimensionQueries(queryData["&dimension"]));
+                                        if (queryData["&id"]) query.nbtTags.allOf.push(...parseIdQueries(queryData["&id"]));
+                                        if (queryData["&parentid"]) query.nbtTags.allOf.push(...parseParentIdQueries(queryData["&parentid"]));
+                                        if (queryData["&locked"]) query.nbtTags.allOf.push(...parseLockedQueries(queryData["&locked"]));
+                                        if (queryData["&scale"]) query.nbtTags.allOf.push(...parseScaleQueries(queryData["&scale"]));
                                         if (queryData["&nbt"]) query.nbtTags.allOf.push(...parseNBTQueries(queryData["&nbt"]));
                                     }
                                 }
