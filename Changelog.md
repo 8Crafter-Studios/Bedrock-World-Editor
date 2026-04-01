@@ -3,7 +3,8 @@
 ## Additions
 
 -   Added Async Mode to several left sidebar tabs. Async mode loads NBT data for entries only when the page containing them is selected or when searching through them. Async mode also only computes the components for the entries that are on the current page. It loads data as needed and unloads it after, this makes the left sidebar tab load faster initially and dramatically reduces memory usage, but makes it slightly slower to switch between pages, and makes searching through entries a lot slower. By default, it is automatically determined whether async mode should be used based on the number of entries in the left sidebar tab and the total number of LevelDB keys in the world. However, Async Mode can also be enabled or disabled manually in the settings, the thresholds for the number of entries and the total number of LevelDB keys can also be changed. Support for this feature will be added to more left sidebar tabs in the future. It is currently supported for the following left sidebar tabs:
-    -   "Entities"
+    -   Entities
+    -   Maps
 -   The "Entities" tab now supports reading entities' dimensions from the digests. This will be automatically disabled when there are 100,000 or more Digest LevelDB keys in the world to remove the large delay caused by large numbers of Digest keys when opening the "Entities" tab, this threshold can be changed in the settings.
 -   Added 4 new settings to the "Advanced" settings section:
     -   Use Async Mode in Entry Views
@@ -11,7 +12,8 @@
     -   Async Mode Total Key Count Threshold
     -   No Lookup Entity Dimension Digest Key Threshold
 -   The following tabs now have more informative loading screens:
-    -   "Entities"
+    -   Entities
+    -   Maps
 -   Added a loading message when only some but not all integration actions in an integration menu have loaded.
 -   The loading message when no integration actions have finished loading yet now has an animation.
 

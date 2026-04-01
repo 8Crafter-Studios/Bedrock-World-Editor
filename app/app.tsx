@@ -381,10 +381,11 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
     let [data, updateData] = useState<MinecraftWorldDisplayDetails[]>([]);
     let [showingMore, updateShowingMore] = useState(false);
     function refreshData(data: MinecraftWorldDisplayDetails[]): void {
-        config.showWorldSizesOnWorldList &&
+        if (config.showWorldSizesOnWorldList) {
             data.forEach((v: MinecraftWorldDisplayDetails): void =>
                 typeof v.size === "number" ? void 0 : void v.size?.then((size: number): void => void ((v.size = size), updateData([...data])))
             );
+        }
         updateData(data);
     }
     useEffect((): void => void getMinecraftWorlds(false, config.showWorldSizesOnWorldList).then(refreshData), []);

@@ -18,7 +18,7 @@ import {
 import NBT from "prismarine-nbt";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { testForObjectExtension } from "../../src/utils/miscUtils";
+import { createObservable, testForObjectExtension, type Observable } from "../../src/utils/miscUtils";
 import { ControlledMenu, MenuItem } from "@szhsin/react-menu";
 import { LoadingScreenContents } from "../app";
 import SearchString from "search-string";
@@ -202,9 +202,34 @@ export default function MapsTab(props: MapsTabProps): JSX.SpecificElement<"div">
             console.error(reason);
         }
     );
+    const loadingScreenMessageContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
+    if (!props.tab.db.isOpen()) {
+        props.tab.awaitDBOpen!.then(async (): Promise<void> => {
+            if (loadingScreenMessageContainerRef.current && !props.tab.cachedDBKeys) {
+                loadingScreenMessageContainerRef.current.textContent = `Reading LevelDB keys...`;
+                await props.tab.awaitCachedDBKeys;
+                if (loadingScreenMessageContainerRef.current) loadingScreenMessageContainerRef.current.textContent = "";
+            }
+        });
+        return (
+            <div style="width: 100%; height: 100%; display: flex; flex-direction: column;" ref={containerRef}>
+                <LoadingScreenContents message="Opening the LevelDB..." messageContainerRef={loadingScreenMessageContainerRef} />
+            </div>
+        );
+    }
+    if (!props.tab.cachedDBKeys) {
+        props.tab.awaitCachedDBKeys!.then((): void => {
+            if (loadingScreenMessageContainerRef.current) loadingScreenMessageContainerRef.current.textContent = "";
+        });
+        return (
+            <div style="width: 100%; height: 100%; display: flex; flex-direction: column;" ref={containerRef}>
+                <LoadingScreenContents message="Reading LevelDB keys..." messageContainerRef={loadingScreenMessageContainerRef} />
+            </div>
+        );
+    }
     return (
         <div style="width: 100%; height: 100%; display: flex; flex-direction: column;" ref={containerRef}>
-            <LoadingScreenContents />
+            <LoadingScreenContents messageContainerRef={loadingScreenMessageContainerRef} />
         </div>
     );
 }
@@ -212,7 +237,7 @@ export default function MapsTab(props: MapsTabProps): JSX.SpecificElement<"div">
 interface KeyData {
     rawKey: Buffer;
     displayKey: string;
-    data: { parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.Map; type: NBT.NBTFormat; metadata: NBT.Metadata };
+    data?: { parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.Map; type: NBT.NBTFormat; metadata: NBT.Metadata };
 }
 
 async function getMapsTabContents(tab: TabManagerTab): Promise<JSX.Element> {
@@ -220,15 +245,22 @@ async function getMapsTabContents(tab: TabManagerTab): Promise<JSX.Element> {
     if (!tab.db.isOpen()) await tab.awaitDBOpen!;
     if (!tab.cachedDBKeys) await tab.awaitCachedDBKeys;
     const rawKeys: Buffer[] = tab.cachedDBKeys!.Map;
+    let asyncMode: boolean =
+        "__FORCE_ASYNC_KEY_MODE__" in window ? !!window["__FORCE_ASYNC_KEY_MODE__"]
+        : config.useAsyncModeInEntryViews === "auto" ?
+            rawKeys.length >= config.asyncModeEntryThreshold ||
+            Object.values(tab.cachedDBKeys!).reduce((a: number, b: Buffer[]): number => a + b.length, 0) >= config.asyncModeTotalKeyCountThreshold
+        :   config.useAsyncModeInEntryViews;
     const keys: KeyData[] = await Promise.all(
         rawKeys.map(
             async (key: Buffer): Promise<KeyData> => ({
                 rawKey: key,
                 displayKey: getKeyDisplayName(key),
-                data: (await NBT.parse((await tab.db!.get(key))!)) as any,
+                data: asyncMode ? undefined : ((await NBT.parse((await tab.db!.get(key))!)) as any),
             })
         )
     );
+    let targetKeys: KeyData[] = keys;
     // globalThis.a = keys;
     let dynamicProperties: NBT.NBT | undefined = await tab
         .db!.get("DynamicProperties")
@@ -238,17 +270,21 @@ async function getMapsTabContents(tab: TabManagerTab): Promise<JSX.Element> {
         .catch((e: any): undefined => (console.error(e), undefined));
     // console.log(dynamicProperties);
     let mode: ConfigConstants.views.Maps.MapsTabMode = config.views.maps.mode;
-    let tablesContents: JSX.Element[][] = await Promise.all(
-        ConfigConstants.views.Maps.mapsTabModeToSectionIDs[mode].map(
-            async (sectionID: (typeof ConfigConstants.views.Maps.mapsTabModeToSectionIDs)[typeof mode][number]): Promise<JSX.Element[]> =>
-                await getMapsTabContentsRows({
-                    tab,
-                    keys,
-                    dynamicProperties,
-                    mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Maps.MapsTabSectionMode,
-                })
-        )
-    );
+    let emptyTablesContents: JSX.Element[][] =
+        asyncMode ?
+            [[]]
+        :   await Promise.all(
+                ConfigConstants.views.Maps.mapsTabModeToSectionIDs[mode].map(
+                    async (sectionID: (typeof ConfigConstants.views.Maps.mapsTabModeToSectionIDs)[typeof mode][number]): Promise<JSX.Element[]> =>
+                        await getMapsTabContentsRows({
+                            tab,
+                            keys,
+                            dynamicProperties,
+                            mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Maps.MapsTabSectionMode,
+                        })
+                )
+            );
+    let tablesContents: JSX.Element[][] = emptyTablesContents;
     function Contents(): JSX.Element {
         const tablesContainerRef: RefObject<HTMLTableElement> = useRef<HTMLTableElement>(null);
         const loadingScreenMessageContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
@@ -263,13 +299,64 @@ async function getMapsTabContents(tab: TabManagerTab): Promise<JSX.Element> {
             viewOptionsContainer: useRef<HTMLDivElement>(null),
             viewOptionsTabbedSelector: useRef<HTMLDivElement>(null),
         };
+        async function getTablesContentsInRange(sectionIndex: number, start: number, end: number): Promise<JSX.Element[]> {
+            const sectionID: (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[typeof mode][number] =
+                ConfigConstants.views.Entities.entitiesTabModeToSectionIDs[mode][sectionIndex]!;
+            return await getMapsTabContentsRows({
+                tab,
+                keys: await Promise.all(
+                    targetKeys
+                        .slice(start, end)
+                        .map(async (key: KeyData): Promise<KeyData> => ({ ...key, data: (await NBT.parse((await tab.db!.get(key.rawKey))!)) as any }))
+                ),
+                dynamicProperties,
+                mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Entities.EntitiesTabSectionMode,
+            });
+        }
+        async function loadTablesContentsInRange(sectionIndex: number, start: number, end: number): Promise<void> {
+            if (!asyncMode) return;
+            const sectionID: (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[typeof mode][number] =
+                ConfigConstants.views.Entities.entitiesTabModeToSectionIDs[mode][sectionIndex]!;
+            tablesContents = [...tablesContents];
+            tablesContents[sectionIndex] = [...emptyTablesContents[sectionIndex]!];
+            tablesContents[sectionIndex].splice(start, end - start, ...(await getTablesContentsInRange(sectionIndex, start, end)));
+        }
+        function getSectionEntryCounts(): number[] {
+            return ConfigConstants.views.Entities.entitiesTabModeToSectionIDs[mode].map(
+                (sectionID: (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[typeof mode][number]): number => {
+                    switch (sectionID) {
+                        case null:
+                            return targetKeys.length;
+                    }
+                }
+            );
+        }
         function TablesContents(): JSX.Element {
+            let localTablesContents: Observable<JSX.Element[][]> = createObservable([[]]);
+            if (asyncMode) {
+                Promise.all(
+                    ConfigConstants.views.Entities.entitiesTabModeToSectionIDs[mode].map(
+                        async (
+                            _sectionID: (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[typeof mode][number],
+                            index: number
+                        ): Promise<JSX.Element[]> => getTablesContentsInRange(index, 0, 20)
+                    )
+                ).then((tablesContents: JSX.Element[][]): void => {
+                    localTablesContents.set(tablesContents);
+                });
+            }
             return (
                 <>
                     {...ConfigConstants.views.Maps.mapsTabModeToSectionIDs[mode].map(
                         (sectionID: (typeof ConfigConstants.views.Maps.mapsTabModeToSectionIDs)[typeof mode][number], index: number): JSX.Element => {
                             function Test1(): JSX.Element {
                                 const bodyRef: RefObject<HTMLTableSectionElement> = useRef<HTMLTableSectionElement>(null);
+                                localTablesContents.observe((tablesContents: JSX.Element[][]): void => {
+                                    if (!asyncMode || !bodyRef.current) return;
+                                    let tempElement: HTMLDivElement = document.createElement("div");
+                                    render(<>{...tablesContents[index]!}</>, tempElement);
+                                    bodyRef.current.replaceChildren(...tempElement.children);
+                                });
                                 // const [columnHeadersContextMenu_isOpen, columnHeadersContextMenu_setOpen] = useState(false);
                                 // const [columnHeadersContextMenu_anchorPoint, columnHeadersContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
                                 const headerName = ConfigConstants.views.Maps.mapsTabModeSectionHeaderNames[mode][index];
@@ -314,18 +401,31 @@ async function getMapsTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                                                     )}
                                                 </tr>
                                             </thead>
-                                            <tbody ref={bodyRef}>{...tablesContents[index]!.slice(0, 20)}</tbody>
+                                            <tbody ref={bodyRef}>
+                                                {...asyncMode ? localTablesContents.get()[index]! : tablesContents[index]!.slice(0, 20)}
+                                            </tbody>
                                             <tfoot>
                                                 <tr class="table-footer-row-page-navigation">
                                                     <td colSpan={ConfigConstants.views.Maps.mapsTabModeToColumnIDs[sectionMode].length}>
                                                         <PageNavigation
-                                                            totalPages={Math.ceil(tablesContents[index]!.length / 20)}
-                                                            onPageChange={(page: number): void => {
+                                                            totalPages={Math.ceil(getSectionEntryCounts()[index]! / 20)}
+                                                            onPageChange={async (page: number): Promise<void> => {
                                                                 if (!bodyRef.current) return;
+                                                                if (asyncMode) {
+                                                                    localTablesContents.get()[index] = await getTablesContentsInRange(
+                                                                        index,
+                                                                        (page - 1) * 20,
+                                                                        page * 20
+                                                                    );
+                                                                }
                                                                 // let tempElement: HTMLDivElement = document.createElement("div");
                                                                 render(null, bodyRef.current);
                                                                 render(
-                                                                    <>{...tablesContents[index]!.slice((page - 1) * 20, page * 20)}</>,
+                                                                    <>
+                                                                        {...asyncMode ?
+                                                                            localTablesContents.get()[index]!
+                                                                        :   tablesContents[index]!.slice((page - 1) * 20, page * 20)}
+                                                                    </>,
                                                                     bodyRef.current /* tempElement */
                                                                 );
                                                                 // bodyRef.current.replaceChildren(...tempElement.children);
@@ -344,15 +444,17 @@ async function getMapsTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                 </>
             );
         }
-        let query: Omit<TabManagerTab_LevelDBSearchQuery, "searchTargets"> & {
+        let query: Omit<TabManagerTab_LevelDBSearchQuery<true>, "searchTargets"> & {
             searchTargets: {
                 key: Buffer<ArrayBufferLike>;
                 displayKey: string;
-                value: {
-                    parsed: NBT.NBT;
-                    type: NBT.NBTFormat;
-                    metadata: NBT.Metadata;
-                };
+                value:
+                    | {
+                          parsed: NBT.NBT;
+                          type: NBT.NBTFormat;
+                          metadata: NBT.Metadata;
+                      }
+                    | (() => Promise<{ parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata }>);
                 valueType: {
                     readonly type: "NBT";
                 };
@@ -366,7 +468,7 @@ async function getMapsTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                     ({
                         key: key.rawKey,
                         displayKey: key.displayKey,
-                        value: key.data,
+                        value: asyncMode ? async () => await NBT.parse((await tab.db!.get(key.rawKey))!) : key.data!,
                         valueType: entryContentTypeToFormatMap.ActorPrefix,
                         contentType: "ActorPrefix",
                         data: key,
@@ -383,15 +485,24 @@ async function getMapsTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                             })(),
                         ],
                         customDataFields: {
-                            contents: ((): string => {
-                                try {
-                                    return prettyPrintSNBT(prismarineToSNBT(key.data.parsed), { indent: 0 });
-                                } catch {
-                                    return "";
-                                }
-                            })(),
+                            contents:
+                                asyncMode ?
+                                    async (): Promise<string> => {
+                                        try {
+                                            return prettyPrintSNBT(prismarineToSNBT((await NBT.parse((await tab.db!.get(key.rawKey))!)).parsed), { indent: 0 });
+                                        } catch {
+                                            return "";
+                                        }
+                                    }
+                                :   ((): string => {
+                                        try {
+                                            return prettyPrintSNBT(prismarineToSNBT(key.data!.parsed), { indent: 0 });
+                                        } catch {
+                                            return "";
+                                        }
+                                    })(),
                         },
-                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
+                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery<true>["searchTargets"]>[number]
             ),
         };
         async function updateTablesContents(reloadData: boolean): Promise<void> {
@@ -399,23 +510,48 @@ async function getMapsTabContents(tab: TabManagerTab): Promise<JSX.Element> {
             if (reloadData) {
                 mode = config.views.maps.mode;
                 console.debug(query);
-                tablesContents = await Promise.all(
-                    ConfigConstants.views.Maps.mapsTabModeToSectionIDs[mode].map(
-                        async (sectionID: (typeof ConfigConstants.views.Maps.mapsTabModeToSectionIDs)[typeof mode][number]): Promise<JSX.Element[]> =>
-                            await getMapsTabContentsRows({
-                                tab,
-                                keys:
-                                    Object.keys(query).length > 1 ?
-                                        tab
-                                            .dbSearch!.search(query)
-                                            .toArray()
-                                            .map((key): KeyData => key.originalObject.data)
-                                    :   keys,
-                                dynamicProperties,
-                                mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Maps.MapsTabSectionMode,
-                            })
-                    )
-                );
+                if (asyncMode) {
+                    targetKeys =
+                        Object.keys(query).length > 1 ?
+                            await (async (): Promise<KeyData[]> => {
+                                const iterator = tab.dbSearch!.searchAsync(query, true);
+                                let i: number = 0;
+                                let t: number = Date.now();
+                                const results: KeyData[] = [];
+                                for await (const value of iterator) {
+                                    i++;
+                                    if (t + 10 < Date.now()) {
+                                        if (loadingScreenMessageContainerRef.current)
+                                            loadingScreenMessageContainerRef.current.textContent = `Searching LevelDB: ${i}/${keys.length}...`;
+                                        await sleep(10);
+                                        t = Date.now();
+                                    }
+                                    if (!value) continue;
+                                    results.push(value.originalObject.data);
+                                }
+                                return results;
+                            })()
+                        :   keys;
+                } else {
+                    emptyTablesContents = await Promise.all(
+                        ConfigConstants.views.Maps.mapsTabModeToSectionIDs[mode].map(
+                            async (sectionID: (typeof ConfigConstants.views.Maps.mapsTabModeToSectionIDs)[typeof mode][number]): Promise<JSX.Element[]> =>
+                                await getMapsTabContentsRows({
+                                    tab,
+                                    keys:
+                                        Object.keys(query).length > 1 ?
+                                            tab
+                                                .dbSearch!.search(query)
+                                                .toArray()
+                                                .map((key): KeyData => key.originalObject.data)
+                                        :   keys,
+                                    dynamicProperties,
+                                    mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Maps.MapsTabSectionMode,
+                                })
+                        )
+                    );
+                    tablesContents = emptyTablesContents;
+                }
             }
             const tempElement: HTMLDivElement = document.createElement("div");
             render(<TablesContents />, tempElement);
@@ -558,6 +694,7 @@ async function getMapsTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                                     }
                                     return;
                                 }
+                                // TODO: Replace these filters with ones for maps.
                                 if (getKeywordedOperators(["typeid", "nbt", "uuid", "name"]).some((key: string): boolean => key in queryData)) {
                                     function parseTypeIDQueries(queries: string[]): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery[] {
                                         return queries.map((v: string): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery => {
@@ -856,6 +993,20 @@ async function getMapsTabContentsRows(data: {
                                     case "DBKey":
                                         return <td>{key.displayKey}</td>;
                                     case "ID":
+                                        if (key.data === undefined) {
+                                            return (
+                                                <td>
+                                                    <span style="color: yellow;">Loading...</span>
+                                                </td>
+                                            );
+                                        }
+                                        if (key.data === null) {
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">N/A</span>
+                                                </td>
+                                            );
+                                        }
                                         return (
                                             <td>
                                                 {key.data.parsed.value.mapId?.type === "long" ?
@@ -864,6 +1015,20 @@ async function getMapsTabContentsRows(data: {
                                             </td>
                                         );
                                     case "DecorationCount":
+                                        if (key.data === undefined) {
+                                            return (
+                                                <td>
+                                                    <span style="color: yellow;">Loading...</span>
+                                                </td>
+                                            );
+                                        }
+                                        if (key.data === null) {
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">N/A</span>
+                                                </td>
+                                            );
+                                        }
                                         return (
                                             <td>
                                                 {(
@@ -875,6 +1040,20 @@ async function getMapsTabContentsRows(data: {
                                             </td>
                                         );
                                     case "Location":
+                                        if (key.data === undefined) {
+                                            return (
+                                                <td>
+                                                    <span style="color: yellow;">Loading...</span>
+                                                </td>
+                                            );
+                                        }
+                                        if (key.data === null) {
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">N/A</span>
+                                                </td>
+                                            );
+                                        }
                                         return (
                                             <td>
                                                 {key.data.parsed.value.xCenter?.type === "int" && key.data.parsed.value.zCenter?.type === "int" ?
@@ -889,6 +1068,20 @@ async function getMapsTabContentsRows(data: {
                                             </td>
                                         );
                                     case "LocationCompact":
+                                        if (key.data === undefined) {
+                                            return (
+                                                <td>
+                                                    <span style="color: yellow;">Loading...</span>
+                                                </td>
+                                            );
+                                        }
+                                        if (key.data === null) {
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">N/A</span>
+                                                </td>
+                                            );
+                                        }
                                         return (
                                             <td>
                                                 {key.data.parsed.value.xCenter?.type === "int" && key.data.parsed.value.zCenter?.type === "int" ?
@@ -901,6 +1094,20 @@ async function getMapsTabContentsRows(data: {
                                             </td>
                                         );
                                     case "FullyExplored":
+                                        if (key.data === undefined) {
+                                            return (
+                                                <td>
+                                                    <span style="color: yellow;">Loading...</span>
+                                                </td>
+                                            );
+                                        }
+                                        if (key.data === null) {
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">N/A</span>
+                                                </td>
+                                            );
+                                        }
                                         return (
                                             <td>
                                                 {key.data.parsed.value.fullyExplored?.type === "byte" ?
@@ -913,6 +1120,20 @@ async function getMapsTabContentsRows(data: {
                                             </td>
                                         );
                                     case "Height":
+                                        if (key.data === undefined) {
+                                            return (
+                                                <td>
+                                                    <span style="color: yellow;">Loading...</span>
+                                                </td>
+                                            );
+                                        }
+                                        if (key.data === null) {
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">N/A</span>
+                                                </td>
+                                            );
+                                        }
                                         return (
                                             <td>
                                                 {key.data.parsed.value.height?.type === "short" ?
@@ -921,6 +1142,20 @@ async function getMapsTabContentsRows(data: {
                                             </td>
                                         );
                                     case "ParentMapID":
+                                        if (key.data === undefined) {
+                                            return (
+                                                <td>
+                                                    <span style="color: yellow;">Loading...</span>
+                                                </td>
+                                            );
+                                        }
+                                        if (key.data === null) {
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">N/A</span>
+                                                </td>
+                                            );
+                                        }
                                         return (
                                             <td>
                                                 {key.data.parsed.value.parentMapId?.type === "long" ?
@@ -929,6 +1164,20 @@ async function getMapsTabContentsRows(data: {
                                             </td>
                                         );
                                     case "Scale":
+                                        if (key.data === undefined) {
+                                            return (
+                                                <td>
+                                                    <span style="color: yellow;">Loading...</span>
+                                                </td>
+                                            );
+                                        }
+                                        if (key.data === null) {
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">N/A</span>
+                                                </td>
+                                            );
+                                        }
                                         return (
                                             <td>
                                                 {key.data.parsed.value.scale?.type === "byte" ?
@@ -937,6 +1186,20 @@ async function getMapsTabContentsRows(data: {
                                             </td>
                                         );
                                     case "Preview":
+                                        if (key.data === undefined) {
+                                            return (
+                                                <td>
+                                                    <span style="color: yellow;">Loading...</span>
+                                                </td>
+                                            );
+                                        }
+                                        if (key.data === null) {
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">N/A</span>
+                                                </td>
+                                            );
+                                        }
                                         return (
                                             <td style={{ width: "128px" }}>
                                                 {
