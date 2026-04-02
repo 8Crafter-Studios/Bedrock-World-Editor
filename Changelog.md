@@ -1,3 +1,9 @@
+# v1.0.0-beta.24
+
+## Changes
+
+-   The new version popup now trims the release notes to a maximum of 10 lines and 2000 characters.
+
 # v1.0.0-beta.23
 
 ## Additions

@@ -1209,6 +1209,12 @@ if (!startup && !started) {
                     );
                 if (!latestRelease) return;
                 if (semver.compareBuild(app.getVersion(), latestRelease.tag_name) < 0) {
+                    let trimmedChangelog: string | undefined = latestRelease.body ? latestRelease.body.split("\n").slice(0, 10).join("\n").slice(0, 2000) : undefined;
+                    if (trimmedChangelog) {
+                        if (trimmedChangelog !== latestRelease.body) {
+                            trimmedChangelog += "\n...";
+                        }
+                    }
                     dialog
                         .showMessageBox({
                             type: "info",
@@ -1216,7 +1222,7 @@ if (!startup && !started) {
                             message: `A new version of Bedrock World Editor is available.\n\nCurrent Version: ${app.getVersion()}\nLatest Version: ${
                                 latestRelease.tag_name
                             }`,
-                            detail: latestRelease.body ? `Release Notes:\n${latestRelease.body}` : undefined!,
+                            detail: trimmedChangelog ? `Release Notes:\n${trimmedChangelog}` : undefined!,
                             buttons: ["Open", "Cancel"],
                             noLink: true,
                             cancelId: 1,
