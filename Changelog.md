@@ -1,5 +1,10 @@
 # v1.0.0-beta.24
 
+## Additions
+
+-   Added a "Recent Worlds" submenu to the dock menu on macOS.
+-   Added a "New Window" option to the dock menu on macOS.
+
 ## Changes
 
 -   The new version popup now trims the release notes to a maximum of 10 lines and 2000 characters.

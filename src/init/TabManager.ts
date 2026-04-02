@@ -22,8 +22,8 @@ import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync,
 import { copyFile, cp, readFile, rm, writeFile } from "node:fs/promises";
 import { APP_DATA_FOLDER_PATH } from "../utils/URLs";
 import type { MapEditorDataStorageObject } from "../../app/components/MapEditor";
-import { app, dialog, nativeImage } from "@electron/remote";
-import type { NativeImage } from "electron";
+import { app, dialog, Menu, nativeImage } from "@electron/remote";
+import type { MenuItemConstructorOptions, NativeImage } from "electron";
 import { padNativeImageToSquare, pngToIco } from "../utils/imageUtils";
 import { defaultWorldIconDataURI } from "../utils/preloadImages";
 import { checkIsURIOrPath } from "../utils/pathUtils";
@@ -246,6 +246,7 @@ namespace exports {
             super();
             this.setMaxListeners(1000000);
             this.setJumpListData();
+            this.setDockMenuData();
         }
         public openTab(props: Omit<ConstructorParameters<typeof TabManagerTab>[0], "tabManager">): TabManagerTab {
             const tab = new TabManagerTab({ tabManager: this, ...props });
@@ -294,6 +295,7 @@ namespace exports {
             }
             writeFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), JSON.stringify(recentsData));
             this.setJumpListData();
+            this.setDockMenuData();
         }
         private setJumpListData(): void {
             if (process.platform !== "win32") return;
@@ -451,6 +453,131 @@ namespace exports {
                 app.setJumpList(jumpListData);
             } catch (e) {
                 console.error("Error setting jump list:", e);
+            }
+        }
+        private setDockMenuData(): void {
+            if (process.platform !== "darwin") return;
+            let recentsData: RecentsData = { worlds: [], folders: [], files: [] };
+            if (existsSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"))) {
+                try {
+                    const data: RecentsData = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), "utf-8"));
+                    // IDEA: Add something to validate the recents data.
+                    recentsData = data;
+                } catch (e) {
+                    console.error("Error reading recents.json:", e);
+                    return;
+                }
+            }
+            const recentWorlds: MenuItemConstructorOptions[] = recentsData.worlds.map((world: RecentsItem): MenuItemConstructorOptions => {
+                if (!world.iconPath && !defaultWorldIconDataURI)
+                    return {
+                        label: world.title!,
+                        sublabel: world.path!,
+                        toolTip: world.description!,
+                        click: (): void => {
+                            this.openTab({ path: world.path!, type: "world", icon: undefined, name: world.title! });
+                        },
+                    };
+                const img: NativeImage = world.iconPath ? nativeImage.createFromPath(world.iconPath) : nativeImage.createFromDataURL(defaultWorldIconDataURI!);
+                return {
+                    label: world.title!,
+                    sublabel: world.path!,
+                    toolTip: world.description!,
+                    icon: img,
+                    click: (): void => {
+                        this.openTab({ path: world.path!, type: "world", icon: undefined, name: world.title! });
+                    },
+                };
+            });
+            // recentsData.folders.forEach(async (world: RecentsItem, index: number): Promise<void> => {
+            //     if (!world.iconPath || ["ico", "exe", "dll"].includes(path.extname(world.iconPath).slice(1).toLowerCase())) return;
+            //     const img: NativeImage = await padNativeImageToSquare(
+            //         checkIsURIOrPath(world.iconPath) === "Path" ?
+            //             nativeImage.createFromPath(world.iconPath)
+            //         :   nativeImage.createFromBuffer(Buffer.from(await (await fetch(world.iconPath)).arrayBuffer()))
+            //     );
+            //     writeFileSync(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons", `d${index}.ico`), pngToIco(img.resize({ width: 256, height: 256 }).toPNG()));
+            // });
+            // recentsData.files.forEach(async (world: RecentsItem, index: number): Promise<void> => {
+            //     if (!world.iconPath || ["ico", "exe", "dll"].includes(path.extname(world.iconPath).slice(1).toLowerCase())) return;
+            //     const img: NativeImage = await padNativeImageToSquare(nativeImage.createFromPath(world.iconPath));
+            //     writeFileSync(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons", `f${index}.ico`), pngToIco(img.resize({ width: 256, height: 256 }).toPNG()));
+            // });
+            try {
+                const dockMenu: Electron.Menu = Menu.buildFromTemplate([
+                    {
+                        type: "submenu",
+                        label: "Recent Worlds",
+                        submenu: [
+                            ...recentWorlds,
+                            { type: "separator" },
+                            {
+                                label: "Clear Recent Worlds",
+                                click: (): void => {
+                                    if (existsSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"))) {
+                                        try {
+                                            const data: RecentsData = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), "utf-8"));
+                                            data.worlds.length = 0;
+                                            writeFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), JSON.stringify(data));
+                                        } catch (e) {
+                                            console.error("Error reading recents.json:", e);
+                                            return;
+                                        }
+                                    }
+                                },
+                            },
+                        ],
+                    },
+                    // {
+                    //     type: "custom",
+                    //     name: "Recent Folders",
+                    //     items: recentsData.folders.map(
+                    //         (world: RecentsItem): Electron.JumpListItem => ({
+                    //             type: "task",
+                    //             description: world.description!,
+                    //             iconPath:
+                    //                 !world.iconPath || ["ico", "exe", "dll"].includes(path.extname(world.iconPath).slice(1).toLowerCase()) ?
+                    //                     (world.iconPath ?? "C:/Windows/explorer.exe")
+                    //                 :   path.join(APP_DATA_FOLDER_PATH, "jumplist_icons", `d${recentsData.folders.indexOf(world)}.ico`),
+                    //             iconIndex: world.iconIndex ?? 0,
+                    //             program: execPath,
+                    //             title: world.title!,
+                    //             args: `--allow-file-access-from-files --file-tab-type=leveldb "${world.path!}"`,
+                    //         })
+                    //     ),
+                    // },
+                    // {
+                    //     type: "recent",
+                    // },
+                    // {
+                    //     type: "tasks",
+                    //     items: userTasksData.map(
+                    //         (v: Electron.Task): Electron.JumpListItem => ({
+                    //             args: v.arguments,
+                    //             description: v.description,
+                    //             iconIndex: v.iconIndex,
+                    //             iconPath: v.iconPath,
+                    //             program: v.program,
+                    //             title: v.title,
+                    //             type: "task",
+                    //             workingDirectory: v.workingDirectory!,
+                    //         })
+                    //     ),
+                    // },
+                    {
+                        type: "separator",
+                    },
+                    {
+                        label: "New Window",
+                        click(): void {
+                            ipcRenderer.send("new-window");
+                        },
+                    },
+                ]);
+                app.dock!.setMenu(dockMenu);
+                // nativeImage.createFromBuffer(Buffer.from(await (await fetch("resource://icon.png")).arrayBuffer()))
+            } catch (e) {
+                console.error("Error setting dock menu:", e);
             }
         }
         public switchTab(tab: TabManagerTab | TabManagerGenericTabID | null): void {
