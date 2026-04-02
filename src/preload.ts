@@ -90,7 +90,7 @@ const currentWindow: Electron.BrowserWindow = getCurrentWindow();
 const fileMenu: Electron.Menu = Menu.buildFromTemplate([
     {
         label: "New Window",
-        accelerator: "Ctrl+N",
+        accelerator: "CmdOrCtrl+N",
         click(): void {
             ipcRenderer.send("new-window");
         },

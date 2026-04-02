@@ -6,6 +6,7 @@
 -   The new version popup now prepends a v to the current version.
 -   Made the OS and GPU strings in the "Top" and "Basic" debug overlays cleaner.
 -   The CPU string in the "Basic" debug overlay now includes the number of cores.
+-   On macOS, the keyboard shortcut to open a new window has been switched from CTRL+N to CMD+N.
 
 # v1.0.0-beta.23
 
