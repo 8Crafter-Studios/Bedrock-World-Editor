@@ -1219,7 +1219,7 @@ if (!startup && !started) {
                         .showMessageBox({
                             type: "info",
                             title: "Update Available",
-                            message: `A new version of Bedrock World Editor is available.\n\nCurrent Version: ${app.getVersion()}\nLatest Version: ${
+                            message: `A new version of Bedrock World Editor is available.\n\nCurrent Version: ${app.getVersion().replace(/^(?!v)/, "v")}\nLatest Version: ${
                                 latestRelease.tag_name
                             }`,
                             detail: trimmedChangelog ? `Release Notes:\n${trimmedChangelog}` : undefined!,
