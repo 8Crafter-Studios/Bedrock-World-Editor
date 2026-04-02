@@ -231,6 +231,7 @@ export interface MinecraftWorldDisplayDetails {
     path: string;
     thumbnailPath?: string | undefined;
     lastOpenedWithVerison: `v${string}` | null;
+    createdInVersion: `v${string}` | null;
     lastPlayed: Date | null;
     favorited: boolean;
     /**
@@ -304,6 +305,8 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
                                 :   globSync(path.join(folderPath, "world_icon.*"))[0],
                             lastOpenedWithVerison:
                                 levelDat.value.lastOpenedWithVersion ? `v${levelDat.value.lastOpenedWithVersion.value.value.join(".")}` : null,
+                            createdInVersion:
+                                levelDat.value.InventoryVersion ? `v${levelDat.value.InventoryVersion.value}` : null,
                             lastPlayed: levelDat.value.LastPlayed ? new Date(Number(toLong(levelDat.value.LastPlayed.value) * 1000n)) : null,
                             favorited:
                                 existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json")) ?
@@ -416,34 +419,33 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                     worldContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
                     worldContextMenu_setOpen(true);
                 }
+                const hoverInfo = `${world.name}\nLast Opened With: ${world.lastOpenedWithVerison}\nCreated In: ${world.createdInVersion}\nLast Played: ${
+                    world.lastPlayed?.toLocaleString() ?? "null"
+                }\nPath: ${world.path}${
+                    config.showWorldSizesOnWorldList ?
+                        `\nFolder Size: ${
+                            typeof world.size === "number" ?
+                                (config.fileSizeUnits === "binary" ? formatFileSizeBinary : formatFileSizeMetric)(world.size)
+                            :   "Loading..."
+                        }`
+                    :   ""
+                }\nWorld Start Count: ${world.startCount}\nPlay Time: ${(world.playTime / 20n / 60n / 60n / 24n).toString().padStart(2, "0")}:${(
+                    (world.playTime / 20n / 60n / 60n) %
+                    24n
+                )
+                    .toString()
+                    .padStart(2, "0")}:${((world.playTime / 20n / 60n) % 60n).toString().padStart(2, "0")}:${((world.playTime / 20n) % 60n)
+                    .toString()
+                    .padStart(2, "0")}.${
+                    (world.playTime % 20n) * 5n
+                }\nGame Mode: ${world.gameMode === -1 ? "Unknown" : (gameModes[world.gameMode] ?? world.gameMode)}${world.hardcore ? "\nHardcore" : ""}\n${
+                    world.multiplayer ? "Multiplayer" : "Singleplayer"
+                }${world.fromLockedTemplate ? "\nFrom Locked Template" : ""}${world.fromWorldTemplate ? "\nFrom World Template" : ""}${
+                    world.singleUseWorld ? "\nSingle Use World" : ""
+                }${world.editorOnly ? "\nEditor Only" : ""}${world.createdInEditor ? "\nCreated In Editor" : ""}`;
                 return (
                     <div
-                        title={`${world.name}\nLast Opened With: ${world.lastOpenedWithVerison}\nLast Played: ${
-                            world.lastPlayed?.toLocaleString() ?? "null"
-                        }\nPath: ${world.path}${
-                            config.showWorldSizesOnWorldList ?
-                                `\nFolder Size: ${
-                                    typeof world.size === "number" ?
-                                        (config.fileSizeUnits === "binary" ? formatFileSizeBinary : formatFileSizeMetric)(world.size)
-                                    :   "Loading..."
-                                }`
-                            :   ""
-                        }\nWorld Start Count: ${world.startCount}\nPlay Time: ${(world.playTime / 20n / 60n / 60n / 24n).toString().padStart(2, "0")}:${(
-                            (world.playTime / 20n / 60n / 60n) %
-                            24n
-                        )
-                            .toString()
-                            .padStart(2, "0")}:${((world.playTime / 20n / 60n) % 60n).toString().padStart(2, "0")}:${((world.playTime / 20n) % 60n)
-                            .toString()
-                            .padStart(2, "0")}.${
-                            (world.playTime % 20n) * 5n
-                        }\nGame Mode: ${world.gameMode === -1 ? "Unknown" : (gameModes[world.gameMode] ?? world.gameMode)}${
-                            world.hardcore ? "\nHardcore" : ""
-                        }\n${
-                            world.multiplayer ? "Multiplayer" : "Singleplayer"
-                        }${world.fromLockedTemplate ? "\nFrom Locked Template" : ""}${world.fromWorldTemplate ? "\nFrom World Template" : ""}${
-                            world.singleUseWorld ? "\nSingle Use World" : ""
-                        }${world.editorOnly ? "\nEditor Only" : ""}${world.createdInEditor ? "\nCreated In Editor" : ""}`}
+                        title={hoverInfo + " "}
                         class="nsel ndrg"
                         style={{
                             display: "flex",
@@ -487,6 +489,7 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                         key={JSON.stringify({ path: world.path })}
                     >
                         <img
+                            title={hoverInfo + " ".repeat(2)}
                             aria-hidden="true"
                             src={
                                 world.thumbnailPath ?
@@ -502,6 +505,7 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                             }px; aspect-ratio: 16 / 9;`}
                         />
                         <div
+                            title={hoverInfo + " ".repeat(3)}
                             style={{
                                 flex: 1,
                                 minWidth: 0,
@@ -511,9 +515,13 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                                 cursor: "pointer",
                             }}
                         >
-                            <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{world.name}</div>
+                            <div title={hoverInfo + " ".repeat(4)} style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                {world.name}
+                            </div>
                             {viewMode === "detailed" && (
-                                <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: gray">{world.path}</div>
+                                <div title={hoverInfo + " ".repeat(5)} style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: gray">
+                                    {world.path}
+                                </div>
                             )}
                         </div>
                         {viewMode === "detailed" && (
@@ -537,6 +545,21 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                                                 (config.fileSizeUnits === "binary" ? formatFileSizeBinary : formatFileSizeMetric)(world.size)
                                             :   "Loading..."}{" "}
                                         </span>
+                                    )}
+                                    {world.editorOnly && (
+                                        <img
+                                            src="resource://images/ui/glyphs/Bedrock_Editor_pack_logo.png"
+                                            alt="Editor Only"
+                                            title="This world can only be seen in the Bedrock Editor."
+                                            style={{
+                                                display: "inline-block",
+                                                flexShrink: 1,
+                                                height: "1em",
+                                                width: "1em",
+                                                verticalAlign: "bottom",
+                                                margin: "0 0.25em",
+                                            }}
+                                        />
                                     )}
                                     <span class="worldSelectorListItemWorldVersion">
                                         {world.lastOpenedWithVerison ?? <span style="color: red;">null</span>}

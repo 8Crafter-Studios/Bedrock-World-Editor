@@ -4,6 +4,8 @@
 
 -   Added a "Recent Worlds" submenu to the dock menu on macOS.
 -   Added a "New Window" option to the dock menu on macOS.
+-   Added the version the world was created in to the hover text of worlds in the world selection menu.
+-   Added an icon next to the version number on worlds in the world selection menu to indicate worlds that can only be seen when using the Bedrock Editor ([#10](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/10)).
 
 ## Changes
 
@@ -15,6 +17,10 @@
 -   The version number on the main menu now has an asterisk when running the application in development mode.
 -   The version number on the "Top" debug overlay now has an asterisk when running the application in development mode.
 -   The process and system uptimes in the "Basic" debug overlay are now formatted as `DD:HH:MM:SS` instead of just seconds.
+
+## Fixes
+
+-   Fixed a bug where on macOS, to see the hover info of a world in the world selection menu, you had to hover over the bottom of the world button.
 
 # v1.0.0-beta.23
 
