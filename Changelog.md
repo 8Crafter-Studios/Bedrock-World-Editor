@@ -3,6 +3,9 @@
 ## Changes
 
 -   The new version popup now trims the release notes to a maximum of 10 lines and 2000 characters.
+-   The new version popup now prepends a v to the current version.
+-   Made the OS and GPU strings in the "Top" and "Basic" debug overlays cleaner.
+-   The CPU string in the "Basic" debug overlay now includes the number of cores.
 
 # v1.0.0-beta.23
 
