@@ -179,14 +179,16 @@ namespace exports {
                 "%appdata%/Minecraft Bedrock/games/com.mojang",
                 "Home/Library/Containers/com.mojang.minecraftpe/Data/Documents/games/com.mojang",
                 "Home/Library/Containers/com.mojang.minecraftpreview/Data/Documents/games/com.mojang",
-                "/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/Users/*/games/com.mojang",
-                "/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/Users/*/games/com.mojang",
-                "/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/games/com.mojang",
-                "/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/games/com.mojang",
             ],
             extraMinecraftDataFolders: [
                 "%appdata%/.minecraft_bedrock/installations/*/packageData",
                 "%appdata%/.minecraft_bedrock/installations/*/*/packageData",
+                "/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/Users/*/games/com.mojang",
+                "/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/Users/*/games/com.mojang",
+                "/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/games/com.mojang",
+                "/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/games/com.mojang",
+                "/Volumes/*/games/com.mojang",
+                "/Volumes/*/Documents/games/com.mojang",
             ],
             enabledAutoApplyIntegrations: [],
             disabledAutoApplyIntegrations: [],
@@ -346,17 +348,21 @@ namespace exports {
                 if (currentMinecraftDataFolders.length !== originalLength) this.minecraftDataFolders = currentMinecraftDataFolders;
             }
             if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.25")) {
-                const currentMinecraftDataFolders: string[] = this.minecraftDataFolders;
-                const originalLength: number = currentMinecraftDataFolders.length;
-                if (!currentMinecraftDataFolders.includes("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/Users/*/games/com.mojang"))
-                    currentMinecraftDataFolders.push("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/Users/*/games/com.mojang");
-                if (!currentMinecraftDataFolders.includes("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/Users/*/games/com.mojang"))
-                    currentMinecraftDataFolders.push("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/Users/*/games/com.mojang");
-                if (!currentMinecraftDataFolders.includes("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/games/com.mojang"))
-                    currentMinecraftDataFolders.push("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/games/com.mojang");
-                if (!currentMinecraftDataFolders.includes("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/games/com.mojang"))
-                    currentMinecraftDataFolders.push("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/games/com.mojang");
-                if (currentMinecraftDataFolders.length !== originalLength) this.minecraftDataFolders = currentMinecraftDataFolders;
+                const currentExtraMinecraftDataFolders: string[] = this.extraMinecraftDataFolders;
+                const originalLength: number = currentExtraMinecraftDataFolders.length;
+                if (!currentExtraMinecraftDataFolders.includes("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/Users/*/games/com.mojang"))
+                    currentExtraMinecraftDataFolders.push("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/Users/*/games/com.mojang");
+                if (!currentExtraMinecraftDataFolders.includes("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/Users/*/games/com.mojang"))
+                    currentExtraMinecraftDataFolders.push("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/Users/*/games/com.mojang");
+                if (!currentExtraMinecraftDataFolders.includes("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/games/com.mojang"))
+                    currentExtraMinecraftDataFolders.push("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/games/com.mojang");
+                if (!currentExtraMinecraftDataFolders.includes("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/games/com.mojang"))
+                    currentExtraMinecraftDataFolders.push("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/games/com.mojang");
+                if (!currentExtraMinecraftDataFolders.includes("/Volumes/*/games/com.mojang"))
+                    currentExtraMinecraftDataFolders.push("/Volumes/*/games/com.mojang");
+                if (!currentExtraMinecraftDataFolders.includes("/Volumes/*/Documents/games/com.mojang"))
+                    currentExtraMinecraftDataFolders.push("/Volumes/*/Documents/games/com.mojang");
+                if (currentExtraMinecraftDataFolders.length !== originalLength) this.extraMinecraftDataFolders = currentExtraMinecraftDataFolders;
             }
             if (semver.compareBuild(currentConfigVersion, VERSION) < 0) {
                 this.version = VERSION;
