@@ -148,7 +148,8 @@ function DebugOverlay_Top(): JSX.Element {
                         display: "block",
                     }}
                 >
-                    {"v" + VERSION}{" "}
+                    v{VERSION}
+                    {process.env.NODE_ENV === "development" ? "*" : ""}{" "}
                     {os.type() === "Windows_NT" ?
                         "Windows"
                     : os.type() === "Darwin" ?
@@ -408,6 +409,8 @@ function DebugOverlay_Basic(): JSX.Element {
     function RightContents(): JSX.Element {
         const process_memoryUsage: NodeJS.MemoryUsage = process.memoryUsage();
         const v8_heapStatistics: v8.HeapInfo = v8.getHeapStatistics();
+        const processUptime: number = Math.floor(process.uptime());
+        const systemUptime: number = Math.floor(os.uptime());
         return (
             <>
                 <span
@@ -495,7 +498,22 @@ function DebugOverlay_Basic(): JSX.Element {
                         display: "block",
                     }}
                 >
-                    Process Uptime: {Math.floor(process.uptime())}
+                    Process Uptime:{" "}
+                    {Math.round(processUptime / 60 / 60 / 24)
+                        .toString()
+                        .padStart(2, "0")}
+                    :
+                    {Math.round((processUptime / 60 / 60) % 24)
+                        .toString()
+                        .padStart(2, "0")}
+                    :
+                    {Math.round((processUptime / 60) % 60)
+                        .toString()
+                        .padStart(2, "0")}
+                    :
+                    {Math.round(processUptime % 60)
+                        .toString()
+                        .padStart(2, "0")}
                 </span>
                 <span
                     class="crispy"
@@ -503,7 +521,22 @@ function DebugOverlay_Basic(): JSX.Element {
                         display: "block",
                     }}
                 >
-                    System Uptime: {Math.floor(os.uptime())}
+                    System Uptime:{" "}
+                    {Math.round(systemUptime / 60 / 60 / 24)
+                        .toString()
+                        .padStart(2, "0")}
+                    :
+                    {Math.round((systemUptime / 60 / 60) % 24)
+                        .toString()
+                        .padStart(2, "0")}
+                    :
+                    {Math.round((systemUptime / 60) % 60)
+                        .toString()
+                        .padStart(2, "0")}
+                    :
+                    {Math.round(systemUptime % 60)
+                        .toString()
+                        .padStart(2, "0")}
                 </span>
             </>
         );

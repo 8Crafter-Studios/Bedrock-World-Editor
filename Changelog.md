@@ -7,6 +7,9 @@
 -   Made the OS and GPU strings in the "Top" and "Basic" debug overlays cleaner.
 -   The CPU string in the "Basic" debug overlay now includes the number of cores.
 -   On macOS, the keyboard shortcut to open a new window has been switched from CTRL+N to CMD+N.
+-   The version number on the main menu now has an asterisk when running the application in development mode.
+-   The version number on the "Top" debug overlay now has an asterisk when running the application in development mode.
+-   The process and system uptimes in the "Basic" debug overlay are now formatted as `DD:HH:MM:SS` instead of just seconds.
 
 # v1.0.0-beta.23
 

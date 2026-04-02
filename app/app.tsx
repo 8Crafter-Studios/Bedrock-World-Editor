@@ -759,6 +759,7 @@ export function StartScreenContents(): JSX.Element {
                 <div style="flex: 1; overflow: auto; line-height: 1.25em;">
                     Bedrock World Editor
                     <br />v{VERSION}
+                    {process.env.NODE_ENV === "development" ? "*" : ""}
                 </div>
             </div>
             <div style="flex: 1; overflow: auto; min-width: 300px;">
