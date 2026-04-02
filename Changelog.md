@@ -3,24 +3,7 @@
 ## Additions
 
 -   Added the paths to the world folder locations for Minecraft and Minecraft Preview running through a virtual machine on macOS with the virtual machine's C drive mounted on the host machine to the config. These paths are in the extra category, so they only appear in the world selection menu when you click on "Show more".
--   Added the paths to the world folder locations for Minecraft and Minecraft Preview from an iPhone mounted on macOS or Linux in the `Volumes` folder with ifuse (this works over Wi-Fi too, not just with a cable) (this supports both mounting in documents and container mode). These paths are in the extra category, so they only appear in the world selection menu when you click on "Show more". iPhones can also have their Minecraft documents folders mounted on Windows and Linux, but for Windows you will need to manually add the mounting paths to the config.
-
-Here are some example mounting commands (you will need to manually create the target folders first):
-
-```zsh
-# For connecting over a cable:
-ifuse --documents com.mojang.minecraftpe /Volumes/iPhone-Minecraft # Mount just the Minecraft documents folder
-ifuse --documents com.mojang.minecraftpreview /Volumes/iPhone-MinecraftPreview # Mount just the Minecraft Preview documents folder
-ifuse --container com.mojang.minecraftpe /Volumes/iPhone-MinecraftContainer # Mount the Minecraft container folder (which contains the Minecraft documents folder)
-ifuse --container com.mojang.minecraftpreview /Volumes/iPhone-MinecraftPreviewContainer # Mount the Minecraft Preview container folder (which contains the Minecraft Preview documents folder)
-
-# For connecting over Wi-Fi:
-# -n allows you to connect to your iPhone over Wi-Fi (you will need to enable connecting over Wi-Fi first by connecting the iPhone to your Mac with a cable, then enabling it in Finder).
-ifuse -n --documents com.mojang.minecraftpe /Volumes/iPhone-Minecraft # Mount just the Minecraft documents folder over Wi-Fi
-ifuse -n --documents com.mojang.minecraftpreview /Volumes/iPhone-MinecraftPreview # Mount just the Minecraft Preview documents folder over Wi-Fi
-ifuse -n --container com.mojang.minecraftpe /Volumes/iPhone-MinecraftContainer # Mount the Minecraft container folder (which contains the Minecraft documents folder) over Wi-Fi
-ifuse -n --container com.mojang.minecraftpreview /Volumes/iPhone-MinecraftPreviewContainer # Mount the Minecraft Preview container folder (which contains the Minecraft Preview documents folder) over Wi-Fi
-```
+-   Added the paths to the world folder locations for Minecraft and Minecraft Preview from an iPhone mounted on macOS or Linux in the `Volumes` folder with ifuse (this works over Wi-Fi too, not just with a cable) (this supports both mounting in documents and container mode). These paths are in the extra category, so they only appear in the world selection menu when you click on "Show more". iPhones can also have their Minecraft documents folders mounted on Windows and Linux, but for Windows you will need to manually add the mounting paths to the config. A tutorial on how to do this can be found [here](Editing_iOS_Worlds.md).
 
 ## Changes
 
