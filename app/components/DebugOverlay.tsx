@@ -825,18 +825,21 @@ function DebugOverlay_Config(): JSX.Element {
                                 display: "block",
                             }}
                         >
-                            {parsedMinecraftDataFolders[index] ?
-                                existingMinecraftDataFolders[index] ?
-                                    <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#54FF54FF">
-                                        [E]
-                                    </CrispyDropShadowSpan>
-                                :   <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#FF5454FF">
-                                        [X]
+                            {/* TODO: Fix this to check correctly if it has any matches. */}
+                            {
+                                /* parsedMinecraftDataFolders[index] */ false ?
+                                    existingMinecraftDataFolders[index] ?
+                                        <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#54FF54FF">
+                                            [E]
+                                        </CrispyDropShadowSpan>
+                                    :   <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#FF5454FF">
+                                            [X]
+                                        </CrispyDropShadowSpan>
+
+                                :   <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#FFA854FF">
+                                        [?]
                                     </CrispyDropShadowSpan>
 
-                            :   <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#FFA854FF">
-                                    [?]
-                                </CrispyDropShadowSpan>
                             }{" "}
                             <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value">{`[${location}]`}</CrispyDropShadowSpan>
                         </span>
@@ -869,18 +872,21 @@ function DebugOverlay_Config(): JSX.Element {
                                 display: "block",
                             }}
                         >
-                            {parsedExtraMinecraftDataFolders[index] ?
-                                existingExtraMinecraftDataFolders[index] ?
-                                    <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#54FF54FF">
-                                        [E]
-                                    </CrispyDropShadowSpan>
-                                :   <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#FF5454FF">
-                                        [X]
+                            {/* TODO: Fix this to check correctly if it has any matches. */}
+                            {
+                                /* parsedExtraMinecraftDataFolders[index] */ false ?
+                                    existingExtraMinecraftDataFolders[index] ?
+                                        <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#54FF54FF">
+                                            [E]
+                                        </CrispyDropShadowSpan>
+                                    :   <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#FF5454FF">
+                                            [X]
+                                        </CrispyDropShadowSpan>
+
+                                :   <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#FFA854FF">
+                                        [?]
                                     </CrispyDropShadowSpan>
 
-                            :   <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#FFA854FF">
-                                    [?]
-                                </CrispyDropShadowSpan>
                             }{" "}
                             <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value">{`[${location}]`}</CrispyDropShadowSpan>
                         </span>

@@ -1,3 +1,13 @@
+# v1.0.0-beta.25
+
+## Additions
+
+-   Added the paths to the world folder locations for Minecraft and Minecraft Preview running through a virtual machine on macOS with the virtual machine's C drive mounted on the host machine to the config.
+
+## Changes
+
+-   The "Config" debug overlay now does not show if entries in the "Minecraft Data Folders" and "Extra Minecraft Data Folders" sections had any glob matches temporarily, as this was not accurate before, it just went based on index which gave completely wrong results, for now it just shows `[?]` for the status of the entries, this will be fixed in the future.
+
 # v1.0.0-beta.24
 
 ## Additions
