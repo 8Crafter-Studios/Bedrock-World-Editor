@@ -237,13 +237,20 @@ const mapsTabSearchSyntax: SearchSyntaxHelpInfo = {
 export default function MapsTab(props: MapsTabProps): JSX.SpecificElement<"div"> {
     if (!props.tab.db) return <div>The maps sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
     const containerRef: RefObject<HTMLTableElement> = useRef<HTMLTableElement>(null);
-    getMapsTabContents(props.tab).then(
+    const abortController: AbortController = new AbortController();
+    useEffect((): (() => void) => {
+        return (): void => {
+            abortController.abort(new DOMException("Tab switched.", "AbortError"));
+        };
+    });
+    getMapsTabContents(props.tab, abortController.signal).then(
         async (element: JSX.Element): Promise<void> => {
             if (!containerRef.current) return;
             render(null, containerRef.current);
             render(element, containerRef.current);
         },
         (reason: any): void => {
+            if (reason instanceof DOMException && reason.name === "AbortError" && reason.message === "Tab switched.") return;
             if (containerRef.current) {
                 const errorElement: HTMLDivElement = document.createElement("div");
                 errorElement.style.color = "red";
@@ -265,7 +272,16 @@ export default function MapsTab(props: MapsTabProps): JSX.SpecificElement<"div">
     if (!props.tab.db.isOpen()) {
         props.tab.awaitDBOpen!.then(async (): Promise<void> => {
             if (loadingScreenMessageContainerRef.current && !props.tab.cachedDBKeys) {
-                loadingScreenMessageContainerRef.current.textContent = `Reading LevelDB keys...`;
+                const formatter = new Intl.NumberFormat();
+                loadingScreenMessageContainerRef.current.textContent = `Reading LevelDB keys${props.tab.loadedCachedDBKeysProgress !== undefined ? `: ${formatter.format(props.tab.loadedCachedDBKeysProgress)}` : ""}...`;
+                queueMicrotask(async (): Promise<void> => {
+                    await sleep(10);
+                    while (!props.tab.cachedDBKeys) {
+                        if (!loadingScreenMessageContainerRef.current) return;
+                        loadingScreenMessageContainerRef.current.textContent = `Reading LevelDB keys${props.tab.loadedCachedDBKeysProgress !== undefined ? `: ${formatter.format(props.tab.loadedCachedDBKeysProgress)}` : ""}...`;
+                        await sleep(10);
+                    }
+                });
                 await props.tab.awaitCachedDBKeys;
                 if (loadingScreenMessageContainerRef.current) loadingScreenMessageContainerRef.current.textContent = "";
             }
@@ -277,12 +293,24 @@ export default function MapsTab(props: MapsTabProps): JSX.SpecificElement<"div">
         );
     }
     if (!props.tab.cachedDBKeys) {
+        const formatter = new Intl.NumberFormat();
+        queueMicrotask(async (): Promise<void> => {
+            await sleep(20);
+            while (!props.tab.cachedDBKeys) {
+                if (!loadingScreenMessageContainerRef.current) return;
+                loadingScreenMessageContainerRef.current.textContent = `Reading LevelDB keys${props.tab.loadedCachedDBKeysProgress !== undefined ? `: ${formatter.format(props.tab.loadedCachedDBKeysProgress)}` : ""}...`;
+                await sleep(20);
+            }
+        });
         props.tab.awaitCachedDBKeys!.then((): void => {
             if (loadingScreenMessageContainerRef.current) loadingScreenMessageContainerRef.current.textContent = "";
         });
         return (
             <div style="width: 100%; height: 100%; display: flex; flex-direction: column;" ref={containerRef}>
-                <LoadingScreenContents message="Reading LevelDB keys..." messageContainerRef={loadingScreenMessageContainerRef} />
+                <LoadingScreenContents
+                    message={`Reading LevelDB keys${props.tab.loadedCachedDBKeysProgress !== undefined ? `: ${formatter.format(props.tab.loadedCachedDBKeysProgress)}` : ""}...`}
+                    messageContainerRef={loadingScreenMessageContainerRef}
+                />
             </div>
         );
     }
@@ -299,10 +327,11 @@ interface KeyData {
     data?: { parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.Map; type: NBT.NBTFormat; metadata: NBT.Metadata };
 }
 
-async function getMapsTabContents(tab: TabManagerTab): Promise<JSX.Element> {
+async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Promise<JSX.Element> {
     if (!tab.db) return <div>The maps sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
     if (!tab.db.isOpen()) await tab.awaitDBOpen!;
-    if (!tab.cachedDBKeys) await tab.awaitCachedDBKeys;
+    if (!tab.cachedDBKeys) await tab.awaitCachedDBKeys!;
+    signal.throwIfAborted();
     const rawKeys: Buffer[] = tab.cachedDBKeys!.Map;
     let asyncMode: boolean =
         "__FORCE_ASYNC_KEY_MODE__" in window ? !!window["__FORCE_ASYNC_KEY_MODE__"]
@@ -577,12 +606,14 @@ async function getMapsTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                                 let i: number = 0;
                                 let t: number = Date.now();
                                 const results: KeyData[] = [];
+                                const formatter = new Intl.NumberFormat();
                                 for await (const value of iterator) {
                                     i++;
-                                    if (t + 10 < Date.now()) {
+                                    if (t + 15 < Date.now()) {
                                         if (loadingScreenMessageContainerRef.current)
-                                            loadingScreenMessageContainerRef.current.textContent = `Searching LevelDB: ${i}/${keys.length}...`;
-                                        await sleep(10);
+                                            loadingScreenMessageContainerRef.current.textContent = `Searching LevelDB: ${formatter.format(i)}/${formatter.format(keys.length)} (${formatter.format(results.length)} results)...`;
+                                        signal.throwIfAborted();
+                                        await sleep(5);
                                         t = Date.now();
                                     }
                                     if (!value) continue;
@@ -737,7 +768,8 @@ async function getMapsTabContents(tab: TabManagerTab): Promise<JSX.Element> {
                                     });
                                 }
                                 for (const key in queryData) {
-                                    if ([...getKeywordedOperators(["dimension", "nbt", "id", "parentid", "locked", "scale", "contents"])].includes(key as any)) continue;
+                                    if ([...getKeywordedOperators(["dimension", "nbt", "id", "parentid", "locked", "scale", "contents"])].includes(key as any))
+                                        continue;
                                     if (
                                         !keywordPrefixOperators.includes(key.slice(0, 1) as any) &&
                                         keywords.includes(key.slice(1) as any) &&

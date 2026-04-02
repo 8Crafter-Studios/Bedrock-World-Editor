@@ -33,6 +33,8 @@ import { readdirRecursiveSafe } from "../../src/utils/folderContentsUtils";
 import type { ShowSelectOpenTabDialogResult } from "../components/SelectOpenTabDialog";
 import showSelectOpenTabDialog from "../components/SelectOpenTabDialog";
 
+// TODO: Implement Async Mode for this tab.
+
 export interface StructuresTabProps {
     tab: TabManagerTab;
 }
@@ -233,13 +235,20 @@ const structuresTabSearchSyntax: SearchSyntaxHelpInfo = {
 export default function StructuresTab(props: StructuresTabProps): JSX.SpecificElement<"div"> {
     if (!props.tab.db) return <div>The structures sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
     const containerRef: RefObject<HTMLTableElement> = useRef<HTMLTableElement>(null);
-    getStructuresTabContents(props.tab).then(
+    const abortController: AbortController = new AbortController();
+    useEffect((): (() => void) => {
+        return (): void => {
+            abortController.abort(new DOMException("Tab switched.", "AbortError"));
+        };
+    });
+    getStructuresTabContents(props.tab, abortController.signal).then(
         (element: JSX.Element): void => {
             if (!containerRef.current) return;
             render(null, containerRef.current);
             render(element, containerRef.current);
         },
         (reason: any): void => {
+            if (reason instanceof DOMException && reason.name === "AbortError" && reason.message === "Tab switched.") return;
             if (containerRef.current) {
                 const errorElement: HTMLDivElement = document.createElement("div");
                 errorElement.style.color = "red";
@@ -257,9 +266,55 @@ export default function StructuresTab(props: StructuresTabProps): JSX.SpecificEl
             console.error(reason);
         }
     );
+    const loadingScreenMessageContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
+    if (!props.tab.db.isOpen()) {
+        props.tab.awaitDBOpen!.then(async (): Promise<void> => {
+            if (loadingScreenMessageContainerRef.current && !props.tab.cachedDBKeys) {
+                const formatter = new Intl.NumberFormat();
+                loadingScreenMessageContainerRef.current.textContent = `Reading LevelDB keys${props.tab.loadedCachedDBKeysProgress !== undefined ? `: ${formatter.format(props.tab.loadedCachedDBKeysProgress)}` : ""}...`;
+                queueMicrotask(async (): Promise<void> => {
+                    await sleep(10);
+                    while (!props.tab.cachedDBKeys) {
+                        if (!loadingScreenMessageContainerRef.current) return;
+                        loadingScreenMessageContainerRef.current.textContent = `Reading LevelDB keys${props.tab.loadedCachedDBKeysProgress !== undefined ? `: ${formatter.format(props.tab.loadedCachedDBKeysProgress)}` : ""}...`;
+                        await sleep(10);
+                    }
+                });
+                await props.tab.awaitCachedDBKeys;
+                if (loadingScreenMessageContainerRef.current) loadingScreenMessageContainerRef.current.textContent = "";
+            }
+        });
+        return (
+            <div style="width: 100%; height: 100%; display: flex; flex-direction: column;" ref={containerRef}>
+                <LoadingScreenContents message="Opening the LevelDB..." messageContainerRef={loadingScreenMessageContainerRef} />
+            </div>
+        );
+    }
+    if (!props.tab.cachedDBKeys) {
+        const formatter = new Intl.NumberFormat();
+        queueMicrotask(async (): Promise<void> => {
+            await sleep(20);
+            while (!props.tab.cachedDBKeys) {
+                if (!loadingScreenMessageContainerRef.current) return;
+                loadingScreenMessageContainerRef.current.textContent = `Reading LevelDB keys${props.tab.loadedCachedDBKeysProgress !== undefined ? `: ${formatter.format(props.tab.loadedCachedDBKeysProgress)}` : ""}...`;
+                await sleep(20);
+            }
+        });
+        props.tab.awaitCachedDBKeys!.then((): void => {
+            if (loadingScreenMessageContainerRef.current) loadingScreenMessageContainerRef.current.textContent = "";
+        });
+        return (
+            <div style="width: 100%; height: 100%; display: flex; flex-direction: column;" ref={containerRef}>
+                <LoadingScreenContents
+                    message={`Reading LevelDB keys${props.tab.loadedCachedDBKeysProgress !== undefined ? `: ${formatter.format(props.tab.loadedCachedDBKeysProgress)}` : ""}...`}
+                    messageContainerRef={loadingScreenMessageContainerRef}
+                />
+            </div>
+        );
+    }
     return (
         <div style="width: 100%; height: 100%; display: flex; flex-direction: column;" ref={containerRef}>
-            <LoadingScreenContents />
+            <LoadingScreenContents messageContainerRef={loadingScreenMessageContainerRef} />
         </div>
     );
 }
@@ -270,10 +325,11 @@ interface KeyData {
     data: { parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.StructureTemplate; type: NBT.NBTFormat; metadata: NBT.Metadata };
 }
 
-async function getStructuresTabContents(tab: TabManagerTab): Promise<JSX.Element> {
+async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal): Promise<JSX.Element> {
     if (!tab.db) return <div>The structures sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
-    tab.db.isOpen() || (await tab.awaitDBOpen!);
-    tab.cachedDBKeys || (await tab.awaitCachedDBKeys);
+    if (!tab.db.isOpen()) await tab.awaitDBOpen!;
+    if (!tab.cachedDBKeys) await tab.awaitCachedDBKeys!;
+    signal.throwIfAborted();
     const rawKeys: Buffer[] = tab.cachedDBKeys!.StructureTemplate;
     let keys: KeyData[] = await Promise.all(
         rawKeys.map(

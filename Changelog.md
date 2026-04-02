@@ -14,6 +14,11 @@
 -   The following tabs now have more informative loading screens:
     -   Entities
     -   Maps
+    -   Players
+    -   Structures
+    -   Ticking Areas
+    -   Ticks
+    -   View Files
 -   Added a loading message when only some but not all integration actions in an integration menu have loaded.
 -   The loading message when no integration actions have finished loading yet now has an animation.
 -   Added search filters to the "Maps" tab:
@@ -22,6 +27,11 @@
     -   `parentid`
     -   `locked`
     -   `scale`
+-   Added handling for window crashes.
+-   Added formatting to large numbers on the "Tab" debug overlay.
+-   Added support for the `WorldClocks` content type.
+-   Added a popup when opening a world if you don't have enough storage space to open it.
+-   Added more detailed memory information to the "Basic" debug overlay.
 
 ## Fixes
 
@@ -29,6 +39,14 @@
 -   Fixed a bug where the expansion state of the top level of the Node editor for data types other than `NBT` was not saved when switching tabs or editors.
 -   Fixed a bug where numerical values of `0` in NBT searches would result in the value check being skipped, causing all values to match.
 -   Fixed a bug where path-specific NBT searches were validated against all values of ByteArrays, ShortArrays, IntArrays, and LongArrays, even if the paths did not match, resulting in a value match in any of those arrays being counted.
+-   Fixed a bug where the displayed memory usage in the debug overlays used RSS size instead of heap size, resulting in incorrect memory usage numbers (where it may say over 100% usage when really it is only 40%).
+
+## Performance Improvements
+
+-   Fixed lag caused by the "Tab" debug overlay on large worlds.
+-   Left sidebar tabs now abort loading when you switch to a different tab while the world is still loading the LevelDB keys.
+-   Searching in tabs that have a "Searching LevelDB" loading screen is now slightly faster.
+-   The "Searching LevelDB" loading screen now formats the entry counts and displays the number of currently found results.
 
 # v1.0.0-beta.22
 

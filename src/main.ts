@@ -371,6 +371,27 @@ export function createWindow(): number | void {
         darkTheme: nativeTheme.shouldUseDarkColorsForSystemIntegratedUI,
     });
 
+    mainWindow.webContents.on("render-process-gone", (): Promise<void> =>
+        dialog
+            .showMessageBox(mainWindow, {
+                type: "error",
+                title: "Crashed",
+                message: "This window has crashed. Would you like to restart it?",
+                detail: "Any worlds that were open in this window have their modified copies stuck in the application's temp folder and will need to be removed manually.",
+                buttons: ["Restart", "Close"],
+                noLink: true,
+                defaultId: 0,
+                cancelId: 1,
+            })
+            .then((result: MessageBoxReturnValue): void => {
+                if (result.response === 0) {
+                    mainWindow.reload();
+                } else {
+                    mainWindow.close();
+                }
+            })
+    );
+
     // and load the index.html of the app.
     if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
         mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);

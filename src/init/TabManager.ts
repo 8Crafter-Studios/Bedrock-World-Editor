@@ -4,7 +4,7 @@ import {
     entryContentTypeToFormatMap,
     getContentTypeFromDBKey,
     getKeyDisplayName,
-    getKeysOfTypes,
+    getKeysOfTypesG,
     parseSNBTCompoundString,
     parseSpecificIntType,
     prettyPrintSNBT,
@@ -602,14 +602,24 @@ namespace exports {
          * A promise that resolves when the database is open.
          *
          * It resolves with `true` if it was opened successfully and `false` if an error occurred.
+         *
+         * This is not removed after it is resolved or rejected.
          */
         public awaitDBOpen?: Promise<boolean>;
         /**
          * A promise that resolves when the database keys cache is loaded.
          *
          * It resolves with `true` if it was loaded successfully and `false` if an error occurred.
+         *
+         * This is not removed after it is resolved or rejected.
          */
         public awaitCachedDBKeys?: Promise<boolean>;
+        /**
+         * The number of keys that have been cached so far.
+         *
+         * Only present while `awaitCachedDBKeys` is pending.
+         */
+        public loadedCachedDBKeysProgress?: number;
         /**
          * The display name of the tab.
          */
@@ -779,18 +789,7 @@ namespace exports {
                 this.dbSearch = new TabManagerTab_LevelDBSearch(this);
                 this.awaitDBOpen = this.db.open().then(
                     (): true => {
-                        this.awaitCachedDBKeys = getKeysOfTypes(this.db!, DBEntryContentTypes).then(
-                            (keys: Record<DBEntryContentType, Buffer[]>): true => {
-                                this.cachedDBKeys = keys;
-                                return true;
-                            },
-                            (err: unknown): false => {
-                                if (!(err instanceof Error && err.name === "Error" && err.message === "iterator has ended")) {
-                                    console.error(err);
-                                }
-                                return false;
-                            }
-                        );
+                        this.refreshCachedDBKeys();
                         return true;
                     },
                     (err: unknown): false => {
@@ -801,13 +800,38 @@ namespace exports {
             } else if (this.type === "leveldb") {
                 this.db = new LevelDB(this.tempPath ?? this.path);
                 this.dbSearch = new TabManagerTab_LevelDBSearch(this);
-                this.awaitDBOpen = this.db.open().then();
+                this.awaitDBOpen = this.db.open().then(
+                    (): true => {
+                        this.refreshCachedDBKeys();
+                        return true;
+                    },
+                    (err: unknown): false => {
+                        console.error(err);
+                        return false;
+                    }
+                );
             }
+        }
+        private async getCachedDBKeys(): Promise<Record<DBEntryContentType, Buffer[]>> {
+            const generator = getKeysOfTypesG(this.db!, DBEntryContentTypes);
+
+            // Put this is brackets to allow the first yield to be garbage collected.
+            {
+                const firstYield = await generator.next();
+                var result = firstYield.done ? firstYield.value : firstYield.value.results;
+                if (!firstYield.done) this.loadedCachedDBKeysProgress = firstYield.value.count;
+            }
+
+            for await (const key of generator) {
+                this.loadedCachedDBKeysProgress = key.count;
+            }
+
+            return result;
         }
         public async refreshCachedDBKeys(): Promise<boolean | void> {
             if (!this.db) return;
             this.cachedDBKeys = undefined;
-            return (this.awaitCachedDBKeys = getKeysOfTypes(this.db!, DBEntryContentTypes).then(
+            return (this.awaitCachedDBKeys = this.getCachedDBKeys().then(
                 (keys: Record<DBEntryContentType, Buffer[]>): true => {
                     this.cachedDBKeys = keys;
                     return true;
@@ -818,7 +842,9 @@ namespace exports {
                     }
                     return false;
                 }
-            ));
+            )).finally((): void => {
+                delete this.loadedCachedDBKeysProgress;
+            });
         }
         public getPinnedTabs(): NonNullable<PinnedSubTabsJSONData[keyof PinnedSubTabsJSONData]>[string][number][] {
             if (this.type !== "world" && this.type !== "leveldb") return [];
@@ -1272,6 +1298,7 @@ namespace exports {
         VillagePOI: undefined,
         VillageRaid: undefined,
         Villages: undefined,
+        WorldClocks: "resource://images/ui/glyphs/icon_clock_17.png",
     };
 
     export class TabManagerSubTab<ContentType extends DBEntryContentType = DBEntryContentType> {
@@ -2597,7 +2624,7 @@ namespace exports {
                     return false;
                 return true;
             }
-            if (doesThisMatch()) return (console.log(true, query, nbt), true);
+            if (doesThisMatch()) return true;
             switch (nbt.type) {
                 case NBT.TagType.Compound:
                     return Object.entries(nbt.value).some((v): boolean =>

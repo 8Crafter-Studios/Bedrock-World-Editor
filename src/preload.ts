@@ -209,7 +209,7 @@ const fileMenu: Electron.Menu = Menu.buildFromTemplate([
     },
     // TODO: Implement this for Windows.
     ...(process.platform === "darwin" ?
-        [
+        ([
             {
                 label: "Open Recent",
                 role: "recentDocuments",
@@ -220,7 +220,7 @@ const fileMenu: Electron.Menu = Menu.buildFromTemplate([
                     },
                 ],
             },
-        ] satisfies Electron.MenuItemConstructorOptions[]
+        ] satisfies Electron.MenuItemConstructorOptions[])
     :   []),
     { type: "separator" },
     {
@@ -433,4 +433,3 @@ declare global {
         var currentMenu: Electron.Menu;
     }
 }
-

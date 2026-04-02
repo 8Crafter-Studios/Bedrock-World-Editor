@@ -464,10 +464,24 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                             )
                                 return;
                             tabManager.switchTab("loading");
-                            setTimeout(
-                                (): void => void tabManager.openTab({ path: world.path, name: world.name, type: "world", icon: world.thumbnailPath! }),
-                                10
-                            );
+                            setTimeout((): void => {
+                                try {
+                                    tabManager.openTab({ path: world.path, name: world.name, type: "world", icon: world.thumbnailPath! });
+                                } catch (e) {
+                                    if (e instanceof Error && e.message.startsWith("ENOSPC, No space left on device")) {
+                                        dialog.showMessageBox({
+                                            type: "error",
+                                            title: "Out of Space",
+                                            message: "You have run out of storage space on this device. Please free up some space and try again.",
+                                            buttons: ["OK"],
+                                            noLink: true,
+                                        });
+                                        tabManager.switchTab(null);
+                                        return;
+                                    }
+                                    throw e;
+                                }
+                            }, 10);
                         }}
                         onContextMenu={(event: JSX.TargetedMouseEvent<HTMLDivElement>): void => void onWorldRightClick(event)}
                         key={JSON.stringify({ path: world.path })}

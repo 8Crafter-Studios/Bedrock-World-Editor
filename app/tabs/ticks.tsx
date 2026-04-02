@@ -19,6 +19,8 @@ import EditorWidgetOverlayBar from "../components/EditorWidgetOverlayBar";
 import { dialog } from "@electron/remote";
 import showDBKeyCreationDialog from "../components/DBKeyCreationDialog";
 
+// TODO: Implement Async Mode for this tab.
+
 export interface TicksTabProps {
     tab: TabManagerTab;
 }
@@ -73,7 +75,13 @@ const ticksTabSearchSyntax: SearchSyntaxHelpInfo = {
 export default function TicksTab(props: TicksTabProps): JSX.SpecificElement<"div"> {
     if (!props.tab.db) return <div>The ticks sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
     const containerRef: RefObject<HTMLTableElement> = useRef<HTMLTableElement>(null);
-    getTicksTabContents(props.tab).then(
+    const abortController: AbortController = new AbortController();
+    useEffect((): (() => void) => {
+        return (): void => {
+            abortController.abort(new DOMException("Tab switched.", "AbortError"));
+        };
+    });
+    getTicksTabContents(props.tab, abortController.signal).then(
         async (element: JSX.Element): Promise<void> => {
             if (!containerRef.current) return;
             // const tempElement: HTMLDivElement = document.createElement("div");
@@ -82,6 +90,7 @@ export default function TicksTab(props: TicksTabProps): JSX.SpecificElement<"div
             // containerRef.current?.replaceChildren(...tempElement.children);
         },
         (reason: any): void => {
+            if (reason instanceof DOMException && reason.name === "AbortError" && reason.message === "Tab switched.") return;
             if (containerRef.current) {
                 const errorElement: HTMLDivElement = document.createElement("div");
                 errorElement.style.color = "red";
@@ -99,9 +108,55 @@ export default function TicksTab(props: TicksTabProps): JSX.SpecificElement<"div
             console.error(reason);
         }
     );
+    const loadingScreenMessageContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
+    if (!props.tab.db.isOpen()) {
+        props.tab.awaitDBOpen!.then(async (): Promise<void> => {
+            if (loadingScreenMessageContainerRef.current && !props.tab.cachedDBKeys) {
+                const formatter = new Intl.NumberFormat();
+                loadingScreenMessageContainerRef.current.textContent = `Reading LevelDB keys${props.tab.loadedCachedDBKeysProgress !== undefined ? `: ${formatter.format(props.tab.loadedCachedDBKeysProgress)}` : ""}...`;
+                queueMicrotask(async (): Promise<void> => {
+                    await sleep(10);
+                    while (!props.tab.cachedDBKeys) {
+                        if (!loadingScreenMessageContainerRef.current) return;
+                        loadingScreenMessageContainerRef.current.textContent = `Reading LevelDB keys${props.tab.loadedCachedDBKeysProgress !== undefined ? `: ${formatter.format(props.tab.loadedCachedDBKeysProgress)}` : ""}...`;
+                        await sleep(10);
+                    }
+                });
+                await props.tab.awaitCachedDBKeys;
+                if (loadingScreenMessageContainerRef.current) loadingScreenMessageContainerRef.current.textContent = "";
+            }
+        });
+        return (
+            <div style="width: 100%; height: 100%; display: flex; flex-direction: column;" ref={containerRef}>
+                <LoadingScreenContents message="Opening the LevelDB..." messageContainerRef={loadingScreenMessageContainerRef} />
+            </div>
+        );
+    }
+    if (!props.tab.cachedDBKeys) {
+        const formatter = new Intl.NumberFormat();
+        queueMicrotask(async (): Promise<void> => {
+            await sleep(20);
+            while (!props.tab.cachedDBKeys) {
+                if (!loadingScreenMessageContainerRef.current) return;
+                loadingScreenMessageContainerRef.current.textContent = `Reading LevelDB keys${props.tab.loadedCachedDBKeysProgress !== undefined ? `: ${formatter.format(props.tab.loadedCachedDBKeysProgress)}` : ""}...`;
+                await sleep(20);
+            }
+        });
+        props.tab.awaitCachedDBKeys!.then((): void => {
+            if (loadingScreenMessageContainerRef.current) loadingScreenMessageContainerRef.current.textContent = "";
+        });
+        return (
+            <div style="width: 100%; height: 100%; display: flex; flex-direction: column;" ref={containerRef}>
+                <LoadingScreenContents
+                    message={`Reading LevelDB keys${props.tab.loadedCachedDBKeysProgress !== undefined ? `: ${formatter.format(props.tab.loadedCachedDBKeysProgress)}` : ""}...`}
+                    messageContainerRef={loadingScreenMessageContainerRef}
+                />
+            </div>
+        );
+    }
     return (
         <div style="width: 100%; height: 100%; display: flex; flex-direction: column;" ref={containerRef}>
-            <LoadingScreenContents />
+            <LoadingScreenContents messageContainerRef={loadingScreenMessageContainerRef} />
         </div>
     );
 }
@@ -125,10 +180,11 @@ enum UpdateTablesContentsMode {
     ReloadAll = 3,
 }
 
-async function getTicksTabContents(tab: TabManagerTab): Promise<JSX.Element> {
+async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Promise<JSX.Element> {
     if (!tab.db) return <div>The ticks sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
-    tab.db.isOpen() || (await tab.awaitDBOpen!);
-    tab.cachedDBKeys || (await tab.awaitCachedDBKeys);
+    if (!tab.db.isOpen()) await tab.awaitDBOpen!;
+    if (!tab.cachedDBKeys) await tab.awaitCachedDBKeys!;
+    signal.throwIfAborted();
     const keys = {
         randomTicks: [] as Buffer[],
         pendingTicks: [] as Buffer[],

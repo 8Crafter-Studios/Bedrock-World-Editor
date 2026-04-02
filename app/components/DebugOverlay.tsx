@@ -116,8 +116,8 @@ function DebugOverlay_Top(): JSX.Element {
                         display: "block",
                     }}
                 >
-                    Mem:{Math.round(process_memoryUsage.rss / 1000 ** 2)}, Free Mem:
-                    {Math.round((v8_heapStatistics.heap_size_limit - process_memoryUsage.rss) / 1000 ** 2)}
+                    Mem:{Math.round(process_memoryUsage.heapUsed / 1000 ** 2)}, Free Mem:
+                    {Math.round((v8_heapStatistics.heap_size_limit - process_memoryUsage.heapUsed) / 1000 ** 2)}
                 </span>
             </>
         );
@@ -385,8 +385,25 @@ function DebugOverlay_Basic(): JSX.Element {
                         display: "block",
                     }}
                 >
-                    Mem: {Math.round((process_memoryUsage.rss / v8_heapStatistics.heap_size_limit) * 100)}% {Math.round(process_memoryUsage.rss / 1024 ** 2)}/
-                    {Math.round(v8_heapStatistics.heap_size_limit / 1024 ** 2)}MiB
+                    Mem (Heap): {Math.round((process_memoryUsage.heapUsed / v8_heapStatistics.heap_size_limit) * 100)}%{" "}
+                    {Math.round(process_memoryUsage.heapUsed / 1024 ** 2)}/{Math.round(v8_heapStatistics.heap_size_limit / 1024 ** 2)}MiB
+                </span>
+                <span
+                    class="crispy"
+                    style={{
+                        display: "block",
+                    }}
+                >
+                    Mem (Heap (Total)): {Math.round((process_memoryUsage.heapTotal / v8_heapStatistics.heap_size_limit) * 100)}%{" "}
+                    {Math.round(process_memoryUsage.heapTotal / 1024 ** 2)}/{Math.round(v8_heapStatistics.heap_size_limit / 1024 ** 2)}MiB
+                </span>
+                <span
+                    class="crispy"
+                    style={{
+                        display: "block",
+                    }}
+                >
+                    Mem (RSS): {Math.round(process_memoryUsage.rss / 1024 ** 2)}MiB
                 </span>
                 <span
                     class="crispy"
@@ -1102,6 +1119,7 @@ function DebugOverlay_Config_Views(): JSX.Element {
  * @returns The debug overlay element.
  */
 function DebugOverlay_Tab(): JSX.Element {
+    const formatter = new Intl.NumberFormat();
     const rightContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     function CrispyDropShadowSpan(props: JSX.HTMLAttributes<HTMLSpanElement>): JSX.Element {
         return (
@@ -1270,23 +1288,27 @@ function DebugOverlay_Tab(): JSX.Element {
                         >
                             <CrispyDropShadowSpan class="debug-overlay-config-mode-item-label" data-color="#FFFF54FF">{`Cached DB Keys${
                                 tab.cachedDBKeys ?
-                                    ` [${Object.values(tab.cachedDBKeys).reduce((a: number, b: Buffer[] | undefined): number => a + (b?.length ?? 0), 0)}]`
-                                :   ""
+                                    ` [${formatter.format(Object.values(tab.cachedDBKeys).reduce((a: number, b: Buffer[] | undefined): number => a + (b?.length ?? 0), 0))}]`
+                                : tab.loadedCachedDBKeysProgress ? ` [${formatter.format(tab.loadedCachedDBKeysProgress)}?]`
+                                : ""
                             }`}</CrispyDropShadowSpan>
                         </span>
                         {tab.cachedDBKeys ?
                             Object.entries(
-                                Object.entries(tab.cachedDBKeys).reduce((p: Partial<Record<DBEntryContentTypeGroup, Buffer[]>>, [k, v]) => {
-                                    const group: DBEntryContentTypeGroup = DBEntryContentTypesGrouping[k as DBEntryContentType] ?? (k as DBEntryContentTypeGroup);
-                                    if (p[group]) {
-                                        p[group].push(...v);
-                                    } else {
-                                        p[group] = [...v];
-                                    }
-                                    return p;
-                                }, {})
+                                Object.entries(tab.cachedDBKeys)
+                                    .map(([k, v]): [key: string, value: number] => [k, v.length])
+                                    .reduce((p: Partial<Record<DBEntryContentTypeGroup, number>>, [k, v]) => {
+                                        const group: DBEntryContentTypeGroup =
+                                            DBEntryContentTypesGrouping[k as DBEntryContentType] ?? (k as DBEntryContentTypeGroup);
+                                        if (p[group] !== undefined) {
+                                            p[group] += v;
+                                        } else {
+                                            p[group] = v;
+                                        }
+                                        return p;
+                                    }, {})
                             ).map(
-                                ([key, value]: [key: string, value: Buffer[] | undefined]): JSX.Element => (
+                                ([key, value]: [key: string, value: number | undefined]): JSX.Element => (
                                     <span
                                         class="crispy"
                                         style={{
@@ -1296,9 +1318,9 @@ function DebugOverlay_Tab(): JSX.Element {
                                         <CrispyDropShadowSpan class="debug-overlay-config-mode-item-label" data-color="#AAAAAAFF">
                                             {key}:{" "}
                                         </CrispyDropShadowSpan>
-                                        {value ?
+                                        {value !== undefined ?
                                             <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#55FF55FF">
-                                                {value.length}
+                                                {formatter.format(value)}
                                             </CrispyDropShadowSpan>
                                         :   <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#FF5555FF">
                                                 undefined
