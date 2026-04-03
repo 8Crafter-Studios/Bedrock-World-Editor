@@ -62,6 +62,9 @@ declare const MAIN_WINDOW_VITE_NAME: string | undefined;
 if (!existsSync(APP_DATA_FOLDER_PATH)) {
     mkdirSync(APP_DATA_FOLDER_PATH, { recursive: true });
 }
+if (!existsSync(path.join(APP_DATA_FOLDER_PATH, "mounted_volumes"))) {
+    mkdirSync(path.join(APP_DATA_FOLDER_PATH, "mounted_volumes"), { recursive: true });
+}
 
 const mainWindowIDs: number[] = [];
 
@@ -371,25 +374,27 @@ export function createWindow(): number | void {
         darkTheme: nativeTheme.shouldUseDarkColorsForSystemIntegratedUI,
     });
 
-    mainWindow.webContents.on("render-process-gone", (): Promise<void> =>
-        dialog
-            .showMessageBox(mainWindow, {
-                type: "error",
-                title: "Crashed",
-                message: "This window has crashed. Would you like to restart it?",
-                detail: "Any worlds that were open in this window have their modified copies stuck in the application's temp folder and will need to be removed manually.",
-                buttons: ["Restart", "Close"],
-                noLink: true,
-                defaultId: 0,
-                cancelId: 1,
-            })
-            .then((result: MessageBoxReturnValue): void => {
-                if (result.response === 0) {
-                    mainWindow.reload();
-                } else {
-                    mainWindow.close();
-                }
-            })
+    mainWindow.webContents.on(
+        "render-process-gone",
+        (): Promise<void> =>
+            dialog
+                .showMessageBox(mainWindow, {
+                    type: "error",
+                    title: "Crashed",
+                    message: "This window has crashed. Would you like to restart it?",
+                    detail: "Any worlds that were open in this window have their modified copies stuck in the application's temp folder and will need to be removed manually.",
+                    buttons: ["Restart", "Close"],
+                    noLink: true,
+                    defaultId: 0,
+                    cancelId: 1,
+                })
+                .then((result: MessageBoxReturnValue): void => {
+                    if (result.response === 0) {
+                        mainWindow.reload();
+                    } else {
+                        mainWindow.close();
+                    }
+                })
     );
 
     // and load the index.html of the app.
@@ -1209,7 +1214,8 @@ if (!startup && !started) {
                     );
                 if (!latestRelease) return;
                 if (semver.compareBuild(app.getVersion(), latestRelease.tag_name) < 0) {
-                    let trimmedChangelog: string | undefined = latestRelease.body ? latestRelease.body.split("\n").slice(0, 10).join("\n").slice(0, 2000) : undefined;
+                    let trimmedChangelog: string | undefined =
+                        latestRelease.body ? latestRelease.body.split("\n").slice(0, 10).join("\n").slice(0, 2000) : undefined;
                     if (trimmedChangelog) {
                         if (trimmedChangelog !== latestRelease.body) {
                             trimmedChangelog += "\n...";

@@ -42,7 +42,7 @@ Then, choose the commands below for your use case.
 
 Below are the commands to mount the iPhone or iPad's Minecraft and Minecraft Preview documents folders.
 
-Before running these, you will need to create the `/Volumes/iPhone-Minecraft` and/or `/Volumes/iPhone-MinecraftPreview` folders on your computer.
+Before running these, you will need to create the `~/Library/Application Support/bedrock_world_editor/mounted_volumes/iPhone-Minecraft` and/or `~/Library/Application Support/bedrock_world_editor/mounted_volumes/iPhone-MinecraftPreview` folders on your computer.
 
 To get to the `Volumes` folder, do Shift+Command+G in Finder, then type `/Volumes` and press return.
 
@@ -51,8 +51,8 @@ To get to the `Volumes` folder, do Shift+Command+G in Finder, then type `/Volume
 To connect to your iPhone/iPad using a cable, use the following commands:
 
 ```zsh
-ifuse --documents com.mojang.minecraftpe /Volumes/iPhone-Minecraft
-ifuse --documents com.mojang.minecraftpreview /Volumes/iPhone-MinecraftPreview
+ifuse --documents com.mojang.minecraftpe ~/Library/Application\ Support/bedrock_world_editor/mounted_volumes/iPhone-Minecraft
+ifuse --documents com.mojang.minecraftpreview ~/Library/Application\ Support/bedrock_world_editor/mounted_volumes/iPhone-MinecraftPreview
 ```
 
 ### Connecting over Wi-FI:
@@ -77,8 +77,8 @@ To allow your iPhone/iPad to connect over Wi-Fi do the following (these steps on
 To connect to your iPhone/iPad over Wi-Fi, use the following commands:
 
 ```zsh
-ifuse -n --documents com.mojang.minecraftpe /Volumes/iPhone-Minecraft
-ifuse -n --documents com.mojang.minecraftpreview /Volumes/iPhone-MinecraftPreview
+ifuse -n --documents com.mojang.minecraftpe ~/Library/Application\ Support/bedrock_world_editor/mounted_volumes/iPhone-Minecraft
+ifuse -n --documents com.mojang.minecraftpreview ~/Library/Application\ Support/bedrock_world_editor/mounted_volumes/iPhone-MinecraftPreview
 ```
 
 If you have multiple devices connected to your computer over Wi-Fi, you can use the `-u` flag to specify a specific device by UDID.
@@ -86,7 +86,7 @@ If you have multiple devices connected to your computer over Wi-Fi, you can use 
 Example:
 
 ```zsh
-ifuse -u 00008030-0000000000000000 --documents com.mojang.minecraftpe /Volumes/iPhone-Minecraft
+ifuse -u 00008030-0000000000000000 --documents com.mojang.minecraftpe ~/Library/Application\ Support/bedrock_world_editor/mounted_volumes/iPhone1-Minecraft
 ```
 
 You can get the device's UDID by using the following command:
@@ -127,8 +127,8 @@ The following factors affect how long it takes:
 If your iPhone/iPad gets disconnected and you don't want to restart your computer before reconnecting it, you can unmount the volumes using the following commands to allow you to remount it:
 
 ```zsh
-umount /Volumes/iPhone-Minecraft
-umount /Volumes/iPhone-MinecraftPreview
+umount ~/Library/Application\ Support/bedrock_world_editor/mounted_volumes/iPhone-Minecraft
+umount ~/Library/Application\ Support/bedrock_world_editor/mounted_volumes/iPhone-MinecraftPreview
 ```
 
 ### Useful Scripts

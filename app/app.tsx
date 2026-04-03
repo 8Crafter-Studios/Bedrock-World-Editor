@@ -305,8 +305,7 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
                                 :   globSync(path.join(folderPath, "world_icon.*"))[0],
                             lastOpenedWithVerison:
                                 levelDat.value.lastOpenedWithVersion ? `v${levelDat.value.lastOpenedWithVersion.value.value.join(".")}` : null,
-                            createdInVersion:
-                                levelDat.value.InventoryVersion ? `v${levelDat.value.InventoryVersion.value}` : null,
+                            createdInVersion: levelDat.value.InventoryVersion ? `v${levelDat.value.InventoryVersion.value}` : null,
                             lastPlayed: levelDat.value.LastPlayed ? new Date(Number(toLong(levelDat.value.LastPlayed.value) * 1000n)) : null,
                             favorited:
                                 existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json")) ?
@@ -393,7 +392,7 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
     }
     useEffect((): void => void getMinecraftWorlds(false, config.showWorldSizesOnWorldList).then(refreshData), []);
     if (props.forceTriggerUpdateRef) {
-        props.forceTriggerUpdateRef.current = (): void => void getMinecraftWorlds(false, config.showWorldSizesOnWorldList).then(refreshData);
+        props.forceTriggerUpdateRef.current = (): void => void getMinecraftWorlds(showingMore, config.showWorldSizesOnWorldList).then(refreshData);
     }
     function RenderWorlds(): JSX.SpecificElement<"div">[] {
         const mcAppName: string = app.getApplicationNameForProtocol("minecraft:");
@@ -519,8 +518,13 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                                 {world.name}
                             </div>
                             {viewMode === "detailed" && (
-                                <div title={hoverInfo + " ".repeat(5)} style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: gray">
-                                    {world.path}
+                                <div
+                                    title={hoverInfo + " ".repeat(5)}
+                                    style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: gray"
+                                >
+                                    {world.path.replaceAll("\\", "/").startsWith(path.join(APP_DATA_FOLDER_PATH, "mounted_volumes").replaceAll("\\", "/")) ?
+                                        "mnt" + world.path.slice(path.join(APP_DATA_FOLDER_PATH, "mounted_volumes").replaceAll("\\", "/").length)
+                                    :   world.path}
                                 </div>
                             )}
                         </div>

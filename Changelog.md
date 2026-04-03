@@ -1,9 +1,20 @@
+# v1.0.0-beta.26
+
+## Additions
+
+-   Added paths to the extra world folder locations for allowing reading worlds from volumes mounted inside the `mounted_volumes` folder inside of the app's data folder. This includes all the same locations inside of the mounted volumes as volumes mounted inside of `/Volumes`.
+-   Added paths to the world folder locations for UWP Minecraft and Minecraft Preview inside of mounted Windows volumes.
+
+## Fixes
+
+-   Refreshing the world list now respects whether you have clicked the "Show more" button.
+
 # v1.0.0-beta.25
 
 ## Additions
 
 -   Added the paths to the world folder locations for Minecraft and Minecraft Preview running through a virtual machine on macOS with the virtual machine's C drive mounted on the host machine to the config. These paths are in the extra category, so they only appear in the world selection menu when you click on "Show more".
--   Added the paths to the world folder locations for Minecraft and Minecraft Preview from an iPhone mounted on macOS or Linux in the `Volumes` folder with ifuse (this works over Wi-Fi too, not just with a cable) (this supports both mounting in documents and container mode). These paths are in the extra category, so they only appear in the world selection menu when you click on "Show more". iPhones can also have their Minecraft documents folders mounted on Windows and Linux, but for Windows you will need to manually add the mounting paths to the config. A tutorial on how to do this can be found [here](Editing_iOS_Worlds.md).
+-   Added the paths to the world folder locations for Minecraft and Minecraft Preview from an iPhone mounted on macOS or Linux in the `Volumes` folder with ifuse (this works over Wi-Fi too, not just with a cable) (this supports both mounting in documents and container mode). These paths are in the extra category, so they only appear in the world selection menu when you click on "Show more". iPhones can also have their Minecraft documents folders mounted on Windows and Linux, but for Windows you will need to manually add the mounting paths to the config. A tutorial on how to mount the worlds can be found [here](Editing_iOS_Worlds.md).
 
 ## Changes
 

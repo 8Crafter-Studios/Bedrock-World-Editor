@@ -183,12 +183,22 @@ namespace exports {
             extraMinecraftDataFolders: [
                 "%appdata%/.minecraft_bedrock/installations/*/packageData",
                 "%appdata%/.minecraft_bedrock/installations/*/*/packageData",
+                "/Volumes/*/Users/*/AppData/Local/Packages/Microsoft.MinecraftUWP_8wekyb3d8bbwe/LocalState/games/com.mojang",
+                "/Volumes/*/Users/*/AppData/Local/Packages/Microsoft.MinecraftWindowsBeta_8wekyb3d8bbwe/LocalState/games/com.mojang",
                 "/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/Users/*/games/com.mojang",
                 "/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/Users/*/games/com.mojang",
                 "/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/games/com.mojang",
                 "/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/games/com.mojang",
                 "/Volumes/*/games/com.mojang",
                 "/Volumes/*/Documents/games/com.mojang",
+                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Local/Packages/Microsoft.MinecraftUWP_8wekyb3d8bbwe/LocalState/games/com.mojang",
+                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Local/Packages/Microsoft.MinecraftWindowsBeta_8wekyb3d8bbwe/LocalState/games/com.mojang",
+                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/Users/*/games/com.mojang",
+                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/Users/*/games/com.mojang",
+                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/games/com.mojang",
+                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/games/com.mojang",
+                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/games/com.mojang",
+                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Documents/games/com.mojang",
             ],
             enabledAutoApplyIntegrations: [],
             disabledAutoApplyIntegrations: [],
@@ -362,6 +372,25 @@ namespace exports {
                     currentExtraMinecraftDataFolders.push("/Volumes/*/games/com.mojang");
                 if (!currentExtraMinecraftDataFolders.includes("/Volumes/*/Documents/games/com.mojang"))
                     currentExtraMinecraftDataFolders.push("/Volumes/*/Documents/games/com.mojang");
+                if (currentExtraMinecraftDataFolders.length !== originalLength) this.extraMinecraftDataFolders = currentExtraMinecraftDataFolders;
+            }
+            if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.26")) {
+                const currentExtraMinecraftDataFolders: string[] = this.extraMinecraftDataFolders;
+                const originalLength: number = currentExtraMinecraftDataFolders.length;
+                for (const path of [
+                    "/Volumes/*/Users/*/AppData/Local/Packages/Microsoft.MinecraftUWP_8wekyb3d8bbwe/LocalState/games/com.mojang",
+                    "/Volumes/*/Users/*/AppData/Local/Packages/Microsoft.MinecraftWindowsBeta_8wekyb3d8bbwe/LocalState/games/com.mojang",
+                    "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Local/Packages/Microsoft.MinecraftUWP_8wekyb3d8bbwe/LocalState/games/com.mojang",
+                    "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Local/Packages/Microsoft.MinecraftWindowsBeta_8wekyb3d8bbwe/LocalState/games/com.mojang",
+                    "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/Users/*/games/com.mojang",
+                    "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/Users/*/games/com.mojang",
+                    "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/games/com.mojang",
+                    "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/games/com.mojang",
+                    "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/games/com.mojang",
+                    "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Documents/games/com.mojang",
+                ]) {
+                    if (!currentExtraMinecraftDataFolders.includes(path)) currentExtraMinecraftDataFolders.push(path);
+                }
                 if (currentExtraMinecraftDataFolders.length !== originalLength) this.extraMinecraftDataFolders = currentExtraMinecraftDataFolders;
             }
             if (semver.compareBuild(currentConfigVersion, VERSION) < 0) {
@@ -556,6 +585,8 @@ namespace exports {
                             .replaceAll(/%temp%/gi, process.env.TEMP!)
                             .replaceAll(/%tmp%/gi, process.env.TMP!)
                             .replaceAll(/%public%/gi, process.env.PUBLIC!)
+                            .replaceAll(/%Home%/gi, process.env.HOME!)
+                            .replaceAll(/%APP_DATA_FOLDER_PATH%/gi, APP_DATA_FOLDER_PATH)
                             .replaceAll(/\\/g, "/")
                             .replace(/(?<!\/)$/, "/"),
                         {
@@ -585,6 +616,8 @@ namespace exports {
                             .replaceAll(/%temp%/gi, process.env.TEMP!)
                             .replaceAll(/%tmp%/gi, process.env.TMP!)
                             .replaceAll(/%public%/gi, process.env.PUBLIC!)
+                            .replaceAll(/%Home%/gi, process.env.HOME!)
+                            .replaceAll(/%APP_DATA_FOLDER_PATH%/gi, APP_DATA_FOLDER_PATH)
                             .replaceAll(/\\/g, "/")
                             .replace(/(?<!\/)$/, "/"),
                         {
