@@ -522,7 +522,7 @@ namespace exports {
         /**
          * The Minecraft data folders, should be globs.
          *
-         * These are folders that will directly contain a `minecraftWorlds` folder containing all your Minecraft world folders.
+         * These are folders that will directly contain a `minecraftWorlds` or `worlds` folder containing all your Minecraft world folders.
          *
          * These are shown on the start screen.
          *
@@ -548,7 +548,7 @@ namespace exports {
         /**
          * The extra Minecraft data folders, should be globs.
          *
-         * These are folders that will directly contain a `minecraftWorlds` folder containing all your Minecraft world folders.
+         * These are folders that will directly contain a `minecraftWorlds` or `worlds` folder containing all your Minecraft world folders.
          *
          * These are not shown on the start screen unless you click show more
          *

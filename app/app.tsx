@@ -259,11 +259,16 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
     return (
         await Promise.all(
             (all ? [...new Set([...config.parsedMinecraftDataFolders, ...config.parsedExtraMinecraftDataFolders])] : config.parsedMinecraftDataFolders)
-                .filter((folderPath: string): boolean => existsSync(path.join(folderPath, "minecraftWorlds")))
+                .filter((folderPath: string): boolean => existsSync(path.join(folderPath, "minecraftWorlds")) || existsSync(path.join(folderPath, "worlds")))
                 .map((folderPath: string): string[] => {
-                    return readdirSync(path.join(folderPath, "minecraftWorlds"), { withFileTypes: true })
+                    const usesMinecraftWorlds: boolean = existsSync(path.join(folderPath, "minecraftWorlds"));
+                    return readdirSync(usesMinecraftWorlds ? path.join(folderPath, "minecraftWorlds") : path.join(folderPath, "worlds"), {
+                        withFileTypes: true,
+                    })
                         .filter((dirent: Dirent<string>): boolean => dirent.isDirectory())
-                        .map((dirent: Dirent<string>): string => path.join(folderPath, "minecraftWorlds", dirent.name));
+                        .map((dirent: Dirent<string>): string =>
+                            usesMinecraftWorlds ? path.join(folderPath, "minecraftWorlds", dirent.name) : path.join(folderPath, "worlds", dirent.name)
+                        );
                 })
                 .flat()
                 .filter((_folderPath: string, i: number, a: string[]): boolean => {
