@@ -2,7 +2,7 @@
 
 ## Additions
 
--   Added support for minecraft world container folders that contain a `worlds` folder instead of a `minecraftWorlds` folder, to allow for BDS support.
+-   Added support for Minecraft world container folders that contain a `worlds` folder instead of a `minecraftWorlds` folder, to allow for BDS support.
 
 # v1.0.0-beta.26
 

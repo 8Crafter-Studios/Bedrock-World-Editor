@@ -4,7 +4,7 @@ With this app, it is possible to edit worlds from your iPhone or iPad using your
 
 On macOS it is also possible to edit your device's worlds over Wi-Fi without using a cable.
 
-> [!NOTE]
+> [!TIP]
 > This does **NOT** require a jailbroken device. You can do it on any iPhone/iPad.
 
 ## macOS
