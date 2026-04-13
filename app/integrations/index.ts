@@ -46,22 +46,7 @@ export interface Integration {
      *
      * @default {}
      */
-    readonly links?: {
-        [buttonLabel: string]: {
-            /**
-             * The URI of the link.
-             */
-            url: string;
-            /**
-             * The description of the link.
-             *
-             * This is rendered as plain text, not Markdown.
-             *
-             * @default undefined
-             */
-            description?: string;
-        };
-    };
+    readonly links?: LinkData[];
     /**
      * Actions for this integration that can be automatically applied to the provided tab if enabled by the user.
      *
@@ -84,6 +69,36 @@ export interface Integration {
      * @returns The JSX element.
      */
     integrationMenu(props: IntegrationMenuProps): JSX.Element;
+}
+
+export type LinkType = "Documentation" | "Discord" | "GitHub" | "ModBay" | "CurseForge" | "MCPEDL"
+
+export interface LinkData {
+    /**
+     * The type of link, used as the button label.
+     */
+    linkType: LinkType;
+    /**
+     * The URI of the link.
+     */
+    url: string;
+    /**
+     * The description of the link.
+     *
+     * This is rendered as plain text, not Markdown.
+     *
+     * @default undefined
+     */
+    description?: string;
+    /**
+     * The path of the relevant icon for the link.
+     * 
+     * @example
+     * resource://images/ui/art/generic_empty.png
+     * 
+     * @default undefined
+     */
+    iconPath?: string | undefined;
 }
 
 export interface IntegrationAutoApplyAction {
@@ -153,13 +168,3 @@ export interface IntegrationMenuProps {
 export const integrations = {
     WorldEdit_Bedrock,
 } as const satisfies Record<string, Integration>;
-
-/**
- * A list of URI protocols that are allowed to be opened by clicking on an integration link button without prompting the user.
- */
-export const INTEGRATION_BUTTON_LINK_ALLOWED_UNPROMPTED_PROTOCOLS: string[] = ["mailto:"];
-
-/**
- * A list of URI protocols that are classified as website protocols so have a slightly different prompt.
- */
-export const INTEGRATION_BUTTON_LINK_WEBSITE_PROTOCOLS: string[] = ["http:", "https:"];

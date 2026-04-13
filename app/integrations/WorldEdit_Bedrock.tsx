@@ -13,8 +13,6 @@ import {
 } from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
 import {
-    INTEGRATION_BUTTON_LINK_ALLOWED_UNPROMPTED_PROTOCOLS,
-    INTEGRATION_BUTTON_LINK_WEBSITE_PROTOCOLS,
     type Integration,
     type IntegrationMenuProps,
 } from ".";
@@ -24,6 +22,7 @@ import type { ShowSelectOpenTabDialogResult } from "../components/SelectOpenTabD
 import showSelectOpenTabDialog from "../components/SelectOpenTabDialog";
 import type { LevelDB } from "@8crafter/leveldb-zlib";
 import Notice from "../components/Notice";
+import LinkButton from "./components/LinkButton";
 
 type LegacyScoreboardSetBiomeData = [
     `wedit:biome,minecraft:${Dimension},${number}_${number}_${number}`,
@@ -508,14 +507,13 @@ const thisIntegration = {
     name: "WorldEdit Bedrock",
     author: "SIsilicon",
     description: "A port of the original WorldEdit mod for Minecraft: Java Edition.",
-    links: {
-        Documentation: { url: "https://worldedit-be-docs.readthedocs.io/en/stable/" },
-        Discord: { url: "https://discord.gg/Tb7FW9TB4s" },
-        GitHub: { url: "https://github.com/SIsilicon/WorldEdit-BE" },
-        ModBay: { url: "https://modbay.org/mods/629-worldedit-be.html" },
-        CurseForge: { url: "https://www.curseforge.com/minecraft-bedrock/scripts/worldedit-be-addon" },
-        MCPEDL: { url: "https://mcpedl.com/worldedit-be-addon/" },
-    },
+    links: [
+        { linkType: "Documentation", url: "https://worldedit-be-docs.readthedocs.io/en/stable/" },
+        { linkType: "Discord", url: "https://discord.gg/Tb7FW9TB4s", iconPath: "resource://images/ui/icons/social/discord_blurple.svg" },
+        { linkType: "GitHub", url: "https://github.com/SIsilicon/WorldEdit-BE", iconPath: "resource://images/ui/icons/social/github_black.svg" },
+        { linkType: "CurseForge", url: "https://www.curseforge.com/minecraft-bedrock/scripts/worldedit-be-addon", iconPath: "resource://images/ui/icons/social/curseforge.jpeg" },
+        { linkType: "MCPEDL", url: "https://mcpedl.com/worldedit-be-addon/", iconPath: "resource://images/ui/icons/social/mcpedl.png" },
+    ],
     autoApplyActions: [
         {
             id: "command_setbiome_legacy",
@@ -1070,54 +1068,17 @@ const thisIntegration = {
                 !!thisIntegration.links &&
                 Object.keys(thisIntegration.links).length > 0 && (
                     <div style={{ display: "grid" }}>
-                        {...Object.entries(thisIntegration.links).map(
-                            ([buttonLabel, { url, description }]: [string, NonNullable<Integration["links"]>[string]]): JSX.Element => {
+                        {
+                            thisIntegration.links.map(link => {
                                 return (
-                                    <button
-                                        type="button"
-                                        class="genericRoundButton"
-                                        title={description}
-                                        onClick={(): void => {
-                                            try {
-                                                var parsedUri: URL | undefined = new URL(url);
-                                            } catch {}
-                                            if (parsedUri === undefined || !INTEGRATION_BUTTON_LINK_ALLOWED_UNPROMPTED_PROTOCOLS.includes(parsedUri.protocol)) {
-                                                switch (
-                                                    dialog.showMessageBoxSync(getCurrentWindow(), {
-                                                        type: "info",
-                                                        title: "Bedrock World Editor",
-                                                        message:
-                                                            parsedUri === undefined ? "Do you want Bedrock World Editor to open the URI?"
-                                                            : INTEGRATION_BUTTON_LINK_WEBSITE_PROTOCOLS.includes(parsedUri.protocol) ?
-                                                                "Do you want Bedrock World Editor to open the external website?"
-                                                            :   `Do you want Bedrock World Editor to open the URI in ${app.getApplicationNameForProtocol(url)}?`,
-                                                        detail: url,
-                                                        buttons: [
-                                                            "Open",
-                                                            "Copy",
-                                                            // "Configure Trusted Domains", // IDEA: Implement a trusted domains config option.
-                                                            "Cancel",
-                                                        ],
-                                                        noLink: true,
-                                                    })
-                                                ) {
-                                                    case 0:
-                                                        shell.openExternal(url);
-                                                        break;
-                                                    case 1:
-                                                        clipboard.writeText(url);
-                                                        break;
-                                                }
-                                                return;
-                                            }
-                                            shell.openExternal(url);
-                                        }}
-                                    >
-                                        {buttonLabel}
-                                    </button>
-                                );
-                            }
-                        )}
+                                    <LinkButton
+                                        linkType={link.linkType}
+                                        url={link.url}
+                                        iconPath={link.iconPath}
+                                    />
+                                )
+                            })
+                        }
                     </div>
                 )
             );
