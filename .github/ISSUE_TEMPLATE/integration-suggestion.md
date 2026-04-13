@@ -3,6 +3,7 @@ name: Integration suggestion
 about: Suggest a new integration
 title: ''
 labels: integration
+type: Feature
 assignees: ''
 
 ---
