@@ -40,9 +40,12 @@ function openAboutWindow(parentWindow?: BrowserWindow): BrowserWindow {
                 path.join(__dirname, "../../resources/icon.png")
             :   path.join(process.resourcesPath, "resources/icon.png") /* path.join(__dirname, (isDev ? "../../" : "") + "resources/icon.png"), */,
         product_name: "Bedrock World Editor",
+        copyright: "Copyright (c) 2025-2026 8Crafter Studios",
         adjust_window_size: true,
         use_version_info: [
-            ["app", app.getVersion()],
+            ["app", app.getVersion() + (VERSION_BUILD !== null ? `+${VERSION_BUILD}` : "") + (isDev ? "*" : "")],
+            ["mcbe-leveldb", VERSION_MCBE_LEVELDB],
+            ["@8crafter/leveldb-zlib", VERSION_LEVELDB_ZLIB],
             // ["Minecraft", "v1.21.101"],
             ...(["electron", "chrome", "node", "v8"] as const).map((e) => [e, process.versions[e]]),
         ] as [string, string][],

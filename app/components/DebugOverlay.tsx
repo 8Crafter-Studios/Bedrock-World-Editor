@@ -148,7 +148,7 @@ function DebugOverlay_Top(): JSX.Element {
                         display: "block",
                     }}
                 >
-                    v{VERSION}
+                    v{VERSION_DISP_SHORT}
                     {process.env.NODE_ENV === "development" ? "*" : ""}{" "}
                     {os.type() === "Windows_NT" ?
                         "Windows"
@@ -385,7 +385,7 @@ function DebugOverlay_Basic(): JSX.Element {
                         display: "block",
                     }}
                 >
-                    App v{VERSION}
+                    App v{VERSION_FULL}
                 </span>
                 <span
                     class="crispy"
@@ -427,7 +427,7 @@ function DebugOverlay_Basic(): JSX.Element {
                         display: "block",
                     }}
                 >
-                    {"v" + VERSION} {os.type() === "Windows_NT" ? "Windows" : os.type() === "Darwin" ? "macOS" : os.type()} {os.arch()} Build,
+                    {"v" + VERSION_FULL} {os.type() === "Windows_NT" ? "Windows" : os.type() === "Darwin" ? "macOS" : os.type()} {os.arch()} Build,
                 </span>} */}
                 <span
                     class="crispy"
@@ -1225,7 +1225,7 @@ function DebugOverlay_Tab(): JSX.Element {
                         display: "block",
                     }}
                 >
-                    App v{VERSION}
+                    App v{VERSION_FULL}
                 </span>
                 <span
                     class="crispy"

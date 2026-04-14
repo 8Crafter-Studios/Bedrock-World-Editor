@@ -1,3 +1,50 @@
+# v1.0.0-beta.28
+
+## Critical Fixes
+
+-   Fixed a bug where the serializer for the `Data3D` content type deleted all empty sub-chunks, resulting in sub-chunks that were supposed to have empty sub-chunks in between them all being moved to the bottom of the world without any empty gaps in between them, and also resulting in chunks with larger sub-chunk counts having their sub-chunk counts culled.
+
+## Additions
+
+-   Added paths to the world folder locations for LeviLauncher.
+-   Added paths to the extra world folder locations for LeviLauncher inside of mounted Windows volumes.
+-   Added support for the `DimensionNameIdTable` content type.
+-   Added support for the `CustomDimension` content type.
+-   Added an icon for sub-tabs of content type `BiomeIdsTable`.
+-   Added an icon for sub-tabs of content type `CustomDimension`.
+-   Added an icon for sub-tabs of content type `DimensionNameIdsTable`.
+-   Added an icon for sub-tabs of content type `LevelChunkMetaDataDictionary`.
+-   Added an icon for sub-tabs of content type `Nether`.
+-   Added an icon for sub-tabs of content type `Overworld`.
+-   Added an icon for sub-tabs of content type `TheEnd`.
+-   Added support for custom dimensions.
+-   The app's version now includes a build number.
+-   The "Top" debug overlay now includes the app's build number in the version number when running in development mode.
+-   The "Basic" debug overlay now includes the app's build number in the version number.
+-   The world menu now includes the app's build number in the version number when running in development mode.
+-   The `app` version field of the about menu now includes the app's build number, followed by an asterisk when running in development mode.
+-   Added custom dimension support when applying biome changes for the WorldEdit Bedrock integration.
+-   Added more error types when applying pending biome changes for the WorldEdit Bedrock integration.
+-   Added the versions of the `mcbe-leveldb` and `@8crafter/leveldb-zlib` node modules to the about window.
+-   Added a copyright string to the about window.
+-   Added support for displaying the dimension of entities that are in custom dimensions in the "Entities" tab (it displays the namespaced ID of the dimension in normal mode (or the numeric ID if the corresponding namespaced ID cannot be found) and the numeric ID in compact mode).
+
+### NBT Schemas
+
+-   The `WorldClocks` NBT schema is now complete (aside from documentation).
+-   Added examples to the `BiomeOverride` field of the `LevelDat` NBT schema.
+-   The boolean properties of the `abilities` field of the `Abilities` NBT schema now have enums.
+
+## Changes
+
+-   The config now stores the build number of the most recent version of the app it was last modified in.
+
+## Fixes
+
+-   When applying biomes changes for the WorldEdit Bedrock integration, biomes can now be set for sub-chunks with no biome data.
+-   When applying biomes changes for the WorldEdit Bedrock integration, biomes can now be set for missing sub-chunks if they are not out of the bounds defined in the LevelChunkMetaDataDictionary (biomes can still be set for existing sub-chunks that are out of bounds if they are too far up, if they are below the minimum height then they cannot be set, like before) (worlds which do not have a LevelChunkMetaDataDictionary will not be able to apply changes to missing sub-chunks).
+-   Fixed a bug where you could not export the binary data of sub-tabs that threw an error when parsing their data.
+
 # v1.0.0-beta.27
 
 ## Additions

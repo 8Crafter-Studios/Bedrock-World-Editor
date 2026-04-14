@@ -4,6 +4,7 @@ import TreeEditor from "../components/TreeEditor";
 import {
     DBEntryContentTypes,
     dimensions,
+    dimensionVectorDimensionToIdSync,
     entryContentTypeToFormatMap,
     gameModes,
     getChunkKeyIndices,
@@ -15,6 +16,7 @@ import {
     toLong,
     type DBEntryContentType,
     type Dimension,
+    type NBTSchemas,
     type Vector3,
 } from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
@@ -970,30 +972,40 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
     return <Contents />;
 }
 
-async function getEntityDimension(tab: TabManagerTab, key: Buffer): Promise<Dimension | undefined> {
-    const id: [number, number] = [getInt32Val(key, key.length - 8), getInt32Val(key, key.length - 4)];
+async function getEntityDimensionMappings(
+    tab: TabManagerTab,
+    dimensionNameIdTable?: NBTSchemas.NBTSchemaTypes.DimensionNameIdTable
+): Promise<Record<LooseAutocomplete<Dimension>, bigint[]>> {
     if (!tab.db) throw new ReferenceError("tab.db is not defined.");
     if (!tab.cachedDBKeys) throw new ReferenceError("tab.cachedDBKeys is not defined.");
-    for (const digest of tab.cachedDBKeys.Digest) {
-        const entityIds: [number, number][] = (await entryContentTypeToFormatMap.Digest.parse((await tab.db.get(digest))!)).value.entityIds.value.value;
-        if (entityIds.some((entityId: [number, number]): boolean => entityId[0] === id[0] && entityId[1] === id[1])) {
-            return getChunkKeyIndices(digest).dimension;
-        }
-    }
-    return undefined;
-}
-
-async function getEntityDimensionMappings(tab: TabManagerTab): Promise<Record<Dimension, bigint[]>> {
-    if (!tab.db) throw new ReferenceError("tab.db is not defined.");
-    if (!tab.cachedDBKeys) throw new ReferenceError("tab.cachedDBKeys is not defined.");
-    const entityDimensionMappings: Record<Dimension, bigint[]> = {
+    const entityDimensionMappings: Record<LooseAutocomplete<Dimension> | number, bigint[]> = {
         overworld: [],
         nether: [],
         the_end: [],
     };
+    const idToDimensionNameMapping: Record<number, string> | null =
+        dimensionNameIdTable ?
+            Object.fromEntries(
+                Object.entries(dimensionNameIdTable.value.entries.value).map(([namespacedId, { value: numericId }]) => [numericId, namespacedId])
+            )
+        :   null;
     for (const digest of tab.cachedDBKeys.Digest) {
-        const dimension: Dimension = getChunkKeyIndices(digest).dimension;
-        entityDimensionMappings[dimension].push(
+        let dimension: LooseAutocomplete<Dimension> | number;
+        if (idToDimensionNameMapping) {
+            try {
+                const dimensionVectorDimension: Dimension | number = getChunkKeyIndices(digest).dimension;
+                dimension =
+                    typeof dimensionVectorDimension === "number" ?
+                        (idToDimensionNameMapping[dimensionVectorDimension] ?? dimensionVectorDimension)
+                    :   dimensionVectorDimension;
+            } catch (e) {
+                dimension = getChunkKeyIndices(digest).dimension;
+            }
+        } else {
+            dimension = getChunkKeyIndices(digest).dimension;
+        }
+        entityDimensionMappings[dimension] ??= [];
+        entityDimensionMappings[dimension]!.push(
             ...(await entryContentTypeToFormatMap.Digest.parse((await tab.db.get(digest))!)).value.entityIds.value.value.map((v: [number, number]): bigint =>
                 toLong(v)
             )
@@ -1002,10 +1014,27 @@ async function getEntityDimensionMappings(tab: TabManagerTab): Promise<Record<Di
     return entityDimensionMappings;
 }
 
-function getEntityDimensionFromMappings(key: Buffer, entityDimensionMappings: Record<Dimension, bigint[]>): Dimension | undefined {
+function getEntityDimensionFromMappings(
+    key: Buffer,
+    entityDimensionMappings: Record<LooseAutocomplete<Dimension>, bigint[]>
+): LooseAutocomplete<Dimension> | undefined;
+function getEntityDimensionFromMappings(
+    key: Buffer,
+    entityDimensionMappings: Record<LooseAutocomplete<Dimension>, bigint[]>,
+    dimensionNameIdTable: NBTSchemas.NBTSchemaTypes.DimensionNameIdTable
+): number | undefined;
+function getEntityDimensionFromMappings(
+    key: Buffer,
+    entityDimensionMappings: Record<LooseAutocomplete<Dimension>, bigint[]>,
+    dimensionNameIdTable?: NBTSchemas.NBTSchemaTypes.DimensionNameIdTable
+): LooseAutocomplete<Dimension> | number | undefined {
     const entityId: bigint = toLong([getInt32Val(key, key.length - 8), getInt32Val(key, key.length - 4)]);
-    for (const dimension of dimensions) {
-        if (entityDimensionMappings[dimension].includes(entityId)) {
+    for (const dimension in entityDimensionMappings) {
+        if (entityDimensionMappings[dimension]?.includes(entityId)) {
+            if (dimensionNameIdTable) {
+                if (dimensions.includes(dimension as Dimension)) return dimensions.indexOf(dimension as Dimension);
+                return dimensionNameIdTable.value.entries.value[dimension]?.value ?? NaN;
+            }
             return dimension;
         }
     }
@@ -1027,6 +1056,7 @@ async function getEntitiesTabContentsRows(data: {
      */
     mode: ConfigConstants.views.Entities.EntitiesTabSectionMode;
     entityDimensionMappings?: Record<Dimension, bigint[]> | undefined;
+    dimensionNameIdTable?: (NBTSchemas.NBTSchemaTypes.DimensionNameIdTable & Pick<NBT.NBT, "name">) | undefined;
 }): Promise<JSX.Element[]> {
     // const columns = config
     switch (data.mode) {
@@ -1167,7 +1197,19 @@ async function getEntitiesTabContentsRows(data: {
                                             {key.data.parsed.value.Pos?.type === "list" && key.data.parsed.value.Pos.value.type === "float" ?
                                                 `${(key.data.parsed.value.Pos.value.value as number[]).map((v: number): string => v.toFixed(3)).join(", ")} ${
                                                     key.data.parsed.value.DimensionId?.type === "int" ?
-                                                        (dimensions[key.data.parsed.value.DimensionId.value] ?? key.data.parsed.value.DimensionId.value)
+                                                        (dimensions[key.data.parsed.value.DimensionId.value] ??
+                                                        (data.dimensionNameIdTable ?
+                                                            ((): LooseAutocomplete<Dimension> | number => {
+                                                                try {
+                                                                    return dimensionVectorDimensionToIdSync(
+                                                                        key.data.parsed.value.DimensionId.value,
+                                                                        data.dimensionNameIdTable
+                                                                    );
+                                                                } catch {
+                                                                    return key.data.parsed.value.DimensionId.value;
+                                                                }
+                                                            })()
+                                                        :   key.data.parsed.value.DimensionId.value))
                                                     :   ((data.entityDimensionMappings &&
                                                             getEntityDimensionFromMappings(key.rawKey, data.entityDimensionMappings)) ??
                                                         "Unknown Dimension")
@@ -1200,7 +1242,9 @@ async function getEntitiesTabContentsRows(data: {
                                                         getEntityDimensionFromMappings(key.rawKey, data.entityDimensionMappings) === undefined
                                                     ) ?
                                                         "?"
-                                                    :   dimensions.indexOf(getEntityDimensionFromMappings(key.rawKey, data.entityDimensionMappings)!)
+                                                    : data.dimensionNameIdTable ?
+                                                        getEntityDimensionFromMappings(key.rawKey, data.entityDimensionMappings, data.dimensionNameIdTable)!
+                                                    :   getEntityDimensionFromMappings(key.rawKey, data.entityDimensionMappings)!
                                                 }`
                                             :   <span style="color: red;">null</span>}
                                         </td>

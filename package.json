@@ -1,7 +1,8 @@
 {
     "name": "bedrock-world-editor",
     "productName": "Bedrock World Editor",
-    "version": "1.0.0-beta.27",
+    "version": "1.0.0-beta.28",
+    "build": "BUILD.1",
     "description": "An NBT editor for Minecraft Bedrock Edition.",
     "main": ".vite/build/main.js",
     "type": "commonjs",
@@ -11,7 +12,10 @@
         "make": "electron-forge make",
         "publish": "electron-forge publish",
         "lint": "eslint --ext .ts,.tsx .",
-        "install": "cd node_modules/@8crafter/leveldb-zlib && npm run install"
+        "install": "cd node_modules/@8crafter/leveldb-zlib && npm run install",
+        "version": "node scripts/resetPackageBuildNumber.mts",
+        "resetBuild": "node scripts/resetPackageBuildNumber.mts",
+        "bumpBuild": "node scripts/bumpPackageBuildNumber.mts"
     },
     "keywords": [],
     "author": {
@@ -92,7 +96,7 @@
         "jquery": "^3.7.1",
         "jquery-ui": "^1.14.1",
         "json5": "^2.2.3",
-        "mcbe-leveldb": "^1.12.0",
+        "mcbe-leveldb": "^1.14.2",
         "merge-refs": "^2.0.0",
         "mime-types": "^3.0.1",
         "monaco-editor": "^0.54.0",

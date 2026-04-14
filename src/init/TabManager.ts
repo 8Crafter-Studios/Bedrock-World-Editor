@@ -1367,7 +1367,7 @@ namespace exports {
         ActorPrefix: "resource://images/ui/glyphs/icon_panda.png",
         AutonomousEntities: undefined,
         BiomeData: "resource://images/ui/glyphs/icon_biome.png",
-        BiomeIdsTable: undefined,
+        BiomeIdsTable: "resource://images/ui/glyphs/icon_biome_config.png",
         BiomeState: undefined,
         BlendingBiomeHeight: undefined,
         BlendingData: undefined,
@@ -1376,10 +1376,12 @@ namespace exports {
         Checksums: undefined,
         ChunkLoadedRequest: undefined,
         ConversionData: undefined,
+        CustomDimension: "resource://images/ui/glyphs/portalBg.png",
         Data2D: undefined,
         Data2DLegacy: undefined,
         Data3D: undefined,
         Digest: undefined,
+        DimensionNameIdTable: "resource://images/ui/glyphs/portalBg_config.png",
         DynamicProperties: undefined,
         Entity: undefined,
         FinalizedState: undefined,
@@ -1394,15 +1396,15 @@ namespace exports {
         LegacyTerrain: undefined,
         LegacyTheEnd: undefined,
         LegacyVersion: undefined,
-        LevelChunkMetaDataDictionary: undefined,
+        LevelChunkMetaDataDictionary: "resource://images/ui/glyphs/update_world_chunks_16x.png",
         LevelDat: "resource://images/ui/glyphs/settings_glyph_color_2x.png",
         LevelSpawnWasFixed: undefined,
         Map: "resource://images/ui/glyphs/icon_map.png",
         MetaDataHash: undefined,
         MobEvents: undefined,
         MVillages: undefined,
-        Nether: undefined,
-        Overworld: undefined,
+        Nether: "resource://images/ui/glyphs/portalBg.png",
+        Overworld: "resource://images/ui/glyphs/portalBg.png",
         PendingTicks: undefined,
         Player: "resource://images/ui/glyphs/icon_steve_server.png",
         PlayerClient: "resource://images/ui/glyphs/icon_steve_client.png",
@@ -1415,7 +1417,7 @@ namespace exports {
         Scoreboard: "resource://images/ui/glyphs/icon_best3.png",
         StructureTemplate: "resource://images/ui/glyphs/structure_block.png",
         SubChunkPrefix: undefined,
-        TheEnd: undefined,
+        TheEnd: "resource://images/ui/glyphs/portalBg.png",
         TickingArea: undefined,
         Unknown: undefined,
         Version: undefined,
@@ -1809,12 +1811,17 @@ namespace exports {
                 await this.loadData();
                 if (!this.currentState.options.dataStorageObject) throw new Error("Failed to load data for this sub-tab.");
             }
+            if (!this.currentState.options.dataStorageObject?.dataType) {
+                if (!loadIfNotLoaded) throw new Error("This sub-tab has no data type.");
+                await this.loadData(true);
+                if (!this.currentState.options.dataStorageObject) throw new Error("Failed to load data for this sub-tab.");
+            }
             switch (this.target.type) {
                 case "LevelDBEntry": {
                     if (!this.parentTab.db) throw new Error("The parent tab has no associated LevelDB.");
                     if (!this.parentTab.db.isOpen()) throw new Error("LevelDB is not open.");
 
-                    const format: EntryContentTypeFormatData = this.currentState.options.dataStorageObject.sourceType;
+                    const format: EntryContentTypeFormatData | undefined = this.currentState.options.dataStorageObject.sourceType;
 
                     switch (this.currentState.options.dataStorageObject.dataType) {
                         case "NBTCompound": {
