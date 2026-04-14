@@ -90,6 +90,11 @@ jobs:
                   APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
               run: npm run publish -- --arch="${{ matrix.arch }}"
 
+            - name: Attest artifacts
+              uses: actions/attest@v4
+              with:
+                subject-path: "${{ github.workspace }}/out/make/**/*"
+
             - name: Debug (Windows)
               if: always() && matrix.os == 'windows-latest'
               run: dir -r out
