@@ -542,7 +542,7 @@ export default class TreeEditor extends React.Component<
                         switch (this.props.dataStorageObject.dataType) {
                             case "NBTCompound":
                             case "NBT": {
-                                return ["value"];
+                                return isDirectType ? [] : ["value"];
                             }
                             case "JSON": {
                                 return [];
@@ -1006,7 +1006,7 @@ export default class TreeEditor extends React.Component<
                     switch (this.props.dataStorageObject.dataType) {
                         case "NBTCompound":
                         case "NBT": {
-                            displayValue = (value as NBT.String).value;
+                            displayValue = typeof value === "string" ? value : (value as NBT.String).value;
                             break;
                         }
                         case "JSON": {
