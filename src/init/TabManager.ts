@@ -903,7 +903,14 @@ namespace exports {
                     if (this.type === "world" || this.type === "leveldb") {
                         this.tempPath = mkdtempSync(path.join(APP_DATA_FOLDER_PATH, "temp/"));
                         this.tempFilePath = this.tempPath;
-                        cpSync(this.path, this.tempPath, { recursive: true, force: true, preserveTimestamps: true, dereference: true });
+                        cpSync(this.path, this.tempPath, {
+                            recursive: true,
+                            force: true,
+                            preserveTimestamps: true,
+                            dereference: true,
+                            // HACK: Workaround to make non-latin characters in file names work.
+                            filter: () => true,
+                        });
                     } else {
                         this.tempPath = mkdtempSync(path.join(APP_DATA_FOLDER_PATH, "temp/"));
                         this.tempFilePath = path.join(this.tempPath, path.basename(this.path));
