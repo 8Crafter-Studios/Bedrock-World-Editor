@@ -1,0 +1,9 @@
+menu_bar.file.label=File
+menu_bar.file.new_window.label=New Window
+menu_bar.file.open.label=Open
+menu_bar.file.open.tooltip=Open a file or folder.
+menu_bar.file.open.world_folder.label=World Folder
+menu_bar.file.open.world_folder.tooltip=Open world folders.
+dialog.open.menu_bar.file.open.world_folder.button_label=Open
+dialog.open.menu_bar.file.open.world_folder.message=Select world folders to open
+dialog.open.menu_bar.file.open.world_folder.title=Open World Folders

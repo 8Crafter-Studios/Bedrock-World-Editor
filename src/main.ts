@@ -17,7 +17,6 @@ import path from "node:path";
 import started from "electron-squirrel-startup";
 import "./init/sleep.ts";
 import "./init/JSONB.ts";
-import "./api/main.ts";
 import { initialize as initializeRemote, enable as enableRemoteForWebContents } from "@electron/remote/main";
 import isDev from "electron-is-dev";
 import { ProgId, Regedit, ShellOption } from "electron-regedit-fixed";
@@ -25,6 +24,8 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, 
 // import "./utils/ProgressBar.ts";
 import "./utils/version.ts";
 import "./utils/config.ts";
+import "./init/Locale.ts"
+import "./api/main.ts";
 import { APP_DATA_FOLDER_PATH } from "./utils/URLs.ts";
 import { updateElectronApp } from "update-electron-app";
 import CommentJSON from "comment-json";
@@ -293,7 +294,7 @@ if (started) {
     app.quit();
 }
 
-if (process.platform !== "darwin") {
+if (process.platform !== "darwin" && !isSecondInstance && config.autoUpdateEnabled) {
     updateElectronApp();
 }
 

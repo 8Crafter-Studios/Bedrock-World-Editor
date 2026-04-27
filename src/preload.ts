@@ -5,10 +5,11 @@ import "./utils/version.ts";
 import "./init/sleep.ts";
 import "./init/JSONB.ts";
 import "./init/getCurrentWindow.ts";
+import "./utils/config.ts";
+import "./init/Locale.ts"
 import "./init/SoundEffects.ts";
 import "./init/TabManager.ts";
 import "./utils/ProgressBar.ts";
-import "./utils/config.ts";
 import { app, autoUpdater, dialog, Menu, nativeTheme, shell } from "@electron/remote";
 import { APP_DATA_FOLDER_PATH } from "./utils/URLs.ts";
 /* import { Titlebar } from "custom-electron-titlebar";
@@ -89,7 +90,7 @@ const currentWindow: Electron.BrowserWindow = getCurrentWindow();
 
 const fileMenu: Electron.Menu = Menu.buildFromTemplate([
     {
-        label: "New Window",
+        label: translate`menu_bar.file.new_window.label`,
         accelerator: "CmdOrCtrl+N",
         click(): void {
             ipcRenderer.send("new-window");
@@ -98,20 +99,20 @@ const fileMenu: Electron.Menu = Menu.buildFromTemplate([
     { type: "separator" },
     {
         type: "submenu",
-        label: "Open",
-        toolTip: "Open a file or folder.",
+        label: translate`menu_bar.file.open.label`,
+        toolTip: translate`menu_bar.file.open.tooltip`,
         submenu: [
             {
-                label: "World Folder",
-                toolTip: "Open world folders.",
+                label: translate`menu_bar.file.open.world_folder.label`,
+                toolTip: translate`menu_bar.file.open.world_folder.tooltip`,
                 async click(): Promise<void> {
                     // IDEA: If the user holds ALT while clicking the button, have it prompt them to select what mode to open the world folders in.
                     const result: Electron.OpenDialogReturnValue = await dialog.showOpenDialog(currentWindow, {
                         // IDEA: Implement functionality to remember the folder that the last opened world folder was located in to default to that folder.
-                        buttonLabel: "Open",
-                        message: "Select world folders to open",
+                        buttonLabel: translate`dialog.open.menu_bar.file.open.world_folder.button_label`,
+                        message: translate`dialog.open.menu_bar.file.open.world_folder.message`,
                         properties: ["openDirectory", "showHiddenFiles", "treatPackageAsDirectory", "multiSelections"],
-                        title: "Open World Folders",
+                        title: translate`dialog.open.menu_bar.file.open.world_folder.title`,
                     });
                     if (result.canceled) return;
                     const configPaths: string[] = result.filePaths;

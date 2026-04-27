@@ -298,6 +298,8 @@ namespace exports {
                     },
                 },
             },
+            autoUpdateEnabled: true,
+            locale: "auto",
             version: VERSION_FULL,
         } as const satisfies ConfigJSON);
         /**
@@ -319,7 +321,7 @@ namespace exports {
          */
         public handleConfigVersionUpdate(): void {
             const currentConfigVersion: string = this.version;
-            if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.9", {includePrerelease: true})) {
+            if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.9", { includePrerelease: true })) {
                 const currentMinecraftDataFolders: string[] = this.minecraftDataFolders;
                 const originalLength: number = currentMinecraftDataFolders.length;
                 if (!currentMinecraftDataFolders.includes("%appdata%/Minecraft Bedrock Preview/Users/*/games/com.mojang"))
@@ -328,7 +330,7 @@ namespace exports {
                     currentMinecraftDataFolders.push("%appdata%/Minecraft Bedrock Preview/games/com.mojang");
                 if (currentMinecraftDataFolders.length !== originalLength) this.minecraftDataFolders = currentMinecraftDataFolders;
             }
-            if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.12", {includePrerelease: true})) {
+            if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.12", { includePrerelease: true })) {
                 const currentMinecraftDataFolders: string[] = this.minecraftDataFolders;
                 const originalItems: string[] = [...currentMinecraftDataFolders];
                 if (currentMinecraftDataFolders.includes("%AppData%/Minecraft Bedrock Preview/Users/*/games/com.mojang"))
@@ -353,7 +355,7 @@ namespace exports {
                 )
                     this.minecraftDataFolders = currentMinecraftDataFolders;
             }
-            if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.14", {includePrerelease: true})) {
+            if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.14", { includePrerelease: true })) {
                 const currentMinecraftDataFolders: string[] = this.minecraftDataFolders;
                 const originalLength: number = currentMinecraftDataFolders.length;
                 if (!currentMinecraftDataFolders.includes("%appdata%/Minecraft Bedrock/Users/*/games/com.mojang"))
@@ -362,7 +364,7 @@ namespace exports {
                     currentMinecraftDataFolders.push("%appdata%/Minecraft Bedrock/games/com.mojang");
                 if (currentMinecraftDataFolders.length !== originalLength) this.minecraftDataFolders = currentMinecraftDataFolders;
             }
-            if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.18", {includePrerelease: true})) {
+            if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.18", { includePrerelease: true })) {
                 const currentMinecraftDataFolders: string[] = this.minecraftDataFolders;
                 const originalLength: number = currentMinecraftDataFolders.length;
                 if (!currentMinecraftDataFolders.includes("Home/Library/Containers/com.mojang.minecraftpe/Data/Documents/games/com.mojang"))
@@ -371,7 +373,7 @@ namespace exports {
                     currentMinecraftDataFolders.push("Home/Library/Containers/com.mojang.minecraftpreview/Data/Documents/games/com.mojang");
                 if (currentMinecraftDataFolders.length !== originalLength) this.minecraftDataFolders = currentMinecraftDataFolders;
             }
-            if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.25", {includePrerelease: true})) {
+            if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.25", { includePrerelease: true })) {
                 const currentExtraMinecraftDataFolders: string[] = this.extraMinecraftDataFolders;
                 const originalLength: number = currentExtraMinecraftDataFolders.length;
                 if (!currentExtraMinecraftDataFolders.includes("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/Users/*/games/com.mojang"))
@@ -388,7 +390,7 @@ namespace exports {
                     currentExtraMinecraftDataFolders.push("/Volumes/*/Documents/games/com.mojang");
                 if (currentExtraMinecraftDataFolders.length !== originalLength) this.extraMinecraftDataFolders = currentExtraMinecraftDataFolders;
             }
-            if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.26", {includePrerelease: true})) {
+            if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.26", { includePrerelease: true })) {
                 const currentExtraMinecraftDataFolders: string[] = this.extraMinecraftDataFolders;
                 const originalLength: number = currentExtraMinecraftDataFolders.length;
                 for (const path of [
@@ -407,7 +409,7 @@ namespace exports {
                 }
                 if (currentExtraMinecraftDataFolders.length !== originalLength) this.extraMinecraftDataFolders = currentExtraMinecraftDataFolders;
             }
-            if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.28", {includePrerelease: true})) {
+            if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.28", { includePrerelease: true })) {
                 {
                     const currentMinecraftDataFolders: string[] = this.minecraftDataFolders;
                     const originalLength: number = currentMinecraftDataFolders.length;
@@ -1021,6 +1023,30 @@ namespace exports {
         }
         public set noLookupEntityDimensionDigestKeyThreshold(value: number | undefined) {
             this.saveChanges({ noLookupEntityDimensionDigestKeyThreshold: value ?? Config.defaults.noLookupEntityDimensionDigestKeyThreshold });
+        }
+        /**
+         * Whether or not to try to automatically update the app when a new version is available.
+         *
+         * @platform linux,win32
+         *
+         * @default true
+         */
+        public get autoUpdateEnabled(): boolean {
+            return this.getConfigData().autoUpdateEnabled ?? Config.defaults.autoUpdateEnabled;
+        }
+        public set autoUpdateEnabled(value: boolean | undefined) {
+            this.saveChanges({ autoUpdateEnabled: value ?? Config.defaults.autoUpdateEnabled });
+        }
+        /**
+         * The locale to use.
+         *
+         * @default "auto"
+         */
+        public get locale(): "auto" | LocaleID {
+            return this.getConfigData().locale ?? Config.defaults.locale;
+        }
+        public set locale(value: "auto" | LocaleID | undefined) {
+            this.saveChanges({ locale: value ?? Config.defaults.locale });
         }
         /**
          * The volume options.
