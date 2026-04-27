@@ -286,8 +286,7 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
                         const name: string =
                             existsSync(path.join(folderPath, "levelname.txt")) ?
                                 readFileSync(path.join(folderPath, "levelname.txt"), { encoding: "utf-8" })
-                            :   (levelDat.value.LevelName?.value ?? "Unknown Name");
-                        // console.log(folderPath, levelDat);
+                            :    levelDat.value.LevelName?.value ?? "Unknown Name";
                         let size: Promise<number> | undefined =
                             getSizes ?
                                 readdir(folderPath, { recursive: true, withFileTypes: true }).then(

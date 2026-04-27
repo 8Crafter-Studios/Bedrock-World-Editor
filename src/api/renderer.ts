@@ -108,8 +108,8 @@ ipcRenderer.on("open-world-folder", async function (_event: IpcRendererEvent, fo
         name:
             existsSync(path.join(folderPath, "levelname.txt")) ?
                 readFileSync(path.join(folderPath, "levelname.txt"), { encoding: "utf-8" })
-            :   ((NBT.parseUncompressed(readFileSync(path.join(folderPath, "level.dat")), "little") as NBTSchemas.NBTSchemaTypes.LevelDat).value.LevelName
-                    ?.value ?? "Unknown Name"),
+            :   (((await NBT.parse(readFileSync(path.join(folderPath, "level.dat")))).parsed as NBTSchemas.NBTSchemaTypes.LevelDat).value.LevelName?.value ??
+                "Unknown Name"),
         path: folderPath,
         type: "world",
         mode: tabMode,
