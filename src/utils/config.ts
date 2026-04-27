@@ -184,6 +184,7 @@ namespace exports {
                 "Home/Library/Containers/com.mojang.minecraftpe/Data/Documents/games/com.mojang",
                 "Home/Library/Containers/com.mojang.minecraftpreview/Data/Documents/games/com.mojang",
             ],
+            isolatedMinecraftWorldsFolders: [],
             extraMinecraftDataFolders: [
                 "%appdata%/.minecraft_bedrock/installations/*/packageData",
                 "%appdata%/.minecraft_bedrock/installations/*/*/packageData",
@@ -212,6 +213,7 @@ namespace exports {
                 "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/games/com.mojang",
                 "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Documents/games/com.mojang",
             ],
+            extraIsolatedMinecraftWorldsFolders: [],
             enabledAutoApplyIntegrations: [],
             disabledAutoApplyIntegrations: [],
             hiddenIntegrations: [],
@@ -590,6 +592,24 @@ namespace exports {
             this.saveChanges({ minecraftDataFolders: value ?? Config.defaults.minecraftDataFolders });
         }
         /**
+         * The isolated Minecraft worlds folders, should be globs.
+         *
+         * These are folders that directly contain all your Minecraft world folders. The app will not be able to access development resource or behavior packs that worlds in these folders are using, only resource and behavior packs that are stored in the worlds files.
+         *
+         * These are shown on the start screen.
+         *
+         * @default
+         * ```typescript
+         * []
+         * ```
+         */
+        public get isolatedMinecraftWorldsFolders(): string[] {
+            return this.getConfigData().isolatedMinecraftWorldsFolders ?? Config.defaults.isolatedMinecraftWorldsFolders;
+        }
+        public set isolatedMinecraftWorldsFolders(value: string[] | undefined) {
+            this.saveChanges({ isolatedMinecraftWorldsFolders: value ?? Config.defaults.isolatedMinecraftWorldsFolders });
+        }
+        /**
          * The extra Minecraft data folders, should be globs.
          *
          * These are folders that will directly contain a `minecraftWorlds` or `worlds` folder containing all your Minecraft world folders.
@@ -611,7 +631,25 @@ namespace exports {
             this.saveChanges({ extraMinecraftDataFolders: value ?? Config.defaults.extraMinecraftDataFolders });
         }
         /**
-         * The parsed version folder search locations.
+         * The extra isolated Minecraft worlds folders, should be globs.
+         *
+         * These are folders that directly contain all your Minecraft world folders. The app will not be able to access development resource or behavior packs that worlds in these folders are using, only resource and behavior packs that are stored in the worlds files.
+         *
+         * These are not shown on the start screen unless you click show more
+         *
+         * @default
+         * ```typescript
+         * []
+         * ```
+         */
+        public get extraIsolatedMinecraftWorldsFolders(): string[] {
+            return this.getConfigData().extraIsolatedMinecraftWorldsFolders ?? Config.defaults.extraIsolatedMinecraftWorldsFolders;
+        }
+        public set extraIsolatedMinecraftWorldsFolders(value: string[] | undefined) {
+            this.saveChanges({ extraIsolatedMinecraftWorldsFolders: value ?? Config.defaults.extraIsolatedMinecraftWorldsFolders });
+        }
+        /**
+         * The parsed Minecraft data folder search locations.
          *
          * This replaces special codes with their corresponding environment variable values.
          */
@@ -642,7 +680,38 @@ namespace exports {
                 .flat();
         }
         /**
-         * The parsed version folder search locations.
+         * The parsed isolated Minecraft worlds folder search locations.
+         *
+         * This replaces special codes with their corresponding environment variable values.
+         */
+        public get parsedIsolatedMinecraftWorldsFolders(): string[] {
+            return this.isolatedMinecraftWorldsFolders
+                .map((location: string): string[] =>
+                    globSync(
+                        location
+                            .replaceAll(/%appdata%/gi, process.env.APPDATA!)
+                            .replace(/^Home(?=\/)/, process.env.HOME!)
+                            .replaceAll(/%userprofile%/gi, process.env.USERPROFILE!)
+                            .replaceAll(/%programdata%/gi, process.env.ProgramData!)
+                            .replaceAll(/%programfiles%/gi, process.env.ProgramFiles!)
+                            .replaceAll(/%localappdata%/gi, process.env.LOCALAPPDATA!)
+                            .replaceAll(/%temp%/gi, process.env.TEMP!)
+                            .replaceAll(/%tmp%/gi, process.env.TMP!)
+                            .replaceAll(/%public%/gi, process.env.PUBLIC!)
+                            .replaceAll(/%Home%/gi, process.env.HOME!)
+                            .replaceAll(/%APP_DATA_FOLDER_PATH%/gi, APP_DATA_FOLDER_PATH)
+                            .replaceAll(/\\/g, "/")
+                            .replace(/(?<!\/)$/, "/"),
+                        {
+                            absolute: true,
+                            realpath: true,
+                        }
+                    )
+                )
+                .flat();
+        }
+        /**
+         * The parsed extra Minecraft data folder search locations.
          *
          * This replaces special codes with their corresponding environment variable values.
          */
@@ -666,6 +735,37 @@ namespace exports {
                             .replace(/(?<!\/)$/, "/"),
                         {
                             absolute: true,
+                        }
+                    )
+                )
+                .flat();
+        }
+        /**
+         * The parsed extra isolated Minecraft worlds folder search locations.
+         *
+         * This replaces special codes with their corresponding environment variable values.
+         */
+        public get parsedExtraIsolatedMinecraftWorldsFolders(): string[] {
+            return this.extraIsolatedMinecraftWorldsFolders
+                .map((location: string): string[] =>
+                    globSync(
+                        location
+                            .replaceAll(/%appdata%/gi, process.env.APPDATA!)
+                            .replace(/^Home(?=\/)/, process.env.HOME!)
+                            .replaceAll(/%userprofile%/gi, process.env.USERPROFILE!)
+                            .replaceAll(/%programdata%/gi, process.env.ProgramData!)
+                            .replaceAll(/%programfiles%/gi, process.env.ProgramFiles!)
+                            .replaceAll(/%localappdata%/gi, process.env.LOCALAPPDATA!)
+                            .replaceAll(/%temp%/gi, process.env.TEMP!)
+                            .replaceAll(/%tmp%/gi, process.env.TMP!)
+                            .replaceAll(/%public%/gi, process.env.PUBLIC!)
+                            .replaceAll(/%Home%/gi, process.env.HOME!)
+                            .replaceAll(/%APP_DATA_FOLDER_PATH%/gi, APP_DATA_FOLDER_PATH)
+                            .replaceAll(/\\/g, "/")
+                            .replace(/(?<!\/)$/, "/"),
+                        {
+                            absolute: true,
+                            realpath: true,
                         }
                     )
                 )

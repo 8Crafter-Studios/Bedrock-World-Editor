@@ -939,6 +939,7 @@ function DebugOverlay_Config(): JSX.Element {
                 >
                     &nbsp;
                 </span>
+                {/* TODO: Add entries for isolated Minecraft data folders. */}
                 <span
                     class="crispy"
                     style={{

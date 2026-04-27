@@ -258,6 +258,7 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
     const currentRealPaths: string[] = [];
     return (
         await Promise.all(
+            // TODO: Implement support for isolated Minecraft world folders (and add an indicator for these worlds).
             (all ? [...new Set([...config.parsedMinecraftDataFolders, ...config.parsedExtraMinecraftDataFolders])] : config.parsedMinecraftDataFolders)
                 .filter((folderPath: string): boolean => existsSync(path.join(folderPath, "minecraftWorlds")) || existsSync(path.join(folderPath, "worlds")))
                 .map((folderPath: string): string[] => {
