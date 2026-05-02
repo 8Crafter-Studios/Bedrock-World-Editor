@@ -6,7 +6,7 @@ import "./init/sleep.ts";
 import "./init/JSONB.ts";
 import "./init/getCurrentWindow.ts";
 import "./utils/config.ts";
-import "./init/Locale.ts"
+import "./init/Locale.ts";
 import "./init/SoundEffects.ts";
 import "./init/TabManager.ts";
 import "./utils/ProgressBar.ts";
@@ -122,16 +122,16 @@ const fileMenu: Electron.Menu = Menu.buildFromTemplate([
                 },
             },
             {
-                label: "LevelDB Folder",
-                toolTip: "Open LevelDB folders.",
+                label: translate`menu_bar.file.open.leveldb_folder.label`,
+                toolTip: translate`menu_bar.file.open.leveldb_folder.tooltip`,
                 async click(): Promise<void> {
                     // IDEA: If the user holds ALT while clicking the button, have it prompt them to select what mode to open the LevelDB folders in.
                     const result: Electron.OpenDialogReturnValue = await dialog.showOpenDialog(currentWindow, {
                         // IDEA: Implement functionality to remember the folder that the last opened LevelDB folder was located in to default to that folder.
-                        buttonLabel: "Open",
-                        message: "Select LevelDB folders to open",
+                        buttonLabel: translate`dialog.open.menu_bar.file.open.leveldb_folder.button_label`,
+                        message: translate`dialog.open.menu_bar.file.open.leveldb_folder.message`,
                         properties: ["openDirectory", "showHiddenFiles", "treatPackageAsDirectory", "multiSelections"],
-                        title: "Open LevelDB Folders",
+                        title: translate`dialog.open.menu_bar.file.open.leveldb_folder.title`,
                     });
                     if (result.canceled) return;
                     const configPaths: string[] = result.filePaths;
@@ -141,20 +141,20 @@ const fileMenu: Electron.Menu = Menu.buildFromTemplate([
                 },
             },
             {
-                label: "NBT File",
-                toolTip: "Open NBT files.",
+                label: translate`menu_bar.file.open.nbt_file.label`,
+                toolTip: translate`menu_bar.file.open.nbt_file.tooltip`,
                 async click(): Promise<void> {
                     // IDEA: If the user holds ALT while clicking the button, have it prompt them to select what mode to open the NBT files in.
                     const result: Electron.OpenDialogReturnValue = await dialog.showOpenDialog(currentWindow, {
                         // IDEA: Implement functionality to remember the folder that the last opened NBT file was located in to default to that folder.
-                        buttonLabel: "Open",
+                        buttonLabel: translate`dialog.open.menu_bar.file.open.nbt_file.button_label`,
                         filters: [
                             { name: "NBT", extensions: ["nbt", "mcstructure", "schem", "schematic", "bin", "snbt", "hex", "dat"] },
                             { name: "All", extensions: ["*"] },
                         ],
-                        message: "Select NBT files to open",
+                        message: translate`dialog.open.menu_bar.file.open.nbt_file.message`,
                         properties: ["openFile", "showHiddenFiles", "treatPackageAsDirectory", "multiSelections"],
-                        title: "Open NBT Files",
+                        title: translate`dialog.open.menu_bar.file.open.nbt_file.title`,
                     });
                     if (result.canceled) return;
                     const configPaths: string[] = result.filePaths;
@@ -164,20 +164,20 @@ const fileMenu: Electron.Menu = Menu.buildFromTemplate([
                 },
             },
             {
-                label: "JSON File",
-                toolTip: "Open JSON files.",
+                label: translate`menu_bar.file.open.json_file.label`,
+                toolTip: translate`menu_bar.file.open.json_file.tooltip`,
                 async click(): Promise<void> {
                     // IDEA: If the user holds ALT while clicking the button, have it prompt them to select what mode to open the JSON files in.
                     const result: Electron.OpenDialogReturnValue = await dialog.showOpenDialog(currentWindow, {
                         // IDEA: Implement functionality to remember the folder that the last opened JSON file was located in to default to that folder.
-                        buttonLabel: "Open",
+                        buttonLabel: translate`dialog.open.menu_bar.file.open.json_file.button_label`,
                         filters: [
                             { name: "JSON", extensions: ["json", "jsonc"] }, // TODO: Add JSONL support.
                             { name: "All", extensions: ["*"] },
                         ],
-                        message: "Select JSON files to open",
+                        message: translate`dialog.open.menu_bar.file.open.json_file.message`,
                         properties: ["openFile", "showHiddenFiles", "treatPackageAsDirectory", "multiSelections"],
-                        title: "Open JSON Files",
+                        title: translate`dialog.open.menu_bar.file.open.json_file.title`,
                     });
                     if (result.canceled) return;
                     const configPaths: string[] = result.filePaths;
@@ -187,17 +187,17 @@ const fileMenu: Electron.Menu = Menu.buildFromTemplate([
                 },
             },
             {
-                label: "Raw File",
-                toolTip: "Open binary files in the hex editor.",
+                label: translate`menu_bar.file.open.raw_file.label`,
+                toolTip: translate`menu_bar.file.open.raw_file.tooltip`,
                 async click(): Promise<void> {
                     // IDEA: If the user holds ALT while clicking the button, have it prompt them to select what mode to open the binary files in.
                     const result: Electron.OpenDialogReturnValue = await dialog.showOpenDialog(currentWindow, {
                         // IDEA: Implement functionality to remember the folder that the last opened binary file was located in to default to that folder.
-                        buttonLabel: "Open",
+                        buttonLabel: translate`dialog.open.menu_bar.file.open.raw_file.button_label`,
                         filters: [{ name: "All", extensions: ["*"] }],
-                        message: "Select binary files to open",
+                        message: translate`dialog.open.menu_bar.file.open.raw_file.message`,
                         properties: ["openFile", "showHiddenFiles", "treatPackageAsDirectory", "multiSelections"],
-                        title: "Open Binary Files",
+                        title: translate`dialog.open.menu_bar.file.open.raw_file.title`,
                     });
                     if (result.canceled) return;
                     const configPaths: string[] = result.filePaths;
@@ -212,11 +212,11 @@ const fileMenu: Electron.Menu = Menu.buildFromTemplate([
     ...(process.platform === "darwin" ?
         ([
             {
-                label: "Open Recent",
+                label: translate`menu_bar.file.open_recent.label`,
                 role: "recentDocuments",
                 submenu: [
                     {
-                        label: "Clear Recent",
+                        label: translate`menu_bar.file.open_recent.clear_recent.label`,
                         role: "clearRecentDocuments",
                     },
                 ],
@@ -225,7 +225,7 @@ const fileMenu: Electron.Menu = Menu.buildFromTemplate([
     :   []),
     { type: "separator" },
     {
-        label: "Preferences",
+        label: translate`menu_bar.file.preferences.label`,
         click(): void {
             tabManager.switchTab("settings");
         },
@@ -269,7 +269,7 @@ const menu = Menu.buildFromTemplate([
         type: "submenu",
         submenu: [
             {
-                label: "Open App Data Folder",
+                label: translate`menu_bar.help.open_app_data_folder.label`,
                 click(): void {
                     shell.openPath(APP_DATA_FOLDER_PATH);
                 },
@@ -278,25 +278,25 @@ const menu = Menu.buildFromTemplate([
                 type: "separator",
             },
             {
-                label: "Website",
+                label: translate`menu_bar.help.website.label`,
                 click(): void {
                     shell.openExternal("https://wiki.8crafter.com/main/apps/bedrock-world-editor");
                 },
             },
             {
-                label: "GitHub",
+                label: translate`menu_bar.help.github.label`,
                 click(): void {
                     shell.openExternal("https://github.com/8Crafter-Studios/Bedrock-World-Editor");
                 },
             },
             {
-                label: "Discord",
+                label: translate`menu_bar.help.discord.label`,
                 click(): void {
                     shell.openExternal("https://discord.8crafter.com");
                 },
             },
             {
-                label: "Check for Updates...",
+                label: translate`menu_bar.help.check_for_updates.label`,
                 click(): void {
                     autoUpdater.checkForUpdates();
                 },
@@ -368,7 +368,7 @@ const menu = Menu.buildFromTemplate([
                         },
                     }, */,
             {
-                label: "Changelogs",
+                label: translate`menu_bar.help.changelogs.label`,
                 enabled: false,
                 click(): void {
                     dialog.showMessageBox({
@@ -381,7 +381,7 @@ const menu = Menu.buildFromTemplate([
                 },
             },
             {
-                label: "Next Debug HUD",
+                label: translate`menu_bar.help.next_debug_hud.label`,
                 accelerator: "F3",
                 visible: false,
                 acceleratorWorksWhenHidden: true,
@@ -392,7 +392,7 @@ const menu = Menu.buildFromTemplate([
                 },
             },
             {
-                label: "Previous Debug HUD",
+                label: translate`menu_bar.help.previous_debug_hud.label`,
                 accelerator: "F4",
                 visible: false,
                 acceleratorWorksWhenHidden: true,
@@ -406,7 +406,7 @@ const menu = Menu.buildFromTemplate([
                 type: "separator",
             },
             {
-                label: "About",
+                label: translate`menu_bar.help.about.label`,
                 accelerator: "CmdOrCtrl+F1",
                 click(): void {
                     ipcRenderer.sendSync<1>("open-about-window", currentWindow.id);
