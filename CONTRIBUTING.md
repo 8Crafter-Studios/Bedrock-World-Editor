@@ -40,6 +40,9 @@ If you want to locally run the app without having to wait to the installer to bu
 -   `@example` TSDoc tags are **ENCOURAGED**.
 -   `@example` TSDoc tags **MUST** be placed after `@default` TSDoc tags.
 -   Read-only properties **SHOULD** have a `@readonly` TSDoc tag in addition to the `readonly` modifier.
+-   All code **MUST** be in United States English.
+-   All errors **MUST** be in United States English.
+-   Errors **MUST NOT** use translation strings (does not apply to popups, only actual error objects and console logs).
 
 ### Code Comment Labels
 
