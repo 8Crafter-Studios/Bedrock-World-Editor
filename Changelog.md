@@ -25,7 +25,7 @@
 
 ## Fixes
 
--   Fixed a bug string tags in lists in tree editor had no value displayed ([#5](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/5)).
+-   Fixed a bug where string tags in lists in the tree editor had no value displayed ([#5](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/5)).
 
 ## Performance Improvements
 
