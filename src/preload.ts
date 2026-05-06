@@ -59,8 +59,8 @@ function changeTheme(theme: typeof config.actualTheme): void {
 /**
  * Executes a callback for each style rule.
  *
- * @param {(rule: CSSStyleDeclaration, ruleName: string, styleSheet: CSSStyleSheet)=>any} callbackfn The callback function.
- * @returns {null} Returns `null`.
+ * @param callbackfn The callback function.
+ * @returns Returns `null`.
  */
 function forEachRuleCallback(callbackfn: (rule: CSSStyleDeclaration, ruleName: string, styleSheet: CSSStyleSheet) => any): null {
     for (var i: number = 0; i < document.styleSheets.length; i++) {

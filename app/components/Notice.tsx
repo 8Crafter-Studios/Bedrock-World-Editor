@@ -70,7 +70,7 @@ export type NoticeImageID =
     | "no_content"
     | "no_news"
     | "no_showcaseable"
-    | "no_words_yet"
+    | "no_worlds_yet"
     | "nothing_to_see"
     | "search_error"
     | "under_construction_cropped"
@@ -86,7 +86,7 @@ export const NOTICE_IMAGE_SIZES: Record<NoticeImageID, [width: number, height: n
     no_content: [256, 96],
     no_news: [260, 112],
     no_showcaseable: [128, 48],
-    no_words_yet: [224, 96],
+    no_worlds_yet: [224, 96],
     nothing_to_see: [256, 96],
     search_error: [128, 48],
     under_construction_cropped: [192, 72],

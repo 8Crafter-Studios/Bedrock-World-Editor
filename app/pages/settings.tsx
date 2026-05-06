@@ -1,8 +1,13 @@
 import type { JSX, RefObject, TargetedEvent } from "preact";
-import _React, { render, useEffect, useRef } from "preact/compat";
+import _React, { hydrate, render, useEffect, useRef } from "preact/compat";
 import UnderConstruction from "../components/UnderConstruction";
 import { createObservable, type Observable } from "../../src/utils/miscUtils";
 import Notice from "../components/Notice";
+import type { OpenDialogReturnValue } from "electron";
+import { dialog } from "@electron/remote";
+import CollapsibleSection from "../components/CollapsibleSection";
+import { existsSync, readdirSync, statSync, type Dirent } from "node:fs";
+import path from "node:path";
 
 /**
  * A settings tab for the {@link SettingsPage | settings page}.
@@ -10,18 +15,11 @@ import Notice from "../components/Notice";
 type SettingsTab = "general" | "video" | "audio" | "integrations" | "advanced" | "debug";
 
 /**
- * Props for the {@link SettingsPage} component.
- */
-export interface SettingsPageProps {}
-
-/**
  * The settings page.
  *
- * @param props The props for the component.
  * @returns The JSX element.
  */
-export default function SettingsPage(props: SettingsPageProps): JSX.Element {
-    void props;
+export default function SettingsPage(): JSX.Element {
     const containerRef: RefObject<HTMLElement> = useRef(null);
     const selectedTab: Observable<SettingsTab> = createObservable<SettingsTab>("general");
     selectedTab.observe((): void => {
@@ -110,6 +108,238 @@ function SettingsTabRenderer(props: SettingsTabRendererProps): JSX.Element {
                             </label>
                         </>
                     )}
+                    <br class="nsel ndrg" />
+                    <label class="nsel ndrg">Minecraft Data Folders</label>
+                    <CollapsibleSection title="Help">
+                        <p>The Minecraft data folders, should be globs.</p>
+                        <p>
+                            These are folders that will directly contain a <code>minecraftWorlds</code> or <code>worlds</code> folder containing all your
+                            Minecraft world folders.
+                        </p>
+                        <p>These are shown on the start screen.</p>
+                        <p>Globs containing symlinks are fully supported.</p>
+                        <br />
+                        <p>These globs support several environment variables.</p>
+                        <p>The following variables are supported:</p>
+                        <code>%appdata%</code> - This corresponds to the <code>APPDATA</code> environment variable. This leads to your{" "}
+                        <code>AppData/Roaming</code> folder on Windows (ex. <code>C:\Users\USERNAME\AppData\Roaming</code>).
+                        <br />
+                        <code>Home/</code> (Case sensitive) - This must be placed at the start of the glob to be used. This corresponds to the <code>HOME</code>{" "}
+                        environment variable. This leads to your user folder on Windows, Linux, and macOS.
+                        <br />
+                        <code>%userprofile%</code> - This corresponds to the <code>USERPROFILE</code> environment variable. This leads to your user folder on
+                        Windows.
+                        <br />
+                        <code>%programdata%</code> - This corresponds to the <code>ProgramData</code> environment variable. This leads to your{" "}
+                        <code>ProgramData</code> folder on Windows (ex. <code>C:\ProgramData</code>).
+                        <br />
+                        <code>%programfiles%</code> - This corresponds to the <code>ProgramFiles</code> environment variable. This leads to your{" "}
+                        <code>Program Files</code> folder on Windows (ex. <code>C:\Program Files</code>).
+                        <br />
+                        <code>%localappdata%</code> - This corresponds to the <code>LOCALAPPDATA</code> environment variable. This leads to your{" "}
+                        <code>AppData/Local</code> folder on Windows (ex. <code>C:\Users\USERNAME\AppData\Local</code>).
+                        <br />
+                        <code>%temp%</code> - This corresponds to the <code>TEMP</code> environment variable. This leads to your <code>Temp</code> folder on
+                        Windows (ex. <code>C:\Users\USERNAME\AppData\Local\Temp</code>).
+                        <br />
+                        <code>%tmp%</code> - This corresponds to the <code>TMP</code> environment variable. This leads to your <code>Temp</code> folder on
+                        Windows (ex. <code>C:\Users\USERNAME\AppData\Local\Temp</code>).
+                        <br />
+                        <code>%tmpdir%</code> - This corresponds to the <code>TMPDIR</code> environment variable. This leads to your temp folder on Linux and
+                        macOS (ex. <code>/var/folders/cn/rqmj4cps1_10dkhr6krq0yww0000gn/T/</code>).
+                        <br />
+                        <code>%public%</code> - This corresponds to the <code>PUBLIC</code> environment variable. This leads to your public folder on Windows
+                        (ex. <code>C:\Users\Public</code>).
+                        <br />
+                        <code>%Home%</code> - This corresponds to the <code>HOME</code> environment variable. This leads to your user folder on Windows, Linux,
+                        and macOS.
+                        <br />
+                        <code>%APP_DATA_FOLDER_PATH%</code> - This corresponds to the app's data folder path (the path where the app stores all of its data,
+                        such as configs, temporary world copies, etc.).
+                    </CollapsibleSection>
+                    <MinecraftWorldFoldersOption
+                        configOption="minecraftDataFolders"
+                        selectDialogOptions={{
+                            buttonLabel: "Add to Minecraft Data Folders",
+                            message: "Select a folder to add to the list of Minecraft data folders",
+                            title: "Add Minecraft Data Folder",
+                        }}
+                    />
+                    <br class="nsel ndrg" />
+                    <label class="nsel ndrg">Isolated Minecraft Data Folders</label>
+                    <CollapsibleSection title="Help">
+                        <p>The isolated Minecraft data folders, should be globs.</p>
+                        <p>
+                            These are folders that directly contain all your Minecraft world folders. The app will not be able to access development resource or
+                            behavior packs that worlds in these folders are using, only resource and behavior packs that are stored in the worlds files.
+                        </p>
+                        <p>These are shown on the start screen.</p>
+                        <p>Globs containing symlinks are fully supported.</p>
+                        <br />
+                        <p>These globs support several environment variables.</p>
+                        <p>The following variables are supported:</p>
+                        <code>%appdata%</code> - This corresponds to the <code>APPDATA</code> environment variable. This leads to your{" "}
+                        <code>AppData/Roaming</code> folder on Windows (ex. <code>C:\Users\USERNAME\AppData\Roaming</code>).
+                        <br />
+                        <code>Home/</code> (Case sensitive) - This must be placed at the start of the glob to be used. This corresponds to the <code>HOME</code>{" "}
+                        environment variable. This leads to your user folder on Windows, Linux, and macOS.
+                        <br />
+                        <code>%userprofile%</code> - This corresponds to the <code>USERPROFILE</code> environment variable. This leads to your user folder on
+                        Windows.
+                        <br />
+                        <code>%programdata%</code> - This corresponds to the <code>ProgramData</code> environment variable. This leads to your{" "}
+                        <code>ProgramData</code> folder on Windows (ex. <code>C:\ProgramData</code>).
+                        <br />
+                        <code>%programfiles%</code> - This corresponds to the <code>ProgramFiles</code> environment variable. This leads to your{" "}
+                        <code>Program Files</code> folder on Windows (ex. <code>C:\Program Files</code>).
+                        <br />
+                        <code>%localappdata%</code> - This corresponds to the <code>LOCALAPPDATA</code> environment variable. This leads to your{" "}
+                        <code>AppData/Local</code> folder on Windows (ex. <code>C:\Users\USERNAME\AppData\Local</code>).
+                        <br />
+                        <code>%temp%</code> - This corresponds to the <code>TEMP</code> environment variable. This leads to your <code>Temp</code> folder on
+                        Windows (ex. <code>C:\Users\USERNAME\AppData\Local\Temp</code>).
+                        <br />
+                        <code>%tmp%</code> - This corresponds to the <code>TMP</code> environment variable. This leads to your <code>Temp</code> folder on
+                        Windows (ex. <code>C:\Users\USERNAME\AppData\Local\Temp</code>).
+                        <br />
+                        <code>%tmpdir%</code> - This corresponds to the <code>TMPDIR</code> environment variable. This leads to your temp folder on Linux and
+                        macOS (ex. <code>/var/folders/cn/rqmj4cps1_10dkhr6krq0yww0000gn/T/</code>).
+                        <br />
+                        <code>%public%</code> - This corresponds to the <code>PUBLIC</code> environment variable. This leads to your public folder on Windows
+                        (ex. <code>C:\Users\Public</code>).
+                        <br />
+                        <code>%Home%</code> - This corresponds to the <code>HOME</code> environment variable. This leads to your user folder on Windows, Linux,
+                        and macOS.
+                        <br />
+                        <code>%APP_DATA_FOLDER_PATH%</code> - This corresponds to the app's data folder path (the path where the app stores all of its data,
+                        such as configs, temporary world copies, etc.).
+                    </CollapsibleSection>
+                    <MinecraftWorldFoldersOption
+                        configOption="isolatedMinecraftWorldsFolders"
+                        selectDialogOptions={{
+                            buttonLabel: "Add to Extra Minecraft Data Folders",
+                            message: "Select a folder to add to the list of extra Minecraft data folders",
+                            title: "Add Extra Minecraft Data Folder",
+                        }}
+                    />
+                    <br class="nsel ndrg" />
+                    <label class="nsel ndrg">Extra Minecraft Data Folders</label>
+                    <CollapsibleSection title="Help">
+                        <p>The extra Minecraft data folders, should be globs.</p>
+                        <p>
+                            These are folders that will directly contain a <code>minecraftWorlds</code> or <code>worlds</code> folder containing all your
+                            Minecraft world folders.
+                        </p>
+                        <p>
+                            These are <b>not</b> shown on the start screen unless you click show more.
+                        </p>
+                        <p>Globs containing symlinks are fully supported.</p>
+                        <br />
+                        <p>These globs support several environment variables.</p>
+                        <p>The following variables are supported:</p>
+                        <code>%appdata%</code> - This corresponds to the <code>APPDATA</code> environment variable. This leads to your{" "}
+                        <code>AppData/Roaming</code> folder on Windows (ex. <code>C:\Users\USERNAME\AppData\Roaming</code>).
+                        <br />
+                        <code>Home/</code> (Case sensitive) - This must be placed at the start of the glob to be used. This corresponds to the <code>HOME</code>{" "}
+                        environment variable. This leads to your user folder on Windows, Linux, and macOS.
+                        <br />
+                        <code>%userprofile%</code> - This corresponds to the <code>USERPROFILE</code> environment variable. This leads to your user folder on
+                        Windows.
+                        <br />
+                        <code>%programdata%</code> - This corresponds to the <code>ProgramData</code> environment variable. This leads to your{" "}
+                        <code>ProgramData</code> folder on Windows (ex. <code>C:\ProgramData</code>).
+                        <br />
+                        <code>%programfiles%</code> - This corresponds to the <code>ProgramFiles</code> environment variable. This leads to your{" "}
+                        <code>Program Files</code> folder on Windows (ex. <code>C:\Program Files</code>).
+                        <br />
+                        <code>%localappdata%</code> - This corresponds to the <code>LOCALAPPDATA</code> environment variable. This leads to your{" "}
+                        <code>AppData/Local</code> folder on Windows (ex. <code>C:\Users\USERNAME\AppData\Local</code>).
+                        <br />
+                        <code>%temp%</code> - This corresponds to the <code>TEMP</code> environment variable. This leads to your <code>Temp</code> folder on
+                        Windows (ex. <code>C:\Users\USERNAME\AppData\Local\Temp</code>).
+                        <br />
+                        <code>%tmp%</code> - This corresponds to the <code>TMP</code> environment variable. This leads to your <code>Temp</code> folder on
+                        Windows (ex. <code>C:\Users\USERNAME\AppData\Local\Temp</code>).
+                        <br />
+                        <code>%tmpdir%</code> - This corresponds to the <code>TMPDIR</code> environment variable. This leads to your temp folder on Linux and
+                        macOS (ex. <code>/var/folders/cn/rqmj4cps1_10dkhr6krq0yww0000gn/T/</code>).
+                        <br />
+                        <code>%public%</code> - This corresponds to the <code>PUBLIC</code> environment variable. This leads to your public folder on Windows
+                        (ex. <code>C:\Users\Public</code>).
+                        <br />
+                        <code>%Home%</code> - This corresponds to the <code>HOME</code> environment variable. This leads to your user folder on Windows, Linux,
+                        and macOS.
+                        <br />
+                        <code>%APP_DATA_FOLDER_PATH%</code> - This corresponds to the app's data folder path (the path where the app stores all of its data,
+                        such as configs, temporary world copies, etc.).
+                    </CollapsibleSection>
+                    <MinecraftWorldFoldersOption
+                        configOption="extraMinecraftDataFolders"
+                        selectDialogOptions={{
+                            buttonLabel: "Add to Extra Minecraft Data Folders",
+                            message: "Select a folder to add to the list of extra Minecraft data folders",
+                            title: "Add Extra Minecraft Data Folder",
+                        }}
+                    />
+                    <br class="nsel ndrg" />
+                    <label class="nsel ndrg">Extra Isolated Minecraft Data Folders</label>
+                    <CollapsibleSection title="Help">
+                        <p>The extra isolated Minecraft data folders, should be globs.</p>
+                        <p>
+                            These are folders that directly contain all your Minecraft world folders. The app will not be able to access development resource or
+                            behavior packs that worlds in these folders are using, only resource and behavior packs that are stored in the worlds files.
+                        </p>
+                        <p>
+                            These are <b>not</b> shown on the start screen unless you click show more.
+                        </p>
+                        <p>Globs containing symlinks are fully supported.</p>
+                        <br />
+                        <p>These globs support several environment variables.</p>
+                        <p>The following variables are supported:</p>
+                        <code>%appdata%</code> - This corresponds to the <code>APPDATA</code> environment variable. This leads to your{" "}
+                        <code>AppData/Roaming</code> folder on Windows (ex. <code>C:\Users\USERNAME\AppData\Roaming</code>).
+                        <br />
+                        <code>Home/</code> (Case sensitive) - This must be placed at the start of the glob to be used. This corresponds to the <code>HOME</code>{" "}
+                        environment variable. This leads to your user folder on Windows, Linux, and macOS.
+                        <br />
+                        <code>%userprofile%</code> - This corresponds to the <code>USERPROFILE</code> environment variable. This leads to your user folder on
+                        Windows.
+                        <br />
+                        <code>%programdata%</code> - This corresponds to the <code>ProgramData</code> environment variable. This leads to your{" "}
+                        <code>ProgramData</code> folder on Windows (ex. <code>C:\ProgramData</code>).
+                        <br />
+                        <code>%programfiles%</code> - This corresponds to the <code>ProgramFiles</code> environment variable. This leads to your{" "}
+                        <code>Program Files</code> folder on Windows (ex. <code>C:\Program Files</code>).
+                        <br />
+                        <code>%localappdata%</code> - This corresponds to the <code>LOCALAPPDATA</code> environment variable. This leads to your{" "}
+                        <code>AppData/Local</code> folder on Windows (ex. <code>C:\Users\USERNAME\AppData\Local</code>).
+                        <br />
+                        <code>%temp%</code> - This corresponds to the <code>TEMP</code> environment variable. This leads to your <code>Temp</code> folder on
+                        Windows (ex. <code>C:\Users\USERNAME\AppData\Local\Temp</code>).
+                        <br />
+                        <code>%tmp%</code> - This corresponds to the <code>TMP</code> environment variable. This leads to your <code>Temp</code> folder on
+                        Windows (ex. <code>C:\Users\USERNAME\AppData\Local\Temp</code>).
+                        <br />
+                        <code>%tmpdir%</code> - This corresponds to the <code>TMPDIR</code> environment variable. This leads to your temp folder on Linux and
+                        macOS (ex. <code>/var/folders/cn/rqmj4cps1_10dkhr6krq0yww0000gn/T/</code>).
+                        <br />
+                        <code>%public%</code> - This corresponds to the <code>PUBLIC</code> environment variable. This leads to your public folder on Windows
+                        (ex. <code>C:\Users\Public</code>).
+                        <br />
+                        <code>%Home%</code> - This corresponds to the <code>HOME</code> environment variable. This leads to your user folder on Windows, Linux,
+                        and macOS.
+                        <br />
+                        <code>%APP_DATA_FOLDER_PATH%</code> - This corresponds to the app's data folder path (the path where the app stores all of its data,
+                        such as configs, temporary world copies, etc.).
+                    </CollapsibleSection>
+                    <MinecraftWorldFoldersOption
+                        configOption="extraIsolatedMinecraftWorldsFolders"
+                        selectDialogOptions={{
+                            buttonLabel: "Add to Extra Minecraft Data Folders",
+                            message: "Select a folder to add to the list of extra Minecraft data folders",
+                            title: "Add Extra Minecraft Data Folder",
+                        }}
+                    />
                 </div>
             );
         case "video":
@@ -425,6 +655,281 @@ function SettingsLeftSidebar(props: SettingsLeftSidebarProps): JSX.SpecificEleme
                     </div>
                 );
             })}
+        </div>
+    );
+}
+
+/**
+ * Props for the {@link MinecraftWorldFoldersOption} component.
+ */
+interface MinecraftWorldFoldersOptionProps {
+    configOption: "minecraftDataFolders" | "extraMinecraftDataFolders" | "isolatedMinecraftWorldsFolders" | "extraIsolatedMinecraftWorldsFolders";
+    selectDialogOptions: Required<Pick<Electron.OpenDialogOptions, "buttonLabel" | "message" | "title">>;
+}
+
+function MinecraftWorldFoldersOption(props: MinecraftWorldFoldersOptionProps): JSX.SpecificElement<"div"> {
+    const worldFolderLocationsListContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
+    let worldFolderLocations: string[] = config[props.configOption];
+    function updateWorldFolderLocations(locations?: typeof worldFolderLocations): void {
+        if (!worldFolderLocationsListContainerRef.current) return;
+        worldFolderLocations = locations ?? config[props.configOption];
+        Array.from(worldFolderLocationsListContainerRef.current.children)
+            .slice(worldFolderLocations.length)
+            .forEach((child: Element): void => child.remove());
+        render(<WorldFolderLocationList locations={worldFolderLocations} />, worldFolderLocationsListContainerRef.current);
+    }
+    function appendWorldFolderLocation(location: string = ""): void {
+        if (!worldFolderLocationsListContainerRef.current) return;
+        worldFolderLocations = config[props.configOption];
+        hydrate(<WorldFolderLocationList locations={[...worldFolderLocations, location]} />, worldFolderLocationsListContainerRef.current);
+    }
+    function WorldFolderLocationList(listProps: {
+        locations?: typeof worldFolderLocations;
+    }): JSX.SpecificElement<"div", JSX.HTMLAttributes<HTMLDivElement>, HTMLDivElement>[] {
+        listProps.locations ??= worldFolderLocations;
+        return listProps.locations.map((location: string, index: number): JSX.SpecificElement<"div"> => {
+            const inputRef: RefObject<HTMLInputElement> = useRef<HTMLInputElement>(null);
+            useEffect((): void => {
+                if (inputRef.current) {
+                    inputRef.current.addEventListener("change", (): void => {
+                        if (!inputRef.current) return;
+                        worldFolderLocations = config[props.configOption];
+                        config[props.configOption] = [
+                            ...worldFolderLocations.slice(0, index),
+                            inputRef.current.value,
+                            ...worldFolderLocations.slice(index + 1),
+                        ];
+                    });
+                }
+            });
+            return (
+                <div
+                    style={{
+                        display: "flex",
+                        flexDirection: "row",
+                    }}
+                >
+                    <input
+                        ref={inputRef}
+                        title="A folder path."
+                        type="text"
+                        class="form-control"
+                        style={{
+                            fontFamily: "monospace",
+                            flexGrow: 1,
+                        }}
+                        value={location}
+                        autoCapitalize="off"
+                        autoComplete="off"
+                        autoCorrect="off"
+                        spellcheck={false}
+                        inputMode="text"
+                        required
+                        aria-autocomplete="none"
+                        onInput={(event: JSX.TargetedInputEvent<HTMLInputElement>): void => {
+                            if (event.currentTarget.value.length === 0 || /[<>"|?]/.test(event.currentTarget.value)) {
+                                event.currentTarget.style.color = "red";
+                                event.currentTarget.style.borderColor = "red";
+                            } else {
+                                event.currentTarget.style.color = "";
+                                event.currentTarget.style.borderColor = "";
+                            }
+                        }}
+                    />
+                    <button
+                        type="button"
+                        class="nsel"
+                        title="Remove"
+                        style={{ padding: "1px", aspectRatio: "1/1" }}
+                        onClick={(event: JSX.TargetedMouseEvent<HTMLButtonElement>): void => {
+                            if (event.currentTarget.disabled) return;
+                            worldFolderLocations = config[props.configOption];
+                            config[props.configOption] = [...worldFolderLocations.slice(0, index), ...worldFolderLocations.slice(index + 1)];
+                        }}
+                    >
+                        <only_visible_on_themes light blue>
+                            <img
+                                width="24"
+                                height="24"
+                                src="resource://images/ui/glyphs/delete.png"
+                                class="nsel ndrg"
+                                aria-hidden="true"
+                                style={{
+                                    imageRendering: "pixelated",
+                                    width: "24px",
+                                    height: "24px",
+                                }}
+                            ></img>
+                        </only_visible_on_themes>
+                        <only_visible_on_themes dark>
+                            <img
+                                width="24"
+                                height="24"
+                                src="resource://images/ui/glyphs/delete.png"
+                                class="nsel ndrg"
+                                aria-hidden="true"
+                                style={{
+                                    imageRendering: "pixelated",
+                                    filter: "invert()",
+                                    width: "24px",
+                                    height: "24px",
+                                }}
+                            ></img>
+                        </only_visible_on_themes>
+                    </button>
+                </div>
+            );
+        });
+    }
+    useEffect((): (() => void) => {
+        config.on(`settingChanged:${props.configOption}`, updateWorldFolderLocations);
+        return (): void => {
+            config.off(`settingChanged:${props.configOption}`, updateWorldFolderLocations);
+        };
+    });
+    return (
+        <div
+            style={{
+                display: "flex",
+                flexDirection: "column",
+            }}
+        >
+            <div
+                ref={worldFolderLocationsListContainerRef}
+                style={{
+                    display: "flex",
+                    flexDirection: "column",
+                }}
+            >
+                <WorldFolderLocationList />
+            </div>
+            <div style={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
+                <button
+                    type="button"
+                    style={{ flexGrow: 1 }}
+                    onClick={(event: JSX.TargetedMouseEvent<HTMLButtonElement>): void => {
+                        if (event.currentTarget.disabled) return;
+                        appendWorldFolderLocation();
+                    }}
+                >
+                    Add Folder
+                </button>
+                <button
+                    type="button"
+                    style={{ flexGrow: 1 }}
+                    onClick={async (event: JSX.TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
+                        if (event.currentTarget.disabled) return;
+                        const result: OpenDialogReturnValue = await dialog.showOpenDialog({
+                            properties: ["openDirectory", "multiSelections", "treatPackageAsDirectory", "showHiddenFiles"],
+                            buttonLabel: props.selectDialogOptions.buttonLabel,
+                            message: props.selectDialogOptions.message,
+                            title: props.selectDialogOptions.title,
+                        });
+                        if (result.canceled) return;
+                        switch (props.configOption) {
+                            case "minecraftDataFolders":
+                            case "extraMinecraftDataFolders": {
+                                const validPaths: string[] = [];
+                                const invalidPaths: string[] = [];
+                                for (const filePath of result.filePaths) {
+                                    if (
+                                        (existsSync(path.join(filePath, "minecraftWorlds")) &&
+                                            statSync(path.join(filePath, "minecraftWorlds")).isDirectory()) ||
+                                        (existsSync(path.join(filePath, "worlds")) && statSync(path.join(filePath, "worlds")).isDirectory())
+                                    ) {
+                                        validPaths.push(filePath);
+                                    } else {
+                                        invalidPaths.push(filePath);
+                                    }
+                                }
+                                if (invalidPaths.length) {
+                                    const warningResult: Electron.MessageBoxReturnValue = await dialog.showMessageBox(getCurrentWindow(), {
+                                        type: "warning",
+                                        title: "Invalid Paths",
+                                        message: `The following paths do not contain a "minecraftWorlds" or "worlds" folder, would you like to add them anyway?:\n\n${invalidPaths.join("\n")}`,
+                                        detail: `Please select the folder containing the minecraftWorlds or worlds folder. If your worlds are in a folder with a name other than "minecraftWorlds" or "worlds", please add that folder to the ${props.configOption === "extraMinecraftDataFolders" ? "extra " : ""}isolated Minecraft data folders list instead.`,
+                                        buttons: ["Add Anyway", ...(validPaths.length ? ["Add Valid Paths Only"] : []), "Cancel"],
+                                        noLink: true,
+                                    });
+                                    switch (warningResult.response) {
+                                        case 0:
+                                            config[props.configOption] = config[props.configOption].concat(result.filePaths);
+                                            return;
+                                        case 0 + +!!validPaths.length:
+                                            config[props.configOption] = config[props.configOption].concat(validPaths);
+                                            return;
+                                        case 1 + +!!validPaths.length:
+                                        default:
+                                            return;
+                                    }
+                                }
+                                config[props.configOption] = config[props.configOption].concat(result.filePaths);
+                                return;
+                            }
+                            case "isolatedMinecraftWorldsFolders":
+                            case "extraIsolatedMinecraftWorldsFolders": {
+                                const validPaths: string[] = [];
+                                const invalidPaths: string[] = [];
+                                for (const filePath of result.filePaths) {
+                                    if (
+                                        (existsSync(path.join(filePath, "minecraftWorlds")) &&
+                                            statSync(path.join(filePath, "minecraftWorlds")).isDirectory() &&
+                                            readdirSync(path.join(filePath, "minecraftWorlds"), { withFileTypes: true }).some(
+                                                (item: Dirent<string>): boolean =>
+                                                    item.isDirectory() && existsSync(path.join(filePath, "minecraftWorlds", item.name, "level.dat"))
+                                            )) ||
+                                        (existsSync(path.join(filePath, "worlds")) &&
+                                            statSync(path.join(filePath, "worlds")).isDirectory() &&
+                                            readdirSync(path.join(filePath, "worlds"), { withFileTypes: true }).some(
+                                                (item: Dirent<string>): boolean =>
+                                                    item.isDirectory() && existsSync(path.join(filePath, "worlds", item.name, "level.dat"))
+                                            ))
+                                    ) {
+                                        invalidPaths.push(filePath);
+                                    } else {
+                                        validPaths.push(filePath);
+                                    }
+                                }
+                                if (invalidPaths.length) {
+                                    const warningResult: Electron.MessageBoxReturnValue = await dialog.showMessageBox(getCurrentWindow(), {
+                                        type: "warning",
+                                        title: "Possibly Invalid Paths",
+                                        message: `The following paths appear to be the paths containing the "minecraftWorlds" or "worlds" folder that contains your Minecraft worlds, the isolated lists are for the folders that directly contain the world folders, would you like to add them anyway?:\n\n${invalidPaths.join("\n")}`,
+                                        detail: `Please select the folder containing the actual world folders. If these folders are the containers of "minecraftWorlds" or "worlds" folders, please add these folders to the ${props.configOption === "extraIsolatedMinecraftWorldsFolders" ? "extra " : ""}Minecraft data folders list instead.`,
+                                        buttons: ["Add Anyway", ...(validPaths.length ? ["Add Valid Paths Only"] : []), "Cancel"],
+                                        noLink: true,
+                                    });
+                                    switch (warningResult.response) {
+                                        case 0:
+                                            config[props.configOption] = config[props.configOption].concat(result.filePaths);
+                                            return;
+                                        case 0 + +!!validPaths.length:
+                                            config[props.configOption] = config[props.configOption].concat(validPaths);
+                                            return;
+                                        case 1 + +!!validPaths.length:
+                                        default:
+                                            return;
+                                    }
+                                }
+                                config[props.configOption] = config[props.configOption].concat(result.filePaths);
+                                return;
+                            }
+                        }
+                    }}
+                >
+                    Select Folders
+                </button>
+                <button
+                    type="button"
+                    style={{ flexGrow: 1 }}
+                    onClick={async (event: JSX.TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
+                        if (event.currentTarget.disabled) return;
+                        config[props.configOption] = undefined;
+                    }}
+                >
+                    Reset
+                </button>
+            </div>
         </div>
     );
 }

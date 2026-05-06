@@ -5,6 +5,10 @@ import type { JSX } from "preact";
 import { LoadingScreenContents } from "../app";
 import { useRef } from "preact/compat";
 import * as NBT from "prismarine-nbt";
+
+/**
+ * Props for the {@link SNBTEditor} component.
+ */
 export interface SNBTEditorProps {
     dataStorageObject: GenericDataStorageObject;
     contentType?: DBEntryContentType;
@@ -44,6 +48,12 @@ export interface SNBTEditorProps {
     path?: string;
 }
 
+/**
+ * The SNBT editor.
+ *
+ * @param props The props for the component.
+ * @returns The JSX element.
+ */
 export default function SNBTEditor(props: SNBTEditorProps): JSX.Element {
     if (props.dataStorageObject?.dataType === "JSON") return <p style="color: red;">JSON is not supported.</p>;
     const editorRef = useRef<typeof Editor>(null);
@@ -108,23 +118,24 @@ export default function SNBTEditor(props: SNBTEditorProps): JSX.Element {
             onChange={handleEditorValueChanged}
             language="snbt"
             value={
-                dataLoaded
-                    ? prettyPrintSNBT(
-                          prismarineToSNBT(
-                              props.dataStorageObject.data.type === "compound" ? props.dataStorageObject.data : props.dataStorageObject.data.parsed
-                          ),
-                          {
-                              indent: 4,
-                              inlineArrays: true,
-                              maxInlineLength: 5,
-                          }
-                      )
-                    : "Data is not loaded."
+                dataLoaded ?
+                    prettyPrintSNBT(
+                        prismarineToSNBT(props.dataStorageObject.data.type === "compound" ? props.dataStorageObject.data : props.dataStorageObject.data.parsed),
+                        {
+                            indent: 4,
+                            inlineArrays: true,
+                            maxInlineLength: 5,
+                        }
+                    )
+                :   "Data is not loaded."
             }
             onMount={handleEditorDidMount}
             options={{
                 readOnly: props.readonly || !dataLoaded,
-                readOnlyMessage: props.readonly ? props.readonlyMessage! : !dataLoaded ? { value: "Data is not loaded." } : undefined!,
+                readOnlyMessage:
+                    props.readonly ? props.readonlyMessage!
+                    : !dataLoaded ? { value: "Data is not loaded." }
+                    : undefined!,
                 tabSize: 4,
                 bracketPairColorization: { enabled: true },
                 automaticLayout: true,
@@ -134,9 +145,9 @@ export default function SNBTEditor(props: SNBTEditorProps): JSX.Element {
                 allowOverflow: true,
             }}
             path={
-                props.path
-                    ? props.path + (props.path.includes("?") ? "&" : "?") + editorParams.toString()
-                    : `unlinked-editor://${Date.now()}?${editorParams.toString()}`
+                props.path ?
+                    props.path + (props.path.includes("?") ? "&" : "?") + editorParams.toString()
+                :   `unlinked-editor://${Date.now()}?${editorParams.toString()}`
             }
             ref={editorRef}
         />

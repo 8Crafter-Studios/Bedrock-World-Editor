@@ -20,8 +20,10 @@
     "embeddedLanguageFormatting": "auto",
     "vueIndentScriptAndStyle": false,
     "experimentalTernaries": true,
-    "plugins": ["prettier-plugin-markdown-list-tabwidth"],
     "objectWrap": "preserve",
+
+    "plugins": ["prettier-plugin-markdown-list-tabwidth"],
+
     "overrides": [
         {
             "files": [".hintrc", ".eslintrc", "*.code-workspace"],

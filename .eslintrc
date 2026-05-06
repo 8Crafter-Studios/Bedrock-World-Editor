@@ -10,8 +10,10 @@
         "plugin:@typescript-eslint/recommended",
         "plugin:import/recommended",
         "plugin:import/electron",
-        "plugin:import/typescript"
+        "plugin:import/typescript",
+        "plugin:jsdoc/recommended-typescript"
     ],
+    "plugins": ["no-restricted-syntax"],
     "parser": "@typescript-eslint/parser",
     "rules": {
         "eslint-plugin-import/no-unresolved": "off",
@@ -57,7 +59,84 @@
         // Unnecessary as it is built in to TypeScript.
         "no-fallthrough": "off",
         "no-control-regex": "off",
-        "preserve-caught-error": "warn"
+        "preserve-caught-error": "warn",
+        "no-restricted-syntax/warn": [
+            "warn",
+            {
+                "selector": "CallExpression[callee.property.name='replace'][arguments.0.regex.pattern='\\\\\\\\'][arguments.0.regex.flags='g']",
+                "message": "Use split(\"\\\\\").join(\"/\") instead of replace(/\\\\/g, \"/\"), as it is more efficient."
+            },
+            {
+                "selector": "CallExpression[callee.property.name='replaceAll'][arguments.0.regex.pattern='\\\\\\\\'][arguments.0.regex.flags='g']",
+                "message": "Use split(\"\\\\\").join(\"/\") instead of replaceAll(/\\\\/g, \"/\"), as it is more efficient."
+            }
+        ],
+        "no-restricted-syntax": [
+            "error",
+            { "selector": "AssignmentExpression[operator='+='][right.value=1]", "message": "Use ++ instead of += 1." },
+            {
+                "selector": "AssignmentExpression[operator='+='][right.type='UnaryExpression'][right.operator='+'][right.argument.type='Literal'][right.argument.value=1]",
+                "message": "Use ++ instead of += +1."
+            },
+            {
+                "selector": "AssignmentExpression[operator='-='][right.type='UnaryExpression'][right.operator='-'][right.argument.type='Literal'][right.argument.value=1]",
+                "message": "Use ++ instead of -= -1."
+            },
+            { "selector": "AssignmentExpression[operator='-='][right.value=1]", "message": "Use -- instead of -= 1." },
+            {
+                "selector": "AssignmentExpression[operator='+='][right.type='UnaryExpression'][right.operator='-'][right.argument.type='Literal'][right.argument.value=1]",
+                "message": "Use -- instead of += -1."
+            },
+            {
+                "selector": "AssignmentExpression[operator='-='][right.type='UnaryExpression'][right.operator='+'][right.argument.type='Literal'][right.argument.value=1]",
+                "message": "Use -- instead of -= +1."
+            }
+        ],
+        "jsdoc/tag-lines": [
+            "warn",
+            "any",
+            {
+                "startLines": 1
+            }
+        ],
+        "jsdoc/require-throws": "warn",
+        "jsdoc/require-jsdoc": [
+            "warn",
+            {
+                // TODO: Make this target interface properties and other things as well.
+                "contexts": ["TSInterfaceDeclaration"],
+                "publicOnly": true
+            }
+        ],
+        "jsdoc/require-param": [
+            "warn",
+            {
+                // Maybe re-enable this at some point.
+                "interfaceExemptsParamsCheck": true
+            }
+        ],
+        "jsdoc/check-param-names": [
+            "warn",
+            {
+                // Maybe re-enable this at some point.
+                "checkDestructured": false
+            }
+        ],
+        "jsdoc/require-returns": [
+            "warn",
+            {
+                "checkGetters": false
+            }
+        ],
+        "jsdoc/no-defaults": "off",
+        "jsdoc/check-tag-names": [
+            "warn",
+            {
+                "definedTags": ["supports", "platform"],
+                // TODO: Find a way to re-enable this without it flagging `readonly` tags at some point.
+                "typed": false
+            }
+        ]
     },
     "root": true
 }

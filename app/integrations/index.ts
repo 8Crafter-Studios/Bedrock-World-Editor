@@ -86,6 +86,9 @@ export interface Integration {
     integrationMenu(props: IntegrationMenuProps): JSX.Element;
 }
 
+/**
+ * An auto-apply action for an integration.
+ */
 export interface IntegrationAutoApplyAction {
     /**
      * The ID of this auto-apply action.

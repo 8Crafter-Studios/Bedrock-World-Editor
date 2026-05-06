@@ -1,5 +1,6 @@
 /**
  * src/utils/config.ts
+ *
  * @module
  * @description A file containing the config class, which is used to store and retrieve app settings.
  * @supports Main, Preload, Renderer
@@ -34,6 +35,9 @@ namespace exports {
             value: GetPropertyValueAtPath<ConfigJSON, key>,
         ];
     };
+    /**
+     * Events emitted by the config class.
+     */
     export interface ConfigEventMap extends ConfigEventMap_SettingChangedEvents {
         /**
          * Emitted when the config is updated.
@@ -668,10 +672,11 @@ namespace exports {
                             .replaceAll(/%localappdata%/gi, process.env.LOCALAPPDATA!)
                             .replaceAll(/%temp%/gi, process.env.TEMP!)
                             .replaceAll(/%tmp%/gi, process.env.TMP!)
+                            .replaceAll(/%tmpdir%/gi, process.env.TMPDIR!)
                             .replaceAll(/%public%/gi, process.env.PUBLIC!)
                             .replaceAll(/%Home%/gi, process.env.HOME!)
                             .replaceAll(/%APP_DATA_FOLDER_PATH%/gi, APP_DATA_FOLDER_PATH)
-                            .replaceAll(/\\/g, "/")
+                            .split("\\").join("/")
                             .replace(/(?<!\/)$/, "/"),
                         {
                             absolute: true,
@@ -699,10 +704,11 @@ namespace exports {
                             .replaceAll(/%localappdata%/gi, process.env.LOCALAPPDATA!)
                             .replaceAll(/%temp%/gi, process.env.TEMP!)
                             .replaceAll(/%tmp%/gi, process.env.TMP!)
+                            .replaceAll(/%tmpdir%/gi, process.env.TMPDIR!)
                             .replaceAll(/%public%/gi, process.env.PUBLIC!)
                             .replaceAll(/%Home%/gi, process.env.HOME!)
                             .replaceAll(/%APP_DATA_FOLDER_PATH%/gi, APP_DATA_FOLDER_PATH)
-                            .replaceAll(/\\/g, "/")
+                            .split("\\").join("/")
                             .replace(/(?<!\/)$/, "/"),
                         {
                             absolute: true,
@@ -730,10 +736,11 @@ namespace exports {
                             .replaceAll(/%localappdata%/gi, process.env.LOCALAPPDATA!)
                             .replaceAll(/%temp%/gi, process.env.TEMP!)
                             .replaceAll(/%tmp%/gi, process.env.TMP!)
+                            .replaceAll(/%tmpdir%/gi, process.env.TMPDIR!)
                             .replaceAll(/%public%/gi, process.env.PUBLIC!)
                             .replaceAll(/%Home%/gi, process.env.HOME!)
                             .replaceAll(/%APP_DATA_FOLDER_PATH%/gi, APP_DATA_FOLDER_PATH)
-                            .replaceAll(/\\/g, "/")
+                            .split("\\").join("/")
                             .replace(/(?<!\/)$/, "/"),
                         {
                             absolute: true,
@@ -760,10 +767,11 @@ namespace exports {
                             .replaceAll(/%localappdata%/gi, process.env.LOCALAPPDATA!)
                             .replaceAll(/%temp%/gi, process.env.TEMP!)
                             .replaceAll(/%tmp%/gi, process.env.TMP!)
+                            .replaceAll(/%tmpdir%/gi, process.env.TMPDIR!)
                             .replaceAll(/%public%/gi, process.env.PUBLIC!)
                             .replaceAll(/%Home%/gi, process.env.HOME!)
                             .replaceAll(/%APP_DATA_FOLDER_PATH%/gi, APP_DATA_FOLDER_PATH)
-                            .replaceAll(/\\/g, "/")
+                            .split("\\").join("/")
                             .replace(/(?<!\/)$/, "/"),
                         {
                             absolute: true,

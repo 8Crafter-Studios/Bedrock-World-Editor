@@ -1,3 +1,36 @@
+# v1.0.0-beta.29
+
+## Critical Fixes
+
+-   Fixed a crash when Windows username contains non-Latin characters ([#32](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/32)).
+
+## Additions
+
+-   Add support for reading level names of really old MCPE alpha worlds ([#31](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/31)).
+-   Added support for isolated Minecraft data folders, meaning you can select any folder that contains Minecraft world folders and the app can display them in the world list, even if that folder is not called `worlds` or `minecraftWorlds`.
+-   Added an icon next to the version number on worlds in the world selection menu to indicate worlds that are in isolated Minecraft data folders.
+-   Added a screen when none of the known Minecraft data folders exist (only appears when none of the 4 different Minecraft data folder categories have any matching existing folders), the screen tells you to go to settings to tell the app where your worlds are, with a button below the message to open the settings menu.
+-   Added whether the world is isolated (i.e. in an isolated Minecraft data folder) to the hover text of worlds in the world selection menu.
+-   Added 4 new settings to the "General" settings section:
+    -   Minecraft Data Folders
+    -   Isolated Minecraft Data Folders
+    -   Extra Minecraft Data Folders
+    -   Extra Isolated Minecraft Data Folders
+-   Added the `%tmpdir%` variable to the parsers for Minecraft data folders, which corresponds to the `TMPDIR` environment variable.    
+
+## Changes
+
+-   Favorited worlds now always show up, even if they resolve to the same real path as another detected world.
+-   When loading the world list, world paths are now normalized to ensure duplicate paths are correctly detected.
+
+## Fixes
+
+-   Fixed a bug string tags in lists in tree editor had no value displayed ([#5](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/5)).
+
+## Performance Improvements
+
+-   The favorited worlds list is now cached when the world list starts loading, instead of it being read from the file and parsed for every world.
+
 # v1.0.0-beta.28
 
 ## Critical Fixes

@@ -35,6 +35,8 @@ import TextEditorTab from "./tabs/textEditor";
 import UnderConstruction from "./components/UnderConstruction";
 import { defaultWorldIconDataURI } from "../src/utils/preloadImages";
 import SettingsPage from "./pages/settings";
+import { normalizePath } from "../src/utils/pathUtils";
+import Notice from "./components/Notice";
 // import { Renderer3D } from "./3DRendererV1/3DRenderer";
 const mime = require("mime-types") as typeof import("mime-types");
 
@@ -197,6 +199,11 @@ Your changes will be lost if you don't save them.
     }
 });
 
+/**
+ * Sets the active page of the app to the specified page.
+ *
+ * @param activePage The page to set as active.
+ */
 export function setActivePage(activePage: string): void {
     $(`.app-tab:not(#app-tab-${activePage})`).hide();
     $(`#app-tab-${activePage}`).show();
@@ -204,6 +211,11 @@ export function setActivePage(activePage: string): void {
     $(`.sidebar_button[data-path-id="${activePage}"]`).addClass("active");
 }
 
+/**
+ * The root component for the app.
+ *
+ * @returns The JSX element for the app.
+ */
 export default function App(): JSX.Element {
     return (
         <>
@@ -226,6 +238,9 @@ export default function App(): JSX.Element {
     );
 }
 
+/**
+ * The details of a Minecraft world to be used for displaying a world in the world selection menu.
+ */
 export interface MinecraftWorldDisplayDetails {
     name: string;
     path: string;
@@ -252,32 +267,145 @@ export interface MinecraftWorldDisplayDetails {
     singleUseWorld: boolean;
     editorOnly: boolean;
     createdInEditor: boolean;
+    isolated: boolean;
 }
 
+/**
+ * Gets the Minecraft worlds that should be displayed on app's world selection menu.
+ *
+ * @param all Whether to include worlds from the extra search locations.
+ * @param getSizes Whether to get the sizes of the world folders.
+ * @returns A promise resolving with an array of {@link MinecraftWorldDisplayDetails}.
+ */
 export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean = false): Promise<MinecraftWorldDisplayDetails[]> {
-    const currentRealPaths: string[] = [];
+    /**
+     * The cached resolved normalized real paths of the world folders.
+     */
+    const cachedRealPaths: string[] = [];
+    /**
+     * The cached normalized paths of the world folders.
+     */
+    const cachedNormalizedPaths: string[] = [];
+    /**
+     * An array of file paths of favorited worlds normalized using {@link normalizePath}.
+     */
+    const favoritedWorldsData: readonly string[] | null =
+        existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json")) ?
+            ((): string[] | null => {
+                try {
+                    const favoritedWorldsData: string[] = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8"));
+                    // Verify that the data is an array.
+                    if (!(favoritedWorldsData instanceof Array)) {
+                        throw new TypeError(
+                            `The favorited_worlds.json file is not an array. path: ${path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json")}`,
+                            {
+                                cause: { path: path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), data: favoritedWorldsData },
+                            }
+                        );
+                    }
+                    // Verify that the array contains only strings.
+                    const nonStringIndex: number = favoritedWorldsData.findIndex((path: string): boolean => typeof path !== "string");
+                    if (nonStringIndex !== -1) {
+                        throw new TypeError(
+                            `The favorited_worlds.json file contains non-string values. path: ${path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json")} index: ${nonStringIndex}`,
+                            {
+                                cause: { path: path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), data: favoritedWorldsData, badIndex: nonStringIndex },
+                            }
+                        );
+                    }
+                    return favoritedWorldsData.map(normalizePath);
+                } catch (e) {
+                    console.error("Error reading favorited_worlds.json:", e);
+                }
+                return null;
+            })()
+        :   null;
+    interface FolderPathIsolationDetails {
+        folderPath: string;
+        isolated: boolean;
+    }
     return (
         await Promise.all(
             // TODO: Implement support for isolated Minecraft world folders (and add an indicator for these worlds).
-            (all ? [...new Set([...config.parsedMinecraftDataFolders, ...config.parsedExtraMinecraftDataFolders])] : config.parsedMinecraftDataFolders)
-                .filter((folderPath: string): boolean => existsSync(path.join(folderPath, "minecraftWorlds")) || existsSync(path.join(folderPath, "worlds")))
-                .map((folderPath: string): string[] => {
-                    const usesMinecraftWorlds: boolean = existsSync(path.join(folderPath, "minecraftWorlds"));
-                    return readdirSync(usesMinecraftWorlds ? path.join(folderPath, "minecraftWorlds") : path.join(folderPath, "worlds"), {
-                        withFileTypes: true,
+            [
+                ...[...new Set(all ? [...config.parsedMinecraftDataFolders, ...config.parsedExtraMinecraftDataFolders] : config.parsedMinecraftDataFolders)]
+                    .filter(
+                        (folderPath: string): boolean => existsSync(path.join(folderPath, "minecraftWorlds")) || existsSync(path.join(folderPath, "worlds"))
+                    )
+                    .map((folderPath: string): string[] => {
+                        const usesMinecraftWorlds: boolean = existsSync(path.join(folderPath, "minecraftWorlds"));
+                        return readdirSync(usesMinecraftWorlds ? path.join(folderPath, "minecraftWorlds") : path.join(folderPath, "worlds"), {
+                            withFileTypes: true,
+                        })
+                            .filter((dirent: Dirent<string>): boolean => dirent.isDirectory())
+                            .map((dirent: Dirent<string>): string =>
+                                usesMinecraftWorlds ? path.join(folderPath, "minecraftWorlds", dirent.name) : path.join(folderPath, "worlds", dirent.name)
+                            );
                     })
-                        .filter((dirent: Dirent<string>): boolean => dirent.isDirectory())
-                        .map((dirent: Dirent<string>): string =>
-                            usesMinecraftWorlds ? path.join(folderPath, "minecraftWorlds", dirent.name) : path.join(folderPath, "worlds", dirent.name)
-                        );
+                    .flat()
+                    .map((v: string): FolderPathIsolationDetails => ({ folderPath: v, isolated: false })),
+                ...[
+                    ...new Set(
+                        all ?
+                            [...config.parsedIsolatedMinecraftWorldsFolders, ...config.parsedExtraIsolatedMinecraftWorldsFolders]
+                        :   config.parsedIsolatedMinecraftWorldsFolders
+                    ),
+                ]
+                    .filter((folderPath: string): boolean => existsSync(folderPath))
+                    .map((folderPath: string): string[] => {
+                        return readdirSync(folderPath, {
+                            withFileTypes: true,
+                        })
+                            .filter((dirent: Dirent<string>): boolean => dirent.isDirectory())
+                            .map((dirent: Dirent<string>): string => path.join(folderPath, dirent.name));
+                    })
+                    .flat()
+                    .map((v: string): FolderPathIsolationDetails => ({ folderPath: v, isolated: true })),
+            ]
+                // Use this filter instead of [...new Set([...])] to allow keeping track of which folders are isolated.
+                .filter(
+                    ({ folderPath }: FolderPathIsolationDetails, i: number, a: FolderPathIsolationDetails[]): boolean =>
+                        !a.slice(0, i).some((v: FolderPathIsolationDetails): boolean => v.folderPath === folderPath)
+                )
+                .filter((_arg0: FolderPathIsolationDetails, i: number, a: FolderPathIsolationDetails[]): boolean => {
+                    if (i === 0) {
+                        cachedRealPaths.push(...a.map(({ folderPath }: FolderPathIsolationDetails): string => normalizePath(realpathSync(folderPath))));
+                        cachedNormalizedPaths.push(...a.map(({ folderPath }: FolderPathIsolationDetails): string => normalizePath(folderPath)));
+                    }
+                    return (
+                        !(
+                            // Don't include if another world with the same real path has already been included.
+                            (
+                                cachedRealPaths.slice(0, i).includes(cachedRealPaths[i]!) ||
+                                // Don't include if this world shares a real path with a favorited world, as favorited worlds have priority.
+                                cachedRealPaths.some(
+                                    (realPath: string, j: number): boolean =>
+                                        i !== j &&
+                                        realPath.split("\\").join("/") === cachedRealPaths[i]! &&
+                                        !!favoritedWorldsData?.includes(cachedNormalizedPaths[j]!)
+                                )
+                            )
+                        ) ||
+                        // If the world is favorited, include it.
+                        (!!favoritedWorldsData?.includes(cachedNormalizedPaths[i]!) &&
+                            // If the world shared an exact path with an already included favorited world, don't include it (this only applies to favorite
+                            // worlds sharing the same normalized path, not real paths, e.g. two symbolic links to the same folder would both be included if
+                            // they are favorited, but two paths to the same folder or symbolic link would only include the first).
+                            // Checking each path to make sure it is in the list of favorited worlds is not necessary here as the normalized path would be
+                            // identical to the current normalized path which has already been checked.
+                            !cachedNormalizedPaths.slice(0, i).includes(cachedNormalizedPaths[i]!))
+                        // This is left here in case favorited worlds sharing the same normalized real path need to be excluded.
+                        // IDEA: Maybe add a config option to enable this check.
+                        /*  &&
+                            !cachedRealPaths
+                                .slice(0, i)
+                                .some(
+                                    (realPath: string, j: number): boolean =>
+                                        realPath.split("\\").join("/") === cachedRealPaths[i]! && !!favoritedWorldsData?.includes(cachedNormalizedPaths[j]!)
+                                ) */
+                    );
                 })
-                .flat()
-                .filter((_folderPath: string, i: number, a: string[]): boolean => {
-                    // TODO: Rework this to allow favorited worlds to always show up, and if a favorite world shares a real path with a non-favorite world, the non-favorite world should not be shown.
-                    if (i === 0) currentRealPaths.push(...a.map((folderPath: string): string => realpathSync(folderPath)));
-                    return !currentRealPaths.slice(0, i).includes(currentRealPaths[i]!);
-                })
-                .map(async (folderPath: string): Promise<MinecraftWorldDisplayDetails | undefined> => {
+                .map(async ({ folderPath, isolated }: FolderPathIsolationDetails): Promise<MinecraftWorldDisplayDetails | undefined> => {
                     if (!existsSync(path.join(folderPath, "level.dat"))) return;
                     try {
                         const levelDat: NBTSchemas.NBTSchemaTypes.LevelDat = (
@@ -286,7 +414,7 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
                         const name: string =
                             existsSync(path.join(folderPath, "levelname.txt")) ?
                                 readFileSync(path.join(folderPath, "levelname.txt"), { encoding: "utf-8" })
-                            :    levelDat.value.LevelName?.value ?? "Unknown Name";
+                            :   (levelDat.value.LevelName?.value ?? "Unknown Name");
                         let size: Promise<number> | undefined =
                             getSizes ?
                                 readdir(folderPath, { recursive: true, withFileTypes: true }).then(
@@ -312,22 +440,7 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
                                 levelDat.value.lastOpenedWithVersion ? `v${levelDat.value.lastOpenedWithVersion.value.value.join(".")}` : null,
                             createdInVersion: levelDat.value.InventoryVersion ? `v${levelDat.value.InventoryVersion.value}` : null,
                             lastPlayed: levelDat.value.LastPlayed ? new Date(Number(toLong(levelDat.value.LastPlayed.value) * 1000n)) : null,
-                            favorited:
-                                existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json")) ?
-                                    ((): boolean => {
-                                        try {
-                                            const favoritedWorldsData: string[] = JSON.parse(
-                                                readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8")
-                                            );
-                                            if (favoritedWorldsData.includes(folderPath)) {
-                                                return true;
-                                            }
-                                        } catch (e) {
-                                            console.error(e);
-                                        }
-                                        return false;
-                                    })()
-                                :   false,
+                            favorited: favoritedWorldsData?.includes(normalizePath(folderPath)) ?? false,
                             size,
                             startCount: 0xffffffffn - toLong(levelDat.value.worldStartCount?.value ?? [0, -1]),
                             playTime: toLong(levelDat.value.currentTick?.value ?? [0, 0]),
@@ -339,6 +452,7 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
                             singleUseWorld: levelDat.value.isSingleUseWorld?.value === 1,
                             editorOnly: levelDat.value.editorWorldType?.value === 1,
                             createdInEditor: levelDat.value.isCreatedInEditor?.value === 1,
+                            isolated,
                         };
                     } catch (e) {
                         console.error(e);
@@ -359,6 +473,11 @@ export const preloadedIcons = {
 
 // Preloads the icons.
 {
+    /**
+     * Preloads the specified icons.
+     *
+     * @param object The icons to preload.
+     */
     function preloadIcons(object: PreloadedIconsObject): void {
         Object.entries(object).forEach(([key, value]: [key: PropertyKey, value: PreloadedIconsObject | string]): void => {
             if (typeof value === "object") {
@@ -378,10 +497,19 @@ export const preloadedIcons = {
     preloadIcons(preloadedIcons);
 }
 
+/**
+ * Props for the {@link WorldSelector} component.
+ */
 export interface WorldSelectorProps {
     forceTriggerUpdateRef?: RefObject<() => void>;
 }
 
+/**
+ * The world selector component.
+ *
+ * @param props The props for the component.
+ * @returns The JSX element for the component.
+ */
 export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"div"> {
     const renderWorldsContainerRef: RefObject<HTMLDivElement> = useRef(null);
     const viewMode: "compact" | "detailed" | "grid" = "detailed";
@@ -398,6 +526,35 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
     useEffect((): void => void getMinecraftWorlds(false, config.showWorldSizesOnWorldList).then(refreshData), []);
     if (props.forceTriggerUpdateRef) {
         props.forceTriggerUpdateRef.current = (): void => void getMinecraftWorlds(showingMore, config.showWorldSizesOnWorldList).then(refreshData);
+    }
+    if (
+        data.length === 0 &&
+        // Check each one individually so if one of them contains folders, we don't need to parse the rest.
+        config.parsedMinecraftDataFolders.length === 0 &&
+        config.parsedIsolatedMinecraftWorldsFolders.length === 0 &&
+        config.parsedExtraMinecraftDataFolders.length === 0 &&
+        config.parsedExtraIsolatedMinecraftWorldsFolders.length === 0
+    ) {
+        return (
+            <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: center;">
+                <Notice
+                    title={null}
+                    subtitle={null}
+                    detail="There don't seem to be any worlds here... None of the known world locations seem to exist... You should head over to settings and tell the app where your worlds are."
+                    image="no_worlds_yet"
+                    style={{ height: "auto" }}
+                />
+                <button
+                    type="button"
+                    class="genericRoundButton"
+                    onClick={(): void => {
+                        tabManager.switchTab("settings");
+                    }}
+                >
+                    Open Settings
+                </button>
+            </div>
+        );
     }
     function RenderWorlds(): JSX.SpecificElement<"div">[] {
         const mcAppName: string = app.getApplicationNameForProtocol("minecraft:");
@@ -446,7 +603,7 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                     world.multiplayer ? "Multiplayer" : "Singleplayer"
                 }${world.fromLockedTemplate ? "\nFrom Locked Template" : ""}${world.fromWorldTemplate ? "\nFrom World Template" : ""}${
                     world.singleUseWorld ? "\nSingle Use World" : ""
-                }${world.editorOnly ? "\nEditor Only" : ""}${world.createdInEditor ? "\nCreated In Editor" : ""}`;
+                }${world.editorOnly ? "\nEditor Only" : ""}${world.createdInEditor ? "\nCreated In Editor" : ""}${world.isolated ? "\nIsolated" : ""}`;
                 return (
                     <div
                         title={hoverInfo + " "}
@@ -554,6 +711,21 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                                                 (config.fileSizeUnits === "binary" ? formatFileSizeBinary : formatFileSizeMetric)(world.size)
                                             :   "Loading..."}{" "}
                                         </span>
+                                    )}
+                                    {world.isolated && (
+                                        <img
+                                            src="resource://images/ui/glyphs/isolated_world_square.png"
+                                            alt="Isolated World"
+                                            title="This world folder is isolated from any Minecraft data folders or servers, as such features that rely on accessing game data outside of the world data will not work on this world."
+                                            style={{
+                                                display: "inline-block",
+                                                flexShrink: 1,
+                                                height: "1em",
+                                                width: "1em",
+                                                verticalAlign: "bottom",
+                                                margin: "0 0.25em",
+                                            }}
+                                        />
                                     )}
                                     {world.editorOnly && (
                                         <img
@@ -763,6 +935,11 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
     );
 }
 
+/**
+ * The start screen of the app.
+ *
+ * @returns The JSX element for the start screen.
+ */
 export function StartScreen(): JSX.SpecificElement<"div"> {
     return (
         <div style="width: 100vw; height: 100vh; position: fixed; bottom: 0; left: 0; display: flex; flex-direction: row; overflow: auto;">
@@ -771,6 +948,11 @@ export function StartScreen(): JSX.SpecificElement<"div"> {
     );
 }
 
+/**
+ * The contents of the start screen.
+ *
+ * @returns The JSX element for the start screen contents.
+ */
 export function StartScreenContents(): JSX.Element {
     const forceTriggerUpdateRef: RefObject<() => void> = useRef(null);
     return (
@@ -801,6 +983,9 @@ export function StartScreenContents(): JSX.Element {
     );
 }
 
+/**
+ * Props for the {@link LoadingScreenContents} component.
+ */
 export interface LoadingScreenContentsProps {
     /**
      * The message to display.
@@ -817,6 +1002,12 @@ export interface LoadingScreenContentsProps {
     preserveTextOffset?: boolean;
 }
 
+/**
+ * The contents of a loading screen.
+ *
+ * @param props The props for the loading screen contents.
+ * @returns The JSX element for the loading screen contents.
+ */
 export function LoadingScreenContents(props: LoadingScreenContentsProps): JSX.Element {
     return (
         <>
@@ -839,6 +1030,11 @@ export function LoadingScreenContents(props: LoadingScreenContentsProps): JSX.El
     );
 }
 
+/**
+ * The main editor container.
+ *
+ * @returns The JSX element for the main editor view.
+ */
 export function MainEditor(): JSX.SpecificElement<"div"> {
     return (
         <div style="width: 100vw; height: 100vh; position: fixed; bottom: 0; left: 0; display: flex; flex-direction: column;">
@@ -848,10 +1044,19 @@ export function MainEditor(): JSX.SpecificElement<"div"> {
     );
 }
 
+/**
+ * Props for the {@link WorldEditor} component.
+ */
 export interface WorldEditorProps {
     tab: TabManagerTab;
 }
 
+/**
+ * The world editor.
+ *
+ * @param props The props for the world editor.
+ * @returns The JSX element for the world editor.
+ */
 export function WorldEditor(props: WorldEditorProps): JSX.SpecificElement<"div"> {
     const containerRef: RefObject<HTMLDivElement> = useRef(null);
     useEffect((): (() => void) => {
@@ -879,6 +1084,11 @@ export function WorldEditor(props: WorldEditorProps): JSX.SpecificElement<"div">
         </div>
     );
 }
+/**
+ * The start tab of the world editor.
+ *
+ * @returns The JSX element for the start tab of the world editor.
+ */
 export function WorldEditorStartTab(): JSX.SpecificElement<"div"> {
     return (
         <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
@@ -889,6 +1099,12 @@ export function WorldEditorStartTab(): JSX.SpecificElement<"div"> {
     );
 }
 
+/**
+ * The renderer for the world editor tabs.
+ *
+ * @param props The props for the world editor tab renderer.
+ * @returns The JSX element for the world editor tab renderer.
+ */
 export function WorldEditorTabRenderer(props: {
     tab: TabManagerSubTab | TabManagerTabGenericSubTabID | null;
     parentTab: TabManagerTab;
