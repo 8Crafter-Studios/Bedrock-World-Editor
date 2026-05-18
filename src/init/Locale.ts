@@ -70,9 +70,24 @@ namespace exports {
     /**
      * Detects the system locale.
      *
+     * @param noFallbackIfNotReady If true, will not fall back to the default locale if the Electron app is not ready.
      * @returns The detected locale.
      */
-    export function detectSystemLocale(): LocaleID {
+    export function detectSystemLocale(noFallbackIfNotReady: true): LocaleID | null;
+    /**
+     * Detects the system locale.
+     *
+     * @param noFallbackIfNotReady If true, will not fall back to the default locale if the Electron app is not ready.
+     * @returns The detected locale.
+     */
+    export function detectSystemLocale(noFallbackIfNotReady?: false): LocaleID;
+    /**
+     * Detects the system locale.
+     *
+     * @param noFallbackIfNotReady If true, will not fall back to the default locale if the Electron app is not ready.
+     * @returns The detected locale.
+     */
+    export function detectSystemLocale(noFallbackIfNotReady: boolean = false): LocaleID | null {
         const app = (require("electron") as typeof import("electron")).app ?? (require("@electron/remote") as typeof import("@electron/remote")).app;
 
         // 1. Primary: Chromium locale
@@ -90,8 +105,9 @@ namespace exports {
         }
 
         // 3. Optional: region hint (rarely needed)
-        const sys = app.getSystemLocale()?.replace("-", "_") as LocaleID;
-        if (locales.includes(sys)) return sys;
+        const sys = app.isReady() ? (app.getSystemLocale()?.replace("-", "_") as LocaleID) : null;
+        if (sys !== null && locales.includes(sys)) return sys;
+        if (noFallbackIfNotReady && sys === null) return null;
 
         // 4. Final fallback
         return "en_US";
@@ -150,16 +166,40 @@ namespace exports {
      */
     export let translations: LocaleTranslations = {};
 
-    if (config.locale === "auto") {
-        loadLocale(detectSystemLocale());
-    } else {
-        try {
-            loadLocale(config.locale);
-        } catch (e) {
-            console.error("Error loading user-defined locale, falling back to system locale:", e, "locale:", config.locale);
-            loadLocale(detectSystemLocale());
+    /**
+     * Refreshes the current locale.
+     */
+    function refreshCurrentLocale(): void {
+        if (config.locale === "auto") {
+            const locale: LocaleID | null = detectSystemLocale(true);
+            if (locale === null) {
+                console.warn("Could not detect system locale because app is not ready, falling back to default locale.");
+                loadLocale("en_US");
+                const app = (require("electron") as typeof import("electron")).app ?? (require("@electron/remote") as typeof import("@electron/remote")).app;
+                app.whenReady().then(refreshCurrentLocale);
+            } else {
+                loadLocale(locale);
+            }
+        } else {
+            try {
+                loadLocale(config.locale);
+            } catch (e) {
+                console.error("Error loading user-defined locale, falling back to system locale:", e, "locale:", config.locale);
+                const locale: LocaleID | null = detectSystemLocale(true);
+                if (locale === null) {
+                    console.warn("Could not detect system locale because app is not ready, falling back to default locale.");
+                    loadLocale("en_US");
+                    const app =
+                        (require("electron") as typeof import("electron")).app ?? (require("@electron/remote") as typeof import("@electron/remote")).app;
+                    app.whenReady().then(refreshCurrentLocale);
+                } else {
+                    loadLocale(locale);
+                }
+            }
         }
     }
+
+    refreshCurrentLocale();
 
     config.on("settingChanged:locale", (locale: "auto" | LocaleID): void => loadLocale(locale === "auto" ? detectSystemLocale() : locale));
 
@@ -182,7 +222,21 @@ namespace exports {
      * @returns The translated string.
      */
     export function translateWithParameters(id: TemplateStringsArray, ...params: string[]): string;
+    /**
+     * Translates a string with parameters.
+     *
+     * @param id The id of the string to translate.
+     * @param params The parameters to substitute into the string.
+     * @returns The translated string.
+     */
     export function translateWithParameters(id: string, params: string[]): string;
+    /**
+     * Translates a string with parameters.
+     *
+     * @param id The id of the string to translate.
+     * @param params The parameters to substitute into the string.
+     * @returns The translated string.
+     */
     export function translateWithParameters(id: string | TemplateStringsArray, ...params: string[] | [params: string[]]): string {
         const resolvedId: string = typeof id === "string" ? id : id[0]!;
         const resolvedParams: string[] =

@@ -1,3 +1,9 @@
+# v1.0.0-beta.30
+
+## Critical Fixes
+
+-   Fixed a crash that could occur when the user's locale is not United States English.
+
 # v1.0.0-beta.29
 
 ## Critical Fixes
