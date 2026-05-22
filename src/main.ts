@@ -24,7 +24,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, 
 // import "./utils/ProgressBar.ts";
 import "./utils/version.ts";
 import "./utils/config.ts";
-import "./init/Locale.ts"
+import "./init/Locale.ts";
 import "./api/main.ts";
 import { APP_DATA_FOLDER_PATH } from "./utils/URLs.ts";
 import { updateElectronApp } from "update-electron-app";
@@ -294,8 +294,27 @@ if (started) {
     app.quit();
 }
 
-if (process.platform !== "darwin" && !isSecondInstance && config.autoUpdateEnabled) {
-    updateElectronApp();
+if (!isSecondInstance && (process.platform === "win32" || process.platform === "darwin")) {
+    automaticUpdatesDialog: if (!config.shownDialogs.includes("allow_automatic_updates")) {
+        const result: number = dialog.showMessageBoxSync({
+            type: "question",
+            title: "Enable Automatic Updates?",
+            message: "Would you like to enable automatic updates?",
+            detail: "The app will only check for updates while it is open, it does not install any background processes.",
+            buttons: ["Enable", "Disable", "Cancel"],
+            noLink: true,
+            defaultId: 0,
+            cancelId: 2,
+        });
+        if (result === 2) break automaticUpdatesDialog;
+        config.shownDialogs.push("allow_automatic_updates");
+        config.autoUpdateEnabled = result === 0;
+    }
+
+    if (config.autoUpdateEnabled) {
+        // TODO: Add an option to allow changing the update check interval.
+        updateElectronApp();
+    }
 }
 
 if (!startup) {

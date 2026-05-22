@@ -221,6 +221,7 @@ namespace exports {
             enabledAutoApplyIntegrations: [],
             disabledAutoApplyIntegrations: [],
             hiddenIntegrations: [],
+            shownDialogs: [],
             attemptToKeepCurrentConfigWhenUpdatingVersion: false,
             GUIScale: 0,
             GUIScaleOverride: null,
@@ -822,6 +823,20 @@ namespace exports {
         }
         public set hiddenIntegrations(value: ConfigConstants.IntegrationId[] | undefined) {
             this.saveChanges({ hiddenIntegrations: value ?? Config.defaults.hiddenIntegrations });
+        }
+        /**
+         * The list of dialogs that have been shown.
+         *
+         * @default
+         * ```typescript
+         * []
+         * ```
+         */
+        public get shownDialogs(): LooseAutocomplete<ConfigConstants.DialogId>[] {
+            return this.getConfigData().shownDialogs ?? Config.defaults.shownDialogs;
+        }
+        public set shownDialogs(value: LooseAutocomplete<ConfigConstants.DialogId>[] | undefined) {
+            this.saveChanges({ shownDialogs: value ?? Config.defaults.shownDialogs });
         }
         /**
          * The GUI scale of the app.
@@ -1881,6 +1896,7 @@ namespace exports {
     const subConfigValueClasses = [VolumeConfig, ViewsConfig, DeepSubConfig] as const;
 
     export namespace ConfigConstants {
+        export type DialogId = "allow_automatic_updates";
         export type IntegrationId = keyof typeof import("../../app/integrations/index.ts").integrations;
         export const AutoApplySupportedIntegrationIds = ["WorldEdit_Bedrock"] as const satisfies IntegrationId[];
         export type AutoApplySupportedIntegrationId = (typeof AutoApplySupportedIntegrationIds)[number];

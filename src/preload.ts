@@ -296,9 +296,93 @@ const menu = Menu.buildFromTemplate([
                 },
             },
             {
+                // TODO: This should be disabled on unsupported operating systems.
                 label: translate`menu_bar.help.check_for_updates.label`,
-                click(): void {
-                    autoUpdater.checkForUpdates();
+                async click(): Promise<void> {
+                    try {
+                        // const pkg = require("../package.json");
+                        // const os = require("node:os");
+                        // const userAgent = require("node:util").format('%s/%s (%s: %s)', pkg.name, pkg.version, os.platform(), os.arch());
+                        const feedURL = `https://update.electronjs.org/8Crafter-Studios/Bedrock-World-Editor/${process.platform}-${process.arch}/${app.getVersion()}`;
+                        const feedInfo: Response = await fetch(feedURL);
+                        if (feedInfo.status === 204) {
+                            dialog.showMessageBox({
+                                type: "info",
+                                title: "Up to Date",
+                                message: "Bedrock World Editor is up to date.",
+                                buttons: ["OK"],
+                                noLink: true,
+                            });
+                        } else if (feedInfo.status !== 200) {
+                            dialog.showMessageBox({
+                                type: "error",
+                                title: "Error Checking for Updates",
+                                message: `There was an error checking for updates. Status Code: ${feedInfo.status}`,
+                                detail: feedInfo.statusText,
+                                buttons: ["OK"],
+                                noLink: true,
+                            });
+                            return;
+                        }
+                        const releaseInfo: {
+                            name: string;
+                            // TODO: Figure out if this actually could be a null type or not, or whether it is just not present.
+                            notes?: string | null;
+                            url: string;
+                        } = await feedInfo.json();
+                        let trimmedChangelog: string | undefined =
+                            releaseInfo.notes ? releaseInfo.notes.split("\n").slice(0, 10).join("\n").slice(0, 2000) : undefined;
+                        if (trimmedChangelog) {
+                            if (trimmedChangelog !== releaseInfo.notes) {
+                                trimmedChangelog += "\n...";
+                            }
+                        }
+                        const updateConfirmationResult: Electron.MessageBoxReturnValue = await dialog.showMessageBox({
+                            type: "info",
+                            title: "Update Available",
+                            message: `A new version of Bedrock World Editor is available.\n\nCurrent Version: ${app.getVersion().replace(/^(?!v)/, "v")}\nLatest Version: ${
+                                releaseInfo.name
+                            }`,
+                            detail: trimmedChangelog ? `Release Notes:\n${trimmedChangelog}` : undefined!,
+                            buttons: ["Install", "Cancel"],
+                            noLink: true,
+                            cancelId: 1,
+                            defaultId: 0,
+                        });
+                        if (updateConfirmationResult.response === 1) return;
+                        autoUpdater.setFeedURL({
+                            url: feedURL,
+                        });
+                        function notifyOfUpdateReady(): void {
+                            autoUpdater.off("update-downloaded", notifyOfUpdateReady);
+                            dialog
+                                .showMessageBox({
+                                    type: "info",
+                                    title: "Application Update",
+                                    message: releaseInfo.name,
+                                    detail: "A new version has been downloaded. Restart the application to apply the updates.",
+                                    buttons: ["Restart", "Later"],
+                                    noLink: true,
+                                })
+                                .then(({ response }: Electron.MessageBoxReturnValue): void => {
+                                    if (response === 0) {
+                                        autoUpdater.quitAndInstall();
+                                    }
+                                });
+                        }
+                        autoUpdater.on("update-downloaded", notifyOfUpdateReady);
+                        autoUpdater.checkForUpdates();
+                    } catch (e) {
+                        dialog.showMessageBox({
+                            type: "error",
+                            title: "Error Checking for Updates",
+                            message: "There was an error checking for updates.",
+                            detail: e instanceof Error ? (e.stack ?? e.toString()) : String(e),
+                            buttons: ["OK"],
+                            noLink: true,
+                        });
+                        return;
+                    }
                 },
             } /* 
                     {

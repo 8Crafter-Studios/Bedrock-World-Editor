@@ -1,3 +1,11 @@
+# v1.0.0-beta.31
+
+## Additions
+
+-   Added support for automatic updates to macOS.
+-   There is now a prompt to enable/disable automatic updates (on supported operating systems) (the prompt only appears once).
+-   The `Help > Check for Updates...` menu bar item is now functional (on supported operating systems).
+
 # v1.0.0-beta.30
 
 ## Critical Fixes
