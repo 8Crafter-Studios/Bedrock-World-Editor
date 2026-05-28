@@ -4,7 +4,7 @@ You want to find the download for your OS and CPU architecture.
 
 Downloads with a `.zip` file extension are portable versions and can be run without installing.
 
-NOTE: If you have a Mac with an Apple Silicon CPU, make sure you download the arm64 build. Otherwise if you have an older Mac with an Intel CPU, download the x86-64 build.
+NOTE: If you have a Mac with an Apple Silicon CPU, make sure you download the arm64 build. Otherwise if you have an older Mac with an Intel CPU, download the x86_64 build.
 
 ## Architectures
 
