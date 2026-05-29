@@ -33,11 +33,13 @@ This lists the different file extensions of the releases and what platforms they
 -   `.dmg`: macOS installer.
     -   This is for macOS.
 -   `.deb`: Debian Linux installer.
+    -   Use this if you install software with `apt`
     -   This is for Debian-based Linux distros. Some common Debian-based distros include:
         -   Ubuntu/Xubuntu/Kubuntu
         -   Debian
         -   Mint
 -   `.rpm`: Red Hat/SUSE Linux installer.
+    -   Package managers include `yum` and `dnf`
     -   This is for Red Hat-based and SUSE-based Linux distros. Some common Redhat-based and SUSE-based Linux distros include:
         -   Fedora
         -   Red Hat Enterprise Linux
