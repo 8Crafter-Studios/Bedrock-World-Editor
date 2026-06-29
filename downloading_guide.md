@@ -2,7 +2,7 @@
 
 Downloads can be found [here](https://github.com/8Crafter-Studios/Bedrock-World-Editor/releases/latest).
 
-The privacy policy and code signing policy can be found [here](./general-information#privacy-policy).
+The privacy policy and code signing policy can be found [here](https://wiki.8crafter.com/bwe/general/general-information#privacy-policy).
 
 You want to find the download for your OS and CPU architecture.
 
