@@ -24,7 +24,7 @@ jobs:
                       arch: arm64
                     - os: ubuntu-latest
                       arch: armv7l
-                    - os: macos-latest
+                    - os: macos-15-intel
                       arch: x64
                     # - os: macos-latest # BUG: This one doesn't work.
                     #   arch: ia32
