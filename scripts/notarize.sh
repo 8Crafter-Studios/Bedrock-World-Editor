@@ -82,7 +82,8 @@ for ZIP_PATH in "${ZIP_FILES[@]}"; do
 
   # Staple the .app, .dmg, and .zip for this architecture
   # Find matching .app and .dmg by directory
-  DIR=$(dirname "$ZIP_PATH")
+  # DIR=$(dirname "$ZIP_PATH")
+  DIR="out" # Using the .zip path doesn't work
 
   APP_PATH=$(find "$DIR" -name "*.app" -type d | head -n 1)
   DMG_PATH=$(find "$DIR" -name "*.dmg" -type f | head -n 1)
@@ -90,11 +91,15 @@ for ZIP_PATH in "${ZIP_FILES[@]}"; do
   if [ -n "$APP_PATH" ]; then
     echo "Stapling $APP_PATH"
     xcrun stapler staple "$APP_PATH"
+  else
+    echo "Could not find APP_PATH to staple"
   fi
 
   if [ -n "$DMG_PATH" ]; then
     echo "Stapling $DMG_PATH"
     xcrun stapler staple "$DMG_PATH"
+  else
+    echo "Could not find DMG_PATH to staple"
   fi
 
   # echo "Stapling $ZIP_PATH"
