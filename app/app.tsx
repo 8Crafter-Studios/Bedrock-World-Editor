@@ -12,7 +12,7 @@ import WorldSettingsTab from "./tabs/worldSettings";
 import SubTabBar from "./components/SubTabBar";
 import PlayersTab from "./tabs/players";
 import GenericNBTEditorTab from "./tabs/genericNBTEditor";
-import HexEditor from "./components/HexEditor";
+import HexEditorTab from "./tabs/hexEditor";
 import * as monaco from "monaco-editor";
 import EntitiesTab from "./tabs/entities";
 import ViewFilesTab from "./tabs/viewFiles";
@@ -1067,8 +1067,10 @@ export function WorldEditor(props: WorldEditorProps): JSX.SpecificElement<"div">
             render(<WorldEditorTabRenderer tab={props.tab.selectedTab} parentTab={props.tab} />, containerRef.current /* element */);
             // containerRef.current.replaceChildren(...element.children);
         }
+        props.tab.on("reloadCurrentSubTab", update);
         props.tab.on("switchTab", update);
         return (): void => {
+            props.tab.off("reloadCurrentSubTab", update);
             props.tab.off("switchTab", update);
         };
     }, []);
@@ -1136,6 +1138,7 @@ export function WorldEditorTabRenderer(props: {
                 return <UnderConstruction detail={`The ${props.tab} tab has not been implemented yet.`} />;
         }
     } else {
+        if (props.tab.rawMode) return <HexEditorTab tab={props.tab} />;
         switch (props.tab.contentType) {
             case "LevelDat":
                 return <WorldSettingsTab tab={props.tab} />;
@@ -1151,7 +1154,7 @@ export function WorldEditorTabRenderer(props: {
                             case "JSONNBT":
                                 return <GenericNBTEditorTab tab={props.tab} />;
                             default:
-                                return <HexEditor tab={props.tab} />;
+                                return <HexEditorTab tab={props.tab} />;
                         }
                     case "ASCII":
                     case "UTF-8":
@@ -1159,7 +1162,7 @@ export function WorldEditorTabRenderer(props: {
                     case "int": // Add int editor tab.
                     case "unknown":
                     default:
-                        return <HexEditor tab={props.tab} />;
+                        return <HexEditorTab tab={props.tab} />;
                 }
             }
         }

@@ -4,7 +4,7 @@ import "overlayscrollbars/overlayscrollbars.css";
 import "../src/libs/@szhsin/react-menu/index.css";
 import "../src/libs/@szhsin/react-menu/core.css";
 import "../src/importjQueryUtils.ts";
-import { render } from "preact";
+import { render } from "preact/compat";
 import App from "./app.tsx";
 import "jquery";
 // #DEBUG

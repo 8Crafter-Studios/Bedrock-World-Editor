@@ -6,7 +6,7 @@ export interface IntegrationsTabProps {
     tab: TabManagerTab;
 }
 
-export default function IntegrationsTab(props: IntegrationsTabProps): JSX.SpecificElement<"center"> {
+export default function IntegrationsTab(props: IntegrationsTabProps): JSX.Element {
     const mainIntegrationsScreenRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     const currentIntegrationMenuRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     const tablesContainerRef: RefObject<HTMLTableElement> = useRef<HTMLTableElement>(null);
@@ -27,23 +27,47 @@ export default function IntegrationsTab(props: IntegrationsTabProps): JSX.Specif
         render(<TablesContents />, tablesContainerRef.current);
     }
     Object.values(integrations).forEach((integration: Integration): void => {
-        const result: boolean | Promise<boolean> = integration.checkIfDetected(props.tab);
-        if (typeof result === "boolean") return void detectedAndUndetectedIntegrations[result ? "detected" : "undetected"].push(integration);
-        detectedAndUndetectedIntegrations.loading.push(integration);
-        result.then((detected: boolean): void => {
-            detectedAndUndetectedIntegrations[detected ? "detected" : "undetected"].push(integration);
-            const index: number = detectedAndUndetectedIntegrations.loading.indexOf(integration);
-            if (index !== -1) detectedAndUndetectedIntegrations.loading.splice(index, 1);
-            if (
-                mode === (detected ? "detected" : "undetected") ||
-                (mode === "loading" && index !== -1) ||
-                (mode !== "loading" &&
-                    detectedAndUndetectedIntegrations.loading.length === 0 &&
-                    index !== -1 &&
-                    detectedAndUndetectedIntegrations[mode].length === 0)
-            )
-                updateTablesContents();
-        });
+        try {
+            const result: boolean | Promise<boolean> = integration.checkIfDetected(props.tab);
+            if (typeof result === "boolean") return void detectedAndUndetectedIntegrations[result ? "detected" : "undetected"].push(integration);
+            detectedAndUndetectedIntegrations.loading.push(integration);
+            result.then(
+                (detected: boolean): void => {
+                    detectedAndUndetectedIntegrations[detected ? "detected" : "undetected"].push(integration);
+                    const index: number = detectedAndUndetectedIntegrations.loading.indexOf(integration);
+                    if (index !== -1) detectedAndUndetectedIntegrations.loading.splice(index, 1);
+                    if (
+                        mode === (detected ? "detected" : "undetected") ||
+                        (mode === "loading" && index !== -1) ||
+                        (mode !== "loading" &&
+                            detectedAndUndetectedIntegrations.loading.length === 0 &&
+                            index !== -1 &&
+                            detectedAndUndetectedIntegrations[mode].length === 0)
+                    )
+                        updateTablesContents();
+                },
+                (e: unknown): void => {
+                    console.error(e);
+                    // UNDONE: This should maybe have a separate errored tab.
+                    // detectedAndUndetectedIntegrations.undetected.push(integration);
+                    // const index: number = detectedAndUndetectedIntegrations.loading.indexOf(integration);
+                    // if (index !== -1) detectedAndUndetectedIntegrations.loading.splice(index, 1);
+                    // if (
+                    //     mode === "undetected" ||
+                    //     (mode === "loading" && index !== -1) ||
+                    //     (mode !== "loading" &&
+                    //         detectedAndUndetectedIntegrations.loading.length === 0 &&
+                    //         index !== -1 &&
+                    //         detectedAndUndetectedIntegrations[mode].length === 0)
+                    // )
+                    //     updateTablesContents();
+                }
+            );
+        } catch (e) {
+            console.error(e);
+            // UNDONE: This should maybe have a separate errored tab.
+            // detectedAndUndetectedIntegrations.undetected.push(integration);
+        }
     });
     function TablesContents(): JSX.SpecificElement<"div"> {
         const displayIntegrations: Integration[] = detectedAndUndetectedIntegrations[mode];

@@ -7,6 +7,9 @@ import { LoadingScreenContents } from "../app";
 import { useRef } from "preact/compat";
 import type * as NBT from "prismarine-nbt";
 // import { IProductService } from "monaco-editor/esm/vs/platform/product/common/productService.js";
+/**
+ * Props for the {@link PrismarineNBTEditor} component.
+ */
 export interface PrismarineNBTEditorProps {
     dataStorageObject: GenericDataStorageObject;
     contentType?: DBEntryContentType;
@@ -15,7 +18,6 @@ export interface PrismarineNBTEditorProps {
      *
      * @param dataStorageObject The current value of the data storage object (it is a reference to the original data storage object).
      * @param cause The cause of the change, or `undefined`.
-     * @returns `true` to prevent the tree editor from refreshing, `false` or `undefined` to allow the tree editor to refresh.
      */
     onValueChange?(
         dataStorageObject: GenericDataStorageObject,
@@ -23,15 +25,15 @@ export interface PrismarineNBTEditorProps {
             newValue: string;
             type: "changeContents";
         }
-    ): boolean | undefined;
+    ): void;
     /**
-     * Whether the tree editor should be read-only.
+     * Whether the editor should be read-only.
      *
      * @default false
      */
     readonly?: boolean;
     /**
-     * A message to display when the tree editor is read-only.
+     * A message to display when the editor is read-only.
      *
      * Only used when {@link readonly} is `true`.
      *
@@ -46,6 +48,12 @@ export interface PrismarineNBTEditorProps {
     path?: string;
 }
 
+/**
+ * The Prismarine-NBT editor.
+ *
+ * @param props The props for the component.
+ * @returns The JSX element.
+ */
 export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JSX.Element {
     if (props.dataStorageObject?.dataType === "JSON") return <p style="color: red;">JSON is not supported.</p>;
     const editorRef = useRef<typeof Editor>(null);

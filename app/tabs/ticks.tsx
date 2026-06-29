@@ -1,12 +1,6 @@
 import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef, useState } from "preact/compat";
-import {
-    entryContentTypeToFormatMap,
-    generateChunkKeyFromIndices,
-    getKeyDisplayName,
-    prettyPrintSNBT,
-    prismarineToSNBT,
-} from "mcbe-leveldb";
+import { entryContentTypeToFormatMap, generateChunkKeyFromIndices, getKeyDisplayName, prettyPrintSNBT, prismarineToSNBT } from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
 import { ControlledMenu, MenuItem } from "@szhsin/react-menu";
 import { LoadingScreenContents } from "../app";
@@ -18,6 +12,7 @@ import { PageNavigation } from "../components/PageNavigation";
 import EditorWidgetOverlayBar from "../components/EditorWidgetOverlayBar";
 import { dialog } from "@electron/remote";
 import showDBKeyCreationDialog from "../components/DBKeyCreationDialog";
+import Notice from "../components/Notice";
 
 // TODO: Implement Async Mode for this tab.
 
@@ -164,13 +159,23 @@ export default function TicksTab(props: TicksTabProps): JSX.SpecificElement<"div
 interface RandomTickKeyData {
     rawKey: Buffer;
     displayKey: string;
-    data: { parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata };
+    // UNDONE: Uncomment the `?` and ` | undefined` when async mode is implemented.
+    data /* ? */: {
+        parsed: NBT.NBT;
+        type: NBT.NBTFormat;
+        metadata: NBT.Metadata;
+    } | null /* | undefined */;
 }
 
 interface PendingTickKeyData {
     rawKey: Buffer;
     displayKey: string;
-    data: { parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata };
+    // UNDONE: Uncomment the `?` and ` | undefined` when async mode is implemented.
+    data /* ? */: {
+        parsed: NBT.NBT;
+        type: NBT.NBTFormat;
+        metadata: NBT.Metadata;
+    } | null /* | undefined */;
 }
 
 enum UpdateTablesContentsMode {
@@ -182,7 +187,52 @@ enum UpdateTablesContentsMode {
 
 async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Promise<JSX.Element> {
     if (!tab.db) return <div>The ticks sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
-    if (!tab.db.isOpen()) await tab.awaitDBOpen!;
+    if (!tab.db.isOpen() && !(await tab.awaitDBOpen ?? true)) {
+        if (tab.errorDueToEncryptedLevelDB)
+            return (
+                <Notice
+                    title="Encrypted LevelDB"
+                    subtitle="The LevelDB is encrypted. The app cannot open encrypted LevelDBs."
+                    detail="If this world is from a marketplace template, that would cause the LevelDB to be encrypted."
+                    image="access_denied"
+                />
+            );
+        return (
+            <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
+                <Notice
+                    title="LevelDB Error"
+                    subtitle="An error has occurred while opening the LevelDB."
+                    detail={null}
+                    image="generic_error"
+                    style={{ height: "auto" }}
+                />
+                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
+                    {tab.errorOnDBOpen instanceof Error ?
+                        `${tab.errorOnDBOpen.stack !== undefined ? tab.errorOnDBOpen.stack : tab.errorOnDBOpen.toString()}${
+                            tab.errorOnDBOpen.cause !== undefined ?
+                                `\nCaused by: ${((): unknown => {
+                                    try {
+                                        return typeof tab.errorOnDBOpen.cause === "object" ? JSON.stringify(tab.errorOnDBOpen.cause) : tab.errorOnDBOpen.cause;
+                                    } catch {
+                                        return tab.errorOnDBOpen.cause;
+                                    }
+                                })()}`
+                            :   ""
+                        }`
+                    :   String(
+                            (function (): unknown {
+                                try {
+                                    return typeof tab.errorOnDBOpen === "object" ? JSON.stringify(tab.errorOnDBOpen) : tab.errorOnDBOpen;
+                                } catch {
+                                    return tab.errorOnDBOpen;
+                                }
+                            })()
+                        )
+                    }
+                </div>
+            </div>
+        );
+    }
     if (!tab.cachedDBKeys) await tab.awaitCachedDBKeys!;
     signal.throwIfAborted();
     const keys = {
@@ -202,7 +252,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                     async (key: Buffer): Promise<RandomTickKeyData> => ({
                         rawKey: key,
                         displayKey: getKeyDisplayName(key),
-                        data: await NBT.parse((await tab.db!.get(key))!),
+                        data: await NBT.parse((await tab.db!.get(key))!).catch((): null => null),
                     })
                 )
             ).then((data: RandomTickKeyData[]): void => void (randomTickKeys = data)),
@@ -211,7 +261,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                     async (key: Buffer): Promise<PendingTickKeyData> => ({
                         rawKey: key,
                         displayKey: getKeyDisplayName(key),
-                        data: await NBT.parse((await tab.db!.get(key))!),
+                        data: await NBT.parse((await tab.db!.get(key))!).catch((): null => null),
                     })
                 )
             ).then((data: PendingTickKeyData[]): void => void (pendingTickKeys = data)),
@@ -392,7 +442,9 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                     parsed: NBT.NBT;
                     type: NBT.NBTFormat;
                     metadata: NBT.Metadata;
-                };
+                }
+                    | null
+                    | undefined;
                 valueType: {
                     readonly type: "NBT";
                 };
@@ -423,7 +475,10 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                             })(),
                         ],
                         customDataFields: {
+                            // TODO: Uncomment the below line and implement a search query for checking for entries with invalid data.
+                            // hasInvalidData: key.data === null,
                             contents: ((): string => {
+                                if (key.data === null) return "";
                                 try {
                                     return prettyPrintSNBT(prismarineToSNBT(key.data.parsed), { indent: 0 });
                                 } catch {
@@ -442,7 +497,9 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                     parsed: NBT.NBT;
                     type: NBT.NBTFormat;
                     metadata: NBT.Metadata;
-                };
+                }
+                    | null
+                    | undefined;
                 valueType: {
                     readonly type: "NBT";
                 };
@@ -473,7 +530,10 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                             })(),
                         ],
                         customDataFields: {
+                            // TODO: Uncomment the below line and implement a search query for checking for entries with invalid data.
+                            // hasInvalidData: key.data === null,
                             contents: ((): string => {
+                                if (key.data === null) return "";
                                 try {
                                     return prettyPrintSNBT(prismarineToSNBT(key.data.parsed), { indent: 0 });
                                 } catch {
@@ -554,6 +614,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                         >
                             <img
                                 src="resource://images/ui/glyphs/delete.png"
+                                class="invert_on_light_theme"
                                 style={{ width: "12px", imageRendering: "pixelated", margin: "-1.5px 5px -1.5px 0" }}
                                 aria-hidden="true"
                             />
@@ -589,6 +650,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                         >
                             <img
                                 src="resource://images/ui/glyphs/delete.png"
+                                class="invert_on_light_theme"
                                 style={{ width: "12px", imageRendering: "pixelated", margin: "-1.5px 5px -1.5px 0" }}
                                 aria-hidden="true"
                             />
@@ -640,6 +702,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                         >
                             <img
                                 src="resource://images/ui/glyphs/delete.png"
+                                class="invert_on_light_theme"
                                 style={{ width: "12px", imageRendering: "pixelated", margin: "-1.5px 5px -1.5px 0" }}
                                 aria-hidden="true"
                             />
@@ -702,6 +765,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                         >
                             <img
                                 src="resource://images/ui/glyphs/Data-Empty.png"
+                                class="invert_on_light_theme"
                                 style={{ width: "12px", imageRendering: "pixelated", margin: "-1.5px 5px -1.5px 0" }}
                                 aria-hidden="true"
                             />
@@ -764,6 +828,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                         >
                             <img
                                 src="resource://images/ui/glyphs/Data-Empty.png"
+                                class="invert_on_light_theme"
                                 style={{ width: "12px", imageRendering: "pixelated", margin: "-1.5px 5px -1.5px 0" }}
                                 aria-hidden="true"
                             />
@@ -791,7 +856,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                     />
                     <button
                         type="button"
-                        class="search-button"
+                        class="search-button piximg invert_on_light_theme"
                         title="Search"
                         onClick={(): void => {
                             try {
@@ -1082,7 +1147,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                     </button>
                     <button
                         type="button"
-                        class="search-help-button"
+                        class="search-help-button piximg invert_on_light_theme"
                         title="Help"
                         onClick={(): void => {
                             let containerElement: HTMLDivElement = document.createElement("div");
@@ -1144,6 +1209,7 @@ async function getTicksTabContentsRows(data: {
         case "simple_randomTicks": {
             const columns = config.views.ticks.modeSettings.simple.sections.randomTicks.columns;
             return data.randomTickKeys.map((randomTickKey: RandomTickKeyData): JSX.Element => {
+                // IDEA: Make it so that when right clicking on different cells of the row, there will be an addition context menu option to copy the value of that cell.
                 function Row(): JSX.Element {
                     const [entryContextMenu_isOpen, entryContextMenu_setOpen] = useState(false);
                     const [entryContextMenu_anchorPoint, entryContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
@@ -1187,7 +1253,6 @@ async function getTicksTabContentsRows(data: {
                                         if (!data.tab.db) return;
                                         if (!data.tab.db.isOpen()) return;
                                         if (!data.tab.cachedDBKeys) return;
-                                        // IDEA: Add a confirmation dialog here before deleting the entry, and make it able to be disabled in the config.
                                         await data.tab.db.delete(randomTickKey.rawKey);
                                         data.tab.setLevelDBIsModified();
                                         const cachedIndex: number = data.tab.cachedDBKeys.RandomTicks.findIndex((key: Buffer): boolean =>
@@ -1226,6 +1291,7 @@ async function getTicksTabContentsRows(data: {
                             >
                                 {columns.map((column: (typeof columns)[number]): JSX.Element => {
                                     switch (column) {
+                                        // TODO: Add more columns here.
                                         case "DBKey":
                                             return <td>{randomTickKey.displayKey}</td>;
                                     }
@@ -1322,6 +1388,7 @@ async function getTicksTabContentsRows(data: {
                             >
                                 {columns.map((column: (typeof columns)[number]): JSX.Element => {
                                     switch (column) {
+                                        // TODO: Add more columns here.
                                         case "DBKey":
                                             return <td>{pendingTickKey.displayKey}</td>;
                                     }

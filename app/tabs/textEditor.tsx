@@ -15,6 +15,8 @@ export interface TextEditorTabProps {
     tab: TabManagerSubTab;
 }
 
+// TODO: Add an option to edit the data in raw mode.
+
 export default function TextEditorTab(props: TextEditorTabProps): JSX.SpecificElement<"div"> {
     const containerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     const viewOptionsRefs = {

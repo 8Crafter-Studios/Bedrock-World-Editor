@@ -174,6 +174,8 @@ namespace exports {
             minecraftDataFolders: [
                 "%localappdata%/Packages/Microsoft.MinecraftUWP_8wekyb3d8bbwe/LocalState/games/com.mojang",
                 "%localappdata%/Packages/Microsoft.MinecraftWindowsBeta_8wekyb3d8bbwe/LocalState/games/com.mojang",
+                "%localappdata%/Packages/Microsoft.MinecraftEducationEdition_8wekyb3d8bbwe/LocalState/games/com.mojang",
+                "%localappdata%/Packages/Microsoft.MinecraftEducationPreview_8wekyb3d8bbwe/LocalState/games/com.mojang",
                 "Home/.var/app/io.mrarm.mcpelauncher/data/mcpelauncher/games/com.mojang",
                 "Home/.local/share/mcpelauncher/games/com.mojang",
                 "Home/Library/Application Support/mcpelauncher/games/com.mojang",
@@ -252,6 +254,7 @@ namespace exports {
                                     columns: ["DBKey", "ClientId", "Name", "UUID", "Permissions", "Location", "Rotation", "Spawn", "GameMode", "Level"],
                                 },
                             },
+                            searchMode: "server",
                         },
                     },
                 },
@@ -446,6 +449,21 @@ namespace exports {
                     if (currentExtraMinecraftDataFolders.length !== originalLength) this.extraMinecraftDataFolders = currentExtraMinecraftDataFolders;
                 }
             }
+            if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.31", { includePrerelease: true })) {
+                const currentMinecraftDataFolders: string[] = this.minecraftDataFolders;
+                const originalLength: number = currentMinecraftDataFolders.length;
+                for (const path of [
+                    "%localappdata%/Packages/Microsoft.MinecraftEducationEdition_8wekyb3d8bbwe/LocalState/games/com.mojang",
+                    "%localappdata%/Packages/Microsoft.MinecraftEducationPreview_8wekyb3d8bbwe/LocalState/games/com.mojang",
+                ]) {
+                    if (!currentMinecraftDataFolders.includes(path)) currentMinecraftDataFolders.push(path);
+                }
+                if (currentMinecraftDataFolders.length !== originalLength) this.minecraftDataFolders = currentMinecraftDataFolders;
+            }
+            // TODO: Uncomment this at add the correct version number when grouped search mode for the raw players tab mode is implemented.
+            // if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.?", { includePrerelease: true })) {
+            //     this.views.players.modeSettings.raw.searchMode = "grouped";
+            // }
             if (semver.compareBuild(currentConfigVersion, VERSION_FULL) < 0) {
                 this.version = VERSION_FULL;
             }
@@ -677,7 +695,8 @@ namespace exports {
                             .replaceAll(/%public%/gi, process.env.PUBLIC!)
                             .replaceAll(/%Home%/gi, process.env.HOME!)
                             .replaceAll(/%APP_DATA_FOLDER_PATH%/gi, APP_DATA_FOLDER_PATH)
-                            .split("\\").join("/")
+                            .split("\\")
+                            .join("/")
                             .replace(/(?<!\/)$/, "/"),
                         {
                             absolute: true,
@@ -709,7 +728,8 @@ namespace exports {
                             .replaceAll(/%public%/gi, process.env.PUBLIC!)
                             .replaceAll(/%Home%/gi, process.env.HOME!)
                             .replaceAll(/%APP_DATA_FOLDER_PATH%/gi, APP_DATA_FOLDER_PATH)
-                            .split("\\").join("/")
+                            .split("\\")
+                            .join("/")
                             .replace(/(?<!\/)$/, "/"),
                         {
                             absolute: true,
@@ -741,7 +761,8 @@ namespace exports {
                             .replaceAll(/%public%/gi, process.env.PUBLIC!)
                             .replaceAll(/%Home%/gi, process.env.HOME!)
                             .replaceAll(/%APP_DATA_FOLDER_PATH%/gi, APP_DATA_FOLDER_PATH)
-                            .split("\\").join("/")
+                            .split("\\")
+                            .join("/")
                             .replace(/(?<!\/)$/, "/"),
                         {
                             absolute: true,
@@ -772,7 +793,8 @@ namespace exports {
                             .replaceAll(/%public%/gi, process.env.PUBLIC!)
                             .replaceAll(/%Home%/gi, process.env.HOME!)
                             .replaceAll(/%APP_DATA_FOLDER_PATH%/gi, APP_DATA_FOLDER_PATH)
-                            .split("\\").join("/")
+                            .split("\\")
+                            .join("/")
                             .replace(/(?<!\/)$/, "/"),
                         {
                             absolute: true,
@@ -1332,6 +1354,32 @@ namespace exports {
                                     }
                                 })(this);
                         })(this);
+                        /**
+                         * The search mode.
+                         *
+                         * - `grouped`: Grouped search mode, not yet implemented.
+                         * - `client`: Client search mode, searches the client keys.
+                         * - `server`: Server search mode, searches the server keys.
+                         */
+                        public get searchMode(): ConfigConstants.views.Players.RawTabMode_SearchMode {
+                            return (
+                                this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views?.players
+                                    ?.modeSettings?.raw?.searchMode ?? Config.defaults.views.players.modeSettings.raw.searchMode
+                            );
+                        }
+                        public set searchMode(value: ConfigConstants.views.Players.RawTabMode_SearchMode | undefined) {
+                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                views: {
+                                    players: {
+                                        modeSettings: {
+                                            raw: {
+                                                searchMode: value,
+                                            },
+                                        },
+                                    },
+                                },
+                            });
+                        }
                     })(this, "raw");
                 }
                 return PlayersViewConfig_ModeSettings;
@@ -1991,6 +2039,15 @@ namespace exports {
                 } as const;
 
                 export type PlayersTabMode = "simple" | "raw";
+
+                /**
+                 * The search mode for raw tab mode.
+                 *
+                 * - `grouped`: Grouped search mode, not yet implemented.
+                 * - `client`: Client search mode, searches the client keys.
+                 * - `server`: Server search mode, searches the server keys.
+                 */
+                export type RawTabMode_SearchMode = "grouped" | "client" | "server";
 
                 export type PlayersTabSectionModeFromPlayersTabModeAndSectionID<
                     M extends PlayersTabMode,

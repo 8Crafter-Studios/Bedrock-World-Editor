@@ -12,15 +12,33 @@ import * as NBT from "prismarine-nbt";
 import type { EditorWidgetOverlayBarWidgetRegistry } from "./EditorWidgetOverlayBar";
 const mime = require("mime-types") as typeof import("mime-types");
 
+/**
+ * The data storage object for the {@link MapEditor}.
+ */
 export type MapEditorDataStorageObject = {
     /**
-     * The options for the {@link mapEditor}.
+     * The options for the {@link MapEditor}.
      */
     mapEditor: {
         $TODO?: never;
     };
 } & GenericDataStorageObject;
 
+/**
+ * Initializes the properties of the {@link MapEditorDataStorageObject} onto the target {@link DataStorageObject}.
+ *
+ * This function mutates the original object.
+ *
+ * @param dataStorageObject The data storage object to initialize.
+ * @returns The initialized data storage object.
+ */
+export function initMapEditorDataStorageObjectProps(dataStorageObject: DataStorageObject): MapEditorDataStorageObject & DataStorageObject {
+    return Object.assign(dataStorageObject, { mapEditor: {} } satisfies Omit<MapEditorDataStorageObject, keyof GenericDataStorageObject>);
+}
+
+/**
+ * The properties for the {@link MapEditor} component.
+ */
 export interface MapRendererProps {
     /**
      * The tab associated with this editor.
@@ -39,10 +57,21 @@ export interface MapRendererProps {
     overlayBarRegistry?: EditorWidgetOverlayBarWidgetRegistry | undefined;
 }
 
+/**
+ * An interface containing methods to interacting with the map editor.
+ */
 export interface MapEditorInteraction {
     updateMap(): void;
 }
 
+/**
+ * The map editor.
+ *
+ * @param props The props for the component.
+ * @returns The JSX element.
+ *
+ * @throws {Error} If the data type is invalid or not supported by the map editor.
+ */
 export function MapEditor(props: MapRendererProps): JSX.Element {
     const containerRef: RefObject<HTMLDivElement> = mergeRefs(useRef<HTMLDivElement>(null), props.containerRef);
     const canvasRef: RefObject<HTMLCanvasElement> = mergeRefs(useRef<HTMLCanvasElement>(null), props.canvasRef);

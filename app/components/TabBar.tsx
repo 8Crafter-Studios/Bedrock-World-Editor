@@ -375,9 +375,50 @@ export default function TabBar(): JSX.Element {
             tabContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
             tabContextMenu_setOpen(true);
         }
+        async function onTabMiddleClick(event: TargetedMouseEvent<HTMLLIElement>): Promise<void> {
+            if (props.tab.isModified()) {
+                if (event.shiftKey) {
+                    if (event.ctrlKey) await props.tab.save();
+                    await props.tab.close();
+                    return;
+                }
+                const result: MessageBoxReturnValue = await dialog.showMessageBox(getCurrentWindow(), {
+                    type: "warning",
+                    title: "Unsaved Changes",
+                    message: `Do you want to save the changes you made to ${props.tab.name}?`,
+                    detail: "Your changes will be lost if you don't save them.",
+                    buttons: ["Save", "Don't Save", "Cancel"],
+                    noLink: true,
+                    defaultId: 0,
+                    cancelId: 2,
+                });
+                switch (result.response) {
+                    case 0:
+                        await props.tab.save();
+                        await props.tab.close();
+                        break;
+                    case 1:
+                        await props.tab.close();
+                        break;
+                    case 2:
+                        break;
+                }
+            } else {
+                props.tab.close();
+            }
+        }
         return (
             <li
                 class={props.tab === tabManager.selectedTab ? "active" : ""}
+                onClick={(event: TargetedMouseEvent<HTMLLIElement>): void => {
+                    // Treat Alt+Click as a middle click.
+                    if (!event.altKey) return;
+                    onTabMiddleClick(event);
+                }}
+                onAuxClick={(event: TargetedMouseEvent<HTMLLIElement>): void => {
+                    if (event.button !== 1) return;
+                    onTabMiddleClick(event);
+                }}
                 onContextMenu={(event: TargetedMouseEvent<HTMLLIElement>): void => void onTabRightClick(event)}
                 ref={containerRef}
             >
@@ -587,8 +628,9 @@ export default function TabBar(): JSX.Element {
                         title="Close (Shift to Close Without Saving, Ctrl+Shift to Save & Close)"
                         src="resource://images/ui/glyphs/Close.png"
                         style="margin-left: 0.5em; width: 10px; height: 10px; vertical-align: middle;"
-                        class="closebtn"
+                        class="closebtn piximg"
                         onClick={async (event: JSX.TargetedMouseEvent<HTMLImageElement>): Promise<void> => {
+                            event.stopPropagation();
                             if (props.tab.isModified()) {
                                 if (event.shiftKey) {
                                     if (event.ctrlKey) await props.tab.save();
@@ -618,7 +660,6 @@ export default function TabBar(): JSX.Element {
                                 }
                             } else {
                                 props.tab.close();
-                                event.stopPropagation();
                             }
                         }}
                     />
@@ -639,7 +680,7 @@ export default function TabBar(): JSX.Element {
                             $("#add-tab-popup-menu").toggle();
                         }}
                     >
-                        <img aria-hidden="true" src="resource://images/ui/glyphs/icon-plus.png" />
+                        <img aria-hidden="true" class="piximg" src="resource://images/ui/glyphs/icon-plus.png" />
                     </a>
                 </li>
             </>

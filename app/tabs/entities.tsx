@@ -30,6 +30,7 @@ import { PageNavigation } from "../components/PageNavigation";
 import type { SearchSyntaxHelpInfo } from "../components/SearchSyntaxHelpMenu";
 import SearchSyntaxHelpMenu from "../components/SearchSyntaxHelpMenu";
 import { viewFilesTabSearchSyntax } from "./viewFiles";
+import Notice from "../components/Notice";
 
 export interface EntitiesTabProps {
     tab: TabManagerTab;
@@ -274,7 +275,52 @@ interface KeyData {
 
 async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): Promise<JSX.Element> {
     if (!tab.db) return <div>The entities sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
-    if (!tab.db.isOpen()) await tab.awaitDBOpen!;
+    if (!tab.db.isOpen() && !(await tab.awaitDBOpen ?? true)) {
+        if (tab.errorDueToEncryptedLevelDB)
+            return (
+                <Notice
+                    title="Encrypted LevelDB"
+                    subtitle="The LevelDB is encrypted. The app cannot open encrypted LevelDBs."
+                    detail="If this world is from a marketplace template, that would cause the LevelDB to be encrypted."
+                    image="access_denied"
+                />
+            );
+        return (
+            <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
+                <Notice
+                    title="LevelDB Error"
+                    subtitle="An error has occurred while opening the LevelDB."
+                    detail={null}
+                    image="generic_error"
+                    style={{ height: "auto" }}
+                />
+                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
+                    {tab.errorOnDBOpen instanceof Error ?
+                        `${tab.errorOnDBOpen.stack !== undefined ? tab.errorOnDBOpen.stack : tab.errorOnDBOpen.toString()}${
+                            tab.errorOnDBOpen.cause !== undefined ?
+                                `\nCaused by: ${((): unknown => {
+                                    try {
+                                        return typeof tab.errorOnDBOpen.cause === "object" ? JSON.stringify(tab.errorOnDBOpen.cause) : tab.errorOnDBOpen.cause;
+                                    } catch {
+                                        return tab.errorOnDBOpen.cause;
+                                    }
+                                })()}`
+                            :   ""
+                        }`
+                    :   String(
+                            (function (): unknown {
+                                try {
+                                    return typeof tab.errorOnDBOpen === "object" ? JSON.stringify(tab.errorOnDBOpen) : tab.errorOnDBOpen;
+                                } catch {
+                                    return tab.errorOnDBOpen;
+                                }
+                            })()
+                        )
+                    }
+                </div>
+            </div>
+        );
+    }
     if (!tab.cachedDBKeys) await tab.awaitCachedDBKeys!;
     signal.throwIfAborted();
     const rawKeys: Buffer[] = tab.cachedDBKeys!.ActorPrefix;
@@ -289,7 +335,7 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
             async (key: Buffer): Promise<KeyData> => ({
                 rawKey: key,
                 displayKey: getKeyDisplayName(key),
-                data: asyncMode ? undefined : await NBT.parse((await tab.db!.get(key))!),
+                data: asyncMode ? undefined : await NBT.parse((await tab.db!.get(key))!).catch((): null => null),
             })
         )
     );
@@ -661,7 +707,7 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                     />
                     <button
                         type="button"
-                        class="search-button"
+                        class="search-button piximg invert_on_light_theme"
                         title="Search"
                         onClick={(): void => {
                             try {
@@ -934,7 +980,7 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                     </button>
                     <button
                         type="button"
-                        class="search-help-button"
+                        class="search-help-button piximg invert_on_light_theme"
                         title="Help"
                         onClick={(): void => {
                             let containerElement: HTMLDivElement = document.createElement("div");

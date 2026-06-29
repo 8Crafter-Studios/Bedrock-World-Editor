@@ -543,7 +543,6 @@ function SettingsLeftSidebar(props: SettingsLeftSidebarProps): JSX.SpecificEleme
         $(`#settings_left_sidebar .sidebar_button[data-path-id=${newTab}]`).addClass("active");
     }
     useEffect((): (() => void) => {
-        console.log("effect1");
         $(`#settings_left_sidebar .sidebar_button[data-path-id=${[previousTab]}]`).addClass("active");
         const unsubscribeSelectedTabObserver: () => boolean = props.selectedTab.observe((selectedTab: SettingsTab): void => {
             if (previousTab === selectedTab) return;

@@ -44,9 +44,13 @@ export default function FunTab(props: FunTabProps): JSX.SpecificElement<"div"> {
                     try {
                         const keyBuffer: Buffer = Buffer.from("DedicatedServerForcedCorruption");
                         await props.tab.db.put(keyBuffer, "true");
-                        if (!props.tab.cachedDBKeys.ForcedWorldCorruption.some(key=>key.equals(keyBuffer)))
-                        props.tab.cachedDBKeys.ForcedWorldCorruption.push(keyBuffer);
+                        if (!props.tab.cachedDBKeys.ForcedWorldCorruption.some((key) => key.equals(keyBuffer)))
+                            props.tab.cachedDBKeys.ForcedWorldCorruption.push(keyBuffer);
                         props.tab.setLevelDBIsModified();
+                        const repairForcedWorldCorruptionButton: HTMLElement | null = document.querySelector('.sidebar_button[data-path-id="repair-forced-world-corruption"]');
+                        if (repairForcedWorldCorruptionButton) {
+                            repairForcedWorldCorruptionButton.hidden = !props.tab.cachedDBKeys?.ForcedWorldCorruption?.length;
+                        }
                     } catch (e) {
                         console.error(e);
                     }

@@ -70,6 +70,7 @@ declare namespace NodeJS {
         SystemRoot?: string;
         TEMP?: string;
         TMP?: string;
+        TMPDIR?: string;
         USERDOMAIN?: string;
         USERDOMAIN_ROAMINGPROFILE?: string;
         USERNAME?: string;

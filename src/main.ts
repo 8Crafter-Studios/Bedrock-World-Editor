@@ -295,23 +295,27 @@ if (started) {
 }
 
 if (!isSecondInstance && (process.platform === "win32" || process.platform === "darwin")) {
-    automaticUpdatesDialog: if (!config.shownDialogs.includes("allow_automatic_updates")) {
-        const result: number = dialog.showMessageBoxSync({
-            type: "question",
-            title: "Enable Automatic Updates?",
-            message: "Would you like to enable automatic updates?",
-            detail: "The app will only check for updates while it is open, it does not install any background processes.",
-            buttons: ["Enable", "Disable", "Cancel"],
-            noLink: true,
-            defaultId: 0,
-            cancelId: 2,
+    if (!config.shownDialogs.includes("allow_automatic_updates")) {
+        app.whenReady().then((): void => {
+            const result: number = dialog.showMessageBoxSync({
+                type: "question",
+                title: "Enable Automatic Updates?",
+                message: "Would you like to enable automatic updates?",
+                detail: "The app will only check for updates while it is open, it does not install any background processes.",
+                buttons: ["Enable", "Disable", "Cancel"],
+                noLink: true,
+                defaultId: 0,
+                cancelId: 2,
+            });
+            if (result === 2) return;
+            config.shownDialogs.push("allow_automatic_updates");
+            config.autoUpdateEnabled = result === 0;
+            if (config.autoUpdateEnabled) {
+                // TODO: Add an option to allow changing the update check interval.
+                updateElectronApp();
+            }
         });
-        if (result === 2) break automaticUpdatesDialog;
-        config.shownDialogs.push("allow_automatic_updates");
-        config.autoUpdateEnabled = result === 0;
-    }
-
-    if (config.autoUpdateEnabled) {
+    } else if (config.autoUpdateEnabled) {
         // TODO: Add an option to allow changing the update check interval.
         updateElectronApp();
     }

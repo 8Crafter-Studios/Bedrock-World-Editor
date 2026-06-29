@@ -1,4 +1,4 @@
-import type { JSX, RefObject, TargetedMouseEvent } from "preact";
+import type { JSX, RefObject, TargetedKeyboardEvent, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef, useState } from "preact/compat";
 import TreeEditor from "../components/TreeEditor";
 import {
@@ -19,14 +19,21 @@ import NBT from "prismarine-nbt";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { testForObjectExtension } from "../../src/utils/miscUtils";
-import { ControlledMenu, MenuItem } from "@szhsin/react-menu";
+import { ControlledMenu, MenuItem, SubMenu, type ClickEvent as ContextMenu_ClickEvent } from "@szhsin/react-menu";
 import { LoadingScreenContents } from "../app";
 import SearchString from "search-string";
 import { PageNavigation } from "../components/PageNavigation";
 import SearchSyntaxHelpMenu, { type SearchSyntaxHelpInfo } from "../components/SearchSyntaxHelpMenu";
+import EditorWidgetOverlayBar from "../components/EditorWidgetOverlayBar";
+import { clipboard, dialog } from "@electron/remote";
+import type { MessageBoxReturnValue } from "electron";
+import Notice from "../components/Notice";
 
 // TODO: Implement Async Mode for this tab.
 
+/**
+ * Props for the {@link ViewFilesTab} component.
+ */
 export interface ViewFilesTabProps {
     tab: TabManagerTab;
 }
@@ -269,6 +276,12 @@ export const viewFilesTabSearchSyntax: SearchSyntaxHelpInfo = {
     },
 };
 
+/**
+ * The view files tab.
+ *
+ * @param props The props for the component.
+ * @returns The JSX element.
+ */
 export default function ViewFilesTab(props: ViewFilesTabProps): JSX.SpecificElement<"div"> {
     if (!props.tab.db) return <div>The viewFiles sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
     const containerRef: RefObject<HTMLTableElement> = useRef<HTMLTableElement>(null);
@@ -367,7 +380,52 @@ interface KeyData {
 
 async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal): Promise<JSX.Element> {
     if (!tab.db) return <div>The view files sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
-    if (!tab.db.isOpen()) await tab.awaitDBOpen!;
+    if (!tab.db.isOpen() && !(await tab.awaitDBOpen ?? true)) {
+        if (tab.errorDueToEncryptedLevelDB)
+            return (
+                <Notice
+                    title="Encrypted LevelDB"
+                    subtitle="The LevelDB is encrypted. The app cannot open encrypted LevelDBs."
+                    detail="If this world is from a marketplace template, that would cause the LevelDB to be encrypted."
+                    image="access_denied"
+                />
+            );
+        return (
+            <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
+                <Notice
+                    title="LevelDB Error"
+                    subtitle="An error has occurred while opening the LevelDB."
+                    detail={null}
+                    image="generic_error"
+                    style={{ height: "auto" }}
+                />
+                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
+                    {tab.errorOnDBOpen instanceof Error ?
+                        `${tab.errorOnDBOpen.stack !== undefined ? tab.errorOnDBOpen.stack : tab.errorOnDBOpen.toString()}${
+                            tab.errorOnDBOpen.cause !== undefined ?
+                                `\nCaused by: ${((): unknown => {
+                                    try {
+                                        return typeof tab.errorOnDBOpen.cause === "object" ? JSON.stringify(tab.errorOnDBOpen.cause) : tab.errorOnDBOpen.cause;
+                                    } catch {
+                                        return tab.errorOnDBOpen.cause;
+                                    }
+                                })()}`
+                            :   ""
+                        }`
+                    :   String(
+                            (function (): unknown {
+                                try {
+                                    return typeof tab.errorOnDBOpen === "object" ? JSON.stringify(tab.errorOnDBOpen) : tab.errorOnDBOpen;
+                                } catch {
+                                    return tab.errorOnDBOpen;
+                                }
+                            })()
+                        )
+                    }
+                </div>
+            </div>
+        );
+    }
     if (!tab.cachedDBKeys) await tab.awaitCachedDBKeys!;
     signal.throwIfAborted();
     const keys: KeyData[] = (Object.keys(tab.cachedDBKeys!) as (keyof typeof tab.cachedDBKeys)[])
@@ -386,6 +444,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                 // data: await NBT.parse((await tab.db!.get(key))!),
             })
         );
+    let keySearchResults: KeyData[] = keys;
     for (const key of keys) {
         valueTypeSwitcher: switch (key.valueType?.type) {
             case "ASCII": {
@@ -480,7 +539,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                     <table class="nsel" style="flex: 1; overflow: auto; margin: 5px;">
                                         <thead>
                                             <tr
-                                            /* onContextMenu={(event: JSX.TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                            /* onContextMenu={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                                                         if (typeof document.hasFocus === "function" && !document.hasFocus()) return;
 
                                                         event.preventDefault();
@@ -694,9 +753,10 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                                 if (!value) continue;
                                                 results.push(value.originalObject.data);
                                             }
+                                            keySearchResults = results;
                                             return results;
                                         })()
-                                    :   keys,
+                                    :   (keySearchResults = keys),
                                 dynamicProperties,
                                 get updateTablesContents(): ((reloadData: boolean) => Promise<void>) | null {
                                     return currentUpdateTablesContentsFunction;
@@ -722,7 +782,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                         <button
                             type="button"
                             class={mode === "simple" ? "selected" : ""}
-                            onClick={(event: JSX.TargetedMouseEvent<HTMLButtonElement>): void => {
+                            onClick={(event: TargetedMouseEvent<HTMLButtonElement>): void => {
                                 if (event.currentTarget.classList.contains("selected")) return;
                                 $(event.currentTarget).siblings("button").removeClass("selected");
                                 $(event.currentTarget).addClass("selected");
@@ -733,6 +793,151 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                         </button>
                     </div>
                 </div> */}
+                <EditorWidgetOverlayBar>
+                    <div class="widget-overlay tabbed-selector">
+                        <button
+                            type="button"
+                            title="Clear Entries"
+                            onClick={async (): Promise<void> => {
+                                if (!tab.db) return;
+                                if (!tab.db.isOpen()) return;
+                                if (!tab.cachedDBKeys) return;
+                                if (keySearchResults === keys) {
+                                    const prompt1Result: MessageBoxReturnValue = await dialog.showMessageBox({
+                                        type: "warning",
+                                        title: "Deleting ALL LevelDB Entries",
+                                        message: `Are you sure you want to delete all ${keySearchResults.length} LevelDB entries?`,
+                                        buttons: ["Proceed", "Cancel"],
+                                        noLink: true,
+                                        // Make the default option to cancel as this is a very dangerous operation.
+                                        defaultId: 1,
+                                        cancelId: 1,
+                                    });
+                                    if (prompt1Result.response !== 0) return;
+                                    const prompt2Result: MessageBoxReturnValue = await dialog.showMessageBox({
+                                        type: "warning",
+                                        title: "Deleting ALL LevelDB Entries",
+                                        message: `Are you REALLY sure you want to delete all ${keySearchResults.length} LevelDB entries?`,
+                                        detail: "This is like deleting your entire world except for the settings.",
+                                        buttons: ["Proceed", "Cancel"],
+                                        noLink: true,
+                                        // Make the default option to cancel as this is a very dangerous operation.
+                                        defaultId: 1,
+                                        cancelId: 1,
+                                    });
+                                    if (prompt2Result.response !== 0) return;
+                                } else {
+                                    const promptResult: MessageBoxReturnValue = await dialog.showMessageBox({
+                                        type: "warning",
+                                        title: "Deleting Search Results from LevelDB",
+                                        message: `Are you sure you want to delete all ${keySearchResults.length} search results from the LevelDB?`,
+                                        buttons: ["Proceed", "Cancel"],
+                                        noLink: true,
+                                        // Make the default option to cancel as this is a very dangerous operation.
+                                        defaultId: 1,
+                                        cancelId: 1,
+                                    });
+                                    if (promptResult.response !== 0) return;
+                                }
+                                await Promise.all(
+                                    keySearchResults.map(
+                                        (key: KeyData): Promise<void> =>
+                                            tab.db!.delete(key.rawKey).then((success: boolean): void => {
+                                                if (!success) return;
+                                                tab.setLevelDBIsModified();
+                                                keySearchResults.splice(keySearchResults.indexOf(key), 1);
+                                                deleteSearchTargetsKey: {
+                                                    const searchTargetsKeyIndex: number = query.searchTargets.findIndex((key2): boolean => key2.data === key);
+                                                    if (searchTargetsKeyIndex === -1) break deleteSearchTargetsKey;
+                                                    query.searchTargets.splice(searchTargetsKeyIndex, 1);
+                                                }
+                                                if (tab.cachedDBKeys?.[key.contentType]?.includes(key.rawKey)) {
+                                                    tab.cachedDBKeys[key.contentType].splice(tab.cachedDBKeys[key.contentType].indexOf(key.rawKey), 1);
+                                                }
+                                                if (keys.includes(key)) {
+                                                    keys.splice(keys.indexOf(key), 1);
+                                                }
+                                            })
+                                    )
+                                );
+                                // OPTIMIZE: This reloads more than is necessary.
+                                updateTablesContents(true);
+                            }}
+                        >
+                            <img
+                                src="resource://images/ui/glyphs/delete.png"
+                                class="invert_on_light_theme"
+                                style={{ width: "12px", imageRendering: "pixelated", margin: "-1.5px 5px -1.5px 0" }}
+                                aria-hidden="true"
+                            />
+                            Clear Entries
+                        </button>
+                    </div>
+                    <div class="widget-overlay tabbed-selector">
+                        <button
+                            type="button"
+                            title="New Entry"
+                            onClick={async (): Promise<void> => {
+                                try {
+                                    if (!tab.db) return;
+                                    if (!tab.db.isOpen()) return;
+                                    if (!tab.cachedDBKeys) return;
+                                    // const creationOptions = await showDBKeyCreationDialog({
+                                    //     options: ["chunkX", "chunkZ", "dimension"],
+                                    //     message: "Please enter the paremters for the new RandomTicks entry.",
+                                    // });
+                                    // if (creationOptions.canceled) return;
+                                    // const key: Buffer = generateChunkKeyFromIndices(
+                                    //     { x: creationOptions.data.chunkX, z: creationOptions.data.chunkZ, dimension: creationOptions.data.dimension },
+                                    //     "RandomTicks"
+                                    // );
+                                    // if (await tab.db.get(key)) {
+                                    //     dialog.showMessageBox({
+                                    //         type: "error",
+                                    //         title: "Duplicate Key",
+                                    //         message: `Unable to create a new RandomTicks entry at chunk ${creationOptions.data.chunkX} ${creationOptions.data.chunkZ} in dimension ${creationOptions.data.dimension}.`,
+                                    //         detail: "There is already a RandomTicks entry at this location.",
+                                    //         buttons: ["OK"],
+                                    //         noLink: true,
+                                    //     });
+                                    //     return;
+                                    // }
+                                    // await tab.db.put(key, entryContentTypeToFormatMap.RandomTicks.defaultValue);
+                                    // tab.setLevelDBIsModified();
+                                    // tab.cachedDBKeys.RandomTicks.push(key);
+                                    // tab.openTab({
+                                    //     contentType: "RandomTicks",
+                                    //     icon: "auto",
+                                    //     name: getKeyDisplayName(key),
+                                    //     parentTab: tab,
+                                    //     target: {
+                                    //         type: "LevelDBEntry",
+                                    //         key,
+                                    //     },
+                                    // });
+                                } catch (e) {
+                                    dialog.showMessageBox({
+                                        type: "error",
+                                        title: "Error",
+                                        message: `An error occurred while creating the RandomTicks entry.`,
+                                        detail: e instanceof Error ? (e.stack ?? String(e)) : String(e),
+                                        buttons: ["OK"],
+                                        noLink: true,
+                                    });
+                                }
+                            }}
+                            disabled
+                        >
+                            <img
+                                src="resource://images/ui/glyphs/Data-Empty.png"
+                                class="invert_on_light_theme"
+                                style={{ width: "12px", imageRendering: "pixelated", margin: "-1.5px 5px -1.5px 0" }}
+                                aria-hidden="true"
+                            />
+                            New Entry
+                        </button>
+                    </div>
+                </EditorWidgetOverlayBar>
                 <div class="search-controls-container" ref={searchRefs.searchAreaContainer}>
                     <input
                         type="search"
@@ -742,7 +947,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                         autocorrect="off"
                         autocapitalize="off"
                         spellcheck={false}
-                        onKeyDown={(event: JSX.TargetedKeyboardEvent<HTMLInputElement>): void => {
+                        onKeyDown={(event: TargetedKeyboardEvent<HTMLInputElement>): void => {
                             if (!searchRefs.searchButton.current) return;
                             if (event.key === "Enter" && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
                                 event.preventDefault();
@@ -753,7 +958,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                     />
                     <button
                         type="button"
-                        class="search-button"
+                        class="search-button piximg invert_on_light_theme"
                         title="Search"
                         onClick={(): void => {
                             try {
@@ -1118,7 +1323,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                     </button>
                     <button
                         type="button"
-                        class="search-help-button"
+                        class="search-help-button piximg invert_on_light_theme"
                         title="Help"
                         onClick={(): void => {
                             let containerElement: HTMLDivElement = document.createElement("div");
@@ -1156,6 +1361,41 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
     return <Contents />;
 }
 
+type CopyContextMenuItemValue =
+    | {
+          /**
+           * The value to copy when the context menu item is selected.
+           *
+           * If not provided, the context menu item cannot be clicked and only the items in the submenu can be clicked.
+           */
+          value: string;
+          /**
+           * Additional value format options to show in a submenu for the user to copy.
+           */
+          formatOptions?: undefined;
+      }
+    | {
+          /**
+           * The value to copy when the context menu item is selected.
+           *
+           * If not provided, the context menu item cannot be clicked and only the items in the submenu can be clicked.
+           */
+          value?: string | undefined;
+          /**
+           * Additional value format options to show in a submenu for the user to copy.
+           */
+          formatOptions: {
+              /**
+               * The option label.
+               */
+              label: string;
+              /**
+               * The value to copy when the option is selected.
+               */
+              value: string;
+          }[];
+      };
+
 async function getViewFilesTabContentsRows(data: {
     /**
      * The tab manager tab.
@@ -1170,10 +1410,12 @@ async function getViewFilesTabContentsRows(data: {
 }): Promise<JSX.Element[]> {
     const columns = ConfigConstants.views.ViewFiles.viewFilesTabModeToColumnIDs["simple"];
     return data.keys.map((key: KeyData): JSX.Element => {
+            let copyContextMenuItemValue: CopyContextMenuItemValue | null = null as CopyContextMenuItemValue | null;
         function Row(): JSX.Element {
+            // IDEA: Add a confirmation dialog here before deleting the entry, and make it able to be disabled in the config. This should be done for all other tabs as well.
             const [entryContextMenu_isOpen, entryContextMenu_setOpen] = useState(false);
             const [entryContextMenu_anchorPoint, entryContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
-            function onEntryRightClick(event: JSX.TargetedMouseEvent<HTMLTableRowElement>): void {
+            function onEntryRightClick(event: TargetedMouseEvent<HTMLTableRowElement>): void {
                 event.preventDefault();
                 event.stopPropagation();
                 const clickPosition: { x: number; y: number } = {
@@ -1181,6 +1423,14 @@ async function getViewFilesTabContentsRows(data: {
                     y: event.clientY,
                 };
                 // console.log(clickPosition);
+
+                copyContextMenuItemValue = null;
+                valueCopyContextItemConfiguration: if (rowRef.current && event.target !== null && event.target instanceof Element) {
+                    const containerCell: HTMLTableCellElement | null = event.target.closest("td");
+                    if (containerCell?.parentElement !== rowRef.current) break valueCopyContextItemConfiguration;
+                    if (containerCell.dataset.copyData === undefined) break valueCopyContextItemConfiguration;
+                    copyContextMenuItemValue = JSON.parse(containerCell.dataset.copyData) as CopyContextMenuItemValue;
+                }
 
                 entryContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
                 entryContextMenu_setOpen(true);
@@ -1201,6 +1451,7 @@ async function getViewFilesTabContentsRows(data: {
                     false
                 );
             }
+            const rowRef: RefObject<HTMLTableRowElement> = useRef<HTMLTableRowElement>(null);
             return (
                 <>
                     <ControlledMenu
@@ -1226,6 +1477,37 @@ async function getViewFilesTabContentsRows(data: {
                         >
                             Delete LevelDB Entry
                         </MenuItem>
+                        {(!copyContextMenuItemValue || copyContextMenuItemValue.value !== undefined || !copyContextMenuItemValue.formatOptions) ?
+                            <MenuItem
+                                onClick={async (_event: ContextMenu_ClickEvent): Promise<void> => {
+                                    // if (!(event.syntheticEvent.currentTarget instanceof HTMLLIElement)) return;
+                                    // event.syntheticEvent.currentTarget.ariaDisabled = "true";
+                                    // event.syntheticEvent.currentTarget.classList.add("szh-menu__item--disabled");
+                                    if (!copyContextMenuItemValue || copyContextMenuItemValue.value === undefined) return;
+                                    clipboard.writeText(copyContextMenuItemValue.value);
+                                    // copyContextMenuItemValue = null;
+                                }}
+                                disabled={!copyContextMenuItemValue || copyContextMenuItemValue.value === undefined}
+                            >
+                                Copy Cell Value
+                            </MenuItem>
+                        :   null}
+                        {!!copyContextMenuItemValue?.formatOptions && (
+                            <SubMenu label="Copy Cell Value as...">
+                                {...copyContextMenuItemValue.formatOptions.map(
+                                    (formatOption: NonNullable<CopyContextMenuItemValue["formatOptions"]>[number]): JSX.Element => (
+                                        <MenuItem
+                                            onClick={(_event: ContextMenu_ClickEvent): void => {
+                                                clipboard.writeText(formatOption.value);
+                                                copyContextMenuItemValue = null;
+                                            }}
+                                        >
+                                            {formatOption.label}
+                                        </MenuItem>
+                                    )
+                                )}
+                            </SubMenu>
+                        )}
                     </ControlledMenu>
                     <tr
                         onDblClick={(): void => {
@@ -1251,13 +1533,30 @@ async function getViewFilesTabContentsRows(data: {
                             onEntryMiddleClick(event);
                         }}
                         onContextMenu={onEntryRightClick}
+                        ref={rowRef}
                     >
                         {columns.map((column: (typeof columns)[number]): JSX.Element => {
                             switch (column) {
                                 case "DBKey":
-                                    return <td>{key.displayKey}</td>;
+                                    return (
+                                        <td
+                                            data-copy-data={JSON.stringify({
+                                                formatOptions: [
+                                                    { label: "Raw key hex", value: key.rawKey.toString("hex") },
+                                                    { label: "Display key", value: key.displayKey },
+                                                ],
+                                            } satisfies CopyContextMenuItemValue)}
+                                        >
+                                            {key.displayKey}
+                                        </td>
+                                    );
                                 case "ContentType":
-                                    return <td>{getContentTypeFromDBKey(key.rawKey)}</td>;
+                                    // const contentType: DBEntryContentType = getContentTypeFromDBKey(key.rawKey);
+                                    return (
+                                        <td data-copy-data={JSON.stringify({ value: key.contentType } satisfies CopyContextMenuItemValue)}>
+                                            {key.contentType}
+                                        </td>
+                                    );
                             }
                         })}
                     </tr>

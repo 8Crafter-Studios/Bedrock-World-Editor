@@ -1718,7 +1718,7 @@ const thisIntegration = {
                                                     result.tabID
                                                 }n); if (tab) {const db = tab.db; if (db) {const [{data: key}, {data}] = ${JSON.stringify(
                                                     data
-                                                )}; const keyBuffer = Buffer.from(key); db.put(keyBuffer, Buffer.from(data)).then((success)=>{if(!success) console.error("Failed to transfer structure:", keyBuffer); else if (!tab.cachedDBKeys.StructureTemplate.some(targetKey=> targetKey.equals(keyBuffer))) {tab.cachedDBKeys.StructureTemplate.push(keyBuffer); tab.setLevelDBIsModified();}});}} else console.log("Unable to find tab with ID:", ${
+                                                )}; const keyBuffer = Buffer.from(key); db.put(keyBuffer, Buffer.from(data)).then((success)=>{if(!success) console.error("Failed to transfer structure:", keyBuffer); else if (!tab.cachedDBKeys.StructureTemplate.some(targetKey=> targetKey.equals(keyBuffer))) {tab.cachedDBKeys.StructureTemplate.push(keyBuffer); tab.setLevelDBIsModified();}});}} else console.error("Unable to find tab with ID:", ${
                                                     result.tabID
                                                 }n);}`
                                             );
@@ -1830,7 +1830,7 @@ const thisIntegration = {
                                                         result.tabID
                                                     }n); if (tab) {const db = tab.db; if (db) {const [{data: key}, {data}] = ${JSON.stringify(
                                                         data
-                                                    )}; const keyBuffer = Buffer.from(key); db.put(keyBuffer, Buffer.from(data)).then((success)=>{if(!success) console.error("Failed to transfer structure:", keyBuffer); else if (!tab.cachedDBKeys.StructureTemplate.some(targetKey=> targetKey.equals(keyBuffer))) {tab.cachedDBKeys.StructureTemplate.push(keyBuffer); tab.setLevelDBIsModified();}});}} else console.log("Unable to find tab with ID:", ${
+                                                    )}; const keyBuffer = Buffer.from(key); db.put(keyBuffer, Buffer.from(data)).then((success)=>{if(!success) console.error("Failed to transfer structure:", keyBuffer); else if (!tab.cachedDBKeys.StructureTemplate.some(targetKey=> targetKey.equals(keyBuffer))) {tab.cachedDBKeys.StructureTemplate.push(keyBuffer); tab.setLevelDBIsModified();}});}} else console.error("Unable to find tab with ID:", ${
                                                         result.tabID
                                                     }n);}`
                                                 );

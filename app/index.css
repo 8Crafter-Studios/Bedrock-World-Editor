@@ -419,6 +419,14 @@ page_background[theme_color_bg] {
     color: var(--text-color);
 }
 
+.dark_theme .invert_on_dark_theme {
+    filter: invert(1);
+}
+
+.light_theme .invert_on_light_theme {
+    filter: invert(1);
+}
+
 .piximg {
     image-rendering: pixelated;
 }
@@ -1330,17 +1338,17 @@ div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
 
 .funTabButton.selected {
     background-color: var(--generic-button-selected-bg-color);
-    color: var(--generic-option-button-text-color);
+    color: var(--generic-button-button-text-color);
 }
 
 .funTabButton:not(:disabled).selected:active {
-    background-color: var(--generic-option-selected-pressed-bg-color);
-    color: var(--generic-option-selected-pressed-text-color);
+    background-color: var(--generic-button-selected-pressed-bg-color);
+    color: var(--generic-button-selected-pressed-text-color);
 }
 
 .funTabButton:not(:disabled).selected:hover:not(:active) {
-    background-color: var(--generic-option-selected-hover-bg-color);
-    color: var(--generic-option-selected-hover-text-color);
+    background-color: var(--generic-button-selected-hover-bg-color);
+    color: var(--generic-button-selected-hover-text-color);
 }
 
 .funTabButton:disabled {
@@ -1388,11 +1396,20 @@ div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
     margin-right: 0;
 }
 
+select.search-mode-dropdown option {
+    background-color: var(--generic-button-bg-color);
+    color: var(--generic-button-text-color);
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+}
+
 .integrationsTabIntegrationButton:not(:disabled):active,
 .genericRoundButton:not(:disabled):active,
 .genericRoundButtonR:not(:disabled):active,
 .genericRoundButtonH:not(:disabled):active,
-.genericRoundButtonHR:not(:disabled):active {
+.genericRoundButtonHR:not(:disabled):active,
+select.search-mode-dropdown option:not(:disabled):active {
     background-color: var(--generic-button-pressed-bg-color);
     color: var(--generic-button-pressed-text-color);
 }
@@ -1401,7 +1418,8 @@ div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
 .genericRoundButton:not(:disabled):hover:not(:active),
 .genericRoundButtonR:not(:disabled):hover:not(:active),
 .genericRoundButtonH:not(:disabled):hover:not(:active),
-.genericRoundButtonHR:not(:disabled):hover:not(:active) {
+.genericRoundButtonHR:not(:disabled):hover:not(:active),
+select.search-mode-dropdown option:not(:disabled):hover:not(:active) {
     background-color: var(--generic-button-hover-bg-color);
     color: var(--generic-button-hover-text-color);
 }
@@ -1410,27 +1428,30 @@ div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
 .genericRoundButton.selected,
 .genericRoundButtonR.selected,
 .genericRoundButtonH.selected,
-.genericRoundButtonHR.selected {
+.genericRoundButtonHR.selected,
+select.search-mode-dropdown option:checked {
     background-color: var(--generic-button-selected-bg-color);
-    color: var(--generic-option-button-text-color);
+    color: var(--generic-button-selected-text-color);
 }
 
 .integrationsTabIntegrationButton:not(:disabled).selected:active,
 .genericRoundButton:not(:disabled).selected:active,
 .genericRoundButtonR:not(:disabled).selected:active,
 .genericRoundButtonH:not(:disabled).selected:active,
-.genericRoundButtonHR:not(:disabled).selected:active {
-    background-color: var(--generic-option-selected-pressed-bg-color);
-    color: var(--generic-option-selected-pressed-text-color);
+.genericRoundButtonHR:not(:disabled).selected:active,
+select.search-mode-dropdown option:not(:disabled):checked:active {
+    background-color: var(--generic-button-selected-pressed-bg-color);
+    color: var(--generic-button-selected-pressed-text-color);
 }
 
 .integrationsTabIntegrationButton:not(:disabled).selected:hover:not(:active),
 .genericRoundButton:not(:disabled).selected:hover:not(:active),
 .genericRoundButtonR:not(:disabled).selected:hover:not(:active),
 .genericRoundButtonH:not(:disabled).selected:hover:not(:active),
-.genericRoundButtonHR:not(:disabled).selected:hover:not(:active) {
-    background-color: var(--generic-option-selected-hover-bg-color);
-    color: var(--generic-option-selected-hover-text-color);
+.genericRoundButtonHR:not(:disabled).selected:hover:not(:active),
+select.search-mode-dropdown option:not(:disabled):checked:hover:not(:active) {
+    background-color: var(--generic-button-selected-hover-bg-color);
+    color: var(--generic-button-selected-hover-text-color);
 }
 
 .integrationsTabIntegrationButton:disabled,
@@ -1440,6 +1461,61 @@ div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
 .genericRoundButtonHR:disabled {
     filter: contrast(0.5) brightness(0.5);
     cursor: not-allowed;
+}
+
+/* Meant to be used in addition to genericRoundButton. */
+select.search-mode-dropdown {
+    padding: 9px;
+    margin: 0;
+    cursor: pointer;
+    appearance: base-select;
+    border: none;
+    border-radius: 5px;
+
+    -webkit-user-select: none;
+    /* Safari */
+    -ms-user-select: none;
+    -moz-user-select: none;
+    /* IE 10 and IE 11 */
+    user-select: none;
+    /* Standard syntax */
+    -webkit-user-drag: none;
+}
+
+select.search-mode-dropdown:open {
+    border-radius: 5px 5px 0 0;
+}
+
+select.search-mode-dropdown::picker(select) {
+    appearance: base-select;
+    border: none;
+    border-radius: 0 0 5px 5px;
+}
+
+select.search-mode-dropdown option:disabled {
+    background-color: var(--generic-button-bg-color);
+    color: color-mix(in lab, var(--generic-button-text-color) 50%, transparent);
+    cursor: default;
+}
+
+select.search-mode-dropdown option::checkmark {
+    display: none;
+}
+
+select.search-mode-dropdown::picker-icon {
+    content: url("resource://images/ui/glyphs/Chevron-Right.png");
+    width: 10px;
+    height: 10px;
+    image-rendering: pixelated;
+    margin-left: 1px;
+}
+
+select.search-mode-dropdown:open::picker-icon {
+    content: url("resource://images/ui/glyphs/Chevron-Down.png");
+}
+
+.light_theme .search-mode-dropdown::picker-icon {
+    filter: invert(1);
 }
 
 .integrationMenu-integrationHeaderInfoContainer {

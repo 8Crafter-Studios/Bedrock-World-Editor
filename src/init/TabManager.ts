@@ -27,6 +27,7 @@ import type { MenuItemConstructorOptions, NativeImage } from "electron";
 import { padNativeImageToSquare, pngToIco } from "../utils/imageUtils";
 import { defaultWorldIconDataURI } from "../utils/preloadImages";
 import { checkIsURIOrPath } from "../utils/pathUtils";
+import type { HexEditorDataStorageObject } from "../../app/components/BinaryHexEditor";
 
 namespace exports {
     type DefaultEventMap = [never];
@@ -95,6 +96,10 @@ namespace exports {
          * Emitted when the modification status of one of the tab's sub-tabs changes.
          */
         subTabModificationStatusChanged: [TabManagerSubTabModificationStatusChangedEvent];
+        /**
+         * Emmitted to trigger a reload of the current sub-tab.
+         */
+        reloadCurrentSubTab: [];
     }
     export interface TabManagerSwitchTabEvent {
         /**
@@ -734,6 +739,20 @@ namespace exports {
          */
         public awaitDBOpen?: Promise<boolean>;
         /**
+         * The error that occurred when the database was being opened.
+         *
+         * Only present if an error occurred while opening the database.
+         */
+        public errorOnDBOpen?: unknown;
+        /**
+         * If an error occured while opening the database because it was encrypted.
+         *
+         * Only present if an error occurred while opening the database and the database is encrypted.
+         *
+         * @todo
+         */
+        public errorDueToEncryptedLevelDB?: true;
+        /**
          * A promise that resolves when the database keys cache is loaded.
          *
          * It resolves with `true` if it was loaded successfully and `false` if an error occurred.
@@ -928,6 +947,17 @@ namespace exports {
                     },
                     (err: unknown): false => {
                         console.error(err);
+                        this.errorOnDBOpen = err;
+                        if (err instanceof Error && err.message === "Error: Corruption: CURRENT file does not end with newline") {
+                            if (
+                                existsSync(path.join(this.tempPath ?? this.path, "db", "CURRENT")) &&
+                                readFileSync(path.join(this.tempPath ?? this.path, "db", "CURRENT"))
+                                    .subarray(0, 17)
+                                    .equals(Buffer.from("00000000fcb9cf9b000000000000000024", "hex"))
+                            ) {
+                                this.errorDueToEncryptedLevelDB = true;
+                            }
+                        }
                         return false;
                     }
                 );
@@ -941,6 +971,17 @@ namespace exports {
                     },
                     (err: unknown): false => {
                         console.error(err);
+                        this.errorOnDBOpen = err;
+                        if (err instanceof Error && err.message === "Error: Corruption: CURRENT file does not end with newline") {
+                            if (
+                                existsSync(path.join(this.tempPath ?? this.path, "db", "CURRENT")) &&
+                                readFileSync(path.join(this.tempPath ?? this.path, "db", "CURRENT"))
+                                    .subarray(0, 17)
+                                    .equals(Buffer.from("00000000fcb9cf9b000000000000000024", "hex"))
+                            ) {
+                                this.errorDueToEncryptedLevelDB = true;
+                            }
+                        }
                         return false;
                     }
                 );
@@ -1366,43 +1407,44 @@ namespace exports {
         | GenericDataStorageObjectUnknown;
 
     export type DataStorageObject = GenericDataStorageObject &
-        PartialWU<Omit<TreeEditorDataStorageObjectInput & MapEditorDataStorageObject, KeysOfUnion<GenericDataStorageObject>>>;
+        PartialWU<Omit<TreeEditorDataStorageObjectInput & MapEditorDataStorageObject & HexEditorDataStorageObject, KeysOfUnion<GenericDataStorageObject>>>;
 
+    // TODO: Add icons for the content types that are missing icons.
     const tabManagerSubTabContentTypeToDefaultIconMap: Record<DBEntryContentType, string | undefined> = {
-        AABBVolumes: undefined,
-        ActorDigestVersion: undefined,
+        AABBVolumes: "resource://images/ui/glyphs/mob_spawner.png", // TODO: Make this different from the HardcodedSpawners icon.
+        ActorDigestVersion: undefined, // Maybe an entity icon with a list icon on it with a history icon on that? Or maybe a layered entity icon (as in a stack of entity icons) with a history icon on that? And it should somehow convey that it is entity UUIDs and not entity data.
         ActorPrefix: "resource://images/ui/glyphs/icon_panda.png",
         AutonomousEntities: undefined,
         BiomeData: "resource://images/ui/glyphs/icon_biome.png",
         BiomeIdsTable: "resource://images/ui/glyphs/icon_biome_config.png",
-        BiomeState: undefined,
+        BiomeState: undefined, // Something snow layer related.
         BlendingBiomeHeight: undefined,
         BlendingData: undefined,
-        BlockEntity: undefined,
-        BorderBlocks: undefined,
+        BlockEntity: undefined, // Maybe a chest icon? Or maybe a layered icon with multiple chests?
+        BorderBlocks: "resource://images/ui/glyphs/BlockSprite_border.png",
         Checksums: undefined,
         ChunkLoadedRequest: undefined,
         ConversionData: undefined,
         CustomDimension: "resource://images/ui/glyphs/portalBg.png",
-        Data2D: undefined,
-        Data2DLegacy: undefined,
-        Data3D: undefined,
-        Digest: undefined,
+        Data2D: undefined, // Maybe a 2D icon that indicates biome data somehow.
+        Data2DLegacy: undefined, // Maybe a 2D icon that indicates biome data somehow, with something to indicate it is the legacy format, such as a cobweb.
+        Data3D: undefined, // Maybe a 3D icon that indicates biome data somehow.
+        Digest: undefined, // Something indicating this is a list of entity UUIDs in the chunk.
         DimensionNameIdTable: "resource://images/ui/glyphs/portalBg_config.png",
-        DynamicProperties: undefined,
-        Entity: undefined,
-        FinalizedState: undefined,
-        FlatWorldLayers: undefined,
-        ForcedWorldCorruption: undefined,
+        DynamicProperties: "resource://images/ui/glyphs/Data-Empty_16x.png", // Maybe make this Data-Empty icon layered on top of the add-ons icon?
+        Entity: undefined, // Something indicating this is a list of entities (including their data) in the chunk.
+        FinalizedState: undefined, // This controls the finalization state of a chunk's data, with 0 being the chunk need to be ticked, 1 being the chunk need to be populated with mobs, and 2 being finalized. The icon should represent this somehow.
+        FlatWorldLayers: undefined, // Something indicating flat world layers.
+        ForcedWorldCorruption: "resource://images/ui/glyphs/world_glyph_color_corrupted_1.png", // The other good option was world_glyph_desaturated_corrupted_8.png.
         GeneratedPreCavesAndCliffsBlending: undefined,
-        GenerationSeed: undefined,
-        HardcodedSpawners: undefined,
+        GenerationSeed: "resource://images/ui/glyphs/seeds_wheat.png",
+        HardcodedSpawners: "resource://images/ui/glyphs/mob_spawner.png", // TODO: Make this different from the AABBVolumes icon, maybe with something indicating it is older or deprecated, such as a cobweb.
         LegacyBlockExtraData: undefined,
-        LegacyNether: undefined,
-        LegacyOverworld: undefined,
+        LegacyNether: undefined, // Maybe the same icon as the Nether content type, but with something to indicate it is the legacy format, such as a cobweb?
+        LegacyOverworld: undefined, // Maybe the same icon as the Overworld content type, but with something to indicate it is the legacy format, such as a cobweb?
         LegacyTerrain: undefined,
-        LegacyTheEnd: undefined,
-        LegacyVersion: undefined,
+        LegacyTheEnd: undefined, // Maybe the same icon as the TheEnd content type, but with something to indicate it is the legacy format, such as a cobweb?
+        LegacyVersion: undefined, // Maybe a history icon, with something to indicate it is the legacy format, such as a cobweb?
         LevelChunkMetaDataDictionary: "resource://images/ui/glyphs/update_world_chunks_16x.png",
         LevelDat: "resource://images/ui/glyphs/settings_glyph_color_2x.png",
         LevelSpawnWasFixed: undefined,
@@ -1412,22 +1454,22 @@ namespace exports {
         MVillages: undefined,
         Nether: "resource://images/ui/glyphs/portalBg.png",
         Overworld: "resource://images/ui/glyphs/portalBg.png",
-        PendingTicks: undefined,
+        PendingTicks: undefined, // Something clock related. Maybe somehow indicating that it is planned/scheduled? Maybe with a calendar?
         Player: "resource://images/ui/glyphs/icon_steve_server.png",
         PlayerClient: "resource://images/ui/glyphs/icon_steve_client.png",
         Portals: "resource://images/ui/glyphs/realmPortalSmall.png",
         PositionTrackingDB: undefined,
         PositionTrackingLastId: undefined,
-        RandomTicks: undefined,
+        RandomTicks: undefined, // Something clock related. Maybe somehow indicating randomness?
         RealmsStoriesData: undefined,
         SchedulerWT: "resource://images/ui/glyphs/icon_wandering_trader.png",
         Scoreboard: "resource://images/ui/glyphs/icon_best3.png",
         StructureTemplate: "resource://images/ui/glyphs/structure_block.png",
         SubChunkPrefix: undefined,
         TheEnd: "resource://images/ui/glyphs/portalBg.png",
-        TickingArea: undefined,
-        Unknown: undefined,
-        Version: undefined,
+        TickingArea: undefined, // Should be a clock icon. Maybe with an indication is is chunk loading related?
+        Unknown: undefined, // Maybe a question mark icon? Or maybe leave it undefined?
+        Version: undefined, // Maybe a history icon?
         VillageDwellers: undefined,
         VillageInfo: undefined,
         VillagePlayers: undefined,
@@ -1445,6 +1487,7 @@ namespace exports {
         public name: string;
         public icon?: LooseAutocomplete<"auto"> | undefined;
         public contentType: ContentType;
+        public rawMode: boolean = false;
         public target:
             | {
                   type: "LevelDBEntry";
@@ -1516,156 +1559,165 @@ namespace exports {
             const wasModified: boolean = this.isModified();
             this.#hasUnsavedChanges = value;
             if (wasModified !== this.isModified()) this.parentTab.emit("subTabModificationStatusChanged", { tab: this, isModified: this.isModified() });
-            if (this.target.type === "File") this.parentTab.setFileAsModified(this.target.path);
+            if (this.target.type === "File") this.parentTab.setFileAsModified(this.target.path, value);
         }
         public isModified(): boolean {
             return this.hasUnsavedChanges || this.activeChanges.length > 0;
         }
+        /**
+         * Parse raw data into a partial data storage object.
+         *
+         * This method does not mutate the sub-tab's stored data storage object.
+         *
+         * @param rawData The raw data to parse.
+         * @param format The format of the raw data. If not provided, it will be inferred from the content type.
+         * @returns A promise that resolves with the parsed partial data storage object.
+         *
+         * @throws {Error} If the format type is not supported.
+         * @throws {unknown} If the data cannot be parsed.
+         */
+        public async parseRawData(rawData: Buffer, format?: EntryContentTypeFormatData): Promise<Pick<DataStorageObject, "sourceType" | "dataType" | "data">> {
+            format ??= entryContentTypeToFormatMap[this.currentState.options.type] as EntryContentTypeFormatData;
+            switch (format.type) {
+                case "NBT": {
+                    return {
+                        sourceType: format,
+                        dataType: "NBT",
+                        data: await NBT.parse(rawData),
+                    } as const satisfies Pick<GenericDataStorageObjectNBT & DataStorageObject, "sourceType" | "dataType" | "data">;
+                }
+                case "SNBT": {
+                    return {
+                        sourceType: format,
+                        dataType: "NBTCompound",
+                        data: parseSNBTCompoundString(rawData.toString("binary")),
+                    } as const satisfies Pick<GenericDataStorageObjectNBTCompound & DataStorageObject, "sourceType" | "dataType" | "data">;
+                }
+                case "JSON": {
+                    return {
+                        sourceType: format,
+                        dataType: "JSON",
+                        data: JSON.parse(rawData.toString("binary")),
+                    } as const satisfies Pick<GenericDataStorageObjectJSON & DataStorageObject, "sourceType" | "dataType" | "data">;
+                }
+                case "ASCII": {
+                    return {
+                        sourceType: format,
+                        dataType: "ASCII",
+                        data: rawData.toString("ascii"),
+                    } as const satisfies Pick<GenericDataStorageObjectASCII & DataStorageObject, "sourceType" | "dataType" | "data">;
+                }
+                case "UTF-8": {
+                    return {
+                        sourceType: format,
+                        dataType: "UTF-8",
+                        data: rawData.toString("utf-8"),
+                    } as const satisfies Pick<GenericDataStorageObjectUTF8 & DataStorageObject, "sourceType" | "dataType" | "data">;
+                }
+                case "hex": {
+                    return {
+                        sourceType: format,
+                        dataType: "hex",
+                        data: rawData.toString("hex"),
+                    } as const satisfies Pick<GenericDataStorageObjectHex & DataStorageObject, "sourceType" | "dataType" | "data">;
+                }
+                case "binaryPlainText": {
+                    return {
+                        sourceType: format,
+                        dataType: "binaryPlainText",
+                        data: rawData.toString("binary"),
+                    } as const satisfies Pick<GenericDataStorageObjectBinaryPlainText & DataStorageObject, "sourceType" | "dataType" | "data">;
+                }
+                case "int": {
+                    return {
+                        sourceType: format,
+                        dataType: "int",
+                        data: parseSpecificIntType(rawData, format.bytes, format.format, format.signed),
+                    } as const satisfies Pick<GenericDataStorageObjectInt & DataStorageObject, "sourceType" | "dataType" | "data">;
+                }
+                case "unknown":
+                case "binary": {
+                    return {
+                        sourceType: format,
+                        dataType: "binary",
+                        data: rawData,
+                    } as const satisfies Pick<GenericDataStorageObjectBinary & DataStorageObject, "sourceType" | "dataType" | "data">;
+                }
+                case "custom": {
+                    switch (format.resultType) {
+                        case "JSONNBT": {
+                            return {
+                                sourceType: format,
+                                dataType: "NBTCompound",
+                                data: await format.parse(rawData),
+                            } as const satisfies Pick<GenericDataStorageObjectNBTCompound & DataStorageObject, "sourceType" | "dataType" | "data">;
+                        }
+                        case "SNBT": {
+                            return {
+                                sourceType: format,
+                                dataType: "NBTCompound",
+                                data: parseSNBTCompoundString(await format.parse(rawData)),
+                            } as const satisfies Pick<GenericDataStorageObjectNBTCompound & DataStorageObject, "sourceType" | "dataType" | "data">;
+                        }
+                        case "buffer": {
+                            return {
+                                sourceType: format,
+                                dataType: "binary",
+                                data: await format.parse(rawData),
+                            } as const satisfies Pick<GenericDataStorageObjectBinary & DataStorageObject, "sourceType" | "dataType" | "data">;
+                        }
+                        case "unknown": {
+                            return {
+                                sourceType: format,
+                                dataType: "unknown",
+                                data: await format.parse(rawData),
+                            } as const satisfies Pick<GenericDataStorageObjectUnknown & DataStorageObject, "sourceType" | "dataType" | "data">;
+                        }
+                        default:
+                            throw new Error(`Unknown format type: ${format?.["type"]}.${format?.["resultType"]}`);
+                    }
+                }
+                default:
+                    throw new Error(`Unknown format type: ${format?.["type"]}`);
+            }
+        }
+        /**
+         * Loads the data for this sub-tab.
+         *
+         * @param binary Whether to load the data as binary.
+         * @returns A promise that resolves when the data has been loaded.
+         *
+         * @throws {Error} If the parent tab has no associated LevelDB.
+         * @throws {Error} If the LevelDB is not open and this sub-tab is a LevelDB entry.
+         * @throws {Error} If the LevelDB key or file associated with this sub-tab does not exist.
+         * @throws {Error} If the format type for this sub-tab's content type is not supported and `binary` is `false`.
+         * @throws {unknown} If the LevelDB throws an error when trying to be read and this sub-tab is a LevelDB entry.
+         * @throws {unknown} If the file throws an error when trying to be read and this sub-tab is a file.
+         * @throws {unknown} If the data cannot be parsed.
+         */
         public async loadData(binary: boolean = false): Promise<void> {
-            targetTypeSwitcher: switch (this.target.type) {
+            switch (this.target.type) {
                 case "LevelDBEntry": {
                     if (!this.parentTab.db) throw new Error("The parent tab has no associated LevelDB.");
                     if (!this.parentTab.db.isOpen()) throw new Error("LevelDB is not open.");
                     if (binary) {
                         this.currentState.options.dataStorageObject ??= {} as DataStorageObject;
                         this.currentState.options.dataStorageObject.dataType = "binary";
-                        this.currentState.options.dataStorageObject.data = (await this.parentTab.db!.get(this.target.key)) ?? Buffer.from([]);
+                        this.currentState.options.dataStorageObject.data = (await this.parentTab.db.get(this.target.key)) ?? Buffer.from([]);
                         break;
                     }
                     const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[this.currentState.options.type] as EntryContentTypeFormatData;
-                    const rawData = await this.parentTab.db!.get(this.target.key);
+                    const rawData: Buffer | null = await this.parentTab.db.get(this.target.key);
                     if (rawData === null) {
                         throw new Error("The LevelDB key associated with this sub-tab does not exist.");
                     }
-                    this.currentState.options.dataStorageObject ??= {} as DataStorageObject;
-                    switch (format.type) {
-                        case "NBT": {
-                            this.currentState.options.dataStorageObject = {
-                                treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                sourceType: format,
-                                dataType: "NBT",
-                                data: await NBT.parse(rawData),
-                            } as const satisfies GenericDataStorageObjectNBT & DataStorageObject;
-                            break targetTypeSwitcher;
-                        }
-                        case "SNBT": {
-                            this.currentState.options.dataStorageObject = {
-                                treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                sourceType: format,
-                                dataType: "NBTCompound",
-                                data: parseSNBTCompoundString(rawData.toString("binary")),
-                            } as const satisfies GenericDataStorageObjectNBTCompound & DataStorageObject;
-                            break targetTypeSwitcher;
-                        }
-                        case "JSON": {
-                            this.currentState.options.dataStorageObject = {
-                                treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                sourceType: format,
-                                dataType: "JSON",
-                                data: JSON.parse(rawData.toString("binary")),
-                            } as const satisfies GenericDataStorageObjectJSON & DataStorageObject;
-                            break targetTypeSwitcher;
-                        }
-                        case "ASCII": {
-                            this.currentState.options.dataStorageObject = {
-                                treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                sourceType: format,
-                                dataType: "ASCII",
-                                data: rawData.toString("ascii"),
-                            } as const satisfies GenericDataStorageObjectASCII & DataStorageObject;
-                            break targetTypeSwitcher;
-                        }
-                        case "UTF-8": {
-                            this.currentState.options.dataStorageObject = {
-                                treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                sourceType: format,
-                                dataType: "UTF-8",
-                                data: rawData.toString("utf-8"),
-                            } as const satisfies GenericDataStorageObjectUTF8 & DataStorageObject;
-                            break targetTypeSwitcher;
-                        }
-                        case "hex": {
-                            this.currentState.options.dataStorageObject = {
-                                treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                sourceType: format,
-                                dataType: "hex",
-                                data: rawData.toString("hex"),
-                            } as const satisfies GenericDataStorageObjectHex & DataStorageObject;
-                            break targetTypeSwitcher;
-                        }
-                        case "binaryPlainText": {
-                            this.currentState.options.dataStorageObject = {
-                                treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                sourceType: format,
-                                dataType: "binaryPlainText",
-                                data: rawData.toString("binary"),
-                            } as const satisfies GenericDataStorageObjectBinaryPlainText & DataStorageObject;
-                            break targetTypeSwitcher;
-                        }
-                        case "int": {
-                            this.currentState.options.dataStorageObject = {
-                                treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                sourceType: format,
-                                dataType: "int",
-                                data: parseSpecificIntType(rawData, format.bytes, format.format, format.signed),
-                            } as const satisfies GenericDataStorageObjectInt & DataStorageObject;
-                            break targetTypeSwitcher;
-                        }
-                        case "unknown":
-                        case "binary": {
-                            this.currentState.options.dataStorageObject = {
-                                treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                sourceType: format,
-                                dataType: "binary",
-                                data: rawData,
-                            } as const satisfies GenericDataStorageObjectBinary & DataStorageObject;
-                            break targetTypeSwitcher;
-                        }
-                        case "custom": {
-                            switch (format.resultType) {
-                                case "JSONNBT": {
-                                    this.currentState.options.dataStorageObject = {
-                                        treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                        sourceType: format,
-                                        dataType: "NBTCompound",
-                                        data: await format.parse(rawData),
-                                    } as const satisfies GenericDataStorageObjectNBTCompound & DataStorageObject;
-                                    break targetTypeSwitcher;
-                                }
-                                case "SNBT": {
-                                    this.currentState.options.dataStorageObject = {
-                                        treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                        sourceType: format,
-                                        dataType: "NBTCompound",
-                                        data: parseSNBTCompoundString(await format.parse(rawData)),
-                                    } as const satisfies GenericDataStorageObjectNBTCompound & DataStorageObject;
-                                    break targetTypeSwitcher;
-                                }
-                                case "buffer": {
-                                    this.currentState.options.dataStorageObject = {
-                                        treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                        sourceType: format,
-                                        dataType: "binary",
-                                        data: await format.parse(rawData),
-                                    } as const satisfies GenericDataStorageObjectBinary & DataStorageObject;
-                                    break targetTypeSwitcher;
-                                }
-                                case "unknown": {
-                                    this.currentState.options.dataStorageObject = {
-                                        treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                        sourceType: format,
-                                        dataType: "unknown",
-                                        data: await format.parse(rawData),
-                                    } as const satisfies GenericDataStorageObjectUnknown & DataStorageObject;
-                                    break targetTypeSwitcher;
-                                }
-                                default:
-                                    throw new Error(`Unknown format type: ${format?.["type"]}.${format?.["resultType"]}`);
-                            }
-                        }
-                        default:
-                            throw new Error(`Unknown format type: ${format?.["type"]}`);
-                    }
+                    this.currentState.options.dataStorageObject = {
+                        hexEditor: this.currentState.options.dataStorageObject?.hexEditor,
+                        mapEditor: this.currentState.options.dataStorageObject?.mapEditor,
+                        treeEditor: this.currentState.options.dataStorageObject?.treeEditor,
+                        ...(await this.parseRawData(rawData, format)),
+                    } as const satisfies DataStorageObject;
+                    break;
                 }
                 case "File": {
                     if (!existsSync(path.join(this.parentTab.tempPath ?? this.parentTab.path, this.target.path)))
@@ -1680,142 +1732,35 @@ namespace exports {
                     }
                     const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[this.currentState.options.type] as EntryContentTypeFormatData;
                     const rawData: Buffer = await readFile(path.join(this.parentTab.tempPath ?? this.parentTab.path, this.target.path));
-                    this.currentState.options.dataStorageObject ??= {} as DataStorageObject;
-                    switch (format.type) {
-                        case "NBT": {
-                            this.currentState.options.dataStorageObject = {
-                                treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                sourceType: format,
-                                dataType: "NBT",
-                                data: await NBT.parse(rawData),
-                            } as const satisfies GenericDataStorageObjectNBT & DataStorageObject;
-                            break targetTypeSwitcher;
-                        }
-                        case "SNBT": {
-                            this.currentState.options.dataStorageObject = {
-                                treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                sourceType: format,
-                                dataType: "NBTCompound",
-                                data: parseSNBTCompoundString(rawData.toString("binary")),
-                            } as const satisfies GenericDataStorageObjectNBTCompound & DataStorageObject;
-                            break targetTypeSwitcher;
-                        }
-                        case "JSON": {
-                            this.currentState.options.dataStorageObject = {
-                                treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                sourceType: format,
-                                dataType: "JSON",
-                                data: JSON.parse(rawData.toString("binary")),
-                            } as const satisfies GenericDataStorageObjectJSON & DataStorageObject;
-                            break targetTypeSwitcher;
-                        }
-                        case "ASCII": {
-                            this.currentState.options.dataStorageObject = {
-                                treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                sourceType: format,
-                                dataType: "ASCII",
-                                data: rawData.toString("ascii"),
-                            } as const satisfies GenericDataStorageObjectASCII & DataStorageObject;
-                            break targetTypeSwitcher;
-                        }
-                        case "UTF-8": {
-                            this.currentState.options.dataStorageObject = {
-                                treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                sourceType: format,
-                                dataType: "UTF-8",
-                                data: rawData.toString("utf-8"),
-                            } as const satisfies GenericDataStorageObjectUTF8 & DataStorageObject;
-                            break targetTypeSwitcher;
-                        }
-                        case "hex": {
-                            this.currentState.options.dataStorageObject = {
-                                treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                sourceType: format,
-                                dataType: "hex",
-                                data: rawData.toString("hex"),
-                            } as const satisfies GenericDataStorageObjectHex & DataStorageObject;
-                            break targetTypeSwitcher;
-                        }
-                        case "binaryPlainText": {
-                            this.currentState.options.dataStorageObject = {
-                                treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                sourceType: format,
-                                dataType: "binaryPlainText",
-                                data: rawData.toString("binary"),
-                            } as const satisfies GenericDataStorageObjectBinaryPlainText & DataStorageObject;
-                            break targetTypeSwitcher;
-                        }
-                        case "int": {
-                            this.currentState.options.dataStorageObject = {
-                                treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                sourceType: format,
-                                dataType: "int",
-                                data: parseSpecificIntType(rawData, format.bytes, format.format, format.signed),
-                            } as const satisfies GenericDataStorageObjectInt & DataStorageObject;
-                            break targetTypeSwitcher;
-                        }
-                        case "unknown":
-                        case "binary": {
-                            this.currentState.options.dataStorageObject = {
-                                treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                sourceType: format,
-                                dataType: "binary",
-                                data: rawData,
-                            } as const satisfies GenericDataStorageObjectBinary & DataStorageObject;
-                            break targetTypeSwitcher;
-                        }
-                        case "custom": {
-                            switch (format.resultType) {
-                                case "JSONNBT": {
-                                    this.currentState.options.dataStorageObject = {
-                                        treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                        sourceType: format,
-                                        dataType: "NBTCompound",
-                                        data: await format.parse(rawData),
-                                    } as const satisfies GenericDataStorageObjectNBTCompound & DataStorageObject;
-                                    break targetTypeSwitcher;
-                                }
-                                case "SNBT": {
-                                    this.currentState.options.dataStorageObject = {
-                                        treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                        sourceType: format,
-                                        dataType: "NBTCompound",
-                                        data: parseSNBTCompoundString(await format.parse(rawData)),
-                                    } as const satisfies GenericDataStorageObjectNBTCompound & DataStorageObject;
-                                    break targetTypeSwitcher;
-                                }
-                                case "buffer": {
-                                    this.currentState.options.dataStorageObject = {
-                                        treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                        sourceType: format,
-                                        dataType: "binary",
-                                        data: await format.parse(rawData),
-                                    } as const satisfies GenericDataStorageObjectBinary & DataStorageObject;
-                                    break targetTypeSwitcher;
-                                }
-                                case "unknown": {
-                                    this.currentState.options.dataStorageObject = {
-                                        treeEditor: this.currentState.options.dataStorageObject.treeEditor,
-                                        sourceType: format,
-                                        dataType: "unknown",
-                                        data: await format.parse(rawData),
-                                    } as const satisfies GenericDataStorageObjectUnknown & DataStorageObject;
-                                    break targetTypeSwitcher;
-                                }
-                                default:
-                                    throw new Error(`Unknown format type: ${format?.["type"]}.${format?.["resultType"]}`);
-                            }
-                        }
-                        default:
-                            throw new Error(`Unknown format type: ${format?.["type"]}`);
-                    }
+                    this.currentState.options.dataStorageObject = {
+                        hexEditor: this.currentState.options.dataStorageObject?.hexEditor,
+                        mapEditor: this.currentState.options.dataStorageObject?.mapEditor,
+                        treeEditor: this.currentState.options.dataStorageObject?.treeEditor,
+                        ...(await this.parseRawData(rawData, format)),
+                    } as const satisfies DataStorageObject;
+                    break;
                 }
             }
         }
+        /**
+         * Exports the raw data for this sub-tab.
+         *
+         * @param loadIfNotLoaded Whether to load the data if it is not already loaded.
+         * @returns A promise that resolves with the raw data.
+         *
+         * @throws {Error} If the sub-tab has no data and `loadIfNotLoaded` is `false`.
+         * @throws {Error} If the sub-tab has no data and the data fails to load.
+         * @throws {Error} If the sub-tab has no data type and `loadIfNotLoaded` is `false`.
+         * @throws {Error} If the conversion from the loaded data type to the format type for this sub-tab's content type is not supported.
+         * @throws {Error} If the loaded data type is not supported.
+         * @throws {Error} If the target type is not supported.
+         * @throws {unknown} If the sub-tab has no data and an error occurs when trying to load the data.
+         * @throws {unknown} If an error occurs when trying to convert the data to binary.
+         */
         public async exportRawData(loadIfNotLoaded: boolean = false): Promise<Buffer> {
             if (!this.currentState.options.dataStorageObject) {
                 if (!loadIfNotLoaded) throw new Error("This sub-tab has no data.");
-                await this.loadData();
+                await this.loadData(true);
                 if (!this.currentState.options.dataStorageObject) throw new Error("Failed to load data for this sub-tab.");
             }
             if (!this.currentState.options.dataStorageObject?.dataType) {
@@ -1825,9 +1770,6 @@ namespace exports {
             }
             switch (this.target.type) {
                 case "LevelDBEntry": {
-                    if (!this.parentTab.db) throw new Error("The parent tab has no associated LevelDB.");
-                    if (!this.parentTab.db.isOpen()) throw new Error("LevelDB is not open.");
-
                     const format: EntryContentTypeFormatData | undefined = this.currentState.options.dataStorageObject.sourceType;
 
                     switch (this.currentState.options.dataStorageObject.dataType) {
@@ -2135,11 +2077,6 @@ namespace exports {
                     }
                 }
                 case "File": {
-                    if (!existsSync(path.join(this.parentTab.tempPath ?? this.parentTab.path, this.target.path)))
-                        throw new ReferenceError(`The file associated with this sub-tab does not exist: ${this.target.path}`);
-
-                    if (!this.currentState.options.dataStorageObject) throw new Error("This sub-tab has no data.");
-
                     const format: EntryContentTypeFormatData = this.currentState.options.dataStorageObject.sourceType;
 
                     switch (this.currentState.options.dataStorageObject.dataType) {
@@ -2450,6 +2387,19 @@ namespace exports {
                     throw new Error(`Unsupported target type: ${this.target["type"]}`);
             }
         }
+        /**
+         * Saves the data for this sub-tab.
+         *
+         * @returns A promise that resolves when the data has been saved.
+         *
+         * @throws {Error} If the parent tab has no associated LevelDB and this sub-tab is a LevelDB entry.
+         * @throws {Error} If the LevelDB is not open and this sub-tab is a LevelDB entry.
+         * @throws {Error} If the file associated with this sub-tab does not exist and this sub-tab is a file.
+         * @throws {Error} If the target type is not supported.
+         * @throws {unknown} If an error occurs while converting the loaded data to binary.
+         * @throws {unknown} If an error occurs while writing to the LevelDB and this sub-tab is a LevelDB entry.
+         * @throws {unknown} If an error occurs while writing to the file and this sub-tab is a file.
+         */
         public async save(): Promise<void> {
             if (!this.hasUnsavedChanges) return;
             switch (this.target.type) {
@@ -2457,11 +2407,12 @@ namespace exports {
                     if (!this.parentTab.db) throw new Error("The parent tab has no associated LevelDB.");
                     if (!this.parentTab.db.isOpen()) throw new Error("LevelDB is not open.");
 
-                    await this.parentTab.db!.put(this.target.key, await this.exportRawData(false));
+                    await this.parentTab.db.put(this.target.key, await this.exportRawData(false));
                     break;
                 }
                 case "File": {
                     if (!existsSync(path.join(this.parentTab.tempPath ?? this.parentTab.path, this.target.path))) {
+                        // REVIEW: This may or may not need to be changed to allow saving newly created files.
                         throw new ReferenceError(`The file associated with this sub-tab does not exist: ${this.target.path}`);
                     }
 
@@ -2476,17 +2427,22 @@ namespace exports {
                 this.target.type === "File" &&
                 ![TabManagerTabMode.CopyUntilSave].includes(this.parentTab.mode) &&
                 ["world", "leveldb"].includes(this.parentTab.type)
-            )
+            ) {
                 this.parentTab.setFileAsModified(this.target.path, false);
+            }
         }
+        /**
+         * Closes this sub-tab.
+         */
         public close(): void {
             this.isValid = false;
             const index: number = this.parentTab.openTabs.indexOf(this);
             if (this.parentTab.openTabs.includes(this)) {
                 this.parentTab.openTabs.splice(this.parentTab.openTabs.indexOf(this), 1);
             }
-            if (this.parentTab.selectedTab === this)
+            if (this.parentTab.isValid && this.parentTab.selectedTab === this) {
                 this.parentTab.switchTab(index === -1 ? null : (this.parentTab.openTabs[index - 1] ?? this.parentTab.openTabs[0] ?? null));
+            }
             if (this.target.type === "File" && this.hasUnsavedChanges) {
                 this.parentTab.setFileAsModified(this.target.path, false);
             }
@@ -2669,7 +2625,14 @@ namespace exports {
                         value: any | (AsyncMode extends true ? () => any | Promise<any> : never);
                         data?: unknown;
                         searchableContents?: string[];
-                        customDataFields?: Record<string, string | (AsyncMode extends true ? () => string | Promise<string> : never) | undefined>;
+                        customDataFields?: Record<
+                            string,
+                            | string
+                            | string[]
+                            | (AsyncMode extends true ? () => string | string[] | Promise<string | string[] | undefined> | undefined
+                              :   () => string | string[] | undefined)
+                            | undefined
+                        >;
                     }
                   | {
                         key: Buffer;
@@ -2679,7 +2642,14 @@ namespace exports {
                         value?: undefined;
                         data?: unknown;
                         searchableContents?: string[];
-                        customDataFields?: Record<string, string | (AsyncMode extends true ? () => string | Promise<string> : never) | undefined>;
+                        customDataFields?: Record<
+                            string,
+                            | string
+                            | string[]
+                            | (AsyncMode extends true ? () => string | string[] | Promise<string | string[] | undefined> | undefined
+                              :   () => string | string[] | undefined)
+                            | undefined
+                        >;
                     }
               )[]
             | undefined;
@@ -2816,6 +2786,13 @@ namespace exports {
                     return false;
             }
         }
+        // IDEA: New search syntax idea:
+        // Allow for putting an asterisk (*) before and/or after a value in a search query parameter to allow partial matches (ex. dbkey:*ab* would match "ab",
+        // "abc", "qab", and "qabc"; dbkey:ab* would match "ab" and "abc"; dbkey:*ab would match "ab" and "qab"), you should be able to put a backslash before
+        // the asterisk to make it be parsed as a literal asterisk.
+        // IDEA: Get some ideas from the Everything search query syntax.
+        // IDEA: Look at search syntaxes for many things to find new advanced search syntax ideas.
+        // IDEA: Add some form of parameter grouping with parentheses, where you can use the prefixes (ex. &/|/^) on those groups.
         public *search<T extends TabManagerTab_LevelDBSearchQuery, YU extends boolean = false>(
             query: T,
             yieldUndefined?: YU
@@ -3012,18 +2989,26 @@ namespace exports {
                             if (yieldUndefined) yield undefined!;
                             continue;
                         }
+                        const fieldValue_1: string | string[] | undefined =
+                            searchTarget.customDataFields?.[customDataField] instanceof Function ?
+                                searchTarget.customDataFields[customDataField]()
+                            :   searchTarget.customDataFields?.[customDataField];
+                        const fieldValue: string[] | undefined =
+                            fieldValue_1 === undefined ? undefined
+                            : fieldValue_1 instanceof Array ? fieldValue_1
+                            : [fieldValue_1];
                         const caseSensitive: boolean = query.customDataFields[customDataField].caseSensitive ?? false;
                         if (
                             query.customDataFields[customDataField].allOf &&
                             query.customDataFields[customDataField].allOf.length > 0 &&
-                            (searchTarget.customDataFields?.[customDataField] === undefined ||
+                            (fieldValue === undefined ||
                                 !query.customDataFields[customDataField].allOf.every((v: string): boolean =>
                                     /* caseSensitive ?
-                                        searchTarget.customDataFields?.[customDataField] === v
-                                    :   searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase() */
+                                        fieldValue === v
+                                    :   fieldValue?.toLowerCase() === v.toLowerCase() */
                                     caseSensitive ?
-                                        !!searchTarget.customDataFields?.[customDataField]?.includes(v)
-                                    :   !!searchTarget.customDataFields?.[customDataField]?.toLowerCase()?.includes(v.toLowerCase())
+                                        fieldValue.some((s: string): boolean => s.includes(v))
+                                    :   fieldValue.some((s: string): boolean => s.toLowerCase().includes(v.toLowerCase()))
                                 ))
                         ) {
                             if (yieldUndefined) yield undefined!;
@@ -3032,14 +3017,14 @@ namespace exports {
                         if (
                             query.customDataFields[customDataField].anyOf &&
                             query.customDataFields[customDataField].anyOf.length > 0 &&
-                            (searchTarget.customDataFields?.[customDataField] === undefined ||
+                            (fieldValue === undefined ||
                                 !query.customDataFields[customDataField].anyOf.some((v: string): boolean =>
                                     // caseSensitive ?
-                                    //     searchTarget.customDataFields?.[customDataField] === v
-                                    // :   searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase()
+                                    //     fieldValue === v
+                                    // :   fieldValue?.toLowerCase() === v.toLowerCase()
                                     caseSensitive ?
-                                        !!searchTarget.customDataFields?.[customDataField]?.includes(v)
-                                    :   !!searchTarget.customDataFields?.[customDataField]?.toLowerCase()?.includes(v.toLowerCase())
+                                        fieldValue.some((s: string): boolean => s.includes(v))
+                                    :   fieldValue.some((s: string): boolean => s.toLowerCase().includes(v.toLowerCase()))
                                 ))
                         ) {
                             if (yieldUndefined) yield undefined!;
@@ -3048,14 +3033,14 @@ namespace exports {
                         if (
                             query.customDataFields[customDataField].oneOf &&
                             query.customDataFields[customDataField].oneOf.length > 0 &&
-                            (searchTarget.customDataFields?.[customDataField] === undefined ||
+                            (fieldValue === undefined ||
                                 !query.customDataFields[customDataField].oneOf.some((v: string): boolean =>
                                     // caseSensitive ?
-                                    //     searchTarget.customDataFields?.[customDataField] === v
-                                    // :   searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase()
+                                    //     fieldValue === v
+                                    // :   fieldValue?.toLowerCase() === v.toLowerCase()
                                     caseSensitive ?
-                                        !!searchTarget.customDataFields?.[customDataField]?.includes(v)
-                                    :   !!searchTarget.customDataFields?.[customDataField]?.toLowerCase()?.includes(v.toLowerCase())
+                                        fieldValue.some((s: string): boolean => s.includes(v))
+                                    :   fieldValue.some((s: string): boolean => s.toLowerCase().includes(v.toLowerCase()))
                                 ))
                         ) {
                             if (yieldUndefined) yield undefined!;
@@ -3064,14 +3049,14 @@ namespace exports {
                         if (
                             query.customDataFields[customDataField].noneOf &&
                             query.customDataFields[customDataField].noneOf.length > 0 &&
-                            searchTarget.customDataFields?.[customDataField] !== undefined &&
+                            fieldValue !== undefined &&
                             query.customDataFields[customDataField].noneOf.some((v: string): boolean =>
                                 // caseSensitive ?
-                                //     searchTarget.customDataFields?.[customDataField] === v
-                                // :   searchTarget.customDataFields?.[customDataField]?.toLowerCase() === v.toLowerCase()
+                                //     fieldValue === v
+                                // :   fieldValue?.toLowerCase() === v.toLowerCase()
                                 caseSensitive ?
-                                    !!searchTarget.customDataFields?.[customDataField]?.includes(v)
-                                :   !!searchTarget.customDataFields?.[customDataField]?.toLowerCase()?.includes(v.toLowerCase())
+                                    fieldValue.some((s: string): boolean => s.includes(v))
+                                :   fieldValue.some((s: string): boolean => s.toLowerCase().includes(v.toLowerCase()))
                             )
                         ) {
                             if (yieldUndefined) yield undefined!;
@@ -3280,10 +3265,14 @@ namespace exports {
                             if (yieldUndefined) yield undefined!;
                             continue;
                         }
-                        const fieldValue: string | undefined =
+                        const fieldValue_1: string | string[] | undefined =
                             searchTarget.customDataFields?.[customDataField] instanceof Function ?
                                 await searchTarget.customDataFields[customDataField]()
                             :   searchTarget.customDataFields?.[customDataField];
+                        const fieldValue: string[] | undefined =
+                            fieldValue_1 === undefined ? undefined
+                            : fieldValue_1 instanceof Array ? fieldValue_1
+                            : [fieldValue_1];
                         const caseSensitive: boolean = query.customDataFields[customDataField].caseSensitive ?? false;
                         if (
                             query.customDataFields[customDataField].allOf &&
@@ -3293,7 +3282,9 @@ namespace exports {
                                     /* caseSensitive ?
                                         fieldValue === v
                                     :   fieldValue?.toLowerCase() === v.toLowerCase() */
-                                    caseSensitive ? !!fieldValue?.includes(v) : !!fieldValue?.toLowerCase()?.includes(v.toLowerCase())
+                                    caseSensitive ?
+                                        fieldValue.some((s: string): boolean => s.includes(v))
+                                    :   fieldValue.some((s: string): boolean => s.toLowerCase().includes(v.toLowerCase()))
                                 ))
                         ) {
                             if (yieldUndefined) yield undefined!;
@@ -3307,7 +3298,9 @@ namespace exports {
                                     // caseSensitive ?
                                     //     fieldValue === v
                                     // :   fieldValue?.toLowerCase() === v.toLowerCase()
-                                    caseSensitive ? !!fieldValue?.includes(v) : !!fieldValue?.toLowerCase()?.includes(v.toLowerCase())
+                                    caseSensitive ?
+                                        fieldValue.some((s: string): boolean => s.includes(v))
+                                    :   fieldValue.some((s: string): boolean => s.toLowerCase().includes(v.toLowerCase()))
                                 ))
                         ) {
                             if (yieldUndefined) yield undefined!;
@@ -3321,7 +3314,9 @@ namespace exports {
                                     // caseSensitive ?
                                     //     fieldValue === v
                                     // :   fieldValue?.toLowerCase() === v.toLowerCase()
-                                    caseSensitive ? !!fieldValue?.includes(v) : !!fieldValue?.toLowerCase()?.includes(v.toLowerCase())
+                                    caseSensitive ?
+                                        fieldValue.some((s: string): boolean => s.includes(v))
+                                    :   fieldValue.some((s: string): boolean => s.toLowerCase().includes(v.toLowerCase()))
                                 ))
                         ) {
                             if (yieldUndefined) yield undefined!;
@@ -3335,7 +3330,9 @@ namespace exports {
                                 // caseSensitive ?
                                 //     fieldValue === v
                                 // :   fieldValue?.toLowerCase() === v.toLowerCase()
-                                caseSensitive ? !!fieldValue?.includes(v) : !!fieldValue?.toLowerCase()?.includes(v.toLowerCase())
+                                caseSensitive ?
+                                    fieldValue.some((s: string): boolean => s.includes(v))
+                                :   fieldValue.some((s: string): boolean => s.toLowerCase().includes(v.toLowerCase()))
                             )
                         ) {
                             if (yieldUndefined) yield undefined!;

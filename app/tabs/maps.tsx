@@ -28,6 +28,7 @@ import type { SearchSyntaxHelpInfo } from "../components/SearchSyntaxHelpMenu";
 import SearchSyntaxHelpMenu from "../components/SearchSyntaxHelpMenu";
 import { viewFilesTabSearchSyntax } from "./viewFiles";
 import { MapEditor } from "../components/MapEditor";
+import Notice from "../components/Notice";
 
 export interface MapsTabProps {
     tab: TabManagerTab;
@@ -324,12 +325,57 @@ export default function MapsTab(props: MapsTabProps): JSX.SpecificElement<"div">
 interface KeyData {
     rawKey: Buffer;
     displayKey: string;
-    data?: { parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.Map; type: NBT.NBTFormat; metadata: NBT.Metadata };
+    data?: { parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.Map; type: NBT.NBTFormat; metadata: NBT.Metadata } | null | undefined;
 }
 
 async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Promise<JSX.Element> {
     if (!tab.db) return <div>The maps sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
-    if (!tab.db.isOpen()) await tab.awaitDBOpen!;
+    if (!tab.db.isOpen() && !(await tab.awaitDBOpen ?? true)) {
+        if (tab.errorDueToEncryptedLevelDB)
+            return (
+                <Notice
+                    title="Encrypted LevelDB"
+                    subtitle="The LevelDB is encrypted. The app cannot open encrypted LevelDBs."
+                    detail="If this world is from a marketplace template, that would cause the LevelDB to be encrypted."
+                    image="access_denied"
+                />
+            );
+        return (
+            <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
+                <Notice
+                    title="LevelDB Error"
+                    subtitle="An error has occurred while opening the LevelDB."
+                    detail={null}
+                    image="generic_error"
+                    style={{ height: "auto" }}
+                />
+                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
+                    {tab.errorOnDBOpen instanceof Error ?
+                        `${tab.errorOnDBOpen.stack !== undefined ? tab.errorOnDBOpen.stack : tab.errorOnDBOpen.toString()}${
+                            tab.errorOnDBOpen.cause !== undefined ?
+                                `\nCaused by: ${((): unknown => {
+                                    try {
+                                        return typeof tab.errorOnDBOpen.cause === "object" ? JSON.stringify(tab.errorOnDBOpen.cause) : tab.errorOnDBOpen.cause;
+                                    } catch {
+                                        return tab.errorOnDBOpen.cause;
+                                    }
+                                })()}`
+                            :   ""
+                        }`
+                    :   String(
+                            (function (): unknown {
+                                try {
+                                    return typeof tab.errorOnDBOpen === "object" ? JSON.stringify(tab.errorOnDBOpen) : tab.errorOnDBOpen;
+                                } catch {
+                                    return tab.errorOnDBOpen;
+                                }
+                            })()
+                        )
+                    }
+                </div>
+            </div>
+        );
+    }
     if (!tab.cachedDBKeys) await tab.awaitCachedDBKeys!;
     signal.throwIfAborted();
     const rawKeys: Buffer[] = tab.cachedDBKeys!.Map;
@@ -344,7 +390,7 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
             async (key: Buffer): Promise<KeyData> => ({
                 rawKey: key,
                 displayKey: getKeyDisplayName(key),
-                data: asyncMode ? undefined : ((await NBT.parse((await tab.db!.get(key))!)) as any),
+                data: asyncMode ? undefined : ((await NBT.parse((await tab.db!.get(key))!).catch((): null => null)) as any),
             })
         )
     );
@@ -542,7 +588,9 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
                           type: NBT.NBTFormat;
                           metadata: NBT.Metadata;
                       }
-                    | (() => Promise<{ parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata }>);
+                    | (() => Promise<{ parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata } | null | undefined>)
+                    | null
+                    | undefined;
                 valueType: {
                     readonly type: "NBT";
                 };
@@ -573,6 +621,8 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
                             })(),
                         ],
                         customDataFields: {
+                            // TODO: Uncomment the below line and implement a search query for checking for entries with invalid data.
+                            // hasInvalidData: key.data === null,
                             contents:
                                 asyncMode ?
                                     async (): Promise<string> => {
@@ -705,7 +755,7 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
                     />
                     <button
                         type="button"
-                        class="search-button"
+                        class="search-button piximg invert_on_light_theme"
                         title="Search"
                         onClick={(): void => {
                             try {
@@ -1013,7 +1063,7 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
                     </button>
                     <button
                         type="button"
-                        class="search-help-button"
+                        class="search-help-button piximg invert_on_light_theme"
                         title="Help"
                         onClick={(): void => {
                             let containerElement: HTMLDivElement = document.createElement("div");

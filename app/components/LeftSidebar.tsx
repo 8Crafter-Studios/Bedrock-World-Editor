@@ -51,52 +51,58 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.SpecificElemen
         function onSubTabSwitch({ previousTab, newTab }: TabManagerTabSwitchTabEvent): void {
             $(`#left_sidebar .sidebar_button[data-path-id=${tabManagerSubTabToSubTabID(previousTab)}]`).removeClass("active");
             $(`#left_sidebar .sidebar_button[data-path-id=${tabManagerSubTabToSubTabID(newTab)}]`).addClass("active");
+            const repairForcedWorldCorruptionButton: HTMLElement | null = document.querySelector('.sidebar_button[data-path-id="repair-forced-world-corruption"]');
+            if (repairForcedWorldCorruptionButton) repairForcedWorldCorruptionButton.hidden = !props.tab.cachedDBKeys?.ForcedWorldCorruption?.length;
         }
         props.tab.on("switchTab", onSubTabSwitch);
         $("#left_sidebar .sidebar_button").on("click", (event: JQuery.ClickEvent<HTMLElement, undefined, HTMLElement, HTMLElement>): void => {
             props.tab.switchTab(event.currentTarget.dataset.pathId as TabManagerTabGenericSubTabID);
         });
-        !keyCacheAlreadyLoaded &&
+        if (!keyCacheAlreadyLoaded) {
             (props.tab.awaitCachedDBKeys ?? props.tab.awaitDBOpen?.then((): Promise<boolean> | undefined => props.tab.awaitCachedDBKeys))?.then((): void => {
                 if (!((props.tab.cachedDBKeys?.ForcedWorldCorruption?.length ?? 0) > 0) || tabManager.selectedTab !== props.tab) return;
                 const leftSidebarElement: HTMLDivElement | null = document.getElementById("left_sidebar") as HTMLDivElement | null;
                 if (!leftSidebarElement) return;
-                const tab = {
-                    icon: "resource://images/ui/glyphs/anvil-hammer.png",
-                    id: "repair-forced-world-corruption",
-                    name: "Repair Forced World Corruption",
-                    resolution: 16,
-                };
-                const tempElement: HTMLDivElement = document.createElement("div");
-                render(
-                    <div
-                        class="sidebar_button nsel"
-                        data-path-id={tab.id}
-                        // onMouseDown={(event: JSX.TargetedMouseEvent<HTMLDivElement>): void => {
-                        //     if (event.currentTarget.hasAttribute("disabled")) return;
-                        //     SoundEffects.popB();
-                        // }}
-                        style={{ paddingRight: "1px", lineHeight: "1em", textAlign: "left", flexShrink: 0 }}
-                    >
-                        <div style="display: inline-block; vertical-align: middle; width: 36px; height: 36px; text-align: center;">
-                            <img
-                                aria-hidden="true"
-                                src={tab.icon}
-                                class="nsel ndrg"
-                                style={`display: inline-block; vertical-align: middle; width: auto; height: ${36 - (36 % tab.resolution)}px; margin: ${
-                                    (36 % tab.resolution) / 2
-                                }px 0;`}
-                            />
-                        </div>
-                        {tab.name}
-                    </div>,
-                    tempElement
-                );
-                $(tempElement.children[0] as HTMLDivElement).on("click", (event: JQuery.ClickEvent<HTMLElement, undefined, HTMLElement, HTMLElement>): void => {
-                    props.tab.switchTab(event.currentTarget.dataset.pathId as TabManagerTabGenericSubTabID);
-                });
-                leftSidebarElement.append(...tempElement.children);
+                const repairForcedWorldCorruptionButton: HTMLElement | null = document.querySelector('.sidebar_button[data-path-id="repair-forced-world-corruption"]');
+                if (!repairForcedWorldCorruptionButton) return;
+                repairForcedWorldCorruptionButton.hidden = false;
+                // const tab = {
+                //     icon: "resource://images/ui/glyphs/anvil-hammer.png",
+                //     id: "repair-forced-world-corruption",
+                //     name: "Repair Forced World Corruption",
+                //     resolution: 16,
+                // };
+                // const tempElement: HTMLDivElement = document.createElement("div");
+                // render(
+                //     <div
+                //         class="sidebar_button nsel"
+                //         data-path-id={tab.id}
+                //         // onMouseDown={(event: JSX.TargetedMouseEvent<HTMLDivElement>): void => {
+                //         //     if (event.currentTarget.hasAttribute("disabled")) return;
+                //         //     SoundEffects.popB();
+                //         // }}
+                //         style={{ paddingRight: "1px", lineHeight: "1em", textAlign: "left", flexShrink: 0 }}
+                //     >
+                //         <div style="display: inline-block; vertical-align: middle; width: 36px; height: 36px; text-align: center;">
+                //             <img
+                //                 aria-hidden="true"
+                //                 src={tab.icon}
+                //                 class="nsel ndrg"
+                //                 style={`display: inline-block; vertical-align: middle; width: auto; height: ${36 - (36 % tab.resolution)}px; margin: ${
+                //                     (36 % tab.resolution) / 2
+                //                 }px 0;`}
+                //             />
+                //         </div>
+                //         {tab.name}
+                //     </div>,
+                //     tempElement
+                // );
+                // $(tempElement.children[0] as HTMLDivElement).on("click", (event: JQuery.ClickEvent<HTMLElement, undefined, HTMLElement, HTMLElement>): void => {
+                //     props.tab.switchTab(event.currentTarget.dataset.pathId as TabManagerTabGenericSubTabID);
+                // });
+                // leftSidebarElement.append(...tempElement.children);
             });
+        }
         return (): void => {
             props.tab.off("switchTab", onSubTabSwitch);
         };
@@ -110,6 +116,7 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.SpecificElemen
          * @todo
          */
         submenu?: JSX.Element | undefined;
+        hidden?: boolean;
     }
     let keyCacheAlreadyLoaded: boolean = !!props.tab.cachedDBKeys;
     const tabs: Tab[] = (
@@ -137,11 +144,12 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.SpecificElemen
             { icon: "resource://images/ui/glyphs/flame_full_image.png", id: "fun", name: "Fun", resolution: 13 },
             { icon: "resource://images/ui/glyphs/Source.png", id: "integrations", name: "Integrations", resolution: 12 },
             // { icon: "resource://images/ui/glyphs/magnifyingGlass.png", id: "search", name: "Search", resolution: 12 },
-            (props.tab.cachedDBKeys?.ForcedWorldCorruption?.length ?? 0) > 0 && {
+            {
                 icon: "resource://images/ui/glyphs/anvil-hammer.png",
                 id: "repair-forced-world-corruption",
                 name: "Repair Forced World Corruption",
                 resolution: 16,
+                hidden: !props.tab.cachedDBKeys?.ForcedWorldCorruption?.length,
             },
         ] as const satisfies (Tab | false | undefined)[]
     ).filter((tab: Tab | false | undefined): tab is Tab => !!tab) as Tab[];
@@ -157,6 +165,7 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.SpecificElemen
                         //     SoundEffects.popB();
                         // }}
                         style={{ paddingRight: "1px", lineHeight: "1em", textAlign: "left", flexShrink: 0 }}
+                        hidden={tab.hidden}
                     >
                         <div style="display: inline-block; vertical-align: middle; width: 36px; height: 36px; text-align: center;">
                             <img

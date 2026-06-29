@@ -18,8 +18,8 @@ export default function RepairForcedWorldCorruptionTab(props: RepairForcedWorldC
     const containerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     useEffect((): void => {
         async function repairForcedWorldCorruption(): Promise<void> {
-            props.tab.db!.isOpen() || (await props.tab.awaitDBOpen);
-            props.tab.cachedDBKeys || props.tab.awaitCachedDBKeys;
+            if (!props.tab.db!.isOpen()) await props.tab.awaitDBOpen;
+            if (!props.tab.cachedDBKeys) await props.tab.awaitCachedDBKeys;
             // const tempElement: HTMLDivElement = document.createElement("div");
             if (props.tab.cachedDBKeys!.ForcedWorldCorruption.length === 0) {
                 if (!containerRef.current) return;
@@ -31,6 +31,8 @@ export default function RepairForcedWorldCorruptionTab(props: RepairForcedWorldC
                 }
                 props.tab.cachedDBKeys!.ForcedWorldCorruption.length = 0;
                 props.tab.setLevelDBIsModified();
+                const repairForcedWorldCorruptionButton: HTMLElement | null = document.querySelector('.sidebar_button[data-path-id="repair-forced-world-corruption"]');
+                if (repairForcedWorldCorruptionButton) repairForcedWorldCorruptionButton.hidden = !props.tab.cachedDBKeys?.ForcedWorldCorruption?.length;
                 if (!containerRef.current) return;
                 render(null, containerRef.current);
                 render(

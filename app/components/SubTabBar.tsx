@@ -6,7 +6,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { entryContentTypeToFormatMap, prettyPrintSNBT, prismarineToSNBT, type EntryContentTypeFormatData, type Vector2 } from "mcbe-leveldb";
 import { ControlledMenu, MenuDivider, MenuItem, SubMenu, type SubMenuProps } from "@szhsin/react-menu";
 import { app, dialog } from "@electron/remote";
-import type { SaveDialogReturnValue } from "electron";
+import type { MessageBoxReturnValue, SaveDialogReturnValue } from "electron";
 import path from "node:path";
 
 export interface SubTabBarProps {
@@ -20,6 +20,7 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
     let triggerUpdate: (() => void) | null = null;
     useEffect((): (() => void) => {
         function update(): void {
+            if (!tab.isValid) return;
             if (tabContainerRef.current === null) return;
             const element: HTMLUListElement = document.createElement("ul");
             render(<RenderTabs />, element);
@@ -207,13 +208,49 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
             tabContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
             tabContextMenu_setOpen(true);
         }
+        async function onTabMiddleClick(event: TargetedMouseEvent<HTMLLIElement>): Promise<void> {
+            if (props.tab.isModified()) {
+                if (event.shiftKey) {
+                    if (event.ctrlKey) await props.tab.save();
+                    await props.tab.close();
+                    return;
+                }
+                const result: MessageBoxReturnValue = await dialog.showMessageBox(getCurrentWindow(), {
+                    type: "warning",
+                    title: "Unsaved Changes",
+                    message: `Do you want to save the changes you made to ${props.tab.name}?`,
+                    detail: "Your changes will be lost if you don't save them first.",
+                    buttons: ["Save", "Don't Save", "Cancel"],
+                    noLink: true,
+                    defaultId: 0,
+                    cancelId: 2,
+                });
+                switch (result.response) {
+                    case 0:
+                        await props.tab.save();
+                        break;
+                    case 2:
+                        return;
+                }
+            }
+            props.tab.close();
+        }
         const tabContentsFormat: EntryContentTypeFormatData = entryContentTypeToFormatMap[props.tab.contentType] as EntryContentTypeFormatData;
         let tabDataStorageObject: DataStorageObject | undefined = props.tab.currentState.options.dataStorageObject;
         return (
             <>
                 <li
                     class={props.tab === tab.selectedTab ? "active" : ""}
-                    onContextMenu={(event: TargetedMouseEvent<HTMLLIElement>): void => void (onTabRightClick(event))}
+                    onClick={(event: TargetedMouseEvent<HTMLLIElement>): void => {
+                        // Treat Alt+Click as a middle click.
+                        if (!event.altKey) return;
+                        onTabMiddleClick(event);
+                    }}
+                    onAuxClick={(event: TargetedMouseEvent<HTMLLIElement>): void => {
+                        if (event.button !== 1) return;
+                        onTabMiddleClick(event);
+                    }}
+                    onContextMenu={(event: TargetedMouseEvent<HTMLLIElement>): void => void onTabRightClick(event)}
                     ref={containerRef}
                 >
                     <ControlledMenu
@@ -222,6 +259,10 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                         direction="right"
                         onClose={(): void => void tabContextMenu_setOpen(false)}
                     >
+                        {/* IDEA: Add a Delete Tab/File option. */}
+                        {/* IEDA: Add a Copy File Path option to file entries. Maybe with an additional submenu to change the format of the copied path, like whether it is quoted and what type of quotes. */}
+                        {/* IEDA: Add a Reveal in File Exporer/Finder/File Manager option to file entries. */}
+                        {/* IDEA: Add a Copy LevelDB Key As... option. The submenu options should have different formats to copy it as, such as: human readable, hex, base64, binary, etc. */}
                         {props.tab.isModified() ?
                             <>
                                 <MenuItem
@@ -247,24 +288,41 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                                     Close Tab Without Saving
                                 </MenuItem>
                                 <MenuItem
-                                    onClick={(): void => {
+                                    onClick={async (): Promise<void> => {
                                         props.tab.currentState.scrollTop = 0;
                                         delete props.tab.currentState.options.dataStorageObject;
                                         props.tab.activeChanges = [];
                                         props.tab.hasUnsavedChanges = false;
-                                        props.tab.loadData();
+                                        await props.tab.loadData();
+                                        if (props.tab.parentTab.selectedTab !== props.tab) return;
+                                        props.tab.parentTab.emit("reloadCurrentSubTab");
                                     }}
                                 >
                                     Reset Tab
                                 </MenuItem>
                             </>
-                        :   <MenuItem
-                                onClick={(): void => {
-                                    props.tab.close();
-                                }}
-                            >
-                                Close Tab
-                            </MenuItem>
+                        :   <>
+                                <MenuItem
+                                    onClick={async (): Promise<void> => {
+                                        props.tab.currentState.scrollTop = 0;
+                                        delete props.tab.currentState.options.dataStorageObject;
+                                        props.tab.activeChanges = [];
+                                        props.tab.hasUnsavedChanges = false;
+                                        await props.tab.loadData();
+                                        if (props.tab.parentTab.selectedTab !== props.tab) return;
+                                        props.tab.parentTab.emit("reloadCurrentSubTab");
+                                    }}
+                                >
+                                    Reload Tab
+                                </MenuItem>
+                                <MenuItem
+                                    onClick={(): void => {
+                                        props.tab.close();
+                                    }}
+                                >
+                                    Close Tab
+                                </MenuItem>
+                            </>
                         }
                         <MenuDivider />
                         <SubMenu label="Export As...">
@@ -578,6 +636,8 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                             <div>
                                 <img
                                     aria-hidden="true"
+                                    // Aside from pixelated, -webkit-optimize-contrast is also another interesting image-rendering option.
+                                    class="piximg"
                                     src={
                                         checkIsURIOrPath(props.tab.icon) === "URI" ?
                                             props.tab.icon
@@ -628,7 +688,7 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                                 title="Save & Close (Shift to Close Without Saving)"
                                 src="resource://images/ui/glyphs/Close.png"
                                 style="margin-left: 0.5em; width: 10px; height: 10px; vertical-align: middle;"
-                                class="closebtn"
+                                class="closebtn piximg"
                                 onClick={async (event: JSX.TargetedMouseEvent<HTMLImageElement>): Promise<void> => {
                                     event.stopPropagation();
                                     if (!event.shiftKey && props.tab.isModified()) await props.tab.save();

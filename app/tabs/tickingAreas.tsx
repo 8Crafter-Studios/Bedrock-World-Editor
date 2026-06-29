@@ -26,6 +26,7 @@ import { PageNavigation } from "../components/PageNavigation";
 import type { SearchSyntaxHelpInfo } from "../components/SearchSyntaxHelpMenu";
 import SearchSyntaxHelpMenu from "../components/SearchSyntaxHelpMenu";
 import { viewFilesTabSearchSyntax } from "./viewFiles";
+import Notice from "../components/Notice";
 
 // TODO: Implement Async Mode for this tab.
 
@@ -233,12 +234,62 @@ export default function TickingAreasTab(props: TickingAreasTabProps): JSX.Specif
 interface KeyData {
     rawKey: Buffer;
     displayKey: string;
-    data: { parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.TickingArea; type: NBT.NBTFormat; metadata: NBT.Metadata };
+    // UNDONE: Uncomment the `?` and ` | undefined` when async mode is implemented.
+    data /* ? */: {
+        parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.TickingArea;
+        type: NBT.NBTFormat;
+        metadata: NBT.Metadata;
+    } | null /* | undefined */;
 }
 
 async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSignal): Promise<JSX.Element> {
     if (!tab.db) return <div>The tickingAreas sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
-    if (!tab.db.isOpen()) await tab.awaitDBOpen!;
+    if (!tab.db.isOpen() && !(await tab.awaitDBOpen ?? true)) {
+        if (tab.errorDueToEncryptedLevelDB)
+            return (
+                <Notice
+                    title="Encrypted LevelDB"
+                    subtitle="The LevelDB is encrypted. The app cannot open encrypted LevelDBs."
+                    detail="If this world is from a marketplace template, that would cause the LevelDB to be encrypted."
+                    image="access_denied"
+                />
+            );
+        return (
+            <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
+                <Notice
+                    title="LevelDB Error"
+                    subtitle="An error has occurred while opening the LevelDB."
+                    detail={null}
+                    image="generic_error"
+                    style={{ height: "auto" }}
+                />
+                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
+                    {tab.errorOnDBOpen instanceof Error ?
+                        `${tab.errorOnDBOpen.stack !== undefined ? tab.errorOnDBOpen.stack : tab.errorOnDBOpen.toString()}${
+                            tab.errorOnDBOpen.cause !== undefined ?
+                                `\nCaused by: ${((): unknown => {
+                                    try {
+                                        return typeof tab.errorOnDBOpen.cause === "object" ? JSON.stringify(tab.errorOnDBOpen.cause) : tab.errorOnDBOpen.cause;
+                                    } catch {
+                                        return tab.errorOnDBOpen.cause;
+                                    }
+                                })()}`
+                            :   ""
+                        }`
+                    :   String(
+                            (function (): unknown {
+                                try {
+                                    return typeof tab.errorOnDBOpen === "object" ? JSON.stringify(tab.errorOnDBOpen) : tab.errorOnDBOpen;
+                                } catch {
+                                    return tab.errorOnDBOpen;
+                                }
+                            })()
+                        )
+                    }
+                </div>
+            </div>
+        );
+    }
     if (!tab.cachedDBKeys) await tab.awaitCachedDBKeys!;
     signal.throwIfAborted();
     const rawKeys: Buffer[] = tab.cachedDBKeys!.TickingArea;
@@ -247,7 +298,7 @@ async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSigna
             async (key: Buffer): Promise<KeyData> => ({
                 rawKey: key,
                 displayKey: getKeyDisplayName(key),
-                data: (await NBT.parse((await tab.db!.get(key))!)) as any,
+                data: (await NBT.parse((await tab.db!.get(key))!).catch((): null => null)) as any,
             })
         )
     );
@@ -379,7 +430,9 @@ async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSigna
                     parsed: NBT.NBT;
                     type: NBT.NBTFormat;
                     metadata: NBT.Metadata;
-                };
+                }
+                    | null
+                    | undefined;
                 valueType: {
                     readonly type: "NBT";
                 };
@@ -410,7 +463,10 @@ async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSigna
                             })(),
                         ],
                         customDataFields: {
+                            // TODO: Uncomment the below line and implement a search query for checking for entries with invalid data.
+                            // hasInvalidData: key.data === null,
                             contents: ((): string => {
+                                if (key.data === null) return "";
                                 try {
                                     return prettyPrintSNBT(prismarineToSNBT(key.data.parsed), { indent: 0 });
                                 } catch {
@@ -508,7 +564,7 @@ async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSigna
                     />
                     <button
                         type="button"
-                        class="search-button"
+                        class="search-button piximg invert_on_light_theme"
                         title="Search"
                         onClick={(): void => {
                             try {
@@ -781,7 +837,7 @@ async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSigna
                     </button>
                     <button
                         type="button"
-                        class="search-help-button"
+                        class="search-help-button piximg invert_on_light_theme"
                         title="Help"
                         onClick={(): void => {
                             let containerElement: HTMLDivElement = document.createElement("div");
@@ -885,6 +941,20 @@ async function getTickingAreasTabContentsRows(data: {
                                     case "DBKey":
                                         return <td>{key.displayKey}</td>;
                                     case "EntityID":
+                                        if (key.data === undefined) {
+                                            return (
+                                                <td>
+                                                    <span style="color: yellow;">Loading...</span>
+                                                </td>
+                                            );
+                                        }
+                                        if (key.data === null) {
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">N/A</span>
+                                                </td>
+                                            );
+                                        }
                                         return (
                                             <td>
                                                 {key.data.parsed.value.EntityId?.type === "long" ?
@@ -893,6 +963,20 @@ async function getTickingAreasTabContentsRows(data: {
                                             </td>
                                         );
                                     case "Dimension":
+                                        if (key.data === undefined) {
+                                            return (
+                                                <td>
+                                                    <span style="color: yellow;">Loading...</span>
+                                                </td>
+                                            );
+                                        }
+                                        if (key.data === null) {
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">N/A</span>
+                                                </td>
+                                            );
+                                        }
                                         return (
                                             <td>
                                                 {key.data.parsed.value.Dimension?.type === "int" ?
@@ -901,6 +985,20 @@ async function getTickingAreasTabContentsRows(data: {
                                             </td>
                                         );
                                     case "From":
+                                        if (key.data === undefined) {
+                                            return (
+                                                <td>
+                                                    <span style="color: yellow;">Loading...</span>
+                                                </td>
+                                            );
+                                        }
+                                        if (key.data === null) {
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">N/A</span>
+                                                </td>
+                                            );
+                                        }
                                         return (
                                             <td>
                                                 {key.data.parsed.value.MinX?.type === "int" && key.data.parsed.value.MinZ?.type === "int" ?
@@ -911,6 +1009,20 @@ async function getTickingAreasTabContentsRows(data: {
                                             </td>
                                         );
                                     case "To":
+                                        if (key.data === undefined) {
+                                            return (
+                                                <td>
+                                                    <span style="color: yellow;">Loading...</span>
+                                                </td>
+                                            );
+                                        }
+                                        if (key.data === null) {
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">N/A</span>
+                                                </td>
+                                            );
+                                        }
                                         return (
                                             <td>
                                                 {key.data.parsed.value.MaxX?.type === "int" && key.data.parsed.value.MaxZ?.type === "int" ?
@@ -921,6 +1033,20 @@ async function getTickingAreasTabContentsRows(data: {
                                             </td>
                                         );
                                     case "IsCircle":
+                                        if (key.data === undefined) {
+                                            return (
+                                                <td>
+                                                    <span style="color: yellow;">Loading...</span>
+                                                </td>
+                                            );
+                                        }
+                                        if (key.data === null) {
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">N/A</span>
+                                                </td>
+                                            );
+                                        }
                                         return (
                                             <td>
                                                 {key.data.parsed.value.IsCircle?.type === "byte" ?
@@ -933,6 +1059,20 @@ async function getTickingAreasTabContentsRows(data: {
                                             </td>
                                         );
                                     case "MaxDistToPlayers":
+                                        if (key.data === undefined) {
+                                            return (
+                                                <td>
+                                                    <span style="color: yellow;">Loading...</span>
+                                                </td>
+                                            );
+                                        }
+                                        if (key.data === null) {
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">N/A</span>
+                                                </td>
+                                            );
+                                        }
                                         return (
                                             <td>
                                                 {key.data.parsed.value.MaxDistToPlayers?.type === "float" ?
@@ -941,6 +1081,20 @@ async function getTickingAreasTabContentsRows(data: {
                                             </td>
                                         );
                                     case "Name":
+                                        if (key.data === undefined) {
+                                            return (
+                                                <td>
+                                                    <span style="color: yellow;">Loading...</span>
+                                                </td>
+                                            );
+                                        }
+                                        if (key.data === null) {
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">N/A</span>
+                                                </td>
+                                            );
+                                        }
                                         return (
                                             <td>
                                                 {key.data.parsed.value.Name?.type === "string" ?

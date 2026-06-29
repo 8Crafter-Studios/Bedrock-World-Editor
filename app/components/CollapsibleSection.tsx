@@ -64,13 +64,13 @@ export default function CollapsibleSection(props: CollapsibleSectionProps): JSX.
                     <img
                         aria-hidden="true"
                         src="resource://images/ui/glyphs/Chevron-Right.png"
-                        class="piximg collapsible-section-closed-icon invert_on_dark_theme"
+                        class="piximg collapsible-section-closed-icon invert_on_light_theme"
                         style={{ width: "10px", height: "10px", margin: "auto 0 auto auto", float: "right" }}
                     />
                     <img
                         aria-hidden="true"
                         src="resource://images/ui/glyphs/Chevron-Down.png"
-                        class="piximg collapsible-section-open-icon invert_on_dark_theme"
+                        class="piximg collapsible-section-open-icon invert_on_light_theme"
                         style={{ width: "10px", height: "10px", margin: "auto 0 auto auto", float: "right" }}
                     />
                 </button>

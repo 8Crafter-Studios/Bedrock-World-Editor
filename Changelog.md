@@ -5,6 +5,55 @@
 -   Added support for automatic updates to macOS.
 -   There is now a prompt to enable/disable automatic updates (on supported operating systems) (the prompt only appears once).
 -   The `Help > Check for Updates...` menu bar item is now functional (on supported operating systems).
+-   Added the hex editor.
+-   All content types can now be edited in raw mode in the hex editor (except for ones that would open in the plain text editor, this will be fixed later).
+-   Added a Clear Entries button to the "View Files" tab. This button deletes ALL entries from the LevelDB. When there is a search query, then the button only deletes the search results from the LevelDB rather than everything.
+-   Added a placeholder New Entry button to the "View Files" tab. The button is disabled and does not work as it is a placeholder.
+-   Added a `Reload Tab` context menu option to sub-tabs that do not have unsaved changes. This option behaves the same as the `Reset Tab` option (which appears when there are unsaved changes).
+-   Added a new polished error screen for data loading/parsing error in sub-tabs, which includes a button to reopen the editor in raw mode, which should allow for bypassing the error.
+-   Added an icon for sub-tabs of content type `AABBVolumes`.
+-   Added an icon for sub-tabs of content type `BorderBlocks`.
+-   Added an icon for sub-tabs of content type `DynamicProperties`.
+-   Added an icon for sub-tabs of content type `ForcedWorldCorruption`.
+-   Added an icon for sub-tabs of content type `GenerationSeed`.
+-   Added an icon for sub-tabs of content type `HardcodedSpawners`.
+-   Added a new polished error screen for when the LevelDB throws an error when being opened.
+-   Added a new polished error screen for when the LevelDB is encrypted.
+-   Added support for the [Bedrock World Editor - Player Name Saver](https://github.com/8Crafter-Studios/BWE-Player-Name-Saver/releases/latest) behavior pack for detecting player's names.
+-   Reworked the search system for the Raw mode of the "Players" tab, it now has multiple search modes: `grouped`, `client`, and `server`. `grouped` search mode is not implemented yet so the option for it is disabled.
+-   Added 3 new search queries to the "Players" tab: `msa_id`, `self_signed_id`, and `server_id`.
+-   You can now close tabs and sub-tabs by middle clicking them.
+-   The context menu for entries in the "View Files" tab now has options for copying the value of the table cell that was right clicked, with multiple format options depending on the column the cell was in.
+-   The following content types now have JSON schemas in the Prismarine-NBT editor:
+    -   `BorderBlocks`
+    -   `HardcodedSpawners`
+    -   `CustomDimension`
+    -   `DimensionNameIdTable`
+    -   `WorldClocks`
+    -   `AABBVolumes`
+    -   `BiomeState`
+-   Added the paths to the world folder locations for the Minecraft Education Edition and Minecraft Education Edition Preview to the config.
+
+## Changes
+
+-   The "Repair Force World Corruption" button now appears and disappears automatically when the forced world corruption is repaired or applied.
+-   Sub-tab icons are now rendered pixelated.
+-   Icons in many UI elements are now rendered pixelated.
+
+## Fixes
+
+-   The `Reset Tab` context menu option on sub-tabs now correctly reloads the sub-tab.
+-   The following tab no longer throw an error and fail to load when there is an entry with invalid or corrupted data.
+    -   Maps
+    -   Structures
+    -   Entities
+    -   Players
+    -   Ticking Areas
+    -   Ticks
+-   Miscellaneous graphical fixes in light mode.
+-   Fixed a crash that could occur when closing the active tab in some cases.
+-   Miscellaneous typo fixes.
+-   The Client ID column of the Server section of the Raw mode of the "Players" tab now shows all associated client IDs instead of only the last one.
 
 # v1.0.0-beta.30
 
@@ -30,7 +79,7 @@
     -   Isolated Minecraft Data Folders
     -   Extra Minecraft Data Folders
     -   Extra Isolated Minecraft Data Folders
--   Added the `%tmpdir%` variable to the parsers for Minecraft data folders, which corresponds to the `TMPDIR` environment variable.    
+-   Added the `%tmpdir%` variable to the parsers for Minecraft data folders, which corresponds to the `TMPDIR` environment variable.
 
 ## Changes
 
@@ -479,6 +528,7 @@
 -   The `Select a tab from the left sidebar to get started.` message can no longer be selected.
 -   The `File > New Window` menu bar option is now functional (before it did nothing).
 -   The `New Window` task button when right-clicking the app on Windows is now functional (before it could only open the app, but if the app was already open, it would not open a new window).
+-   Removed many unnecessary console logs.
 
 # v1.0.0-beta.8
 

@@ -23,32 +23,38 @@ export type LooseAutocomplete<T extends string> = T | Omit<string, T>;
 
 export type LooseAutocompleteB<U extends string | number | symbol, T extends U> = T | Omit<U, T>;
 
-export type Split<S extends string> = S extends "" ? [] : S extends `${infer C}${infer R}` ? [C, ...Split<R>] : never;
+export type Split<S extends string> =
+    S extends "" ? []
+    : S extends `${infer C}${infer R}` ? [C, ...Split<R>]
+    : never;
 
-export type TakeFirstNElements<T extends any[], N extends number, Result extends any[] = []> = Result["length"] extends N
-    ? Result
-    : T extends [infer First, ...infer Rest]
-    ? TakeFirstNElements<Rest, N, [...Result, First]>
+export type TakeFirstNElements<T extends any[], N extends number, Result extends any[] = []> =
+    Result["length"] extends N ? Result
+    : T extends [infer First, ...infer Rest] ? TakeFirstNElements<Rest, N, [...Result, First]>
     : Result;
 
 /**
  * @author 8Crafter
  */
-export type TakeLastNElements<T extends any[], N extends number, Result extends any[] = []> = Result["length"] extends N
-    ? Result
-    : T extends [...infer Rest, infer Last]
-    ? TakeFirstNElements<Rest, N, [Last, ...Result]>
+export type TakeLastNElements<T extends any[], N extends number, Result extends any[] = []> =
+    Result["length"] extends N ? Result
+    : T extends [...infer Rest, infer Last] ? TakeFirstNElements<Rest, N, [Last, ...Result]>
     : Result;
 
-export type Join<T extends string[]> = T extends []
-    ? ""
-    : T extends [infer Head, ...infer Tail]
-    ? Head extends string
-        ? `${Head}${Join<Tail extends string[] ? Tail : []>}`
-        : never
-    : never;
+export type Join<T extends string[]> =
+    T extends [] ? ""
+    : T extends [infer Head, ...infer Tail] ?
+        Head extends string ?
+            `${Head}${Join<Tail extends string[] ? Tail : []>}`
+        :   never
+    :   never;
 
 export type CutFirstChars<S extends string, N extends number, SArray = TakeFirstNElements<Split<S>, N>> = Join<SArray extends string[] ? SArray : never>;
+
+export type SliceString<Input extends string, Start extends number, Counter extends any[] = []> =
+    Counter["length"] extends Start ? Input
+    : Input extends `${infer _}${infer Rest}` ? SliceString<Rest, Start, [...Counter, any]>
+    : never;
 
 export type Full<T> = {
     [P in keyof T]-?: T[P];
@@ -62,11 +68,12 @@ export type MutableDeep<T> = {
     -readonly [P in keyof T]: MutableDeep<T[P]>;
 };
 
-export type DeepPartial<T> = T extends object
-    ? {
-          [P in keyof T]?: DeepPartial<T[P]>;
-      }
-    : T;
+export type DeepPartial<T> =
+    T extends object ?
+        {
+            [P in keyof T]?: DeepPartial<T[P]>;
+        }
+    :   T;
 
 export type KeysOfUnion<T> = T extends T ? keyof T : never;
 
@@ -78,15 +85,12 @@ export type test1a = [name: number, id: `ID:${number}`, hi: "text"];
  * @see https://stackoverflow.com/a/60822641/16872762
  */
 export type ReturnTypeWithArgs<T extends (...args: any[]) => any, ARGS_T> = Extract<
-    T extends { (...args: infer A1): infer R1; (...args: infer A2): infer R2; (...args: infer A3): infer R3; (...args: infer A4): infer R4 }
-        ? [A1, R1] | [A2, R2] | [A3, R3] | [A4, R4]
-        : T extends { (...args: infer A1): infer R1; (...args: infer A2): infer R2; (...args: infer A3): infer R3 }
-        ? [A1, R1] | [A2, R2] | [A3, R3]
-        : T extends { (...args: infer A1): infer R1; (...args: infer A2): infer R2 }
-        ? [A1, R1] | [A2, R2]
-        : T extends { (...args: infer A1): infer R1 }
-        ? [A1, R1]
-        : never,
+    T extends { (...args: infer A1): infer R1; (...args: infer A2): infer R2; (...args: infer A3): infer R3; (...args: infer A4): infer R4 } ?
+        [A1, R1] | [A2, R2] | [A3, R3] | [A4, R4]
+    : T extends { (...args: infer A1): infer R1; (...args: infer A2): infer R2; (...args: infer A3): infer R3 } ? [A1, R1] | [A2, R2] | [A3, R3]
+    : T extends { (...args: infer A1): infer R1; (...args: infer A2): infer R2 } ? [A1, R1] | [A2, R2]
+    : T extends { (...args: infer A1): infer R1 } ? [A1, R1]
+    : never,
     [ARGS_T, any]
 >[1];
 
@@ -238,7 +242,10 @@ declare global {
      * type Original = Split<"abc">; // ["a", "b", "c"]
      * ```
      */
-    type Split<S extends string> = S extends "" ? [] : S extends `${infer C}${infer R}` ? [C, ...Split<R>] : never;
+    type Split<S extends string> =
+        S extends "" ? []
+        : S extends `${infer C}${infer R}` ? [C, ...Split<R>]
+        : never;
 
     /**
      * Takes the first N elements from a tuple type.
@@ -252,10 +259,9 @@ declare global {
      * type Original = TakeFirstNElements<[1, 2, 3, 4], 2>; // [1, 2]
      * ```
      */
-    type TakeFirstNElements<T extends any[], N extends number, Result extends any[] = []> = Result["length"] extends N
-        ? Result
-        : T extends [infer First, ...infer Rest]
-        ? TakeFirstNElements<Rest, N, [...Result, First]>
+    type TakeFirstNElements<T extends any[], N extends number, Result extends any[] = []> =
+        Result["length"] extends N ? Result
+        : T extends [infer First, ...infer Rest] ? TakeFirstNElements<Rest, N, [...Result, First]>
         : Result;
 
     /**
@@ -272,10 +278,9 @@ declare global {
      *
      * @author 8Crafter
      */
-    export type TakeLastNElements<T extends any[], N extends number, Result extends any[] = []> = Result["length"] extends N
-        ? Result
-        : T extends [...infer Rest, infer Last]
-        ? TakeFirstNElements<Rest, N, [Last, ...Result]>
+    export type TakeLastNElements<T extends any[], N extends number, Result extends any[] = []> =
+        Result["length"] extends N ? Result
+        : T extends [...infer Rest, infer Last] ? TakeFirstNElements<Rest, N, [Last, ...Result]>
         : Result;
 
     /**
@@ -289,13 +294,13 @@ declare global {
      * type Original = Join<["a", "bcc", "de"]>; // "abccde"
      * ```
      */
-    type Join<T extends (string | number)[], J extends string | number = ""> = T extends []
-        ? ""
-        : T extends [infer Head, ...infer Tail]
-        ? Head extends string | number
-            ? `${Head}${Tail extends [string | number, ...(string | number)[]] ? J : ""}${Join<Tail extends (string | number)[] ? Tail : [], J>}`
-            : never
-        : never;
+    type Join<T extends (string | number)[], J extends string | number = ""> =
+        T extends [] ? ""
+        : T extends [infer Head, ...infer Tail] ?
+            Head extends string | number ?
+                `${Head}${Tail extends [string | number, ...(string | number)[]] ? J : ""}${Join<Tail extends (string | number)[] ? Tail : [], J>}`
+            :   never
+        :   never;
 
     /**
      * Cuts the first N characters from a string.
@@ -305,10 +310,29 @@ declare global {
      *
      * @example
      * ```ts
-     * type Original = CutFirstChars<"abcdef", 2>; // "cdef"
+     * type Original = CutFirstChars<"abcdef", 2>; // "abcd"
      * ```
      */
     type CutFirstChars<S extends string, N extends number, SArray = TakeFirstNElements<Split<S>, N>> = Join<SArray extends string[] ? SArray : never>;
+
+    /**
+     * Slices a string.
+     *
+     * @template S The string to slice.
+     * @template N The start index.
+     *
+     * @example
+     * ```ts
+     * type Original = SliceString<"abcdef", 2>; // "cdef"
+     * ```
+     *
+     * @see https://stackoverflow.com/a/79693198/16872762
+     * @author Eric B <https://stackoverflow.com/users/8594404/eric-b>
+     */
+    type SliceString<Input extends string, Start extends number, Counter extends any[] = []> =
+        Counter["length"] extends Start ? Input
+        : Input extends `${infer _}${infer Rest}` ? SliceString<Rest, Start, [...Counter, any]>
+        : never;
 
     /**
      * Mutates the type by removing the optional modifier (`?`) from all properties.
@@ -366,11 +390,12 @@ declare global {
      * type Mutated = DeepPartial<Original>; // { name?: string; age?: number }
      * ```
      */
-    export type DeepPartial<T> = T extends object
-        ? {
-              [P in keyof T]?: DeepPartial<T[P]>;
-          }
-        : T;
+    export type DeepPartial<T> =
+        T extends object ?
+            {
+                [P in keyof T]?: DeepPartial<T[P]>;
+            }
+        :   T;
     type KeysOfUnion<T> = T extends T ? keyof T : never;
     type ValueTypes<T> = T extends { [key: string]: infer U } ? U : never;
     type AllValues<T> = T extends { [key: string]: infer V } ? V : never;
@@ -381,16 +406,18 @@ declare global {
      * @see https://stackoverflow.com/a/58986589
      * @author jcalz <https://stackoverflow.com/users/2887218/jcalz>
      */
-    type ExcludeFromTuple<T extends readonly any[], E> = T extends [infer F, ...infer R]
-        ? [F] extends [E]
-            ? ExcludeFromTuple<R, E>
-            : [F, ...ExcludeFromTuple<R, E>]
-        : [];
-    type IncludeFromTuple<T extends readonly any[], E> = T extends [infer F, ...infer R]
-        ? [F] extends [E]
-            ? [F, ...IncludeFromTuple<R, E>]
-            : IncludeFromTuple<R, E>
-        : [];
+    type ExcludeFromTuple<T extends readonly any[], E> =
+        T extends [infer F, ...infer R] ?
+            [F] extends [E] ?
+                ExcludeFromTuple<R, E>
+            :   [F, ...ExcludeFromTuple<R, E>]
+        :   [];
+    type IncludeFromTuple<T extends readonly any[], E> =
+        T extends [infer F, ...infer R] ?
+            [F] extends [E] ?
+                [F, ...IncludeFromTuple<R, E>]
+            :   IncludeFromTuple<R, E>
+        :   [];
     type NullableArray<T extends any[] | readonly any[]> = T | [null, ...T] | [...T, null];
     /**
      * @see https://stackoverflow.com/a/49579497/16872762
@@ -480,28 +507,30 @@ declare global {
     /**
      * @author 8Crafter
      */
-    type PropertyNamesWithPath<T> = T extends object
-        ? {
-              [K in string & keyof T]: T[K] extends Date | undefined
-                  ? K // Stop recursion on Date
-                  : T[K] extends Array<infer A> | undefined
-                  ? K | `${K & string}.${PropertyNamesWithPath<A>}` // On arrays, continue with the parameterized type
-                  : K | `${K & string}.${PropertyNamesWithPath<T[K]>}`;
-          }[string & keyof T]
-        : never;
+    type PropertyNamesWithPath<T> =
+        T extends object ?
+            {
+                [K in string & keyof T]: T[K] extends Date | undefined ?
+                    K // Stop recursion on Date
+                : T[K] extends Array<infer A> | undefined ?
+                    K | `${K & string}.${PropertyNamesWithPath<A>}` // On arrays, continue with the parameterized type
+                :   K | `${K & string}.${PropertyNamesWithPath<T[K]>}`;
+            }[string & keyof T]
+        :   never;
 
     /**
      * @author 8Crafter
      */
-    type PropertyNamesInner<T, U = keyof T> = T extends object
-        ? {
-              [K in U & keyof T]: T[K] extends Date | undefined
-                  ? K // Stop recursion on Date
-                  : T[K] extends Array<infer A> | undefined
-                  ? K | PropertyNamesInner<A> // On arrays, continue with the parameterized type
-                  : K | PropertyNamesInner<T[K]>;
-          }[U & keyof T]
-        : never;
+    type PropertyNamesInner<T, U = keyof T> =
+        T extends object ?
+            {
+                [K in U & keyof T]: T[K] extends Date | undefined ?
+                    K // Stop recursion on Date
+                : T[K] extends Array<infer A> | undefined ?
+                    K | PropertyNamesInner<A> // On arrays, continue with the parameterized type
+                :   K | PropertyNamesInner<T[K]>;
+            }[U & keyof T]
+        :   never;
 
     /**
      * @author 8Crafter
@@ -511,28 +540,30 @@ declare global {
     /**
      * @author 8Crafter
      */
-    type PropertyNamesWithPathWithoutOuterContainingProperties<T> = T extends object
-        ? {
-              [K in string & keyof T]: T[K] extends Date | undefined
-                  ? K // Stop recursion on Date
-                  : T[K] extends Array<infer A> | undefined
-                  ? K | `${K & string}.${PropertyNamesWithPathWithoutOuterContainingProperties<A>}` // On arrays, continue with the parameterized type
-                  : (T[K] extends object ? never : K) | `${K & string}.${PropertyNamesWithPathWithoutOuterContainingProperties<T[K]>}`;
-          }[string & keyof T]
-        : never;
+    type PropertyNamesWithPathWithoutOuterContainingProperties<T> =
+        T extends object ?
+            {
+                [K in string & keyof T]: T[K] extends Date | undefined ?
+                    K // Stop recursion on Date
+                : T[K] extends Array<infer A> | undefined ?
+                    K | `${K & string}.${PropertyNamesWithPathWithoutOuterContainingProperties<A>}` // On arrays, continue with the parameterized type
+                :   (T[K] extends object ? never : K) | `${K & string}.${PropertyNamesWithPathWithoutOuterContainingProperties<T[K]>}`;
+            }[string & keyof T]
+        :   never;
 
     /**
      * @author 8Crafter
      */
-    type PropertyNamesInnerWithoutOuterContainingProperties<T, U = keyof T> = T extends object
-        ? {
-              [K in U & keyof T]: T[K] extends Date | undefined
-                  ? K // Stop recursion on Date
-                  : T[K] extends Array<infer A> | undefined
-                  ? K | PropertyNamesInnerWithoutOuterContainingProperties<A> // On arrays, continue with the parameterized type
-                  : (T[K] extends object ? never : K) | PropertyNamesInnerWithoutOuterContainingProperties<T[K]>;
-          }[U & keyof T]
-        : never;
+    type PropertyNamesInnerWithoutOuterContainingProperties<T, U = keyof T> =
+        T extends object ?
+            {
+                [K in U & keyof T]: T[K] extends Date | undefined ?
+                    K // Stop recursion on Date
+                : T[K] extends Array<infer A> | undefined ?
+                    K | PropertyNamesInnerWithoutOuterContainingProperties<A> // On arrays, continue with the parameterized type
+                :   (T[K] extends object ? never : K) | PropertyNamesInnerWithoutOuterContainingProperties<T[K]>;
+            }[U & keyof T]
+        :   never;
 
     /**
      * @author 8Crafter
@@ -542,35 +573,33 @@ declare global {
     /**
      * @author 8Crafter
      */
-    type PropertyPaths<T> = T extends object
-        ? {
-              [K in (string | number) & keyof T]: T[K] extends Date | undefined
-                  ? [K] // Stop recursion on Date
-                  : T[K] extends Array<infer A> | undefined
-                  ? [K] | [K, ...PropertyPaths<A>]
-                  : [K] | [K, ...PropertyPaths<T[K]>];
-          }[(string | number) & keyof T]
-        : never;
+    type PropertyPaths<T> =
+        T extends object ?
+            {
+                [K in (string | number) & keyof T]: T[K] extends Date | undefined ?
+                    [K] // Stop recursion on Date
+                : T[K] extends Array<infer A> | undefined ? [K] | [K, ...PropertyPaths<A>]
+                : [K] | [K, ...PropertyPaths<T[K]>];
+            }[(string | number) & keyof T]
+        :   never;
 
     /**
      * @author 8Crafter
      */
-    type PropertyPathsWithoutOuterContainingProperties<T> = T extends object
-        ? {
-              [K in (string | number) & keyof T]: T[K] extends undefined
-                  ? never
-                  : T[K] extends Date | undefined
-                  ? K // Stop recursion on Date
-                  : T[K] extends Array<infer A> | undefined
-                  ? [K] | [K, ...PropertyPathsWithoutOuterContainingProperties<A>]
-                  : (T[K] extends object ? never : [K]) | [K, ...PropertyPathsWithoutOuterContainingProperties<T[K]>];
-          }[(string | number) & keyof T]
-        : never;
+    type PropertyPathsWithoutOuterContainingProperties<T> =
+        T extends object ?
+            {
+                [K in (string | number) & keyof T]: T[K] extends undefined ? never
+                : T[K] extends Date | undefined ?
+                    K // Stop recursion on Date
+                : T[K] extends Array<infer A> | undefined ? [K] | [K, ...PropertyPathsWithoutOuterContainingProperties<A>]
+                : (T[K] extends object ? never : [K]) | [K, ...PropertyPathsWithoutOuterContainingProperties<T[K]>];
+            }[(string | number) & keyof T]
+        :   never;
 
-    type GetPropertyValueAtPath<T extends object, U extends PropertyPaths<T> | []> = U extends [infer K]
-        ? T[K]
-        : U extends [infer K, ...infer R]
-        ? GetPropertyValueAtPath<T[K], R>
+    type GetPropertyValueAtPath<T extends object, U extends PropertyPaths<T> | []> =
+        U extends [infer K] ? T[K]
+        : U extends [infer K, ...infer R] ? GetPropertyValueAtPath<T[K], R>
         : T;
 
     /**
@@ -591,15 +620,12 @@ declare global {
      * @see https://stackoverflow.com/a/60822641/16872762
      */
     export type ReturnTypeWithArgs<T extends (...args: any[]) => any, ARGS_T> = Extract<
-        T extends { (...args: infer A1): infer R1; (...args: infer A2): infer R2; (...args: infer A3): infer R3; (...args: infer A4): infer R4 }
-            ? [A1, R1] | [A2, R2] | [A3, R3] | [A4, R4]
-            : T extends { (...args: infer A1): infer R1; (...args: infer A2): infer R2; (...args: infer A3): infer R3 }
-            ? [A1, R1] | [A2, R2] | [A3, R3]
-            : T extends { (...args: infer A1): infer R1; (...args: infer A2): infer R2 }
-            ? [A1, R1] | [A2, R2]
-            : T extends { (...args: infer A1): infer R1 }
-            ? [A1, R1]
-            : never,
+        T extends { (...args: infer A1): infer R1; (...args: infer A2): infer R2; (...args: infer A3): infer R3; (...args: infer A4): infer R4 } ?
+            [A1, R1] | [A2, R2] | [A3, R3] | [A4, R4]
+        : T extends { (...args: infer A1): infer R1; (...args: infer A2): infer R2; (...args: infer A3): infer R3 } ? [A1, R1] | [A2, R2] | [A3, R3]
+        : T extends { (...args: infer A1): infer R1; (...args: infer A2): infer R2 } ? [A1, R1] | [A2, R2]
+        : T extends { (...args: infer A1): infer R1 } ? [A1, R1]
+        : never,
         [ARGS_T, any]
     >[1];
 }

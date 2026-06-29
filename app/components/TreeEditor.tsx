@@ -1113,7 +1113,11 @@ export default class TreeEditor extends React.Component<
                                         }
                                     }}
                                 >
-                                    <img aria-hidden="true" src={treeEditorIcons.generic[expanded ? "arrowExpanded" : "arrowCollapsed"]} />
+                                    <img
+                                        aria-hidden="true"
+                                        class="invert_on_light_theme"
+                                        src={treeEditorIcons.generic[expanded ? "arrowExpanded" : "arrowCollapsed"]}
+                                    />
                                 </div>
                             )}
                         </div>

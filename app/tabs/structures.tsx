@@ -32,6 +32,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { readdirRecursiveSafe } from "../../src/utils/folderContentsUtils";
 import type { ShowSelectOpenTabDialogResult } from "../components/SelectOpenTabDialog";
 import showSelectOpenTabDialog from "../components/SelectOpenTabDialog";
+import Notice from "../components/Notice";
 
 // TODO: Implement Async Mode for this tab.
 
@@ -322,12 +323,62 @@ export default function StructuresTab(props: StructuresTabProps): JSX.SpecificEl
 interface KeyData {
     rawKey: Buffer;
     displayKey: string;
-    data: { parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.StructureTemplate; type: NBT.NBTFormat; metadata: NBT.Metadata };
+    // UNDONE: Uncomment the `?` and ` | undefined` when async mode is implemented.
+    data /* ? */: {
+        parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.StructureTemplate;
+        type: NBT.NBTFormat;
+        metadata: NBT.Metadata;
+    } | null /* | undefined */;
 }
 
 async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal): Promise<JSX.Element> {
     if (!tab.db) return <div>The structures sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
-    if (!tab.db.isOpen()) await tab.awaitDBOpen!;
+    if (!tab.db.isOpen() && !(await tab.awaitDBOpen ?? true)) {
+        if (tab.errorDueToEncryptedLevelDB)
+            return (
+                <Notice
+                    title="Encrypted LevelDB"
+                    subtitle="The LevelDB is encrypted. The app cannot open encrypted LevelDBs."
+                    detail="If this world is from a marketplace template, that would cause the LevelDB to be encrypted."
+                    image="access_denied"
+                />
+            );
+        return (
+            <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
+                <Notice
+                    title="LevelDB Error"
+                    subtitle="An error has occurred while opening the LevelDB."
+                    detail={null}
+                    image="generic_error"
+                    style={{ height: "auto" }}
+                />
+                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
+                    {tab.errorOnDBOpen instanceof Error ?
+                        `${tab.errorOnDBOpen.stack !== undefined ? tab.errorOnDBOpen.stack : tab.errorOnDBOpen.toString()}${
+                            tab.errorOnDBOpen.cause !== undefined ?
+                                `\nCaused by: ${((): unknown => {
+                                    try {
+                                        return typeof tab.errorOnDBOpen.cause === "object" ? JSON.stringify(tab.errorOnDBOpen.cause) : tab.errorOnDBOpen.cause;
+                                    } catch {
+                                        return tab.errorOnDBOpen.cause;
+                                    }
+                                })()}`
+                            :   ""
+                        }`
+                    :   String(
+                            (function (): unknown {
+                                try {
+                                    return typeof tab.errorOnDBOpen === "object" ? JSON.stringify(tab.errorOnDBOpen) : tab.errorOnDBOpen;
+                                } catch {
+                                    return tab.errorOnDBOpen;
+                                }
+                            })()
+                        )
+                    }
+                </div>
+            </div>
+        );
+    }
     if (!tab.cachedDBKeys) await tab.awaitCachedDBKeys!;
     signal.throwIfAborted();
     const rawKeys: Buffer[] = tab.cachedDBKeys!.StructureTemplate;
@@ -336,7 +387,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
             async (key: Buffer): Promise<KeyData> => ({
                 rawKey: key,
                 displayKey: getKeyDisplayName(key),
-                data: (await NBT.parse((await tab.db!.get(key))!)) as any,
+                data: (await NBT.parse((await tab.db!.get(key))!).catch((): null => null)) as any,
             })
         )
     );
@@ -464,11 +515,14 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
             searchTargets: {
                 key: Buffer<ArrayBufferLike>;
                 displayKey: string;
-                value: {
-                    parsed: NBT.NBT;
-                    type: NBT.NBTFormat;
-                    metadata: NBT.Metadata;
-                };
+                value:
+                    | {
+                          parsed: NBT.NBT;
+                          type: NBT.NBTFormat;
+                          metadata: NBT.Metadata;
+                      }
+                    | null
+                    | undefined;
                 valueType: {
                     readonly type: "NBT";
                 };
@@ -500,7 +554,10 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                         ],
                         customDataFields: {
                             structureid: key.displayKey.replace(/^structuretemplate_/, ""),
+                            // TODO: Uncomment the below line and implement a search query for checking for entries with invalid data.
+                            // hasInvalidData: key.data === null,
                             contents: ((): string => {
+                                if (key.data === null) return "";
                                 try {
                                     return prettyPrintSNBT(prismarineToSNBT(key.data.parsed), { indent: 0 });
                                 } catch {
@@ -664,6 +721,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                         >
                             <img
                                 src="resource://images/ui/glyphs/upload_glyph.png"
+                                class="invert_on_light_theme"
                                 style={{ width: "16px", imageRendering: "pixelated", margin: "-3.5px 5px -3.5px 0" }}
                                 aria-hidden="true"
                             />
@@ -778,6 +836,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                         >
                             <img
                                 src="resource://images/ui/glyphs/upload_glyph.png"
+                                class="invert_on_light_theme"
                                 style={{ width: "16px", imageRendering: "pixelated", margin: "-3.5px 5px -3.5px 0" }}
                                 aria-hidden="true"
                             />
@@ -872,6 +931,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                         >
                             <img
                                 src="resource://images/ui/glyphs/download_glyph.png"
+                                class="invert_on_light_theme"
                                 style={{ width: "16px", imageRendering: "pixelated", margin: "-3.5px 5px -3.5px 0" }}
                                 aria-hidden="true"
                             />
@@ -925,7 +985,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                                     result.tabID
                                                 }n); if (tab) {const db = tab.db; if (db) {const [{data: key}, {data}] = ${JSON.stringify(
                                                     data
-                                                )}; const keyBuffer = Buffer.from(key); db.put(keyBuffer, Buffer.from(data)).then((success)=>{if(!success) console.error("Failed to transfer structure:", keyBuffer); else if (!tab.cachedDBKeys.StructureTemplate.some(targetKey=> targetKey.equals(keyBuffer))) {tab.cachedDBKeys.StructureTemplate.push(keyBuffer); tab.setLevelDBIsModified();}});}} else console.log("Unable to find tab with ID:", ${
+                                                )}; const keyBuffer = Buffer.from(key); db.put(keyBuffer, Buffer.from(data)).then((success)=>{if(!success) console.error("Failed to transfer structure:", keyBuffer); else if (!tab.cachedDBKeys.StructureTemplate.some(targetKey=> targetKey.equals(keyBuffer))) {tab.cachedDBKeys.StructureTemplate.push(keyBuffer); tab.setLevelDBIsModified();}});}} else console.error("Unable to find tab with ID:", ${
                                                     result.tabID
                                                 }n);}`
                                             );
@@ -942,6 +1002,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                         >
                             <img
                                 src="resource://images/ui/glyphs/export.png"
+                                class="invert_on_light_theme"
                                 style={{ width: "16px", imageRendering: "pixelated", margin: "-3.5px 5px -3.5px 0" }}
                                 aria-hidden="true"
                             />
@@ -969,7 +1030,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                     />
                     <button
                         type="button"
-                        class="search-button"
+                        class="search-button piximg invert_on_light_theme"
                         title="Search"
                         onClick={(): void => {
                             try {
@@ -1258,7 +1319,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                     </button>
                     <button
                         type="button"
-                        class="search-help-button"
+                        class="search-help-button piximg invert_on_light_theme"
                         title="Help"
                         onClick={(): void => {
                             let containerElement: HTMLDivElement = document.createElement("div");
@@ -1364,6 +1425,20 @@ async function getStructuresTabContentsRows(data: {
                                     case "ID":
                                         return <td>{key.rawKey.subarray(18).toString("utf8")}</td>;
                                     case "Size":
+                                        if (key.data === undefined) {
+                                            return (
+                                                <td>
+                                                    <span style="color: yellow;">Loading...</span>
+                                                </td>
+                                            );
+                                        }
+                                        if (key.data === null) {
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">N/A</span>
+                                                </td>
+                                            );
+                                        }
                                         return (
                                             <td>
                                                 {key.data.parsed.value.size?.type === "list" && key.data.parsed.value.size.value.type === "int" ?
@@ -1372,6 +1447,20 @@ async function getStructuresTabContentsRows(data: {
                                             </td>
                                         );
                                     case "WorldOrigin":
+                                        if (key.data === undefined) {
+                                            return (
+                                                <td>
+                                                    <span style="color: yellow;">Loading...</span>
+                                                </td>
+                                            );
+                                        }
+                                        if (key.data === null) {
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">N/A</span>
+                                                </td>
+                                            );
+                                        }
                                         return (
                                             <td>
                                                 {key.data.parsed.value.size?.type === "list" && key.data.parsed.value.size.value.type === "int" ?
@@ -1380,6 +1469,20 @@ async function getStructuresTabContentsRows(data: {
                                             </td>
                                         );
                                     case "Entities":
+                                        if (key.data === undefined) {
+                                            return (
+                                                <td>
+                                                    <span style="color: yellow;">Loading...</span>
+                                                </td>
+                                            );
+                                        }
+                                        if (key.data === null) {
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">N/A</span>
+                                                </td>
+                                            );
+                                        }
                                         return (
                                             <td>
                                                 {(
@@ -1391,6 +1494,20 @@ async function getStructuresTabContentsRows(data: {
                                             </td>
                                         );
                                     case "BlockEntities":
+                                        if (key.data === undefined) {
+                                            return (
+                                                <td>
+                                                    <span style="color: yellow;">Loading...</span>
+                                                </td>
+                                            );
+                                        }
+                                        if (key.data === null) {
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">N/A</span>
+                                                </td>
+                                            );
+                                        }
                                         return (
                                             <td>
                                                 {(

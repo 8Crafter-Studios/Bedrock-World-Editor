@@ -13,11 +13,10 @@ export interface SNBTEditorProps {
     dataStorageObject: GenericDataStorageObject;
     contentType?: DBEntryContentType;
     /**
-     * A callback function that is called when a value is changed in the tree editor.
+     * A callback function that is called when a value is changed in the SNBT editor.
      *
      * @param dataStorageObject The current value of the data storage object (it is a reference to the original data storage object).
      * @param cause The cause of the change, or `undefined`.
-     * @returns `true` to prevent the tree editor from refreshing, `false` or `undefined` to allow the tree editor to refresh.
      */
     onValueChange?(
         dataStorageObject: GenericDataStorageObject,
@@ -25,15 +24,15 @@ export interface SNBTEditorProps {
             newValue: string;
             type: "changeContents";
         }
-    ): boolean | undefined;
+    ): void;
     /**
-     * Whether the tree editor should be read-only.
+     * Whether the SNBT should be read-only.
      *
      * @default false
      */
     readonly?: boolean;
     /**
-     * A message to display when the tree editor is read-only.
+     * A message to display when the SNBT is read-only.
      *
      * Only used when {@link readonly} is `true`.
      *

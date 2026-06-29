@@ -12,6 +12,7 @@
         "plugin:import/electron",
         "plugin:import/typescript",
         "plugin:jsdoc/recommended-typescript"
+        // TODO: Enable @typescript-eslint/recommended-type-checked at some point and disable the unwanted rules.
     ],
     "plugins": ["no-restricted-syntax"],
     "parser": "@typescript-eslint/parser",
@@ -100,6 +101,8 @@
             }
         ],
         "jsdoc/require-throws": "warn",
+        "jsdoc/require-throws-description": "warn",
+        // Make a version of the require-throws, require-throws-type, and require-throws-descript rules that apply to async functions too, instead of using require-rejects.
         "jsdoc/require-jsdoc": [
             "warn",
             {

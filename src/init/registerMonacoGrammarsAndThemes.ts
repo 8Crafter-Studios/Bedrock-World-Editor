@@ -556,6 +556,9 @@ async function main(language: LanguageId): Promise<void> {
     registerLanguages(languages, (language: LanguageId): Promise<LanguageInfo> => provider.fetchLanguageInfo(language), monaco);
     monaco.editor.defineTheme(themeTomorrowNightBlue.details.id, themeTomorrowNightBlue.monaco);
 
+    // This script lists all content types that are missing from the setDiagnosticsOptions.
+    // const missingContentTypes = Object.keys(require("mcbe-leveldb").entryContentTypeToFormatMap).filter(v=>!monaco.languages.json.jsonDefaults.diagnosticsOptions.schemas.some(v2=>v2.uri===`inmemory://schemas/json/${v}`));
+    // const missingContentTypesWithSchemas = missingContentTypes.filter(v=>v in require("mcbe-leveldb").NBTSchemas.nbtSchemas);
     function setJSONSchemas(attempt: number = 0, actionIfExistingSchemas: "skip" | "append" | "overwrite" = "overwrite"): void {
         if (actionIfExistingSchemas === "skip" && monaco.languages.json.jsonDefaults.diagnosticsOptions.schemas?.length) {
             setTimeout(setJSONSchemas.bind(void 0, 0, "skip"), 500);
@@ -1271,6 +1274,118 @@ async function main(language: LanguageId): Promise<void> {
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.ChunkLoadedRequest,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/BorderBlocks",
+                    fileMatch: [
+                        "**?contentType=BorderBlocks",
+                        "**?contentType=BorderBlocks&*",
+                        "**/JSONSchema/BorderBlocks",
+                        "**/ContentType:BorderBlocks",
+                        "**/ContentType:BorderBlocks/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.BorderBlocks,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/HardcodedSpawners",
+                    fileMatch: [
+                        "**?contentType=HardcodedSpawners",
+                        "**?contentType=HardcodedSpawners&*",
+                        "**/JSONSchema/HardcodedSpawners",
+                        "**/ContentType:HardcodedSpawners",
+                        "**/ContentType:HardcodedSpawners/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.HardcodedSpawners,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/CustomDimension",
+                    fileMatch: [
+                        "**?contentType=CustomDimension",
+                        "**?contentType=CustomDimension&*",
+                        "**/JSONSchema/CustomDimension",
+                        "**/ContentType:CustomDimension",
+                        "**/ContentType:CustomDimension/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.CustomDimension,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/DimensionNameIdTable",
+                    fileMatch: [
+                        "**?contentType=DimensionNameIdTable",
+                        "**?contentType=DimensionNameIdTable&*",
+                        "**/JSONSchema/DimensionNameIdTable",
+                        "**/ContentType:DimensionNameIdTable",
+                        "**/ContentType:DimensionNameIdTable/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.DimensionNameIdTable,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/WorldClocks",
+                    fileMatch: [
+                        "**?contentType=WorldClocks",
+                        "**?contentType=WorldClocks&*",
+                        "**/JSONSchema/WorldClocks",
+                        "**/ContentType:WorldClocks",
+                        "**/ContentType:WorldClocks/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.WorldClocks,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/AABBVolumes",
+                    fileMatch: [
+                        "**?contentType=AABBVolumes",
+                        "**?contentType=AABBVolumes&*",
+                        "**/JSONSchema/AABBVolumes",
+                        "**/ContentType:AABBVolumes",
+                        "**/ContentType:AABBVolumes/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.AABBVolumes,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/BiomeState",
+                    fileMatch: [
+                        "**?contentType=BiomeState",
+                        "**?contentType=BiomeState&*",
+                        "**/JSONSchema/BiomeState",
+                        "**/ContentType:BiomeState",
+                        "**/ContentType:BiomeState/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.BiomeState,
                         undefined,
                         { makeValueSchema: true },
                         true
