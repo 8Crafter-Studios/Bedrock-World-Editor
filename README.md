@@ -6,6 +6,8 @@ This app is still in beta, so please report any issues you find [here](https://g
 
 For support you can [email 8Crafter](mailto:8crafteryt@gmail.com) or ask for help on the [8Crafter Studios](https://discord.8crafter.com) discord server.
 
+The privacy policy and code signing policy can be found [here](https://wiki.8crafter.com/bwe/general/general-information#privacy-policy).
+
 ## Overview
 
 This app supports Windows, Linux, and macOS (Darwin). iOS and Android support is planned but not implemented yet.
