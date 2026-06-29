@@ -50,6 +50,8 @@ jobs:
 
             - name: Setup Node.js
               uses: actions/setup-node@v6
+              with:
+                  node-version: ${{ matrix.node-version || '22.x' }}
 
             - name: Install dependencies
               # Add `--ignore-scripts` because leveldb-zlib's install script is broken, so it is ignored and then fixed with the next step before being run.
