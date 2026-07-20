@@ -1,6 +1,6 @@
+// TODO: Add support for older worlds that use Entity instead of ActorPrefix.
 import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef, useState } from "preact/compat";
-import TreeEditor from "../components/TreeEditor";
 import {
     DBEntryContentTypes,
     dimensions,
@@ -275,7 +275,7 @@ interface KeyData {
 
 async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): Promise<JSX.Element> {
     if (!tab.db) return <div>The entities sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
-    if (!tab.db.isOpen() && !(await tab.awaitDBOpen ?? true)) {
+    if (!tab.db.isOpen() && !((await tab.awaitDBOpen) ?? true)) {
         if (tab.errorDueToEncryptedLevelDB)
             return (
                 <Notice
@@ -1045,17 +1045,30 @@ async function getEntityDimensionMappings(
                         (idToDimensionNameMapping[dimensionVectorDimension] ?? dimensionVectorDimension)
                     :   dimensionVectorDimension;
             } catch (e) {
-                dimension = getChunkKeyIndices(digest).dimension;
+                try {
+                    dimension = getChunkKeyIndices(digest).dimension;
+                } catch (e) {
+                    console.error("[Tab::Entities::getEntityDimensionMappings] Error getting chunk key indices from digest key:", e, "digestKey:", digest);
+                    continue;
+                }
             }
         } else {
             dimension = getChunkKeyIndices(digest).dimension;
         }
         entityDimensionMappings[dimension] ??= [];
-        entityDimensionMappings[dimension]!.push(
-            ...(await entryContentTypeToFormatMap.Digest.parse((await tab.db.get(digest))!)).value.entityIds.value.value.map((v: [number, number]): bigint =>
-                toLong(v)
-            )
-        );
+        let parsedDigest: NBTSchemas.NBTSchemaTypes.Digest;
+        try {
+            parsedDigest = await entryContentTypeToFormatMap.Digest.parse((await tab.db.get(digest))!);
+        } catch (e) {
+            console.error("[Tab::Entities::getEntityDimensionMappings] Error parsing digest:", e, "digestKey:", digest);
+            continue;
+        }
+        try {
+        entityDimensionMappings[dimension]!.push(...parsedDigest.value.entityIds.value.value.map((v: [number, number]): bigint => toLong(v)));
+        } catch (e) {
+            console.error("[Tab::Entities::getEntityDimensionMappings] Error getting entity IDs from digest:", e, "digestKey:", digest, "parsedDigest:", parsedDigest);
+            continue;
+        }
     }
     return entityDimensionMappings;
 }

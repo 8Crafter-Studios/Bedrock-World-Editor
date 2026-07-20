@@ -81,10 +81,15 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
             if (containerRef.current === null || clonedElement === null) return tab.openTabs.indexOf(props.tab);
             let index: number = 0;
             const elementRect: DOMRect = clonedElement?.getBoundingClientRect();
+            const lastTabY: number =
+                Array.from(containerRef.current!.parentElement!.children)
+                    .findLast((tab: Element): boolean => !tab.hasAttribute("data-immovable"))
+                    ?.getBoundingClientRect().top ?? 0;
             for (const tab of containerRef.current!.parentElement!.children) {
                 if (tab.hasAttribute("data-immovable")) continue;
                 const rect: DOMRect = tab.getBoundingClientRect();
                 if (rect.left + rect.width / 2 < elementRect.left) index++;
+                else if (rect.top < lastTabY && rect.top + rect.height <= elementRect.top) index++;
                 else break;
             }
             return index;

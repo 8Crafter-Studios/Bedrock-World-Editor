@@ -1411,8 +1411,8 @@ namespace exports {
 
     // TODO: Add icons for the content types that are missing icons.
     const tabManagerSubTabContentTypeToDefaultIconMap: Record<DBEntryContentType, string | undefined> = {
-        AABBVolumes: "resource://images/ui/glyphs/mob_spawner.png", // TODO: Make this different from the HardcodedSpawners icon.
-        ActorDigestVersion: undefined, // Maybe an entity icon with a list icon on it with a history icon on that? Or maybe a layered entity icon (as in a stack of entity icons) with a history icon on that? And it should somehow convey that it is entity UUIDs and not entity data.
+        AABBVolumes: "resource://images/ui/glyphs/mob_spawner.png",
+        ActorDigestVersion: "resource://images/ui/glyphs/icon_panda_2stack_history.png", // Maybe an entity icon with a list icon on it with a history icon on that? Or maybe a layered entity icon (as in a stack of entity icons) with a history icon on that? And it should somehow convey that it is entity UUIDs and not entity data.
         ActorPrefix: "resource://images/ui/glyphs/icon_panda.png",
         AutonomousEntities: undefined,
         BiomeData: "resource://images/ui/glyphs/icon_biome.png",
@@ -1422,23 +1422,23 @@ namespace exports {
         BlendingData: undefined,
         BlockEntity: undefined, // Maybe a chest icon? Or maybe a layered icon with multiple chests?
         BorderBlocks: "resource://images/ui/glyphs/BlockSprite_border.png",
-        Checksums: undefined,
+        Checksums: "resource://images/ui/glyphs/checksum.png", // Made by @Aevarkan
         ChunkLoadedRequest: undefined,
         ConversionData: undefined,
         CustomDimension: "resource://images/ui/glyphs/portalBg.png",
         Data2D: undefined, // Maybe a 2D icon that indicates biome data somehow.
         Data2DLegacy: undefined, // Maybe a 2D icon that indicates biome data somehow, with something to indicate it is the legacy format, such as a cobweb.
         Data3D: undefined, // Maybe a 3D icon that indicates biome data somehow.
-        Digest: undefined, // Something indicating this is a list of entity UUIDs in the chunk.
+        Digest: "resource://images/ui/glyphs/icon_panda_2stack_uuid.png", // Something indicating this is a list of entity UUIDs in the chunk.
         DimensionNameIdTable: "resource://images/ui/glyphs/portalBg_config.png",
         DynamicProperties: "resource://images/ui/glyphs/Data-Empty_16x.png", // Maybe make this Data-Empty icon layered on top of the add-ons icon?
-        Entity: undefined, // Something indicating this is a list of entities (including their data) in the chunk.
+        Entity: "resource://images/ui/glyphs/icon_panda_2stack.png", // Something indicating this is a list of entities (including their data) in the chunk.
         FinalizedState: undefined, // This controls the finalization state of a chunk's data, with 0 being the chunk need to be ticked, 1 being the chunk need to be populated with mobs, and 2 being finalized. The icon should represent this somehow.
-        FlatWorldLayers: undefined, // Something indicating flat world layers.
+        FlatWorldLayers: "resource://images/ui/glyphs/flat_world_layers.png", // Made by @Aevarkan
         ForcedWorldCorruption: "resource://images/ui/glyphs/world_glyph_color_corrupted_1.png", // The other good option was world_glyph_desaturated_corrupted_8.png.
         GeneratedPreCavesAndCliffsBlending: undefined,
         GenerationSeed: "resource://images/ui/glyphs/seeds_wheat.png",
-        HardcodedSpawners: "resource://images/ui/glyphs/mob_spawner.png", // TODO: Make this different from the AABBVolumes icon, maybe with something indicating it is older or deprecated, such as a cobweb.
+        HardcodedSpawners: "resource://images/ui/glyphs/mob_spawner_cobweb.png",
         LegacyBlockExtraData: undefined,
         LegacyNether: undefined, // Maybe the same icon as the Nether content type, but with something to indicate it is the legacy format, such as a cobweb?
         LegacyOverworld: undefined, // Maybe the same icon as the Overworld content type, but with something to indicate it is the legacy format, such as a cobweb?
@@ -1458,10 +1458,10 @@ namespace exports {
         Player: "resource://images/ui/glyphs/icon_steve_server.png",
         PlayerClient: "resource://images/ui/glyphs/icon_steve_client.png",
         Portals: "resource://images/ui/glyphs/realmPortalSmall.png",
-        PositionTrackingDB: undefined,
-        PositionTrackingLastId: undefined,
-        RandomTicks: undefined, // Something clock related. Maybe somehow indicating randomness?
-        RealmsStoriesData: undefined,
+        PositionTrackingDB: "resource://images/ui/glyphs/lodestone_side.png",
+        PositionTrackingLastId: "resource://images/ui/glyphs/lodestonecompass_item.png",
+        RandomTicks: "resource://images/ui/glyphs/random_ticks_1.png", // Made by @Aevarkan
+        RealmsStoriesData: "resource://images/ui/glyphs/realmsStoriesIcon.png",
         SchedulerWT: "resource://images/ui/glyphs/icon_wandering_trader.png",
         Scoreboard: "resource://images/ui/glyphs/icon_best3.png",
         StructureTemplate: "resource://images/ui/glyphs/structure_block.png",

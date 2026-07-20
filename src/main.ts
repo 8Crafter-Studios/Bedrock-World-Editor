@@ -377,8 +377,14 @@ let webContentsLoaded: boolean = false;
 
 const onWebContentsLoadedCallbacks: (() => void)[] = [];
 
+/**
+ * Creates the main window for the app.
+ *
+ * @returns The ID of the created window, or `undefined` if the window was not createReadStream.
+ */
 export function createWindow(): number | void {
     if (isSecondInstance) return;
+    if (isDev) process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
     // Create the browser window.
     const mainWindow = new BrowserWindow({
         width: 1200,
@@ -394,6 +400,8 @@ export function createWindow(): number | void {
             preload: path.join(__dirname, "preload.js"),
             contextIsolation: false,
             nodeIntegration: true,
+            webSecurity: !isDev,
+            allowRunningInsecureContent: false,
             // webSecurity: false,
             nodeIntegrationInWorker: true,
         },
@@ -925,7 +933,7 @@ if (!startup && !started) {
             // console.log(request);
             return new Response(`export default require(${JSON.stringify(request.url.replace(/^module:\/?\/?/, "").replace(/\/$/, ""))});`, {
                 headers: {
-                    "Content-Type": "application/javascript",
+                    "Content-Type": request.url.endsWith(".wasm") ? "application/wasm" : "application/javascript",
                 },
             });
         });
@@ -933,7 +941,7 @@ if (!startup && !started) {
             // console.log(request);
             return new Response(`export default require(${JSON.stringify(request.url.replace(/^node:\/?\/?/, "").replace(/\/$/, ""))});`, {
                 headers: {
-                    "Content-Type": "application/javascript",
+                    "Content-Type": request.url.endsWith(".wasm") ? "application/wasm" : "application/javascript",
                 },
             });
         });
@@ -942,7 +950,7 @@ if (!startup && !started) {
             const pathname: string = decodeURIComponent(new URL(request.url).pathname);
             return new Response(readFileSync(pathname), {
                 headers: {
-                    "Content-Type": "application/javascript",
+                    "Content-Type": request.url.endsWith(".wasm") ? "application/wasm" : "application/javascript",
                 },
             });
         });

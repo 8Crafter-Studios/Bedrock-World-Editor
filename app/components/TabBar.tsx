@@ -248,10 +248,15 @@ export default function TabBar(): JSX.Element {
             if (containerRef.current === null || clonedElement === null) return tabManager.openTabs.indexOf(props.tab);
             let index: number = 0;
             const elementRect: DOMRect = clonedElement?.getBoundingClientRect();
+            const lastTabY: number =
+                Array.from(containerRef.current!.parentElement!.children)
+                    .findLast((tab: Element): boolean => !tab.hasAttribute("data-immovable"))
+                    ?.getBoundingClientRect().top ?? 0;
             for (const tab of containerRef.current!.parentElement!.children) {
                 if (tab.hasAttribute("data-immovable")) continue;
                 const rect: DOMRect = tab.getBoundingClientRect();
                 if (rect.left + rect.width / 2 < elementRect.left) index++;
+                else if (rect.top < lastTabY && rect.top + rect.height <= elementRect.top) index++;
                 else break;
             }
             return index;
@@ -691,7 +696,7 @@ export default function TabBar(): JSX.Element {
             <ul class="horizontal-nav full-sized-nav tab-bar" id="tab-bar" style="overflow-x: auto; overflow-y: visible; flex-shrink: 0;" ref={tabContainerRef}>
                 <RenderTabs />
             </ul>
-            <div id="add-tab-popup-menu" style="display: none; background-color: #13383f; color: white; width: 200px; position: fixed;" ref={popupRef}>
+            <div id="add-tab-popup-menu" style="display: none; background-color: #13383f; color: white; width: 200px; position: fixed; z-index: 1000;" ref={popupRef}>
                 <div style="display: flex; flex-direction: column; height: 100%; width: 200px;">
                     {popupTabs.map(
                         (tab: PopupTab): JSX.SpecificElement<"div"> => (

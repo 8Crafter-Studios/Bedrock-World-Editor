@@ -140,6 +140,7 @@ export type SimpleLanguageInfoProviderConfig = {
     monaco: Monaco;
 };
 
+// eslint-disable-next-line jsdoc/require-jsdoc
 export interface ScopeNameInfo {
     /**
      * If set, this is the id of an ILanguageExtensionPoint. This establishes the
@@ -185,6 +186,7 @@ export class SimpleLanguageInfoProvider {
                 return parseRawGrammar(grammar, `example.${type}`);
             },
 
+            // eslint-disable-next-line jsdoc/require-returns
             /**
              * For the given scope, returns a list of additional grammars that should be
              * "injected into" it (i.e., a list of grammars that want to extend the
@@ -398,6 +400,7 @@ const REGEXP_PROPERTIES = [
     "wordPattern",
 ];
 
+// eslint-disable-next-line jsdoc/require-returns
 /**
  * Configuration data is read from JSON and JSONC files, which cannot contain
  * regular expression literals. Although Monarch grammars will often accept

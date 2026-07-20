@@ -1,3 +1,49 @@
+# v1.0.0-beta.32
+
+## Critical Fixes
+
+-   Fixed a bug where the parser for the `Data3D` content type did not work when there were subchunks with storage types of `3`, `5`, or `6`.
+-   Fixed a bug where the serializer for the `Data3D` content type could not write storage types of `3`, `5`, or `6`, and instead rounded them up to the nearest storage type it supported, which may or may not have caused crashes in some Minecraft worlds.
+-   Fixed a bug where the content type for the following content types in some older worlds where the dimension was not part of the key could not be determined:
+    -   `VillagePOI`
+    -   `VillageInfo`
+    -   `VillageDwellers`
+    -   `VillagePlayers`
+    -   `VillageRaid`
+
+## Breaking Changes
+
+-   The `dirty_columns` field of the `LegacyTerrain` NBT schema and parser/serializer has been renamed to `height_map`.
+-   The `Data2D` NBT schema and parser/serializer now includes a `version` field.
+
+## Additions
+
+-   Added autocomplete/validation for general item tags and enchantments to items.
+-   Added biome definitions for the Sulfur Caves and Dappled Forest.
+-   Added support for the newer `Data2D` format version used in modern Minecraft versions which uses 16-bit little-endian integers for biome IDs instead of 8-bit integers.
+-   Added an icon for sub-tabs of content type `ActorDigestVersion`.
+-   Added an icon for sub-tabs of content type `Checksums`.
+-   Added an icon for sub-tabs of content type `Digest`.
+-   Added an icon for sub-tabs of content type `Entity`.
+-   Added an icon for sub-tabs of content type `FlatWorldLayers`.
+-   Added an icon for sub-tabs of content type `PositionTrackingDB`.
+-   Added an icon for sub-tabs of content type `PositionTrackingLastId`.
+-   Added an icon for sub-tabs of content type `RandomTicks`.
+-   Added an icon for sub-tabs of content type `RealmsStoriesData`.
+
+## Changes
+
+-   Changed the icon for sub-tabs of content type `HardcodedSpawners` to have a cobweb on it, to distinguish it from the icon for sub-tabs of content type `AABBVolumes`.
+
+## Fixes
+
+-   Fixed a bug where there was no autocomplete/validation for many properties of the `Player` content type.
+-   Fixed a bug where many properties of NBT schemas that were items did not have a reference to the `Item_ItemStack` NBT schema.
+-   Many schema fixes.
+-   Fixed a bug where tabs in the tab bars could not be dragged to rows below the first row.
+-   Fixed a bug where the add tab popup menu was rendered below some elements.
+-   Fixed a bug where the "Entities" left sidebar tab would show an error if there was corrupted or invalid `Digest` data.
+
 # v1.0.0-beta.31
 
 ## Additions

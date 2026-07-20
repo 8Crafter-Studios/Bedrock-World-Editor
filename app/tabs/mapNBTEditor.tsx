@@ -10,11 +10,11 @@ import { initMapEditorDataStorageObjectProps, MapEditor } from "../components/Ma
 import BinaryHexEditor, { initHexEditorDataStorageObjectProps, type HexEditorDataStorageObject } from "../components/BinaryHexEditor";
 import Notice from "../components/Notice";
 
-export interface GenericNBTEditorTabProps {
+export interface MapEditorTabProps {
     tab: TabManagerSubTab;
 }
 
-export default function MapEditorTab(props: GenericNBTEditorTabProps): JSX.SpecificElement<"div"> {
+export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElement<"div"> {
     const containerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     const viewOptionsRefs = {
         viewOptionsContainer: useRef<HTMLDivElement>(null),
@@ -261,8 +261,8 @@ export default function MapEditorTab(props: GenericNBTEditorTabProps): JSX.Speci
         // containerRef.current.replaceChildren(...tempElement.children);
     }
     function Contents(props: {
-        props: GenericNBTEditorTabProps;
-        options: Extract<GenericNBTEditorTabProps["tab"]["currentState"]["options"], { viewMode?: any }>;
+        props: MapEditorTabProps;
+        options: Extract<MapEditorTabProps["tab"]["currentState"]["options"], { viewMode?: any }>;
     }): JSX.Element {
         switch (props.options.viewMode) {
             case "map":

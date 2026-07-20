@@ -1,11 +1,20 @@
 import type { JSX } from "preact";
 import _React, { render, useEffect } from "preact/compat";
 
+/**
+ * Props for the {@link LeftSidebar} component.
+ */
 export interface LeftSidebarProps {
     tab: TabManagerTab;
 }
 
-export default function LeftSidebar(props: LeftSidebarProps): JSX.SpecificElement<"ul"> {
+/**
+ * The left sidebar.
+ *
+ * @param props The props for the component.
+ * @returns The JSX element.
+ */
+export default function LeftSidebar(props: LeftSidebarProps): JSX.Element {
     function tabManagerSubTabToSubTabID(tab: TabManagerSubTab | TabManagerTabGenericSubTabID | null): TabManagerTabGenericSubTabID | null {
         if (typeof tab === "string") return tab;
         if (tab === null) return null;

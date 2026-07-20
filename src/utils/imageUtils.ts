@@ -1,6 +1,12 @@
 import { nativeImage } from "@electron/remote";
 import type { NativeImage } from "electron";
 
+/**
+ * Pads a {@link NativeImage} to a square.
+ *
+ * @param nativeImg The {@link NativeImage} to pad.
+ * @returns The padded {@link NativeImage}.
+ */
 export async function padNativeImageToSquare(nativeImg: NativeImage): Promise<Electron.NativeImage> {
     const png: Buffer<ArrayBufferLike> = nativeImg.toPNG();
     const base64: string = png.toString("base64");
@@ -26,6 +32,12 @@ export async function padNativeImageToSquare(nativeImg: NativeImage): Promise<El
     return nativeImage.createFromDataURL(paddedBase64);
 }
 
+/**
+ * Converts a PNG buffer to an ICO buffer.
+ *
+ * @param pngBuffer The PNG buffer.
+ * @returns The ICO buffer.
+ */
 export function pngToIco(pngBuffer: Buffer<ArrayBufferLike>): Buffer<ArrayBuffer> {
     const pngSize: number = pngBuffer.length;
 
