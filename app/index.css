@@ -1544,13 +1544,15 @@ select.search-mode-dropdown:open::picker-icon {
     margin-block: 0 0.5em;
 }
 
-.DBKeyCreationDialogOptionList {
+.DBKeyCreationDialogOptionList,
+.LocationInputDialogOptionList {
     display: flex;
     flex-direction: column;
     gap: 0.5em;
 }
 
-.DBKeyCreationDialogOptionList_optionItemGroup {
+.DBKeyCreationDialogOptionList_optionItemGroup,
+.LocationInputDialogOptionList_optionItemGroup {
     display: flex;
     flex-direction: column;
 }

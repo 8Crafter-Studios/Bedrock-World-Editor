@@ -1,6 +1,15 @@
 import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef, useState } from "preact/compat";
-import { entryContentTypeToFormatMap, generateChunkKeyFromIndices, getKeyDisplayName, prettyPrintSNBT, prismarineToSNBT } from "mcbe-leveldb";
+import {
+    entryContentTypeToFormatMap,
+    generateChunkKeyFromIndices,
+    getDimensionTypes,
+    getDimensionTypesSync,
+    getKeyDisplayName,
+    prettyPrintSNBT,
+    prismarineToSNBT,
+    type Dimension,
+} from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
 import { ControlledMenu, MenuItem } from "@szhsin/react-menu";
 import { LoadingScreenContents } from "../app";
@@ -187,7 +196,7 @@ enum UpdateTablesContentsMode {
 
 async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Promise<JSX.Element> {
     if (!tab.db) return <div>The ticks sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
-    if (!tab.db.isOpen() && !(await tab.awaitDBOpen ?? true)) {
+    if (!tab.db.isOpen() && !((await tab.awaitDBOpen) ?? true)) {
         if (tab.errorDueToEncryptedLevelDB)
             return (
                 <Notice
@@ -438,11 +447,12 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
             searchTargets: {
                 key: Buffer<ArrayBufferLike>;
                 displayKey: string;
-                value: {
-                    parsed: NBT.NBT;
-                    type: NBT.NBTFormat;
-                    metadata: NBT.Metadata;
-                }
+                value:
+                    | {
+                          parsed: NBT.NBT;
+                          type: NBT.NBTFormat;
+                          metadata: NBT.Metadata;
+                      }
                     | null
                     | undefined;
                 valueType: {
@@ -493,11 +503,12 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
             searchTargets: {
                 key: Buffer<ArrayBufferLike>;
                 displayKey: string;
-                value: {
-                    parsed: NBT.NBT;
-                    type: NBT.NBTFormat;
-                    metadata: NBT.Metadata;
-                }
+                value:
+                    | {
+                          parsed: NBT.NBT;
+                          type: NBT.NBTFormat;
+                          metadata: NBT.Metadata;
+                      }
                     | null
                     | undefined;
                 valueType: {
@@ -718,8 +729,15 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                     if (!tab.db) return;
                                     if (!tab.db.isOpen()) return;
                                     if (!tab.cachedDBKeys) return;
+                                    let dimensionTypes: Record<Dimension | `${string}:${string}`, number> | undefined;
+                                    try {
+                                        dimensionTypes = await getDimensionTypes(tab.db);
+                                    } catch (e) {
+                                        console.error("Error while getting dimension types for prompt for creating a new RandomTicks entry:", e);
+                                    }
                                     const creationOptions = await showDBKeyCreationDialog({
                                         options: ["chunkX", "chunkZ", "dimension"],
+                                        dimensionTypes,
                                         message: "Please enter the paremters for the new RandomTicks entry.",
                                     });
                                     if (creationOptions.canceled) return;
@@ -781,8 +799,15 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                     if (!tab.db) return;
                                     if (!tab.db.isOpen()) return;
                                     if (!tab.cachedDBKeys) return;
+                                    let dimensionTypes: Record<Dimension | `${string}:${string}`, number> | undefined;
+                                    try {
+                                        dimensionTypes = await getDimensionTypes(tab.db);
+                                    } catch (e) {
+                                        console.error("Error while getting dimension types for prompt for creating a new RandomTicks entry:", e);
+                                    }
                                     const creationOptions = await showDBKeyCreationDialog({
                                         options: ["chunkX", "chunkZ", "dimension"],
+                                        dimensionTypes,
                                         message: "Please enter the paremters for the new PendingTicks entry.",
                                     });
                                     if (creationOptions.canceled) return;

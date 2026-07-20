@@ -161,6 +161,14 @@ namespace exports {
                     simple: {},
                 },
             },
+            world: {
+                modeSettings: {
+                    "3D": {},
+                    "2D": {},
+                    block: {},
+                    search: {},
+                },
+            },
         },
     } as const satisfies DeepSubConfigKeyStructureOfConfig<Config>;
     /**
@@ -303,6 +311,29 @@ namespace exports {
                         simple: {
                             columns: ["DBKey", "ID", "Size", "Entities", "BlockEntities", "WorldOrigin"],
                         },
+                    },
+                },
+                world: {
+                    mode: "2D",
+                    modeSettings: {
+                        "3D": {},
+                        "2D": {
+                            parallelizeImageBitmapCreation: true,
+                            maxParallelImageBitmapCreations: 128,
+                            parallelizeChunkLoading: true,
+                            maxParallelLoadingChunks: 32,
+                            checkCachedDBKeysForBiomeDataKeysIfAvailable: true,
+                            useData3DHeightmapForSurfaceBiomePosition: false,
+                            useGrassTintColorInsteadOfBiomeColorForOldChunkFormats: false,
+                            defaultMapScale: 48,
+                            minMapScale: 8,
+                            maxMapScale: 768,
+                            applyNetherScaleToCoordinatesWhenSwitchingToOrFromNether: true,
+                            mapGoToPositionAnimationDuration: 500,
+                            showChunkDeletionWarnings: true,
+                        },
+                        block: {},
+                        search: {},
                     },
                 },
             },
@@ -1923,6 +1954,423 @@ namespace exports {
                 return StructuresViewConfig_ModeSettings;
             })())(this);
         })(this);
+        public readonly world = new (class WorldViewConfig extends DeepSubConfig<ViewsConfig> {
+            public get mode(): ConfigConstants.views.World.WorldTabMode {
+                return this[DeepSubConfig_configSymbol].#config.getConfigData().views?.world?.mode ?? Config.defaults.views.world.mode;
+            }
+            public set mode(value: ConfigConstants.views.World.WorldTabMode | undefined) {
+                this[DeepSubConfig_configSymbol].#config.saveChanges({ views: { world: { mode: value ?? Config.defaults.views.world.mode } } });
+            }
+            public readonly modeSettings = new ((() => {
+                const subConfigClassSymbol: unique symbol = Symbol.for("WorldViewConfig_ModeSettings_subConfig");
+                class WorldViewConfig_ModeSettings
+                    extends DeepSubConfig<WorldViewConfig>
+                    implements Record<ConfigConstants.views.World.WorldTabMode, (typeof subConfigValueClasses)[number]["prototype"]>
+                {
+                    public static readonly __subConfigClassSymbol__: symbol = subConfigClassSymbol;
+                    public static readonly [subConfigClassSymbol] = (() => {
+                        abstract class WorldViewConfig_ModeSettings_SubConfig<
+                            T extends ConfigConstants.views.World.WorldTabMode,
+                        > extends DeepSubConfig<WorldViewConfig_ModeSettings> {
+                            public constructor(
+                                config: WorldViewConfig_ModeSettings,
+                                public readonly mode: T
+                            ) {
+                                super(config);
+                            }
+                        }
+                        return WorldViewConfig_ModeSettings_SubConfig;
+                    })();
+                    public readonly ["3D"] = new (class WorldViewConfig_ModeSettings_3D extends WorldViewConfig_ModeSettings[subConfigClassSymbol]<"3D"> {})(
+                        this,
+                        "3D"
+                    );
+                    public readonly ["2D"] = new (class WorldViewConfig_ModeSettings_2D extends WorldViewConfig_ModeSettings[subConfigClassSymbol]<"2D"> {
+                        /**
+                         * Whether to parallelize the image bitmap creation.
+                         *
+                         * If set to false, it will create the image bitmaps sequentially.
+                         *
+                         * If set to true, it will create all the image bitmaps simultaneously.
+                         * This will be a lot faster, but will use more system resources and may cause short UI freezes at smaller zoom levels depending on the {@link maxParallelImageBitmapCreations}.
+                         *
+                         * @deprecated This setting only applies to the old 2D world renderer, the current one does not use image bitmaps.
+                         *
+                         * @default true
+                         */
+                        public get parallelizeImageBitmapCreation(): boolean {
+                            return (
+                                this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views?.world
+                                    ?.modeSettings?.["2D"]?.parallelizeImageBitmapCreation ??
+                                Config.defaults.views.world.modeSettings["2D"].parallelizeImageBitmapCreation
+                            );
+                        }
+                        public set parallelizeImageBitmapCreation(value: boolean | undefined) {
+                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                views: {
+                                    world: {
+                                        modeSettings: {
+                                            "2D": {
+                                                parallelizeImageBitmapCreation:
+                                                    value ?? Config.defaults.views.world.modeSettings["2D"].parallelizeImageBitmapCreation,
+                                            },
+                                        },
+                                    },
+                                },
+                            });
+                        }
+                        /**
+                         * The maximum number of image bitmaps to create simultaneously.
+                         *
+                         * Higher numbers speed up loading but cause more lag.
+                         *
+                         * @deprecated This setting only applies to the old 2D world renderer, the current one does not use image bitmaps.
+                         *
+                         * @default 128
+                         */
+                        public get maxParallelImageBitmapCreations(): number {
+                            return (
+                                this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views?.world
+                                    ?.modeSettings?.["2D"]?.maxParallelImageBitmapCreations ??
+                                Config.defaults.views.world.modeSettings["2D"].maxParallelImageBitmapCreations
+                            );
+                        }
+                        public set maxParallelImageBitmapCreations(value: number | undefined) {
+                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                views: {
+                                    world: {
+                                        modeSettings: {
+                                            "2D": {
+                                                maxParallelImageBitmapCreations:
+                                                    value ?? Config.defaults.views.world.modeSettings["2D"].maxParallelImageBitmapCreations,
+                                            },
+                                        },
+                                    },
+                                },
+                            });
+                        }
+                        /**
+                         * Whether to parallelize the chunk loading.
+                         *
+                         * If set to false, it will load the chunks sequentially.
+                         *
+                         * If set to true, it will load all the chunks simultaneously. This will be a lot faster, but will use more system resources and may cause short UI freezes at
+                         * smaller zoom levels depending on the {@link maxParallelLoadingChunks}.
+                         *
+                         * @default true
+                         */
+                        public get parallelizeChunkLoading(): boolean {
+                            return (
+                                this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views?.world
+                                    ?.modeSettings?.["2D"]?.parallelizeChunkLoading ?? Config.defaults.views.world.modeSettings["2D"].parallelizeChunkLoading
+                            );
+                        }
+                        public set parallelizeChunkLoading(value: boolean | undefined) {
+                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                views: {
+                                    world: {
+                                        modeSettings: {
+                                            "2D": {
+                                                parallelizeChunkLoading: value ?? Config.defaults.views.world.modeSettings["2D"].parallelizeChunkLoading,
+                                            },
+                                        },
+                                    },
+                                },
+                            });
+                        }
+                        /**
+                         * The maximum number of chunks to load simultaneously.
+                         *
+                         * Higher numbers speed up loading but cause more lag.
+                         *
+                         * 2048 lags a bit while loading the chunks, but it loads them incredibly fast and after they are loaded it stops lagging.
+                         *
+                         * @default 32
+                         */
+                        public get maxParallelLoadingChunks(): number {
+                            return (
+                                this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views?.world
+                                    ?.modeSettings?.["2D"]?.maxParallelLoadingChunks ?? Config.defaults.views.world.modeSettings["2D"].maxParallelLoadingChunks
+                            );
+                        }
+                        public set maxParallelLoadingChunks(value: number | undefined) {
+                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                views: {
+                                    world: {
+                                        modeSettings: {
+                                            "2D": {
+                                                maxParallelLoadingChunks: value ?? Config.defaults.views.world.modeSettings["2D"].maxParallelLoadingChunks,
+                                            },
+                                        },
+                                    },
+                                },
+                            });
+                        }
+                        /**
+                         * If enabled, will cache a compiled a set of the biome data keys from the {@link TabManagerTab.cachedDBKeys} object mapped to hex strings,
+                         * and it will check that for the biome data's DB keys instead of attempting to read them from the LevelDB.
+                         *
+                         * Disabling this may slightly decrease memory usage but not by very much, and this will drastically slow down chunk loading and result in way more reads from the LevelDB.
+                         *
+                         * @default true
+                         */
+                        public get checkCachedDBKeysForBiomeDataKeysIfAvailable(): boolean {
+                            return (
+                                this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views?.world
+                                    ?.modeSettings?.["2D"]?.checkCachedDBKeysForBiomeDataKeysIfAvailable ??
+                                Config.defaults.views.world.modeSettings["2D"].checkCachedDBKeysForBiomeDataKeysIfAvailable
+                            );
+                        }
+                        public set checkCachedDBKeysForBiomeDataKeysIfAvailable(value: boolean | undefined) {
+                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                views: {
+                                    world: {
+                                        modeSettings: {
+                                            "2D": {
+                                                checkCachedDBKeysForBiomeDataKeysIfAvailable:
+                                                    value ?? Config.defaults.views.world.modeSettings["2D"].checkCachedDBKeysForBiomeDataKeysIfAvailable,
+                                            },
+                                        },
+                                    },
+                                },
+                            });
+                        }
+                        /**
+                         * Whether to use the Data3D heightmap to find the position of the surface biome.
+                         *
+                         * If `false`, it will get the surface biome from the highest point on the highest subchunk with biome data.
+                         *
+                         * @experimental
+                         *
+                         * @default false
+                         */
+                        public get useData3DHeightmapForSurfaceBiomePosition(): boolean {
+                            return (
+                                this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views?.world
+                                    ?.modeSettings?.["2D"]?.useData3DHeightmapForSurfaceBiomePosition ??
+                                Config.defaults.views.world.modeSettings["2D"].useData3DHeightmapForSurfaceBiomePosition
+                            );
+                        }
+                        public set useData3DHeightmapForSurfaceBiomePosition(value: boolean | undefined) {
+                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                views: {
+                                    world: {
+                                        modeSettings: {
+                                            "2D": {
+                                                useData3DHeightmapForSurfaceBiomePosition:
+                                                    value ?? Config.defaults.views.world.modeSettings["2D"].useData3DHeightmapForSurfaceBiomePosition,
+                                            },
+                                        },
+                                    },
+                                },
+                            });
+                        }
+                        /**
+                         * Whether to use the grass tint color contained within old chunk formats like Data2DLegacy and LegacyTerrain instead of the biome color.
+                         *
+                         * @default false
+                         */
+                        public get useGrassTintColorInsteadOfBiomeColorForOldChunkFormats(): boolean {
+                            return (
+                                this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views?.world
+                                    ?.modeSettings?.["2D"]?.useGrassTintColorInsteadOfBiomeColorForOldChunkFormats ??
+                                Config.defaults.views.world.modeSettings["2D"].useGrassTintColorInsteadOfBiomeColorForOldChunkFormats
+                            );
+                        }
+                        public set useGrassTintColorInsteadOfBiomeColorForOldChunkFormats(value: boolean | undefined) {
+                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                views: {
+                                    world: {
+                                        modeSettings: {
+                                            "2D": {
+                                                useGrassTintColorInsteadOfBiomeColorForOldChunkFormats:
+                                                    value ??
+                                                    Config.defaults.views.world.modeSettings["2D"].useGrassTintColorInsteadOfBiomeColorForOldChunkFormats,
+                                            },
+                                        },
+                                    },
+                                },
+                            });
+                        }
+                        /**
+                         * The default map scale for the world view in 2D mode.
+                         *
+                         * The scale is how many pixels on the screen each chunk takes up.
+                         *
+                         * Both smaller and larger scales can increase lag,
+                         * smaller scales increase lag due to an increased number of chunks that need to be rendered,
+                         * larger scales increase lag due to an increased amount of manual scaling that will need to be done to the chunk's color data.
+                         *
+                         * @default 48
+                         */
+                        public get defaultMapScale(): number {
+                            return (
+                                this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views?.world
+                                    ?.modeSettings?.["2D"]?.defaultMapScale ?? Config.defaults.views.world.modeSettings["2D"].defaultMapScale
+                            );
+                        }
+                        public set defaultMapScale(value: number | undefined) {
+                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                views: {
+                                    world: {
+                                        modeSettings: {
+                                            "2D": {
+                                                defaultMapScale: value ?? Config.defaults.views.world.modeSettings["2D"].defaultMapScale,
+                                            },
+                                        },
+                                    },
+                                },
+                            });
+                        }
+                        /**
+                         * The minimum map scale for the world view in 2D mode.
+                         *
+                         * The scale is how many pixels on the screen each chunk takes up.
+                         *
+                         * This is the limit of how far you can zoom out.
+                         *
+                         * 1 is absurdly laggy, 3 is a little laggy, 4 isn't *too* bad, 8 is fine.
+                         *
+                         * @default 8
+                         */
+                        public get minMapScale(): number {
+                            return (
+                                this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views?.world
+                                    ?.modeSettings?.["2D"]?.minMapScale ?? Config.defaults.views.world.modeSettings["2D"].minMapScale
+                            );
+                        }
+                        public set minMapScale(value: number | undefined) {
+                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                views: {
+                                    world: {
+                                        modeSettings: {
+                                            "2D": {
+                                                minMapScale: value ?? Config.defaults.views.world.modeSettings["2D"].minMapScale,
+                                            },
+                                        },
+                                    },
+                                },
+                            });
+                        }
+                        /**
+                         * The maximum map scale for the world view in 2D mode.
+                         *
+                         * The scale is how many pixels on the screen each chunk takes up.
+                         *
+                         * This is the limit of how far you can zoom in.
+                         *
+                         * @default 768
+                         */
+                        public get maxMapScale(): number {
+                            return (
+                                this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views?.world
+                                    ?.modeSettings?.["2D"]?.maxMapScale ?? Config.defaults.views.world.modeSettings["2D"].maxMapScale
+                            );
+                        }
+                        public set maxMapScale(value: number | undefined) {
+                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                views: {
+                                    world: {
+                                        modeSettings: {
+                                            "2D": {
+                                                maxMapScale: value ?? Config.defaults.views.world.modeSettings["2D"].maxMapScale,
+                                            },
+                                        },
+                                    },
+                                },
+                            });
+                        }
+                        /**
+                         * Whether to modify the coordinates based on the nether scale when switching to/from the nether dimension.
+                         *
+                         * @default false
+                         */
+                        public get applyNetherScaleToCoordinatesWhenSwitchingToOrFromNether(): boolean {
+                            return (
+                                this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views?.world
+                                    ?.modeSettings?.["2D"]?.applyNetherScaleToCoordinatesWhenSwitchingToOrFromNether ??
+                                Config.defaults.views.world.modeSettings["2D"].applyNetherScaleToCoordinatesWhenSwitchingToOrFromNether
+                            );
+                        }
+                        public set applyNetherScaleToCoordinatesWhenSwitchingToOrFromNether(value: boolean | undefined) {
+                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                views: {
+                                    world: {
+                                        modeSettings: {
+                                            "2D": {
+                                                applyNetherScaleToCoordinatesWhenSwitchingToOrFromNether:
+                                                    value ??
+                                                    Config.defaults.views.world.modeSettings["2D"].applyNetherScaleToCoordinatesWhenSwitchingToOrFromNether,
+                                            },
+                                        },
+                                    },
+                                },
+                            });
+                        }
+                        /**
+                         * How long the animation for sliding the map to a specific position takes in milliseconds.
+                         *
+                         * @default 500
+                         */
+                        public get mapGoToPositionAnimationDuration(): number {
+                            return (
+                                this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views?.world
+                                    ?.modeSettings?.["2D"]?.mapGoToPositionAnimationDuration ??
+                                Config.defaults.views.world.modeSettings["2D"].mapGoToPositionAnimationDuration
+                            );
+                        }
+                        public set mapGoToPositionAnimationDuration(value: number | undefined) {
+                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                views: {
+                                    world: {
+                                        modeSettings: {
+                                            "2D": {
+                                                mapGoToPositionAnimationDuration:
+                                                    value ?? Config.defaults.views.world.modeSettings["2D"].mapGoToPositionAnimationDuration,
+                                            },
+                                        },
+                                    },
+                                },
+                            });
+                        }
+                        /**
+                         * Whether to show a warning prompt before deleting a chunk.
+                         *
+                         * @default false
+                         */
+                        public get showChunkDeletionWarnings(): boolean {
+                            return (
+                                this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views?.world
+                                    ?.modeSettings?.["2D"]?.showChunkDeletionWarnings ??
+                                Config.defaults.views.world.modeSettings["2D"].showChunkDeletionWarnings
+                            );
+                        }
+                        public set showChunkDeletionWarnings(value: boolean | undefined) {
+                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                views: {
+                                    world: {
+                                        modeSettings: {
+                                            "2D": {
+                                                showChunkDeletionWarnings:
+                                                    value ??
+                                                    Config.defaults.views.world.modeSettings["2D"].showChunkDeletionWarnings,
+                                            },
+                                        },
+                                    },
+                                },
+                            });
+                        }
+                    })(this, "2D");
+                    public readonly block = new (class WorldViewConfig_ModeSettings_block extends WorldViewConfig_ModeSettings[
+                        subConfigClassSymbol
+                    ]<"block"> {})(this, "block");
+                    public readonly search = new (class WorldViewConfig_ModeSettings_search extends WorldViewConfig_ModeSettings[
+                        subConfigClassSymbol
+                    ]<"search"> {})(this, "search");
+                }
+                return WorldViewConfig_ModeSettings;
+            })())(this);
+        })(this);
     }
     const DeepSubConfig_configSymbol: unique symbol = Symbol.for("DeepSubConfig_sourceConfig");
     class DeepSubConfig<T extends Config | (typeof subConfigValueClasses)[number]["prototype"] = Config> {
@@ -2307,6 +2755,18 @@ namespace exports {
                       }[StructuresTabMode];
 
                 export type StructuresTabModeToColumnType = { [key in StructuresTabSectionMode]: (typeof structuresTabModeToColumnIDs)[key][number] };
+            }
+            export namespace World {
+                export type WorldTabMode = "3D" | "2D" | "block" | "search";
+
+                // /**
+                //  * The search mode for raw tab mode.
+                //  *
+                //  * - `grouped`: Grouped search mode, not yet implemented.
+                //  * - `client`: Client search mode, searches the client keys.
+                //  * - `server`: Server search mode, searches the server keys.
+                //  */
+                // export type RawTabMode_SearchMode = "grouped" | "client" | "server";
             }
             export namespace ViewFiles {
                 export const columnIDToDisplayName = {

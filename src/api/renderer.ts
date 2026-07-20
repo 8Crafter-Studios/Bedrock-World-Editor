@@ -7,7 +7,8 @@ import * as NBT from "prismarine-nbt";
 import type { NBTSchemas } from "mcbe-leveldb";
 
 ipcRenderer.on("console-action", function <
-    T extends Exclude<keyof Console, "Console">,
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+    T extends Exclude<{ [k in keyof Console]: Console[k] extends Function ? k : never }[keyof Console], "Console">,
 >(_event: IpcRendererEvent, action: T, ...args: Parameters<Console[T]>): void {
     console[action](...(args as []));
 });
@@ -106,10 +107,22 @@ ipcRenderer.on("open-world-folder", async function (_event: IpcRendererEvent, fo
                 path.join(folderPath, "world_icon.jpeg")
             :   globSync(path.join(folderPath, "world_icon.*"))[0],
         name:
-            existsSync(path.join(folderPath, "levelname.txt")) ?
-                readFileSync(path.join(folderPath, "levelname.txt"), { encoding: "utf-8" })
-            :   (((await NBT.parse(readFileSync(path.join(folderPath, "level.dat")))).parsed as NBTSchemas.NBTSchemaTypes.LevelDat).value.LevelName?.value ??
-                "Unknown Name"),
+            (await (async (): Promise<string | undefined> => {
+                try {
+                    return ((await NBT.parse(readFileSync(path.join(folderPath, "level.dat")))).parsed as NBTSchemas.NBTSchemaTypes.LevelDat).value.LevelName
+                        ?.value;
+                } catch (e) {
+                    console.error("Error while reading level.dat:", e, "folderPath:", folderPath);
+                    try {
+                        return ((await NBT.parse(readFileSync(path.join(folderPath, "level.dat_old")))).parsed as NBTSchemas.NBTSchemaTypes.LevelDat).value
+                            .LevelName?.value;
+                    } catch (e) {
+                        console.error("Error while reading level.dat_old:", e, "folderPath:", folderPath);
+                    }
+                }
+                return undefined;
+            })()) ??
+            (existsSync(path.join(folderPath, "levelname.txt")) ? readFileSync(path.join(folderPath, "levelname.txt"), { encoding: "utf-8" }) : "Unknown Name"),
         path: folderPath,
         type: "world",
         mode: tabMode,
@@ -131,7 +144,8 @@ declare global {
     type IpcRendererOpenFileType = "nbt" | "json" | "xml" | "text" | "binary" | "unset";
     namespace Electron {
         interface WebContents {
-            send<_T extends 1, T extends Exclude<keyof Console, "Console">>(
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+            send<_T extends 1, T extends Exclude<{ [k in keyof Console]: Console[k] extends Function ? k : never }[keyof Console], "Console">>(
                 channel: "console-action",
                 action: T,
                 ...args: globalThis.Parameters<Console[T]>

@@ -28,6 +28,7 @@ import { padNativeImageToSquare, pngToIco } from "../utils/imageUtils";
 import { defaultWorldIconDataURI } from "../utils/preloadImages";
 import { checkIsURIOrPath } from "../utils/pathUtils";
 import type { HexEditorDataStorageObject } from "../../app/components/BinaryHexEditor";
+import type { WorldEditorDataStorageObject } from "../../app/tabs/worldEditor";
 
 namespace exports {
     type DefaultEventMap = [never];
@@ -691,6 +692,13 @@ namespace exports {
     };
 
     /**
+     * The data stored in the {@link TabManagerTab.currentState | currentState} property of a {@link TabManagerTab}.
+     */
+    export interface TabManagerTabCurrentState {
+        worldTab?: WorldEditorDataStorageObject;
+    }
+
+    /**
      * Represents a tab in the tab manager.
      */
     export class TabManagerTab extends EventEmitter<TabManagerTabEventMap> {
@@ -766,6 +774,10 @@ namespace exports {
          * Only present while `awaitCachedDBKeys` is pending.
          */
         public loadedCachedDBKeysProgress?: number;
+        /**
+         * The object that stores certain data for the tab.
+         */
+        public currentState: TabManagerTabCurrentState = {};
         /**
          * The display name of the tab.
          */
@@ -1123,7 +1135,21 @@ namespace exports {
                 if (this.type === "world" || this.type === "leveldb") {
                     console.log(`Copying modified files from ${this.tempPath} to ${this.path}...`);
                     if (!unsafeMode && existsSync(this.path)) await rm(this.path, { recursive: true, force: true });
-                    await cp(this.tempPath, this.path, { recursive: true, force: true, preserveTimestamps: true });
+                    let fileNumber: number = 0;
+                    const tempPath: string = this.tempPath;
+                    await cp(this.tempPath, this.path, {
+                        recursive: true,
+                        force: true,
+                        preserveTimestamps: true,
+                        filter: (source: string, _destination: string): true => {
+                            progressBar.detail = `Copying modified files to ${
+                                this.type === "world" ? "world"
+                                : this.type === "leveldb" ? "LevelDB"
+                                : "source"
+                            }...\n\rFile ${++fileNumber}: ${path.relative(tempPath, source)}`;
+                            return true;
+                        },
+                    });
                 } else {
                     await copyFile(this.tempFilePath, this.path);
                 }

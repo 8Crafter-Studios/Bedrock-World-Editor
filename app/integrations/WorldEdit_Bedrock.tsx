@@ -638,24 +638,25 @@ async function action_export_structures_getStructures(tab: TabManagerTab, signal
  * @throws {ReferenceError} If the LevelChunkMetaDataDictionary did not contain mapping for the meta data hash.
  * @throws {unknown} If an error occurs.
  */
-async function getLevelChunkMetaDataForChunk(
+export async function getLevelChunkMetaDataForChunk(
     db: LevelDB,
-    chunk: DimensionVectorXZ
+    chunk: DimensionVectorXZ,
+    levelChunkMetaDataDictionary?: NBTSchemas.NBTSchemaTypes.LevelChunkMetaDataDictionary
 ): Promise<NBTSchemas.NBTSchemaTypes.LevelChunkMetaDataDictionary["value"][string]["value"]> {
-    const rawMetaDataDictionary: Buffer | null = await db.get("LevelChunkMetaDataDictionary");
-    if (!rawMetaDataDictionary) throw new ReferenceError("LevelChunkMetaDataDictionary data not found.");
+    const rawMetaDataDictionary: Buffer | null = levelChunkMetaDataDictionary ? null : await db.get("LevelChunkMetaDataDictionary");
+    if (!rawMetaDataDictionary && !levelChunkMetaDataDictionary) throw new ReferenceError("LevelChunkMetaDataDictionary data not found.");
     const hashKey: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(chunk, "MetaDataHash");
     const rawHash: Buffer | null = await db.get(hashKey);
     if (!rawHash) throw new ReferenceError("Level chunk meta data hash not found.");
     const hash: string = rawHash.toString("hex");
     const metaDataDictionary: NBTSchemas.NBTSchemaTypes.LevelChunkMetaDataDictionary =
-        await entryContentTypeToFormatMap.LevelChunkMetaDataDictionary.parse(rawMetaDataDictionary);
+        levelChunkMetaDataDictionary ?? (await entryContentTypeToFormatMap.LevelChunkMetaDataDictionary.parse(rawMetaDataDictionary!));
     const metaData = metaDataDictionary.value[hash]?.value;
     if (!metaData) throw new ReferenceError(`LevelChunkMetaDataDictionary did not contain mapping for meta data hash: ${hash}`);
     return metaData;
 }
 
-const FALLBACK_MIN_SUBCHUNK_INDEX = 0;
+export const FALLBACK_MIN_SUBCHUNK_INDEX = 0;
 
 const thisIntegration = {
     id: "WorldEdit_Bedrock",
@@ -870,9 +871,14 @@ const thisIntegration = {
                                 );
                                 continue;
                             }
-                            if (biome.palette.value.value.length === 0 && biome.values.value.value.length === 0) {
-                                biome.palette.value.value = [0];
-                                biome.values.value.value = Array(16 ** 3).fill(0);
+                            for (let i = 0; i <= y - minSubchunkIndex; i++) {
+                                if (
+                                    data3dValue.value.biomes.value.value[i]?.palette.value.value.length === 0 &&
+                                    data3dValue.value.biomes.value.value[i]?.values.value.value.length === 0
+                                ) {
+                                    data3dValue.value.biomes.value.value[i]!.palette.value.value = [0];
+                                    data3dValue.value.biomes.value.value[i]!.values.value.value = Array(16 ** 3).fill(0);
+                                }
                             }
                             const paletteMapping = new Map<number, number>();
                             for (let i = 0; i < commandData[1].palette.length; i++) {
@@ -1230,9 +1236,14 @@ const thisIntegration = {
                             );
                             continue;
                         }
-                        if (biome.palette.value.value.length === 0 && biome.values.value.value.length === 0) {
-                            biome.palette.value.value = [0];
-                            biome.values.value.value = Array(16 ** 3).fill(0);
+                        for (let i = 0; i <= y - minSubchunkIndex; i++) {
+                            if (
+                                data3dValue.value.biomes.value.value[i]?.palette.value.value.length === 0 &&
+                                data3dValue.value.biomes.value.value[i]?.values.value.value.length === 0
+                            ) {
+                                data3dValue.value.biomes.value.value[i]!.palette.value.value = [0];
+                                data3dValue.value.biomes.value.value[i]!.values.value.value = Array(16 ** 3).fill(0);
+                            }
                         }
                         const paletteMapping = new Map<number, number>();
                         for (let i = 0; i < commandData.palette.length; i++) {
@@ -1319,7 +1330,91 @@ const thisIntegration = {
                 }
             },
         },
-    ],
+        {
+            id: "repair_crashing_chunks",
+            name: "Repair Crashing Chunks",
+            description: "Fixes chunks that are causing the world to crash after using the setbiome command on them.",
+            waitToCheckUntilWorldLoaded: false,
+            async checkIfApplicable(_tab: TabManagerTab): Promise<boolean> {
+                return false;
+            },
+            async apply(tab: TabManagerTab, showResultDialog = false): Promise<void> {
+                if (tab.type !== "world" && tab.type !== "leveldb") return;
+                if (!tab.db) return;
+                await tab.awaitDBOpen;
+                if (!tab.db?.isOpen()) throw new Error("Database is not open.");
+                if (!tab.cachedDBKeys) throw new Error("Cached DB keys not found.");
+                let repairedChunks: number = 0;
+                for (const data3dKey of tab.cachedDBKeys.Data3D) {
+                    try {
+                        const rawData3d = await tab.db.get(data3dKey);
+                        if (!rawData3d) {
+                            console.warn(
+                                "[integration::WorldEdit_Bedrock::autoApplyActions::repair_crashing_chunks::apply] Skipping repair crashing chunks Data3D entry. Data3D key not found for key:",
+                                data3dKey
+                            );
+                            continue;
+                        }
+                        const data3dValue: NBTSchemas.NBTSchemaTypes.Data3D = entryContentTypeToFormatMap.Data3D.parse(rawData3d);
+                        const lastSubchunkIndex = data3dValue.value.biomes.value.value.findLastIndex(
+                            (subchunk): boolean => subchunk.palette.value.value.length !== 0 && subchunk.values.value.value.length !== 0
+                        );
+                        if (lastSubchunkIndex === -1) {
+                            continue;
+                        }
+                        let repaired = false;
+                        for (let i = 0; i < lastSubchunkIndex; i++) {
+                            if (
+                                data3dValue.value.biomes.value.value[i]?.palette.value.value.length === 0 &&
+                                data3dValue.value.biomes.value.value[i]?.values.value.value.length === 0
+                            ) {
+                                data3dValue.value.biomes.value.value[i]!.palette.value.value = [0];
+                                data3dValue.value.biomes.value.value[i]!.values.value.value = Array(16 ** 3).fill(0);
+                                repaired = true;
+                            }
+                        }
+                        if (repaired) {
+                            console.log(
+                                "[integration::WorldEdit_Bedrock::autoApplyActions::repair_crashing_chunks::apply] Found corrupting Data3D entry and repaired it. key:",
+                                data3dKey,
+                                "displayKey:",
+                                getKeyDisplayName(data3dKey)
+                            );
+                            repairedChunks++;
+                        }
+                        await tab.db.put(data3dKey, entryContentTypeToFormatMap.Data3D.serialize(data3dValue));
+                        tab.setLevelDBIsModified();
+                    } catch (e) {
+                        console.error(
+                            "[integration::WorldEdit_Bedrock::autoApplyActions::repair_crashing_chunks::apply] Failed to fix crashing chunks Data3D entry. key:",
+                            data3dKey,
+                            "error:",
+                            e
+                        );
+                    }
+                }
+                if (showResultDialog) {
+                    if (repairedChunks === 0) {
+                        dialog.showMessageBox({
+                            type: "info",
+                            title: "No Corrupted Chunks Found",
+                            message: `Scanned ${tab.cachedDBKeys.Data3D.length} Data3D entries. No Data3D entries that were corrupted by setbiome were found.`,
+                            buttons: ["OK"],
+                            noLink: true,
+                        });
+                    } else {
+                        dialog.showMessageBox({
+                            type: "info",
+                            title: "Found and Repaired Chunks",
+                            message: `Scanned ${tab.cachedDBKeys.Data3D.length} Data3D entries. Found ${repairedChunks} corrupted Data3D entries and repaired them.`,
+                            buttons: ["OK"],
+                            noLink: true,
+                        });
+                    }
+                }
+            },
+        },
+    ] as const,
     async checkIfDetected(tab: TabManagerTab): Promise<boolean> {
         if (tab.type !== "world" && tab.type !== "leveldb") return false;
         if (!tab.db) return false;
@@ -1437,6 +1532,53 @@ const thisIntegration = {
                 <center>
                     <h2 class="nsel">This integration has no applicable actions for this tab.</h2>
                 </center>
+            );
+        }
+        function ActionMenu_Repair_Crashing_Chunks(): JSX.Element {
+            // IDEA: Make this show more info about the biome changes, as seen in issue #17: https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/17
+            const abortController: AbortController | null = currentAbortController;
+            const buttonRef: RefObject<HTMLButtonElement> = useRef<HTMLButtonElement>(null);
+            return (
+                <>
+                    <div style={{ marginLeft: "1em" }}>
+                        <h2 class="nsel">Repair Chunks</h2>
+                        <p>
+                            Use this if your world is crashing when you open it, and the crashing started after you applied biome changes with an older version
+                            of the app.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        class="genericRoundButton"
+                        onClick={async (event: TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
+                            if (!tablesContainerRef.current) return;
+                            if (
+                                dialog.showMessageBoxSync(getCurrentWindow(), {
+                                    type: "info",
+                                    title: "Bedrock World Editor",
+                                    message: `This will attempt to repair ${props.tab.cachedDBKeys?.Data3D.length ?? "?"} chunk(s). Continue?`,
+                                    buttons: ["Yes", "No"],
+                                    noLink: true,
+                                })
+                            ) {
+                                return;
+                            }
+                            event.currentTarget.blur();
+                            event.currentTarget.disabled = true;
+                            event.currentTarget.textContent = "Repairing Chunks...";
+                            const action_repair_crashing_chunks = thisIntegration.autoApplyActions.find((a) => a.id === "repair_crashing_chunks")!;
+                            await action_repair_crashing_chunks.apply(props.tab, true);
+                            abortController?.signal.throwIfAborted();
+                            if (buttonRef.current) {
+                                buttonRef.current.textContent = "Repair Chunks";
+                                buttonRef.current.disabled = false;
+                            }
+                        }}
+                        ref={buttonRef}
+                    >
+                        Repair Chunks
+                    </button>
+                </>
             );
         }
         function ActionMenu_Command_setbiome({
@@ -1977,6 +2119,7 @@ const thisIntegration = {
                                 key="actionMenu:WorldEdit_Bedrock:export_structures"
                             />
                         ),
+                        <ActionMenu_Repair_Crashing_Chunks key="actionMenu:WorldEdit_Bedrock:repair_crashing_chunks" />,
                         loadingActions.length > 0 && <LoadingScreenContents message="Loading integration actions..." preserveTextOffset={true} />,
                     ]
                         .filter(Boolean as unknown as (v: false | JSX.Element) => v is JSX.Element)

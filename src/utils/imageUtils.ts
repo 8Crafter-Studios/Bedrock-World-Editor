@@ -58,3 +58,33 @@ export function pngToIco(pngBuffer: Buffer<ArrayBufferLike>): Buffer<ArrayBuffer
 
     return Buffer.concat([header, entry, pngBuffer]);
 }
+
+/**
+ * Blends the foreground over the background.
+ *
+ * @param fr Foreground red.
+ * @param fg  Foreground green.
+ * @param fb Foreground blue.
+ * @param fa Foreground alpha.
+ * @param br Background red.
+ * @param bg Background green.
+ * @param bb Background blue.
+ * @returns The blended pixel.
+ */
+export function blendPixelOverBackground(
+    fr: number,
+    fg: number,
+    fb: number,
+    fa: number,
+    br: number,
+    bg: number,
+    bb: number
+): [r: number, g: number, b: number, a: number] {
+    const A = fa / 255;
+
+    const r = fr * A + br * (1 - A);
+    const g = fg * A + bg * (1 - A);
+    const b = fb * A + bb * (1 - A);
+
+    return [r, g, b, 255];
+}

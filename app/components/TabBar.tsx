@@ -84,10 +84,27 @@ export default function TabBar(): JSX.Element {
                                     path.join(folderPath, "world_icon.jpeg")
                                 :   globSync(path.join(folderPath, "world_icon.*"))[0],
                             name:
-                                existsSync(path.join(folderPath, "levelname.txt")) ?
+                                (await (async (): Promise<string | undefined> => {
+                                    try {
+                                        return (
+                                            (await NBT.parse(readFileSync(path.join(folderPath, "level.dat")))).parsed as NBTSchemas.NBTSchemaTypes.LevelDat
+                                        ).value.LevelName?.value;
+                                    } catch (e) {
+                                        console.error("Error while reading level.dat:", e, "folderPath:", folderPath);
+                                        try {
+                                            return (
+                                                (await NBT.parse(readFileSync(path.join(folderPath, "level.dat_old"))))
+                                                    .parsed as NBTSchemas.NBTSchemaTypes.LevelDat
+                                            ).value.LevelName?.value;
+                                        } catch (e) {
+                                            console.error("Error while reading level.dat_old:", e, "folderPath:", folderPath);
+                                        }
+                                    }
+                                    return undefined;
+                                })()) ??
+                                (existsSync(path.join(folderPath, "levelname.txt")) ?
                                     readFileSync(path.join(folderPath, "levelname.txt"), { encoding: "utf-8" })
-                                :   (((await NBT.parse(readFileSync(path.join(folderPath, "level.dat")))).parsed as NBTSchemas.NBTSchemaTypes.LevelDat).value
-                                        .LevelName?.value ?? "Unknown Name"),
+                                :   "Unknown Name"),
                             path: folderPath,
                             type: "world",
                         });
@@ -696,7 +713,11 @@ export default function TabBar(): JSX.Element {
             <ul class="horizontal-nav full-sized-nav tab-bar" id="tab-bar" style="overflow-x: auto; overflow-y: visible; flex-shrink: 0;" ref={tabContainerRef}>
                 <RenderTabs />
             </ul>
-            <div id="add-tab-popup-menu" style="display: none; background-color: #13383f; color: white; width: 200px; position: fixed; z-index: 1000;" ref={popupRef}>
+            <div
+                id="add-tab-popup-menu"
+                style="display: none; background-color: #13383f; color: white; width: 200px; position: fixed; z-index: 1000;"
+                ref={popupRef}
+            >
                 <div style="display: flex; flex-direction: column; height: 100%; width: 200px;">
                     {popupTabs.map(
                         (tab: PopupTab): JSX.SpecificElement<"div"> => (

@@ -21,7 +21,7 @@ export interface NinesliceData {
         /**
          * The distance on the bottom.
          */
-        bottom: number
+        bottom: number,
     ];
     /**
      * The base size.
@@ -34,7 +34,7 @@ export interface NinesliceData {
         /**
          * The base height of the image.
          */
-        height: number
+        height: number,
     ];
 }
 
@@ -126,4 +126,40 @@ export class Nineslice {
 
         return output;
     }
+}
+
+/**
+ * Nearest-neighbor scale using a target width.
+ *
+ * @param src Source pixels (Uint8ClampedArray, RGBA).
+ * @param sw  Source width.
+ * @param sh  Source height.
+ * @param dw  Desired output width (can be non-integer).
+ * @returns The scaled image.
+ */
+export function scaleNearest(src: Uint8ClampedArray, sw: number, sh: number, dw: number): ImageData {
+    const dh = Math.round(sh * (dw / sw));
+
+    const dst = new Uint8ClampedArray(dw * dh * 4);
+
+    const xRatio = sw / dw;
+    const yRatio = sh / dh;
+
+    for (let y = 0; y < dh; y++) {
+        const sy = Math.min(sh - 1, Math.floor(y * yRatio));
+
+        for (let x = 0; x < dw; x++) {
+            const sx = Math.min(sw - 1, Math.floor(x * xRatio));
+
+            const si = (sy * sw + sx) * 4;
+            const di = (y * dw + x) * 4;
+
+            dst[di] = src[si]!;
+            dst[di + 1] = src[si + 1]!;
+            dst[di + 2] = src[si + 2]!;
+            dst[di + 3] = src[si + 3]!;
+        }
+    }
+
+    return new ImageData(dst, dw, dh);
 }

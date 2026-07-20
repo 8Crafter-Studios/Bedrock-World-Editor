@@ -6,6 +6,7 @@ import {
     ipcMain,
     Menu,
     nativeTheme,
+    net,
     protocol,
     shell,
     type ApplicationInfoForProtocolReturnValue,
@@ -407,6 +408,18 @@ export function createWindow(): number | void {
         },
         resizable: true,
         darkTheme: nativeTheme.shouldUseDarkColorsForSystemIntegratedUI,
+    });
+    mainWindow.webContents.on("will-navigate", (e, url) => {
+        if (url.endsWith(".wasm")) {
+            console.log(url);
+            const request = net.request(url);
+            request.on("response", (res) => {
+                if (res.headers["content-type"] !== "application/wasm") {
+                    res.headers["content-type"] = "application/wasm";
+                }
+            });
+            request.end();
+        }
     });
 
     mainWindow.webContents.on(

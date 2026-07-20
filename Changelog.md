@@ -1,3 +1,20 @@
+# v1.0.0-beta.33
+
+## Critical Fixes
+
+-   Fixed a bug where when applying biomes changes for the WorldEdit Bedrock integration, it could sometimes create corrupted chunks that would cause the world to crash.
+
+## Additions
+
+-   Added a button to the WorldEdit Bedrock integration menu to repair all chunks corrupted by applying biome changes, the repair does preserve those biome changes.
+-   Added the "World" tab. This tab contains a 2D world map/editor.
+-   The "New RandomTicks Entry" and "New PendingTicks Entry" buttons on the "Ticks" tab now allow you to create entries in custom dimensions.
+-   The saving world popup window now showsw the current number of files that have been copied and the current file that is being copied.
+
+## Changes
+
+-   The app now reads the world name from `level.dat` or `level.dat_old` first and uses the name from `levelname.txt` only if it can't read from the `level.dat` or `level.dat_old` file, rather than the other way around.
+
 # v1.0.0-beta.32
 
 ## Critical Fixes

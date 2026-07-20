@@ -37,6 +37,7 @@ import { defaultWorldIconDataURI } from "../src/utils/preloadImages";
 import SettingsPage from "./pages/settings";
 import { normalizePath } from "../src/utils/pathUtils";
 import Notice from "./components/Notice";
+import WorldEditorTab from "./tabs/worldEditor";
 // import { Renderer3D } from "./3DRendererV1/3DRenderer";
 const mime = require("mime-types") as typeof import("mime-types");
 
@@ -408,13 +409,29 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
                 .map(async ({ folderPath, isolated }: FolderPathIsolationDetails): Promise<MinecraftWorldDisplayDetails | undefined> => {
                     if (!existsSync(path.join(folderPath, "level.dat"))) return;
                     try {
-                        const levelDat: NBTSchemas.NBTSchemaTypes.LevelDat = (
-                            await NBT.parse(readFileSync(path.join(folderPath, "level.dat"), { encoding: null }))
-                        ).parsed;
+                        const levelDat: NBTSchemas.NBTSchemaTypes.LevelDat | undefined = await (async (): Promise<
+                            NBTSchemas.NBTSchemaTypes.LevelDat | undefined
+                        > => {
+                            try {
+                                return (await NBT.parse(readFileSync(path.join(folderPath, "level.dat"), { encoding: null })))
+                                    .parsed as NBTSchemas.NBTSchemaTypes.LevelDat;
+                            } catch (e) {
+                                console.error("Error while reading level.dat:", e, "folderPath:", folderPath);
+                                try {
+                                    return (await NBT.parse(readFileSync(path.join(folderPath, "level.dat_old"), { encoding: null })))
+                                        .parsed as NBTSchemas.NBTSchemaTypes.LevelDat;
+                                } catch (e) {
+                                    console.error("Error while reading level.dat_old:", e, "folderPath:", folderPath);
+                                }
+                            }
+                            return undefined;
+                        })();
+                        if (!levelDat) return;
                         const name: string =
-                            existsSync(path.join(folderPath, "levelname.txt")) ?
+                            levelDat.value.LevelName?.value ??
+                            (existsSync(path.join(folderPath, "levelname.txt")) ?
                                 readFileSync(path.join(folderPath, "levelname.txt"), { encoding: "utf-8" })
-                            :   (levelDat.value.LevelName?.value ?? "Unknown Name");
+                            :   "Unknown Name");
                         let size: Promise<number> | undefined =
                             getSizes ?
                                 readdir(folderPath, { recursive: true, withFileTypes: true }).then(
@@ -1134,6 +1151,8 @@ export function WorldEditorTabRenderer(props: {
                 return <TickingAreasTab tab={props.parentTab} />;
             case "view-files":
                 return <ViewFilesTab tab={props.parentTab} />;
+            case "world":
+                return <WorldEditorTab tab={props.parentTab} />;
             default:
                 return <UnderConstruction detail={`The ${props.tab} tab has not been implemented yet.`} />;
         }
