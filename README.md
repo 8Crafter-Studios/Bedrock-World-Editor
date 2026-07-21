@@ -8,6 +8,8 @@ For support you can [email 8Crafter](mailto:8crafteryt@gmail.com) or ask for hel
 
 The privacy policy and code signing policy can be found [here](https://wiki.8crafter.com/bwe/general/general-information#privacy-policy).
 
+This is an unofficial tool, it is not affiliated with Mojang or Microsoft.
+
 ## Overview
 
 This app supports Windows, Linux, and macOS (Darwin). iOS and Android support is planned but not implemented yet.
