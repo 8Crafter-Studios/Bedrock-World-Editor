@@ -99,35 +99,59 @@ ipcRenderer.on(
     }
 );
 
-ipcRenderer.on("open-world-folder", async function (_event: IpcRendererEvent, folderPath: string, tabMode?: TabManagerTabMode): Promise<void> {
-    getCurrentWindow().focus();
-    tabManager.openTab({
-        icon:
-            existsSync(path.join(folderPath, "world_icon.jpeg")) ?
-                path.join(folderPath, "world_icon.jpeg")
-            :   globSync(path.join(folderPath, "world_icon.*"))[0],
-        name:
-            (await (async (): Promise<string | undefined> => {
-                try {
-                    return ((await NBT.parse(readFileSync(path.join(folderPath, "level.dat")))).parsed as NBTSchemas.NBTSchemaTypes.LevelDat).value.LevelName
-                        ?.value;
-                } catch (e) {
-                    console.error("Error while reading level.dat:", e, "folderPath:", folderPath);
-                    try {
-                        return ((await NBT.parse(readFileSync(path.join(folderPath, "level.dat_old")))).parsed as NBTSchemas.NBTSchemaTypes.LevelDat).value
-                            .LevelName?.value;
-                    } catch (e) {
-                        console.error("Error while reading level.dat_old:", e, "folderPath:", folderPath);
+ipcRenderer.on(
+    "open-world-folder",
+    async function (_event: IpcRendererEvent, folderPath: string, tabMode?: TabManagerTabMode, isolated?: boolean): Promise<void> {
+        getCurrentWindow().focus();
+        const containingFolderName: string = path.basename(path.dirname(folderPath));
+        if (isolated === undefined) {
+            try {
+                if (containingFolderName === "worlds" || containingFolderName === "minecraftWorlds") {
+                    // IDEA: Maybe try to detect if it is in a GDK Minecraft worlds folder, so that it can put it in a mode where it can check the Shared folder as well if the world isn't already in that folder.
+                    if (
+                        existsSync(path.join(folderPath, "../../", "resource_packs")) ||
+                        existsSync(path.join(folderPath, "../../", "behavior_packs")) ||
+                        existsSync(path.join(folderPath, "../../", "development_resource_packs")) ||
+                        existsSync(path.join(folderPath, "../../", "development_behavior_packs"))
+                    ) {
+                        isolated = false;
                     }
                 }
-                return undefined;
-            })()) ??
-            (existsSync(path.join(folderPath, "levelname.txt")) ? readFileSync(path.join(folderPath, "levelname.txt"), { encoding: "utf-8" }) : "Unknown Name"),
-        path: folderPath,
-        type: "world",
-        mode: tabMode,
-    });
-});
+            } catch (e) {
+                console.error("Error while checking for is world folder is isolated:", e, "folderPath:", folderPath);
+            }
+        }
+        tabManager.openTab({
+            icon:
+                existsSync(path.join(folderPath, "world_icon.jpeg")) ?
+                    path.join(folderPath, "world_icon.jpeg")
+                :   globSync(path.join(folderPath, "world_icon.*"))[0],
+            name:
+                (await (async (): Promise<string | undefined> => {
+                    try {
+                        return ((await NBT.parse(readFileSync(path.join(folderPath, "level.dat")))).parsed as NBTSchemas.NBTSchemaTypes.LevelDat).value
+                            .LevelName?.value;
+                    } catch (e) {
+                        console.error("Error while reading level.dat:", e, "folderPath:", folderPath);
+                        try {
+                            return ((await NBT.parse(readFileSync(path.join(folderPath, "level.dat_old")))).parsed as NBTSchemas.NBTSchemaTypes.LevelDat).value
+                                .LevelName?.value;
+                        } catch (e) {
+                            console.error("Error while reading level.dat_old:", e, "folderPath:", folderPath);
+                        }
+                    }
+                    return undefined;
+                })()) ??
+                (existsSync(path.join(folderPath, "levelname.txt")) ?
+                    readFileSync(path.join(folderPath, "levelname.txt"), { encoding: "utf-8" })
+                :   "Unknown Name"),
+            path: folderPath,
+            type: "world",
+            mode: tabMode,
+            isNonIsolatedWorld: isolated === false,
+        });
+    }
+);
 
 ipcRenderer.on("open-leveldb-folder", async function (_event: IpcRendererEvent, folderPath: string, tabMode?: TabManagerTabMode): Promise<void> {
     getCurrentWindow().focus();
@@ -151,7 +175,7 @@ declare global {
                 ...args: globalThis.Parameters<Console[T]>
             ): void;
             send<_T extends 1>(channel: "open-file", path: string, type?: IpcRendererOpenFileType, tabMode?: TabManagerTabMode | `${TabManagerTabMode}`): void;
-            send<_T extends 1>(channel: "open-world-folder", path: string, tabMode?: TabManagerTabMode | `${TabManagerTabMode}`): void;
+            send<_T extends 1>(channel: "open-world-folder", path: string, tabMode?: TabManagerTabMode | `${TabManagerTabMode}`, isolated?: boolean): void;
             send<_T extends 1>(channel: "open-leveldb-folder", path: string, tabMode?: TabManagerTabMode | `${TabManagerTabMode}`): void;
         }
     }

@@ -1766,6 +1766,7 @@ async function getPlayersTabContentsRows(data: {
                                             </td>
                                         );
                                     }
+                                    // BUG: This doesn't work properly on older worlds where the only available abilities are flying, instabuild, invulnerable, mayfly, and permissionsLevel.
                                     return (
                                         <td
                                             title={

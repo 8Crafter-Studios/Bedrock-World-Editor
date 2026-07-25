@@ -1017,7 +1017,17 @@ if (!startup && !started) {
                 }
                 case "openWorldFolder": {
                     const source: string | null = parsedURL.searchParams.get("path");
-                    lastFocusedMainWindows.at(-1)?.webContents.send<1>("open-world-folder", source!);
+                    const tabMode: string | null = parsedURL.searchParams.get("tabMode");
+                    const isolated: string | null = parsedURL.searchParams.get("isolated");
+                    lastFocusedMainWindows.at(-1)?.webContents.send<1>(
+                        "open-world-folder",
+                        source!,
+                        (tabMode as TabManagerTabMode) ?? undefined,
+                        isolated === null ? undefined
+                        : isolated === "true" || isolated === "" || isolated === "1" ? true
+                        : isolated === "false" || isolated === "0" ? false
+                        : undefined
+                    );
                     break;
                 }
                 case "about": {

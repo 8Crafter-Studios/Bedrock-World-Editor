@@ -805,6 +805,14 @@ namespace exports {
          */
         public tempFilePath?: string;
         /**
+         * Whether the world folder is not isolated from any Minecraft data folders or servers.
+         *
+         * If it was isolated, it would result infeatures that rely on accessing game data outside of the world data not working on the world.
+         *
+         * If this tab is not associated with a world folder, this will be `false`.
+         */
+        public isNonIsolatedWorld: boolean = false;
+        /**
          * Whether the tab is read-only.
          *
          * @readonly
@@ -847,6 +855,7 @@ namespace exports {
             icon: TabManagerTab["icon"] | undefined;
             type: TabManagerTab["type"];
             mode?: TabManagerTabMode | undefined;
+            isNonIsolatedWorld?: boolean | undefined;
         }) {
             super();
             this.setMaxListeners(1000000);
@@ -855,6 +864,7 @@ namespace exports {
             this.name = props.name;
             this.icon = props.icon ?? null;
             this.type = props.type;
+            this.isNonIsolatedWorld = props.isNonIsolatedWorld ?? false;
             if (props.mode) this.mode = props.mode;
             switch (props.mode) {
                 case TabManagerTabMode.Readonly:
@@ -1100,6 +1110,7 @@ namespace exports {
          * @param unsafeMode Disables the protections that delete existing world files before saving, a side effect is that if a world is opened while this tab is open, data from before and after the save may be merged randomly.
          * @returns A promise that resolves when the tab has been saved.
          */
+        // TODO: Maybe this shouldn't copy folders and files that are not necessary to copy, so that is there is a .git folder in a resource or behavior pack for example, then it won't try to copy 60 GB of data.
         public async save(ignoreFailedTabSaves: boolean = false, unsafeMode: boolean = false): Promise<void> {
             if (this.isSaving || this.readonly || !this.saveEnabled || !this.tempPath || !this.tempFilePath) return;
             this.isSaving = true;

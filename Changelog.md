@@ -1,3 +1,41 @@
+# v1.0.0-beta.34
+
+## Critical Fixes
+
+-   Fixed an issue where when editing an `ActorPrefix` LevelDB entry, the `StorageKey` property could become corrupted if it contained certain byte values, as that property uses a binary-encoded string and it was being decoded as a UTF-8 string. This issue caused entities to duplicate when the world is loaded but also never actually load in the world, and they would show up as in "Unknown Dimension" in the "Entities" tab. That property is now parsed and written as a binary-encoded string rather than UTF-8.
+-   Fixed an issue where the human-friendly versions of the `Digest` LevelDB keys always said that the key was for the Overworld, even if the key was for a different dimension.
+-   Fixed an issue where entities that were in dimensions other than the Overworld would show up as in "Unknown Dimension" in the "Entities" tab.
+
+## Additions
+
+-   Added the "Packs" tab.
+-   Added the Settings context menu to the 2D world map.
+-   Added and option for setting whether the Heightmap is rendered by default on the 2D world map.
+-   Added an option for toggling the chunk grid lines on the 2D world map.
+-   Added and option for setting whether the chunk grid lines are rendered by default on the 2D world map.
+-   Added full support to the 2D world map for regular and old world types that were used with the Caves & Cliffs experimental toggle or any of the 1.18.0 betas, or any combination thereof.
+-   Added a "Replace Image (Pixelated)" option to the map editor, it is the same as "Replace Image" except it uses nearest neighbor scaling.
+-   Added an "Overlay Image" option to the map editor, this option is the same as the "Replace Image" option's old behavior, where it draws the image on top of the existing map image.
+-   Added an "Overlay Image (Pixelated)" option to the map editor, it is the same as "Overlay Image" except it uses nearest neighbor scaling.
+-   LevelDB entries in the "Maps" tab now have a context menu with an option to delete them. The context menu also has options for copying the value of the table cell that was right clicked, with multiple format options depending on the column the cell was in.
+-   The "Open LevelDB entry..." submenu of the context menu of the 2D world map now can show the `Digest` key associated with the chunk if it exists.
+-   Documented the following properties of the `ActorPrefix` NBT schema:
+    -   `internalComponents`
+    -   `internalComponents.EntityStorageKeyComponent`
+    -   `internalComponents.EntityStorageKeyComponent.StorageKey`
+
+## Changes
+
+-   Moved the Heightmap option of the 2D world map to the Settings context menu instead of the Overlays context menu.
+-   The Nether portals overlay is now enabled by default on the 2D world map.
+
+## Fixes
+
+-   Fixed small seams that could sometimes appear in bewteen chunks on the 2D world map.
+-   The "Replace Image" option of the map editor now correctly clears the existing map image before drawing the selected image onto the map.
+-   The "Maps" tab now no longer unnecessarily loads the dynamic properties data.
+-   The zoom buttons on the 2D world map now keep the map centered on the same position.
+
 # v1.0.0-beta.33
 
 ## Critical Fixes

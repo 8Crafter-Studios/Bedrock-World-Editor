@@ -38,6 +38,7 @@ import SettingsPage from "./pages/settings";
 import { normalizePath } from "../src/utils/pathUtils";
 import Notice from "./components/Notice";
 import WorldEditorTab from "./tabs/worldEditor";
+import PacksTab from "./tabs/packs";
 // import { Renderer3D } from "./3DRendererV1/3DRenderer";
 const mime = require("mime-types") as typeof import("mime-types");
 
@@ -327,7 +328,6 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
     }
     return (
         await Promise.all(
-            // TODO: Implement support for isolated Minecraft world folders (and add an indicator for these worlds).
             [
                 ...[...new Set(all ? [...config.parsedMinecraftDataFolders, ...config.parsedExtraMinecraftDataFolders] : config.parsedMinecraftDataFolders)]
                     .filter(
@@ -646,7 +646,13 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                             tabManager.switchTab("loading");
                             setTimeout((): void => {
                                 try {
-                                    tabManager.openTab({ path: world.path, name: world.name, type: "world", icon: world.thumbnailPath! });
+                                    tabManager.openTab({
+                                        path: world.path,
+                                        name: world.name,
+                                        type: "world",
+                                        icon: world.thumbnailPath,
+                                        isNonIsolatedWorld: !world.isolated,
+                                    });
                                 } catch (e) {
                                     if (e instanceof Error && e.message.startsWith("ENOSPC, No space left on device")) {
                                         dialog.showMessageBox({
@@ -777,7 +783,13 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                                         tabManager.switchTab("loading");
                                         setTimeout(
                                             (): void =>
-                                                void tabManager.openTab({ path: world.path, name: world.name, type: "world", icon: world.thumbnailPath! }),
+                                                void tabManager.openTab({
+                                                    path: world.path,
+                                                    name: world.name,
+                                                    type: "world",
+                                                    icon: world.thumbnailPath,
+                                                    isNonIsolatedWorld: !world.isolated,
+                                                }),
                                             10
                                         );
                                     }}
@@ -793,8 +805,9 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                                                     path: world.path,
                                                     name: world.name,
                                                     type: "world",
-                                                    icon: world.thumbnailPath!,
+                                                    icon: world.thumbnailPath,
                                                     mode: TabManagerTabMode.Readonly,
+                                                    isNonIsolatedWorld: !world.isolated,
                                                 }),
                                             10
                                         );
@@ -822,8 +835,9 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                                                     path: world.path,
                                                     name: world.name,
                                                     type: "world",
-                                                    icon: world.thumbnailPath!,
+                                                    icon: world.thumbnailPath,
                                                     mode: TabManagerTabMode.Direct,
+                                                    isNonIsolatedWorld: !world.isolated,
                                                 }),
                                             10
                                         );
@@ -1131,8 +1145,6 @@ export function WorldEditorTabRenderer(props: {
     if (props.tab === null) return <WorldEditorStartTab />;
     if (typeof props.tab === "string") {
         switch (props.tab) {
-            case "players":
-                return <PlayersTab tab={props.parentTab} />;
             case "entities":
                 return <EntitiesTab tab={props.parentTab} />;
             case "fun":
@@ -1141,6 +1153,10 @@ export function WorldEditorTabRenderer(props: {
                 return <IntegrationsTab tab={props.parentTab} />;
             case "maps":
                 return <MapsTab tab={props.parentTab} />;
+            case "packs":
+                return <PacksTab tab={props.parentTab} />;
+            case "players":
+                return <PlayersTab tab={props.parentTab} />;
             case "repair-forced-world-corruption":
                 return <RepairForcedWorldCorruptionTab tab={props.parentTab} />;
             case "structures":

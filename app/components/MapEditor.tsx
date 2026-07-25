@@ -212,31 +212,122 @@ export function MapEditor(props: MapRendererProps): JSX.Element {
                     Save Image
                 </MenuItem>
                 {!props.readonly && (
-                    <MenuItem
-                        onClick={async (): Promise<void> => {
-                            const result: string[] | undefined = dialog.showOpenDialogSync({
-                                buttonLabel: "Replace",
-                                // TODO: Add support for other image types.
-                                filters: [{ name: "Image", extensions: ["png", "jpg", "jpeg", "webp"] }],
-                                properties: ["openFile", "treatPackageAsDirectory", "showHiddenFiles"],
-                                message: "Select an image to replace this map.",
-                                title: "Replace Map Image",
-                            });
-                            if (!result || !result[0]) return;
-                            const image: string = `data:${mime.lookup(result[0].split(".").at(-1)!)};base64,${readFileSync(result[0], "base64")}`;
-                            const imageElement = new Image();
-                            imageElement.src = image;
-                            await new Promise((resolve): void => void (imageElement.onload = resolve));
-                            const context: CanvasRenderingContext2D = canvasRef.current!.getContext("2d")!;
-                            context.drawImage(imageElement, 0, 0, 128, 128);
-                            // TODO: Make this convert the bytes from unsigned bytes to signed bytes.
-                            data.value.colors.value = Array.from(context.getImageData(0, 0, 128, 128).data).map((value: number): number => (value << 24) >> 24);
-                            markTabAsModified();
-                            updateMap();
-                        }}
-                    >
-                        Replace Image
-                    </MenuItem>
+                    <>
+                        <MenuItem
+                            onClick={async (): Promise<void> => {
+                                const result: string[] | undefined = dialog.showOpenDialogSync({
+                                    buttonLabel: "Replace",
+                                    // TODO: Add support for other image types.
+                                    filters: [{ name: "Image", extensions: ["png", "jpg", "jpeg", "webp"] }],
+                                    properties: ["openFile", "treatPackageAsDirectory", "showHiddenFiles"],
+                                    message: "Select an image to replace this map.",
+                                    title: "Replace Map Image",
+                                });
+                                if (!result || !result[0]) return;
+                                const image: string = `data:${mime.lookup(result[0].split(".").at(-1)!)};base64,${readFileSync(result[0], "base64")}`;
+                                const imageElement = new Image();
+                                imageElement.src = image;
+                                await new Promise((resolve): void => void (imageElement.onload = resolve));
+                                const context: CanvasRenderingContext2D = canvasRef.current!.getContext("2d")!;
+                                context.clearRect(0, 0, 128, 128);
+                                context.imageSmoothingEnabled = true;
+                                context.drawImage(imageElement, 0, 0, 128, 128);
+                                // TODO: Make this convert the bytes from unsigned bytes to signed bytes.
+                                data.value.colors.value = Array.from(context.getImageData(0, 0, 128, 128).data).map(
+                                    (value: number): number => (value << 24) >> 24
+                                );
+                                markTabAsModified();
+                                updateMap();
+                            }}
+                        >
+                            Replace Image
+                        </MenuItem>
+                        <MenuItem
+                            onClick={async (): Promise<void> => {
+                                const result: string[] | undefined = dialog.showOpenDialogSync({
+                                    buttonLabel: "Replace",
+                                    // TODO: Add support for other image types.
+                                    filters: [{ name: "Image", extensions: ["png", "jpg", "jpeg", "webp"] }],
+                                    properties: ["openFile", "treatPackageAsDirectory", "showHiddenFiles"],
+                                    message: "Select an image to replace this map.",
+                                    title: "Replace Map Image",
+                                });
+                                if (!result || !result[0]) return;
+                                const image: string = `data:${mime.lookup(result[0].split(".").at(-1)!)};base64,${readFileSync(result[0], "base64")}`;
+                                const imageElement = new Image();
+                                imageElement.src = image;
+                                await new Promise((resolve): void => void (imageElement.onload = resolve));
+                                const context: CanvasRenderingContext2D = canvasRef.current!.getContext("2d")!;
+                                context.clearRect(0, 0, 128, 128);
+                                context.imageSmoothingEnabled = false;
+                                context.drawImage(imageElement, 0, 0, 128, 128);
+                                // TODO: Make this convert the bytes from unsigned bytes to signed bytes.
+                                data.value.colors.value = Array.from(context.getImageData(0, 0, 128, 128).data).map(
+                                    (value: number): number => (value << 24) >> 24
+                                );
+                                markTabAsModified();
+                                updateMap();
+                            }}
+                        >
+                            Replace Image (Pixelated)
+                        </MenuItem>
+                        <MenuItem
+                            onClick={async (): Promise<void> => {
+                                const result: string[] | undefined = dialog.showOpenDialogSync({
+                                    buttonLabel: "Overlay",
+                                    // TODO: Add support for other image types.
+                                    filters: [{ name: "Image", extensions: ["png", "jpg", "jpeg", "webp"] }],
+                                    properties: ["openFile", "treatPackageAsDirectory", "showHiddenFiles"],
+                                    message: "Select an image to overlay on top of this map.",
+                                    title: "Overlay Map Image",
+                                });
+                                if (!result || !result[0]) return;
+                                const image: string = `data:${mime.lookup(result[0].split(".").at(-1)!)};base64,${readFileSync(result[0], "base64")}`;
+                                const imageElement = new Image();
+                                imageElement.src = image;
+                                await new Promise((resolve): void => void (imageElement.onload = resolve));
+                                const context: CanvasRenderingContext2D = canvasRef.current!.getContext("2d")!;
+                                context.imageSmoothingEnabled = true;
+                                context.drawImage(imageElement, 0, 0, 128, 128);
+                                // TODO: Make this convert the bytes from unsigned bytes to signed bytes.
+                                data.value.colors.value = Array.from(context.getImageData(0, 0, 128, 128).data).map(
+                                    (value: number): number => (value << 24) >> 24
+                                );
+                                markTabAsModified();
+                                updateMap();
+                            }}
+                        >
+                            Overlay Image
+                        </MenuItem>
+                        <MenuItem
+                            onClick={async (): Promise<void> => {
+                                const result: string[] | undefined = dialog.showOpenDialogSync({
+                                    buttonLabel: "Overlay",
+                                    // TODO: Add support for other image types.
+                                    filters: [{ name: "Image", extensions: ["png", "jpg", "jpeg", "webp"] }],
+                                    properties: ["openFile", "treatPackageAsDirectory", "showHiddenFiles"],
+                                    message: "Select an image to overlay on top of this map.",
+                                    title: "Overlay Map Image",
+                                });
+                                if (!result || !result[0]) return;
+                                const image: string = `data:${mime.lookup(result[0].split(".").at(-1)!)};base64,${readFileSync(result[0], "base64")}`;
+                                const imageElement = new Image();
+                                imageElement.src = image;
+                                await new Promise((resolve): void => void (imageElement.onload = resolve));
+                                const context: CanvasRenderingContext2D = canvasRef.current!.getContext("2d")!;
+                                context.imageSmoothingEnabled = false;
+                                context.drawImage(imageElement, 0, 0, 128, 128);
+                                // TODO: Make this convert the bytes from unsigned bytes to signed bytes.
+                                data.value.colors.value = Array.from(context.getImageData(0, 0, 128, 128).data).map(
+                                    (value: number): number => (value << 24) >> 24
+                                );
+                                markTabAsModified();
+                                updateMap();
+                            }}
+                        >
+                            Overlay Image (Pixelated)
+                        </MenuItem>
+                    </>
                 )}
             </ControlledMenu>
             {!props.readonly && (

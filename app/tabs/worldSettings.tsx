@@ -16,5 +16,6 @@ export interface WorldSettingsTabProps {
  * @returns The JSX element.
  */
 export default function WorldSettingsTab(props: WorldSettingsTabProps): JSX.Element {
+    // TODO: There should be an additional mode for this tab that has options for changing the world name and the world icon.
     return <GenericNBTEditorTab tab={props.tab} />;
 }

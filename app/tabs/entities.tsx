@@ -1,4 +1,5 @@
 // TODO: Add support for older worlds that use Entity instead of ActorPrefix.
+// TODO: Add an option to switch the dimension of entities.
 import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef, useState } from "preact/compat";
 import {
@@ -1064,9 +1065,16 @@ async function getEntityDimensionMappings(
             continue;
         }
         try {
-        entityDimensionMappings[dimension]!.push(...parsedDigest.value.entityIds.value.value.map((v: [number, number]): bigint => toLong(v)));
+            entityDimensionMappings[dimension]!.push(...parsedDigest.value.entityIds.value.value.map((v: [number, number]): bigint => toLong(v)));
         } catch (e) {
-            console.error("[Tab::Entities::getEntityDimensionMappings] Error getting entity IDs from digest:", e, "digestKey:", digest, "parsedDigest:", parsedDigest);
+            console.error(
+                "[Tab::Entities::getEntityDimensionMappings] Error getting entity IDs from digest:",
+                e,
+                "digestKey:",
+                digest,
+                "parsedDigest:",
+                parsedDigest
+            );
             continue;
         }
     }

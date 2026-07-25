@@ -380,7 +380,7 @@ interface KeyData {
 
 async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal): Promise<JSX.Element> {
     if (!tab.db) return <div>The view files sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
-    if (!tab.db.isOpen() && !(await tab.awaitDBOpen ?? true)) {
+    if (!tab.db.isOpen() && !((await tab.awaitDBOpen) ?? true)) {
         if (tab.errorDueToEncryptedLevelDB)
             return (
                 <Notice
@@ -1410,7 +1410,7 @@ async function getViewFilesTabContentsRows(data: {
 }): Promise<JSX.Element[]> {
     const columns = ConfigConstants.views.ViewFiles.viewFilesTabModeToColumnIDs["simple"];
     return data.keys.map((key: KeyData): JSX.Element => {
-            let copyContextMenuItemValue: CopyContextMenuItemValue | null = null as CopyContextMenuItemValue | null;
+        let copyContextMenuItemValue: CopyContextMenuItemValue | null = null as CopyContextMenuItemValue | null;
         function Row(): JSX.Element {
             // IDEA: Add a confirmation dialog here before deleting the entry, and make it able to be disabled in the config. This should be done for all other tabs as well.
             const [entryContextMenu_isOpen, entryContextMenu_setOpen] = useState(false);
@@ -1477,7 +1477,7 @@ async function getViewFilesTabContentsRows(data: {
                         >
                             Delete LevelDB Entry
                         </MenuItem>
-                        {(!copyContextMenuItemValue || copyContextMenuItemValue.value !== undefined || !copyContextMenuItemValue.formatOptions) ?
+                        {!copyContextMenuItemValue || copyContextMenuItemValue.value !== undefined || !copyContextMenuItemValue.formatOptions ?
                             <MenuItem
                                 onClick={async (_event: ContextMenu_ClickEvent): Promise<void> => {
                                     // if (!(event.syntheticEvent.currentTarget instanceof HTMLLIElement)) return;

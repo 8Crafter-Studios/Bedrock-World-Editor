@@ -20,7 +20,7 @@ import NBT from "prismarine-nbt";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { createObservable, testForObjectExtension, type Observable } from "../../src/utils/miscUtils";
-import { ControlledMenu, MenuItem } from "@szhsin/react-menu";
+import { ControlledMenu, MenuItem, SubMenu, type ClickEvent as ContextMenu_ClickEvent } from "@szhsin/react-menu";
 import { LoadingScreenContents } from "../app";
 import SearchString from "search-string";
 import { PageNavigation } from "../components/PageNavigation";
@@ -29,7 +29,11 @@ import SearchSyntaxHelpMenu from "../components/SearchSyntaxHelpMenu";
 import { viewFilesTabSearchSyntax } from "./viewFiles";
 import { MapEditor } from "../components/MapEditor";
 import Notice from "../components/Notice";
+import { clipboard } from "@electron/remote";
 
+/**
+ * Props for the {@link MapsTab} component.
+ */
 export interface MapsTabProps {
     tab: TabManagerTab;
 }
@@ -235,6 +239,12 @@ const mapsTabSearchSyntax: SearchSyntaxHelpInfo = {
     },
 };
 
+/**
+ * The maps tab.
+ *
+ * @param props The props for the component.
+ * @returns The JSX element.
+ */
 export default function MapsTab(props: MapsTabProps): JSX.SpecificElement<"div"> {
     if (!props.tab.db) return <div>The maps sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
     const containerRef: RefObject<HTMLTableElement> = useRef<HTMLTableElement>(null);
@@ -330,7 +340,7 @@ interface KeyData {
 
 async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Promise<JSX.Element> {
     if (!tab.db) return <div>The maps sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
-    if (!tab.db.isOpen() && !(await tab.awaitDBOpen ?? true)) {
+    if (!tab.db.isOpen() && !((await tab.awaitDBOpen) ?? true)) {
         if (tab.errorDueToEncryptedLevelDB)
             return (
                 <Notice
@@ -395,15 +405,8 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
         )
     );
     let targetKeys: KeyData[] = keys;
-    // globalThis.a = keys;
-    let dynamicProperties: NBT.NBT | undefined = await tab
-        .db!.get("DynamicProperties")
-        .then((data: Buffer | null): Promise<NBT.NBT> | undefined =>
-            data ? NBT.parse(data!).then((data: { parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata }): NBT.NBT => data.parsed) : undefined
-        )
-        .catch((e: any): undefined => (console.error(e), undefined));
-    // console.log(dynamicProperties);
     let mode: ConfigConstants.views.Maps.MapsTabMode = config.views.maps.mode;
+    let currentUpdateTablesContentsFunction: ((reloadData: boolean) => Promise<void>) | null = null;
     let emptyTablesContents: JSX.Element[][] =
         asyncMode ?
             [[]]
@@ -413,8 +416,10 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
                         await getMapsTabContentsRows({
                             tab,
                             keys,
-                            dynamicProperties,
                             mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Maps.MapsTabSectionMode,
+                            get updateTablesContents(): ((reloadData: boolean) => Promise<void>) | null {
+                                return currentUpdateTablesContentsFunction;
+                            },
                         })
                 )
             );
@@ -434,8 +439,8 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
             viewOptionsTabbedSelector: useRef<HTMLDivElement>(null),
         };
         async function getTablesContentsInRange(sectionIndex: number, start: number, end: number): Promise<JSX.Element[]> {
-            const sectionID: (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[typeof mode][number] =
-                ConfigConstants.views.Entities.entitiesTabModeToSectionIDs[mode][sectionIndex]!;
+            const sectionID: (typeof ConfigConstants.views.Maps.mapsTabModeToSectionIDs)[typeof mode][number] =
+                ConfigConstants.views.Maps.mapsTabModeToSectionIDs[mode][sectionIndex]!;
             return await getMapsTabContentsRows({
                 tab,
                 keys: await Promise.all(
@@ -443,21 +448,23 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
                         .slice(start, end)
                         .map(async (key: KeyData): Promise<KeyData> => ({ ...key, data: (await NBT.parse((await tab.db!.get(key.rawKey))!)) as any }))
                 ),
-                dynamicProperties,
-                mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Entities.EntitiesTabSectionMode,
+                mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Maps.MapsTabSectionMode,
+                get updateTablesContents(): ((reloadData: boolean) => Promise<void>) | null {
+                    return currentUpdateTablesContentsFunction;
+                },
             });
         }
         async function loadTablesContentsInRange(sectionIndex: number, start: number, end: number): Promise<void> {
             if (!asyncMode) return;
-            const sectionID: (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[typeof mode][number] =
-                ConfigConstants.views.Entities.entitiesTabModeToSectionIDs[mode][sectionIndex]!;
+            const sectionID: (typeof ConfigConstants.views.Maps.mapsTabModeToSectionIDs)[typeof mode][number] =
+                ConfigConstants.views.Maps.mapsTabModeToSectionIDs[mode][sectionIndex]!;
             tablesContents = [...tablesContents];
             tablesContents[sectionIndex] = [...emptyTablesContents[sectionIndex]!];
             tablesContents[sectionIndex].splice(start, end - start, ...(await getTablesContentsInRange(sectionIndex, start, end)));
         }
         function getSectionEntryCounts(): number[] {
-            return ConfigConstants.views.Entities.entitiesTabModeToSectionIDs[mode].map(
-                (sectionID: (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[typeof mode][number]): number => {
+            return ConfigConstants.views.Maps.mapsTabModeToSectionIDs[mode].map(
+                (sectionID: (typeof ConfigConstants.views.Maps.mapsTabModeToSectionIDs)[typeof mode][number]): number => {
                     switch (sectionID) {
                         case null:
                             return targetKeys.length;
@@ -469,9 +476,9 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
             let localTablesContents: Observable<JSX.Element[][]> = createObservable([[]]);
             if (asyncMode) {
                 Promise.all(
-                    ConfigConstants.views.Entities.entitiesTabModeToSectionIDs[mode].map(
+                    ConfigConstants.views.Maps.mapsTabModeToSectionIDs[mode].map(
                         async (
-                            _sectionID: (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[typeof mode][number],
+                            _sectionID: (typeof ConfigConstants.views.Maps.mapsTabModeToSectionIDs)[typeof mode][number],
                             index: number
                         ): Promise<JSX.Element[]> => getTablesContentsInRange(index, 0, 20)
                     )
@@ -685,8 +692,10 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
                                                 .toArray()
                                                 .map((key): KeyData => key.originalObject.data)
                                         :   keys,
-                                    dynamicProperties,
                                     mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Maps.MapsTabSectionMode,
+                                    get updateTablesContents(): ((reloadData: boolean) => Promise<void>) | null {
+                                        return currentUpdateTablesContentsFunction;
+                                    },
                                 })
                         )
                     );
@@ -697,6 +706,7 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
             render(<TablesContents />, tempElement);
             tablesContainerRef.current.replaceChildren(...tempElement.children);
         }
+        currentUpdateTablesContentsFunction = updateTablesContents;
         useEffect((): (() => void) => {
             function onModeChanged(): void {
                 updateTablesContents(true);
@@ -1101,6 +1111,41 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
     return <Contents />;
 }
 
+type CopyContextMenuItemValue =
+    | {
+          /**
+           * The value to copy when the context menu item is selected.
+           *
+           * If not provided, the context menu item cannot be clicked and only the items in the submenu can be clicked.
+           */
+          value: string;
+          /**
+           * Additional value format options to show in a submenu for the user to copy.
+           */
+          formatOptions?: undefined;
+      }
+    | {
+          /**
+           * The value to copy when the context menu item is selected.
+           *
+           * If not provided, the context menu item cannot be clicked and only the items in the submenu can be clicked.
+           */
+          value?: string | undefined;
+          /**
+           * Additional value format options to show in a submenu for the user to copy.
+           */
+          formatOptions: {
+              /**
+               * The option label.
+               */
+              label: string;
+              /**
+               * The value to copy when the option is selected.
+               */
+              value: string;
+          }[];
+      };
+
 async function getMapsTabContentsRows(data: {
     /**
      * The tab manager tab.
@@ -1110,320 +1155,533 @@ async function getMapsTabContentsRows(data: {
      * The full list of key data to display.
      */
     keys: KeyData[];
-    dynamicProperties?: NBT.NBT | undefined;
     /**
      * The mode of the tab.
      */
     mode: ConfigConstants.views.Maps.MapsTabSectionMode;
+    get updateTablesContents(): ((reloadData: boolean) => Promise<void>) | null;
 }): Promise<JSX.Element[]> {
     // const columns = config
     switch (data.mode) {
         case "simple": {
             const columns = config.views.maps.modeSettings.simple.columns;
             return data.keys.map((key: KeyData): JSX.Element => {
-                function onEntryMiddleClick(_event: TargetedMouseEvent<HTMLTableRowElement>): void {
-                    data.tab.openTab(
-                        {
-                            contentType: "Map",
-                            icon: "auto",
-                            name: key.displayKey,
-                            parentTab: data.tab,
-                            target: {
-                                type: "LevelDBEntry",
-                                key: key.rawKey,
+                let copyContextMenuItemValue: CopyContextMenuItemValue | null = null as CopyContextMenuItemValue | null;
+                function Row(): JSX.Element {
+                    // IDEA: Add a confirmation dialog here before deleting the entry, and make it able to be disabled in the config. This should be done for all other tabs as well.
+                    const [entryContextMenu_isOpen, entryContextMenu_setOpen] = useState(false);
+                    const [entryContextMenu_anchorPoint, entryContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
+                    function onEntryRightClick(event: TargetedMouseEvent<HTMLTableRowElement>): void {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        const clickPosition: { x: number; y: number } = {
+                            x: event.clientX,
+                            y: event.clientY,
+                        };
+                        // console.log(clickPosition);
+
+                        copyContextMenuItemValue = null;
+                        valueCopyContextItemConfiguration: if (rowRef.current && event.target !== null && event.target instanceof Element) {
+                            const containerCell: HTMLTableCellElement | null = event.target.closest("td");
+                            if (containerCell?.parentElement !== rowRef.current) break valueCopyContextItemConfiguration;
+                            if (containerCell.dataset.copyData === undefined) break valueCopyContextItemConfiguration;
+                            copyContextMenuItemValue = JSON.parse(containerCell.dataset.copyData) as CopyContextMenuItemValue;
+                        }
+
+                        entryContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
+                        entryContextMenu_setOpen(true);
+                    }
+                    function onEntryMiddleClick(_event: TargetedMouseEvent<HTMLTableRowElement>): void {
+                        data.tab.openTab(
+                            {
+                                contentType: "Map",
+                                icon: "auto",
+                                name: key.displayKey,
+                                parentTab: data.tab,
+                                target: {
+                                    type: "LevelDBEntry",
+                                    key: key.rawKey,
+                                },
                             },
-                        },
-                        false
-                    );
-                }
-                try {
-                    return (
-                        <tr
-                            data-key={key.rawKey}
-                            onDblClick={(): void => {
-                                data.tab.openTab({
-                                    contentType: "Map",
-                                    icon: "auto",
-                                    name: key.displayKey,
-                                    parentTab: data.tab,
-                                    target: {
-                                        type: "LevelDBEntry",
-                                        key: key.rawKey,
-                                    },
-                                });
-                            }}
-                            onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
-                                // Treat Alt+Click as a middle click.
-                                if (!event.altKey) return;
-                                onEntryMiddleClick(event);
-                            }}
-                            onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
-                                if (event.button !== 1) return;
-                                onEntryMiddleClick(event);
-                            }}
-                        >
-                            {columns.map((column: (typeof columns)[number]): JSX.Element => {
-                                switch (column) {
-                                    case "DBKey":
-                                        return <td>{key.displayKey}</td>;
-                                    case "ID":
-                                        if (key.data === undefined) {
-                                            return (
-                                                <td>
-                                                    <span style="color: yellow;">Loading...</span>
-                                                </td>
+                            false
+                        );
+                    }
+                    const rowRef: RefObject<HTMLTableRowElement> = useRef<HTMLTableRowElement>(null);
+                    try {
+                        return (
+                            <>
+                                <ControlledMenu
+                                    anchorPoint={entryContextMenu_anchorPoint}
+                                    state={entryContextMenu_isOpen ? "open" : "closed"}
+                                    direction="right"
+                                    onClose={(): void => void entryContextMenu_setOpen(false)}
+                                >
+                                    <MenuItem
+                                        onClick={async (): Promise<void> => {
+                                            if (!data.tab.db) return;
+                                            if (!data.tab.db.isOpen()) return;
+                                            if (!data.tab.cachedDBKeys) return;
+                                            // IDEA: Add a confirmation dialog here before deleting the entry, and make it able to be disabled in the config.
+                                            await data.tab.db.delete(key.rawKey);
+                                            data.tab.setLevelDBIsModified();
+                                            const cachedIndex: number = data.tab.cachedDBKeys.Map.findIndex((cachedKey: Buffer): boolean =>
+                                                key.rawKey.equals(cachedKey)
                                             );
-                                        }
-                                        if (key.data === null) {
-                                            return (
-                                                <td>
-                                                    <span style="color: red;">N/A</span>
-                                                </td>
-                                            );
-                                        }
-                                        return (
-                                            <td>
-                                                {key.data.parsed.value.mapId?.type === "long" ?
-                                                    toLong(key.data.parsed.value.mapId.value)
-                                                :   <span style="color: red;">null</span>}
-                                            </td>
-                                        );
-                                    case "DecorationCount":
-                                        if (key.data === undefined) {
-                                            return (
-                                                <td>
-                                                    <span style="color: yellow;">Loading...</span>
-                                                </td>
-                                            );
-                                        }
-                                        if (key.data === null) {
-                                            return (
-                                                <td>
-                                                    <span style="color: red;">N/A</span>
-                                                </td>
-                                            );
-                                        }
-                                        return (
-                                            <td>
-                                                {(
-                                                    key.data.parsed.value.decorations?.type === "list" &&
-                                                    key.data.parsed.value.decorations.value?.type === "compound"
-                                                ) ?
-                                                    key.data.parsed.value.decorations.value.value.length
-                                                :   <span style="color: red;">null</span>}
-                                            </td>
-                                        );
-                                    case "Location":
-                                        if (key.data === undefined) {
-                                            return (
-                                                <td>
-                                                    <span style="color: yellow;">Loading...</span>
-                                                </td>
-                                            );
-                                        }
-                                        if (key.data === null) {
-                                            return (
-                                                <td>
-                                                    <span style="color: red;">N/A</span>
-                                                </td>
-                                            );
-                                        }
-                                        return (
-                                            <td>
-                                                {key.data.parsed.value.xCenter?.type === "int" && key.data.parsed.value.zCenter?.type === "int" ?
-                                                    `${[key.data.parsed.value.xCenter.value, key.data.parsed.value.zCenter.value]
-                                                        .map((v: number): string => v.toFixed(3))
-                                                        .join(", ")} ${
-                                                        key.data.parsed.value.dimension?.type === "byte" ?
-                                                            (dimensions[key.data.parsed.value.dimension.value] ?? key.data.parsed.value.dimension.value)
-                                                        :   "Unknown Dimension"
-                                                    }`
-                                                :   <span style="color: red;">null</span>}
-                                            </td>
-                                        );
-                                    case "LocationCompact":
-                                        if (key.data === undefined) {
-                                            return (
-                                                <td>
-                                                    <span style="color: yellow;">Loading...</span>
-                                                </td>
-                                            );
-                                        }
-                                        if (key.data === null) {
-                                            return (
-                                                <td>
-                                                    <span style="color: red;">N/A</span>
-                                                </td>
-                                            );
-                                        }
-                                        return (
-                                            <td>
-                                                {key.data.parsed.value.xCenter?.type === "int" && key.data.parsed.value.zCenter?.type === "int" ?
-                                                    `${[key.data.parsed.value.xCenter.value, key.data.parsed.value.zCenter.value]
-                                                        .map((v: number): string => v.toFixed(0))
-                                                        .join(",")} ${
-                                                        key.data.parsed.value.dimension?.type === "byte" ? key.data.parsed.value.dimension.value : "?"
-                                                    }`
-                                                :   <span style="color: red;">null</span>}
-                                            </td>
-                                        );
-                                    case "FullyExplored":
-                                        if (key.data === undefined) {
-                                            return (
-                                                <td>
-                                                    <span style="color: yellow;">Loading...</span>
-                                                </td>
-                                            );
-                                        }
-                                        if (key.data === null) {
-                                            return (
-                                                <td>
-                                                    <span style="color: red;">N/A</span>
-                                                </td>
-                                            );
-                                        }
-                                        return (
-                                            <td>
-                                                {key.data.parsed.value.fullyExplored?.type === "byte" ?
-                                                    key.data.parsed.value.fullyExplored.value === 1 ?
-                                                        <span style="color: #5F5;">True</span>
-                                                    : key.data.parsed.value.fullyExplored.value === 0 ?
-                                                        <span style="color: #F55;">False</span>
-                                                    :   <span style="color: #FA5;">{key.data.parsed.value.fullyExplored.value}</span>
-                                                :   <span style="color: red;">null</span>}
-                                            </td>
-                                        );
-                                    case "Height":
-                                        if (key.data === undefined) {
-                                            return (
-                                                <td>
-                                                    <span style="color: yellow;">Loading...</span>
-                                                </td>
-                                            );
-                                        }
-                                        if (key.data === null) {
-                                            return (
-                                                <td>
-                                                    <span style="color: red;">N/A</span>
-                                                </td>
-                                            );
-                                        }
-                                        return (
-                                            <td>
-                                                {key.data.parsed.value.height?.type === "short" ?
-                                                    key.data.parsed.value.height.value
-                                                :   <span style="color: red;">null</span>}
-                                            </td>
-                                        );
-                                    case "ParentMapID":
-                                        if (key.data === undefined) {
-                                            return (
-                                                <td>
-                                                    <span style="color: yellow;">Loading...</span>
-                                                </td>
-                                            );
-                                        }
-                                        if (key.data === null) {
-                                            return (
-                                                <td>
-                                                    <span style="color: red;">N/A</span>
-                                                </td>
-                                            );
-                                        }
-                                        return (
-                                            <td>
-                                                {key.data.parsed.value.parentMapId?.type === "long" ?
-                                                    toLong(key.data.parsed.value.parentMapId.value)
-                                                :   <span style="color: red;">null</span>}
-                                            </td>
-                                        );
-                                    case "Scale":
-                                        if (key.data === undefined) {
-                                            return (
-                                                <td>
-                                                    <span style="color: yellow;">Loading...</span>
-                                                </td>
-                                            );
-                                        }
-                                        if (key.data === null) {
-                                            return (
-                                                <td>
-                                                    <span style="color: red;">N/A</span>
-                                                </td>
-                                            );
-                                        }
-                                        return (
-                                            <td>
-                                                {key.data.parsed.value.scale?.type === "byte" ?
-                                                    key.data.parsed.value.scale.value.toFixed(3)
-                                                :   <span style="color: red;">null</span>}
-                                            </td>
-                                        );
-                                    case "Preview":
-                                        if (key.data === undefined) {
-                                            return (
-                                                <td>
-                                                    <span style="color: yellow;">Loading...</span>
-                                                </td>
-                                            );
-                                        }
-                                        if (key.data === null) {
-                                            return (
-                                                <td>
-                                                    <span style="color: red;">N/A</span>
-                                                </td>
-                                            );
-                                        }
-                                        return (
-                                            <td style={{ width: "128px" }}>
-                                                {
-                                                    <MapEditor
-                                                        dataStorageObject={{
-                                                            data: key.data,
-                                                            dataType: "NBT",
-                                                            mapEditor: {},
-                                                            sourceType: entryContentTypeToFormatMap.Map,
+                                            if (cachedIndex !== -1) data.tab.cachedDBKeys.Map.splice(cachedIndex, 1);
+                                            data.updateTablesContents?.(true);
+                                        }}
+                                    >
+                                        Delete LevelDB Entry
+                                    </MenuItem>
+                                    {!copyContextMenuItemValue || copyContextMenuItemValue.value !== undefined || !copyContextMenuItemValue.formatOptions ?
+                                        <MenuItem
+                                            onClick={async (_event: ContextMenu_ClickEvent): Promise<void> => {
+                                                // if (!(event.syntheticEvent.currentTarget instanceof HTMLLIElement)) return;
+                                                // event.syntheticEvent.currentTarget.ariaDisabled = "true";
+                                                // event.syntheticEvent.currentTarget.classList.add("szh-menu__item--disabled");
+                                                if (!copyContextMenuItemValue || copyContextMenuItemValue.value === undefined) return;
+                                                clipboard.writeText(copyContextMenuItemValue.value);
+                                                // copyContextMenuItemValue = null;
+                                            }}
+                                            disabled={!copyContextMenuItemValue || copyContextMenuItemValue.value === undefined}
+                                        >
+                                            Copy Cell Value
+                                        </MenuItem>
+                                    :   null}
+                                    {!!copyContextMenuItemValue?.formatOptions && (
+                                        <SubMenu label="Copy Cell Value as...">
+                                            {...copyContextMenuItemValue.formatOptions.map(
+                                                (formatOption: NonNullable<CopyContextMenuItemValue["formatOptions"]>[number]): JSX.Element => (
+                                                    <MenuItem
+                                                        onClick={(_event: ContextMenu_ClickEvent): void => {
+                                                            clipboard.writeText(formatOption.value);
+                                                            copyContextMenuItemValue = null;
                                                         }}
-                                                        readonly
-                                                    />
+                                                    >
+                                                        {formatOption.label}
+                                                    </MenuItem>
+                                                )
+                                            )}
+                                        </SubMenu>
+                                    )}
+                                </ControlledMenu>
+                                <tr
+                                    data-key={key.rawKey}
+                                    onDblClick={(): void => {
+                                        data.tab.openTab({
+                                            contentType: "Map",
+                                            icon: "auto",
+                                            name: key.displayKey,
+                                            parentTab: data.tab,
+                                            target: {
+                                                type: "LevelDBEntry",
+                                                key: key.rawKey,
+                                            },
+                                        });
+                                    }}
+                                    onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                        // Treat Alt+Click as a middle click.
+                                        if (!event.altKey) return;
+                                        onEntryMiddleClick(event);
+                                    }}
+                                    onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                        if (event.button !== 1) return;
+                                        onEntryMiddleClick(event);
+                                    }}
+                                    onContextMenu={onEntryRightClick}
+                                    ref={rowRef}
+                                >
+                                    {columns.map((column: (typeof columns)[number]): JSX.Element => {
+                                        switch (column) {
+                                            case "DBKey":
+                                                return (
+                                                    <td
+                                                        data-copy-data={JSON.stringify({
+                                                            formatOptions: [
+                                                                { label: "Raw key hex", value: key.rawKey.toString("hex") },
+                                                                { label: "Display key", value: key.displayKey },
+                                                            ],
+                                                        } satisfies CopyContextMenuItemValue)}
+                                                    >
+                                                        {key.displayKey}
+                                                    </td>
+                                                );
+                                            case "ID": {
+                                                if (key.data === undefined) {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: yellow;">Loading...</span>
+                                                        </td>
+                                                    );
                                                 }
-                                            </td>
-                                        );
-                                }
-                            })}
-                        </tr>
-                    );
-                } catch (e) {
-                    console.error(e);
-                    return (
-                        <tr
-                            data-key={key.rawKey}
-                            onDblClick={(): void => {
-                                data.tab.openTab({
-                                    contentType: "Map",
-                                    icon: "auto",
-                                    name: key.displayKey,
-                                    parentTab: data.tab,
-                                    target: {
-                                        type: "LevelDBEntry",
-                                        key: key.rawKey,
-                                    },
-                                });
-                            }}
-                            onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
-                                // Treat Alt+Click as a middle click.
-                                if (!event.altKey) return;
-                                onEntryMiddleClick(event);
-                            }}
-                            onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
-                                if (event.button !== 1) return;
-                                onEntryMiddleClick(event);
-                            }}
-                        >
-                            <td style={{ color: "red" }}>{e as any}</td>
-                        </tr>
-                    );
+                                                if (key.data === null) {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: red;">N/A</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                if (key.data.parsed.value.mapId?.type !== "long") {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: red;">null</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                const cellValue: string = String(toLong(key.data.parsed.value.mapId.value));
+                                                return (
+                                                    <td
+                                                        data-copy-data={JSON.stringify({
+                                                            value: cellValue,
+                                                        } satisfies CopyContextMenuItemValue)}
+                                                    >
+                                                        {cellValue}
+                                                    </td>
+                                                );
+                                            }
+                                            case "DecorationCount":
+                                                if (key.data === undefined) {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: yellow;">Loading...</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                if (key.data === null) {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: red;">N/A</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                if (
+                                                    key.data.parsed.value.decorations?.type !== "list" ||
+                                                    key.data.parsed.value.decorations.value?.type !== "compound"
+                                                ) {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: red;">null</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                return (
+                                                    <td
+                                                        data-copy-data={JSON.stringify({
+                                                            value: String(key.data.parsed.value.decorations.value.value.length),
+                                                        } satisfies CopyContextMenuItemValue)}
+                                                    >
+                                                        {key.data.parsed.value.decorations.value.value.length}
+                                                    </td>
+                                                );
+                                            case "Location": {
+                                                if (key.data === undefined) {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: yellow;">Loading...</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                if (key.data === null) {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: red;">N/A</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                if (key.data.parsed.value.xCenter?.type !== "int" || key.data.parsed.value.zCenter?.type !== "int") {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: red;">null</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                const cellValue: string = `${[key.data.parsed.value.xCenter.value, key.data.parsed.value.zCenter.value]
+                                                    .map((v: number): string => v.toFixed(3))
+                                                    .join(", ")} ${
+                                                    key.data.parsed.value.dimension?.type === "byte" ?
+                                                        (dimensions[key.data.parsed.value.dimension.value] ?? key.data.parsed.value.dimension.value)
+                                                    :   "Unknown Dimension"
+                                                }`;
+                                                return (
+                                                    <td
+                                                        data-copy-data={JSON.stringify({
+                                                            value: cellValue,
+                                                        } satisfies CopyContextMenuItemValue)}
+                                                    >
+                                                        {cellValue}
+                                                    </td>
+                                                );
+                                            }
+                                            case "LocationCompact": {
+                                                if (key.data === undefined) {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: yellow;">Loading...</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                if (key.data === null) {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: red;">N/A</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                if (key.data.parsed.value.xCenter?.type !== "int" || key.data.parsed.value.zCenter?.type !== "int") {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: red;">null</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                const cellValue: string = `${[key.data.parsed.value.xCenter.value, key.data.parsed.value.zCenter.value]
+                                                    .map((v: number): string => v.toFixed(0))
+                                                    .join(",")} ${
+                                                    key.data.parsed.value.dimension?.type === "byte" ? key.data.parsed.value.dimension.value : "?"
+                                                }`;
+                                                return (
+                                                    <td
+                                                        data-copy-data={JSON.stringify({
+                                                            value: cellValue,
+                                                        } satisfies CopyContextMenuItemValue)}
+                                                    >
+                                                        {cellValue}
+                                                    </td>
+                                                );
+                                            }
+                                            case "FullyExplored":
+                                                if (key.data === undefined) {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: yellow;">Loading...</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                if (key.data === null) {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: red;">N/A</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                if (key.data.parsed.value.fullyExplored?.type !== "byte") {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: red;">null</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                return (
+                                                    <td
+                                                        data-copy-data={JSON.stringify({
+                                                            value: String(
+                                                                key.data.parsed.value.fullyExplored.value === 1 ? true
+                                                                : key.data.parsed.value.fullyExplored.value === 0 ? false
+                                                                : key.data.parsed.value.fullyExplored.value
+                                                            ),
+                                                        } satisfies CopyContextMenuItemValue)}
+                                                    >
+                                                        {key.data.parsed.value.fullyExplored.value === 1 ?
+                                                            <span style="color: #5F5;">True</span>
+                                                        : key.data.parsed.value.fullyExplored.value === 0 ?
+                                                            <span style="color: #F55;">False</span>
+                                                        :   <span style="color: #FA5;">{key.data.parsed.value.fullyExplored.value}</span>}
+                                                    </td>
+                                                );
+                                            case "Height": {
+                                                if (key.data === undefined) {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: yellow;">Loading...</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                if (key.data === null) {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: red;">N/A</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                if (key.data.parsed.value.height?.type !== "short") {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: red;">null</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                const cellValue: string = String(key.data.parsed.value.height.value);
+                                                return (
+                                                    <td
+                                                        data-copy-data={JSON.stringify({
+                                                            value: cellValue,
+                                                        } satisfies CopyContextMenuItemValue)}
+                                                    >
+                                                        {cellValue}
+                                                    </td>
+                                                );
+                                            }
+                                            case "ParentMapID": {
+                                                if (key.data === undefined) {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: yellow;">Loading...</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                if (key.data === null) {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: red;">N/A</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                if (key.data.parsed.value.parentMapId?.type !== "long") {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: red;">null</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                const cellValue: string = String(toLong(key.data.parsed.value.parentMapId.value));
+                                                return (
+                                                    <td
+                                                        data-copy-data={JSON.stringify({
+                                                            value: cellValue,
+                                                        } satisfies CopyContextMenuItemValue)}
+                                                    >
+                                                        {cellValue}
+                                                    </td>
+                                                );
+                                            }
+                                            case "Scale": {
+                                                if (key.data === undefined) {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: yellow;">Loading...</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                if (key.data === null) {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: red;">N/A</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                if (key.data.parsed.value.scale?.type !== "byte") {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: red;">null</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                const cellValue: string = key.data.parsed.value.scale.value.toFixed(3);
+                                                return (
+                                                    <td
+                                                        data-copy-data={JSON.stringify({
+                                                            value: cellValue,
+                                                        } satisfies CopyContextMenuItemValue)}
+                                                    >
+                                                        {cellValue}
+                                                    </td>
+                                                );
+                                            }
+                                            case "Preview":
+                                                if (key.data === undefined) {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: yellow;">Loading...</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                if (key.data === null) {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: red;">N/A</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                return (
+                                                    <td style={{ width: "128px" }}>
+                                                        {
+                                                            <MapEditor
+                                                                dataStorageObject={{
+                                                                    data: key.data,
+                                                                    dataType: "NBT",
+                                                                    mapEditor: {},
+                                                                    sourceType: entryContentTypeToFormatMap.Map,
+                                                                }}
+                                                                readonly
+                                                            />
+                                                        }
+                                                    </td>
+                                                );
+                                        }
+                                    })}
+                                </tr>
+                            </>
+                        );
+                    } catch (e) {
+                        console.error(e);
+                        return (
+                            <>
+                                <ControlledMenu
+                                    anchorPoint={entryContextMenu_anchorPoint}
+                                    state={entryContextMenu_isOpen ? "open" : "closed"}
+                                    direction="right"
+                                    onClose={(): void => void entryContextMenu_setOpen(false)}
+                                >
+                                    <MenuItem
+                                        onClick={async (): Promise<void> => {
+                                            if (!data.tab.db) return;
+                                            if (!data.tab.db.isOpen()) return;
+                                            if (!data.tab.cachedDBKeys) return;
+                                            // IDEA: Add a confirmation dialog here before deleting the entry, and make it able to be disabled in the config.
+                                            await data.tab.db.delete(key.rawKey);
+                                            data.tab.setLevelDBIsModified();
+                                            const cachedIndex: number = data.tab.cachedDBKeys.Map.findIndex((cachedKey: Buffer): boolean =>
+                                                key.rawKey.equals(cachedKey)
+                                            );
+                                            if (cachedIndex !== -1) data.tab.cachedDBKeys.Map.splice(cachedIndex, 1);
+                                            data.updateTablesContents?.(true);
+                                        }}
+                                    >
+                                        Delete LevelDB Entry
+                                    </MenuItem>
+                                    <MenuItem disabled>Copy Cell Value</MenuItem>
+                                </ControlledMenu>
+                                <tr
+                                    data-key={key.rawKey}
+                                    onDblClick={(): void => {
+                                        data.tab.openTab({
+                                            contentType: "Map",
+                                            icon: "auto",
+                                            name: key.displayKey,
+                                            parentTab: data.tab,
+                                            target: {
+                                                type: "LevelDBEntry",
+                                                key: key.rawKey,
+                                            },
+                                        });
+                                    }}
+                                    onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                        // Treat Alt+Click as a middle click.
+                                        if (!event.altKey) return;
+                                        onEntryMiddleClick(event);
+                                    }}
+                                    onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                        if (event.button !== 1) return;
+                                        onEntryMiddleClick(event);
+                                    }}
+                                >
+                                    <td style={{ color: "red" }}>{String(e)}</td>
+                                </tr>
+                            </>
+                        );
+                    }
                 }
+                return <Row />;
             });
         }
     }

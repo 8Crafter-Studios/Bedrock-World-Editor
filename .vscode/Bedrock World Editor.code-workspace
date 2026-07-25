@@ -68,6 +68,21 @@
                         "color": "#1f1f1f"
                     }
                 ]
+            },
+            "((?:<!-- *)?(?:#|// @|//|./\\*+|<!--|--|\\* @|{!|{{!--|{{!) *(?:TEST)(?:\\s*\\([^)]+\\))?:?)((?!\\w)(?: *-->| *\\*/| *!}| *--}}| *}}|(?= *(?:[^:]//|/\\*+|<!--|@|--|{!|{{!--|{{!))|(?: +[^\\n@]*?)(?= *(?:[^:]//|/\\*+|<!--|@|--(?!>)|{!|{{!--|{{!))|(?: +[^@\\n]+)?))": {
+                "filterFileRegex": ".*(?<!CHANGELOG.md)$",
+                "decorations": [
+                    {
+                        "overviewRulerColor": "#88cc00",
+                        "backgroundColor": "#88cc00",
+                        "color": "#1f1f1f",
+                        "fontWeight": "bold"
+                    },
+                    {
+                        "backgroundColor": "#88cc00",
+                        "color": "#1f1f1f"
+                    }
+                ]
             }
         },
         "extensions.ignoreRecommendations": false,

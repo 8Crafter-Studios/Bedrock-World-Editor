@@ -161,6 +161,22 @@ namespace exports {
                     simple: {},
                 },
             },
+            packs: {
+                modeSettings: {
+                    active: {
+                        sections: {
+                            resourcePacks: {},
+                            behaviorPacks: {},
+                        },
+                    },
+                    inactive: {
+                        sections: {
+                            resourcePacks: {},
+                            behaviorPacks: {},
+                        },
+                    },
+                },
+            },
             world: {
                 modeSettings: {
                     "3D": {},
@@ -313,6 +329,31 @@ namespace exports {
                         },
                     },
                 },
+                packs: {
+                    mode: "active",
+                    modeSettings: {
+                        active: {
+                            sections: {
+                                resourcePacks: {
+                                    columns: ["Icon", "UUID", "Version", "Name", "Dependencies", "StorageLocation"],
+                                },
+                                behaviorPacks: {
+                                    columns: ["Icon", "UUID", "Version", "Name", "Dependencies", "StorageLocation"],
+                                },
+                            },
+                        },
+                        inactive: {
+                            sections: {
+                                resourcePacks: {
+                                    columns: ["Icon", "UUID", "Version", "Name", "Dependencies", "StorageLocation"],
+                                },
+                                behaviorPacks: {
+                                    columns: ["Icon", "UUID", "Version", "Name", "Dependencies", "StorageLocation"],
+                                },
+                            },
+                        },
+                    },
+                },
                 world: {
                     mode: "2D",
                     modeSettings: {
@@ -331,6 +372,8 @@ namespace exports {
                             applyNetherScaleToCoordinatesWhenSwitchingToOrFromNether: true,
                             mapGoToPositionAnimationDuration: 500,
                             showChunkDeletionWarnings: true,
+                            showHeightmapDefault: true,
+                            showGridDefault: true,
                         },
                         block: {},
                         search: {},
@@ -1954,6 +1997,287 @@ namespace exports {
                 return StructuresViewConfig_ModeSettings;
             })())(this);
         })(this);
+        public readonly packs = new (class PacksViewConfig extends DeepSubConfig<ViewsConfig> {
+            public get mode(): ConfigConstants.views.Packs.PacksTabMode {
+                return this[DeepSubConfig_configSymbol].#config.getConfigData().views?.packs?.mode ?? Config.defaults.views.packs.mode;
+            }
+            public set mode(value: ConfigConstants.views.Packs.PacksTabMode | undefined) {
+                this[DeepSubConfig_configSymbol].#config.saveChanges({ views: { packs: { mode: value ?? Config.defaults.views.packs.mode } } });
+            }
+            public readonly modeSettings = new ((() => {
+                const subConfigClassSymbol: unique symbol = Symbol.for("PacksViewConfig_ModeSettings_subConfig");
+                class PacksViewConfig_ModeSettings
+                    extends DeepSubConfig<PacksViewConfig>
+                    implements Record<ConfigConstants.views.Packs.PacksTabMode, (typeof subConfigValueClasses)[number]["prototype"]>
+                {
+                    public static readonly __subConfigClassSymbol__: symbol = subConfigClassSymbol;
+                    public static readonly [subConfigClassSymbol] = (() => {
+                        abstract class PacksViewConfig_ModeSettings_SubConfig<
+                            T extends ConfigConstants.views.Packs.PacksTabMode,
+                            M extends (typeof ConfigConstants.views.Packs.packsTabModeToSectionIDs)[T] =
+                                (typeof ConfigConstants.views.Packs.packsTabModeToSectionIDs)[T],
+                            HasNullSection extends null extends M[number] ? true : false = null extends M[number] ? true : false,
+                            HasNonNullSection extends Extract<M[number], string> extends never ? false : true = Extract<M[number], string> extends never ? false
+                            :   true,
+                        > extends DeepSubConfig<PacksViewConfig_ModeSettings> {
+                            public readonly modes: M;
+                            public constructor(
+                                config: PacksViewConfig_ModeSettings,
+                                public readonly mode: T
+                            ) {
+                                super(config);
+                                this.modes = ConfigConstants.views.Packs.packsTabModeToSectionIDs[mode] as M;
+                            }
+                            public get columns(): HasNullSection extends true ?
+                                (typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs)[Extract<
+                                    ConfigConstants.views.Packs.PacksTabSectionModeFromPacksTabModeAndSectionID<T, M[number]>,
+                                    keyof typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs
+                                >][number][]
+                            :   never {
+                                if ((this.modes as (M[number] | null)[]).includes(null)) {
+                                    return ((
+                                        this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views
+                                            ?.packs?.modeSettings?.[this.mode] as any
+                                    )?.columns ??
+                                        (
+                                            Config.defaults.views.packs.modeSettings[this.mode] as unknown as Extract<
+                                                (typeof Config)["defaults"]["views"]["packs"]["modeSettings"][T],
+                                                { columns: any }
+                                            >
+                                        ).columns) as any;
+                                } else {
+                                    return void 0 as never;
+                                }
+                            }
+                            public set columns(
+                                value: HasNullSection extends true ?
+                                    (typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs)[Extract<
+                                        ConfigConstants.views.Packs.PacksTabSectionModeFromPacksTabModeAndSectionID<T, M[number]>,
+                                        keyof typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs
+                                    >][number][]
+                                :   never
+                            ) {
+                                if ((this.modes as (M[number] | null)[]).includes(null)) {
+                                    this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                        views: { packs: { modeSettings: { [this.mode]: { columns: value } } } },
+                                    });
+                                }
+                            }
+                            public abstract readonly sections: HasNonNullSection extends true ?
+                                DeepSubConfig<any> & {
+                                    [K in NonNullable<M[number]>]: DeepSubConfig<any> & {
+                                        columns: (typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs)[Extract<
+                                            ConfigConstants.views.Packs.PacksTabSectionModeFromPacksTabModeAndSectionID<T, NonNullable<M[number]>>,
+                                            keyof typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs
+                                        >][number][];
+                                    };
+                                }
+                            :   never;
+                        }
+                        return PacksViewConfig_ModeSettings_SubConfig;
+                    })();
+                    public readonly active = new (class PacksViewConfig_ModeSettings_active extends PacksViewConfig_ModeSettings[
+                        subConfigClassSymbol
+                    ]<"active"> {
+                        public readonly sections = new (class PacksViewConfig_ModeSettings_active_sections
+                            extends DeepSubConfig<PacksViewConfig_ModeSettings_active>
+                            implements
+                                Extract<
+                                    {
+                                        [K in (typeof ConfigConstants.views.Packs.packsTabModeToSectionIDs)["active"][number]]: DeepSubConfig<PacksViewConfig_ModeSettings_active_sections> & {
+                                            columns: (typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs)[Extract<
+                                                ConfigConstants.views.Packs.PacksTabSectionModeFromPacksTabModeAndSectionID<
+                                                    "active",
+                                                    (typeof ConfigConstants.views.Packs.packsTabModeToSectionIDs)["active"][number]
+                                                >,
+                                                keyof typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs
+                                            >][number][];
+                                        };
+                                    },
+                                    any
+                                >
+                        {
+                            public readonly resourcePacks =
+                                new (class PacksViewConfig_ModeSettings_active_sections_resourcePacks extends DeepSubConfig<PacksViewConfig_ModeSettings_active_sections> {
+                                    public get columns(): (typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs)[Extract<
+                                        ConfigConstants.views.Packs.PacksTabSectionModeFromPacksTabModeAndSectionID<"active", "resourcePacks">,
+                                        keyof typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs
+                                    >][number][] {
+                                        return (
+                                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][
+                                                DeepSubConfig_configSymbol
+                                            ][DeepSubConfig_configSymbol].#config.getConfigData().views?.packs?.modeSettings?.active?.sections?.resourcePacks
+                                                ?.columns ?? Config.defaults.views.packs.modeSettings.active.sections.resourcePacks.columns
+                                        );
+                                    }
+                                    public set columns(
+                                        value:
+                                            | (typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs)[Extract<
+                                                  ConfigConstants.views.Packs.PacksTabSectionModeFromPacksTabModeAndSectionID<"active", "resourcePacks">,
+                                                  keyof typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs
+                                              >][number][]
+                                            | undefined
+                                    ) {
+                                        this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][
+                                            DeepSubConfig_configSymbol
+                                        ].#config.saveChanges({
+                                            views: {
+                                                packs: {
+                                                    modeSettings: {
+                                                        active: {
+                                                            sections: {
+                                                                resourcePacks: { columns: value },
+                                                            },
+                                                        },
+                                                    },
+                                                },
+                                            },
+                                        });
+                                    }
+                                })(this);
+                            public readonly behaviorPacks =
+                                new (class PacksViewConfig_ModeSettings_active_sections_client extends DeepSubConfig<PacksViewConfig_ModeSettings_active_sections> {
+                                    public get columns(): (typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs)[Extract<
+                                        ConfigConstants.views.Packs.PacksTabSectionModeFromPacksTabModeAndSectionID<"active", "behaviorPacks">,
+                                        keyof typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs
+                                    >][number][] {
+                                        return (
+                                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][
+                                                DeepSubConfig_configSymbol
+                                            ][DeepSubConfig_configSymbol].#config.getConfigData().views?.packs?.modeSettings?.active?.sections?.behaviorPacks
+                                                ?.columns ?? Config.defaults.views.packs.modeSettings.active.sections.behaviorPacks.columns
+                                        );
+                                    }
+                                    public set columns(
+                                        value:
+                                            | (typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs)[Extract<
+                                                  ConfigConstants.views.Packs.PacksTabSectionModeFromPacksTabModeAndSectionID<"active", "behaviorPacks">,
+                                                  keyof typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs
+                                              >][number][]
+                                            | undefined
+                                    ) {
+                                        this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][
+                                            DeepSubConfig_configSymbol
+                                        ].#config.saveChanges({
+                                            views: {
+                                                packs: {
+                                                    modeSettings: {
+                                                        active: {
+                                                            sections: {
+                                                                behaviorPacks: { columns: value },
+                                                            },
+                                                        },
+                                                    },
+                                                },
+                                            },
+                                        });
+                                    }
+                                })(this);
+                        })(this);
+                    })(this, "active");
+                    public readonly inactive = new (class PacksViewConfig_ModeSettings_inactive extends PacksViewConfig_ModeSettings[
+                        subConfigClassSymbol
+                    ]<"inactive"> {
+                        public readonly sections = new (class PacksViewConfig_ModeSettings_inactive_sections
+                            extends DeepSubConfig<PacksViewConfig_ModeSettings_inactive>
+                            implements
+                                Extract<
+                                    {
+                                        [K in (typeof ConfigConstants.views.Packs.packsTabModeToSectionIDs)["inactive"][number]]: DeepSubConfig<PacksViewConfig_ModeSettings_inactive_sections> & {
+                                            columns: (typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs)[Extract<
+                                                ConfigConstants.views.Packs.PacksTabSectionModeFromPacksTabModeAndSectionID<
+                                                    "inactive",
+                                                    (typeof ConfigConstants.views.Packs.packsTabModeToSectionIDs)["inactive"][number]
+                                                >,
+                                                keyof typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs
+                                            >][number][];
+                                        };
+                                    },
+                                    any
+                                >
+                        {
+                            public readonly resourcePacks =
+                                new (class PacksViewConfig_ModeSettings_inactive_sections_resourcePacks extends DeepSubConfig<PacksViewConfig_ModeSettings_inactive_sections> {
+                                    public get columns(): (typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs)[Extract<
+                                        ConfigConstants.views.Packs.PacksTabSectionModeFromPacksTabModeAndSectionID<"inactive", "resourcePacks">,
+                                        keyof typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs
+                                    >][number][] {
+                                        return (
+                                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][
+                                                DeepSubConfig_configSymbol
+                                            ][DeepSubConfig_configSymbol].#config.getConfigData().views?.packs?.modeSettings?.inactive?.sections?.resourcePacks
+                                                ?.columns ?? Config.defaults.views.packs.modeSettings.inactive.sections.resourcePacks.columns
+                                        );
+                                    }
+                                    public set columns(
+                                        value:
+                                            | (typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs)[Extract<
+                                                  ConfigConstants.views.Packs.PacksTabSectionModeFromPacksTabModeAndSectionID<"inactive", "resourcePacks">,
+                                                  keyof typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs
+                                              >][number][]
+                                            | undefined
+                                    ) {
+                                        this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][
+                                            DeepSubConfig_configSymbol
+                                        ].#config.saveChanges({
+                                            views: {
+                                                packs: {
+                                                    modeSettings: {
+                                                        inactive: {
+                                                            sections: {
+                                                                resourcePacks: { columns: value },
+                                                            },
+                                                        },
+                                                    },
+                                                },
+                                            },
+                                        });
+                                    }
+                                })(this);
+                            public readonly behaviorPacks =
+                                new (class PacksViewConfig_ModeSettings_inactive_sections_client extends DeepSubConfig<PacksViewConfig_ModeSettings_inactive_sections> {
+                                    public get columns(): (typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs)[Extract<
+                                        ConfigConstants.views.Packs.PacksTabSectionModeFromPacksTabModeAndSectionID<"inactive", "behaviorPacks">,
+                                        keyof typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs
+                                    >][number][] {
+                                        return (
+                                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][
+                                                DeepSubConfig_configSymbol
+                                            ][DeepSubConfig_configSymbol].#config.getConfigData().views?.packs?.modeSettings?.inactive?.sections?.behaviorPacks
+                                                ?.columns ?? Config.defaults.views.packs.modeSettings.inactive.sections.behaviorPacks.columns
+                                        );
+                                    }
+                                    public set columns(
+                                        value:
+                                            | (typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs)[Extract<
+                                                  ConfigConstants.views.Packs.PacksTabSectionModeFromPacksTabModeAndSectionID<"inactive", "behaviorPacks">,
+                                                  keyof typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs
+                                              >][number][]
+                                            | undefined
+                                    ) {
+                                        this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][
+                                            DeepSubConfig_configSymbol
+                                        ].#config.saveChanges({
+                                            views: {
+                                                packs: {
+                                                    modeSettings: {
+                                                        inactive: {
+                                                            sections: {
+                                                                behaviorPacks: { columns: value },
+                                                            },
+                                                        },
+                                                    },
+                                                },
+                                            },
+                                        });
+                                    }
+                                })(this);
+                        })(this);
+                    })(this, "inactive");
+                }
+                return PacksViewConfig_ModeSettings;
+            })())(this);
+        })(this);
         public readonly world = new (class WorldViewConfig extends DeepSubConfig<ViewsConfig> {
             public get mode(): ConfigConstants.views.World.WorldTabMode {
                 return this[DeepSubConfig_configSymbol].#config.getConfigData().views?.world?.mode ?? Config.defaults.views.world.mode;
@@ -2283,6 +2607,8 @@ namespace exports {
                         /**
                          * Whether to modify the coordinates based on the nether scale when switching to/from the nether dimension.
                          *
+                         * @todo Not implemented yet.
+                         *
                          * @default false
                          */
                         public get applyNetherScaleToCoordinatesWhenSwitchingToOrFromNether(): boolean {
@@ -2351,9 +2677,55 @@ namespace exports {
                                     world: {
                                         modeSettings: {
                                             "2D": {
-                                                showChunkDeletionWarnings:
-                                                    value ??
-                                                    Config.defaults.views.world.modeSettings["2D"].showChunkDeletionWarnings,
+                                                showChunkDeletionWarnings: value ?? Config.defaults.views.world.modeSettings["2D"].showChunkDeletionWarnings,
+                                            },
+                                        },
+                                    },
+                                },
+                            });
+                        }
+                        /**
+                         * Whether to show a the heightmap by default.
+                         *
+                         * @default true
+                         */
+                        public get showHeightmapDefault(): boolean {
+                            return (
+                                this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views?.world
+                                    ?.modeSettings?.["2D"]?.showHeightmapDefault ?? Config.defaults.views.world.modeSettings["2D"].showHeightmapDefault
+                            );
+                        }
+                        public set showHeightmapDefault(value: boolean | undefined) {
+                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                views: {
+                                    world: {
+                                        modeSettings: {
+                                            "2D": {
+                                                showHeightmapDefault: value ?? Config.defaults.views.world.modeSettings["2D"].showHeightmapDefault,
+                                            },
+                                        },
+                                    },
+                                },
+                            });
+                        }
+                        /**
+                         * Whether to show a the grid lines by default.
+                         *
+                         * @default true
+                         */
+                        public get showGridDefault(): boolean {
+                            return (
+                                this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views?.world
+                                    ?.modeSettings?.["2D"]?.showGridDefault ?? Config.defaults.views.world.modeSettings["2D"].showGridDefault
+                            );
+                        }
+                        public set showGridDefault(value: boolean | undefined) {
+                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                views: {
+                                    world: {
+                                        modeSettings: {
+                                            "2D": {
+                                                showGridDefault: value ?? Config.defaults.views.world.modeSettings["2D"].showGridDefault,
                                             },
                                         },
                                     },
@@ -2755,6 +3127,57 @@ namespace exports {
                       }[StructuresTabMode];
 
                 export type StructuresTabModeToColumnType = { [key in StructuresTabSectionMode]: (typeof structuresTabModeToColumnIDs)[key][number] };
+            }
+            export namespace Packs {
+                export const columnIDToDisplayName = {
+                    Icon: "Icon",
+                    UUID: "UUID",
+                    Version: "Version",
+                    Name: "Name",
+                    Dependencies: "Dependencies",
+                    StorageLocation: "Storage Location",
+                } as const satisfies { [key in PacksTabModeToColumnType[PacksTabSectionMode]]: string | { optionLabel: string; headerLabel: string } };
+
+                export const packsTabModeToSectionIDs = {
+                    active: ["resourcePacks", "behaviorPacks"],
+                    inactive: ["resourcePacks", "behaviorPacks"],
+                } as const satisfies { [key in PacksTabMode]: (string | null)[] };
+
+                export const packsTabModeSectionHeaderNames = {
+                    active: ["Resource Packs", "Behavior Packs"],
+                    inactive: ["Resource Packs", "Behavior Packs"],
+                } as const satisfies { [key in PacksTabMode]: (string | null)[] };
+
+                export const packsTabModeToColumnIDs = {
+                    active_resourcePacks: ["Icon", "UUID", "Version", "Name", "Dependencies", "StorageLocation"],
+                    active_behaviorPacks: ["Icon", "UUID", "Version", "Name", "Dependencies", "StorageLocation"],
+                    inactive_resourcePacks: ["Icon", "UUID", "Version", "Name", "Dependencies", "StorageLocation"],
+                    inactive_behaviorPacks: ["Icon", "UUID", "Version", "Name", "Dependencies", "StorageLocation"],
+                } as const;
+
+                export type PacksTabMode = "active" | "inactive";
+
+                export type PacksTabSectionModeFromPacksTabModeAndSectionID<
+                    M extends PacksTabMode,
+                    S extends (typeof packsTabModeToSectionIDs)[M][number],
+                > = Extract<
+                    S extends null ? M
+                    : null extends S ? M | `${M}_${NonNullable<S>}`
+                    : `${M}_${NonNullable<S>}`,
+                    keyof typeof ConfigConstants.views.Packs.packsTabModeToColumnIDs
+                >;
+
+                export type PacksTabSectionMode =
+                    | {
+                          [key in PacksTabMode]: null extends (typeof packsTabModeToSectionIDs)[key][number] ? key : never;
+                      }[PacksTabMode]
+                    | {
+                          [key in PacksTabMode]: Exclude<(typeof packsTabModeToSectionIDs)[key][number], null> extends string ?
+                              `${key}_${Exclude<(typeof packsTabModeToSectionIDs)[key][number], null>}`
+                          :   never;
+                      }[PacksTabMode];
+
+                export type PacksTabModeToColumnType = { [key in PacksTabSectionMode]: (typeof packsTabModeToColumnIDs)[key][number] };
             }
             export namespace World {
                 export type WorldTabMode = "3D" | "2D" | "block" | "search";

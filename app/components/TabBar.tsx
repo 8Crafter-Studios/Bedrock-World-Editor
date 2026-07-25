@@ -107,6 +107,7 @@ export default function TabBar(): JSX.Element {
                                 :   "Unknown Name"),
                             path: folderPath,
                             type: "world",
+                            // TODO: Add support for detecting if this world folder is actually isolated or not.
                         });
                     });
                     if (invalidFilePaths.length) {
@@ -472,6 +473,7 @@ export default function TabBar(): JSX.Element {
                                 path: props.tab.path,
                                 type: props.tab.type,
                                 mode: props.tab.mode,
+                                isNonIsolatedWorld: props.tab.isNonIsolatedWorld,
                             };
                             const tabIndex: number = props.tab.index;
                             await props.tab.close();

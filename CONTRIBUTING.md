@@ -155,3 +155,9 @@ Used for compiler workarounds, type-system limitations, or places where `tsc` re
 General informational comment.
 
 Used to clarify behavior, document intent, or provide helpful context.
+
+#### `TEST`
+
+Something that should be tested.
+
+Used to mark code that should be tested, or other things that should be tested.

@@ -106,11 +106,61 @@ namespace exports {
 
         // 3. Optional: region hint (rarely needed)
         const sys = app.isReady() ? (app.getSystemLocale()?.replace("-", "_") as LocaleID) : null;
-        if (sys !== null && locales.includes(sys)) return sys;
+        if (sys !== null) {
+            if (locales.includes(sys)) return sys;
+            const base: string | undefined = sys.split("_")[0];
+            const fallback: LocaleID | undefined = locales.find((l: LocaleID): boolean => l.startsWith(base + "_"));
+            if (fallback) return fallback;
+        }
         if (noFallbackIfNotReady && sys === null) return null;
 
         // 4. Final fallback
         return "en_US";
+    }
+
+    /**
+     * Finds the best locale to use from a list of available locales.
+     *
+     * @param localeOptions The list of available locales.
+     * @returns The best locale to use, or `null` if none could be found that matched.
+     */
+    export function findBestLocale(localeOptions: string[]): string | null {
+        if (!localeOptions.length) return null;
+        const app = (require("electron") as typeof import("electron")).app ?? (require("@electron/remote") as typeof import("@electron/remote")).app;
+
+        // 1. Primary: Chromium locale
+        const primary = app.getLocale().replace("-", "_") as string;
+        if (localeOptions.includes(primary)) return primary;
+
+        // 2. Secondary: preferred languages
+        for (const lang of app.getPreferredSystemLanguages() ?? []) {
+            const normalized = lang.replace("-", "_").split(".")[0] as string;
+            if (localeOptions.includes(normalized)) return normalized;
+
+            const base: string | undefined = normalized.split("_")[0];
+            const fallback: string | undefined = localeOptions.find((l: string): boolean => l.startsWith(base + "_"));
+            if (fallback) return fallback;
+        }
+
+        // 3. Optional: region hint (rarely needed)
+        const sys = app.isReady() ? (app.getSystemLocale()?.replace("-", "_") as string) : null;
+        if (sys !== null) {
+            if (localeOptions.includes(sys)) return sys;
+            const base: string | undefined = sys.split("_")[0];
+            const fallback: string | undefined = localeOptions.find((l: string): boolean => l.startsWith(base + "_"));
+            if (fallback) return fallback;
+        }
+
+        // 4. Final fallback
+        if (localeOptions.includes("en_US")) return "en_US";
+        {
+            const base: string = "en";
+            const fallback: string | undefined = localeOptions.find((l: string): boolean => l.startsWith(base + "_"));
+            if (fallback) return fallback;
+        }
+
+        // 5. Return null if not found
+        return null;
     }
 
     /**
@@ -279,6 +329,12 @@ Object.defineProperties(globalThis, {
         writable: false,
         value: exports.detectSystemLocale,
     },
+    findBestLocale: {
+        configurable: true,
+        enumerable: true,
+        writable: false,
+        value: exports.findBestLocale,
+    },
     fetchLocale: {
         configurable: true,
         enumerable: true,
@@ -316,6 +372,7 @@ declare global {
     export import locales = exports.locales;
     export import localeNames = exports.localeNames;
     export import detectSystemLocale = exports.detectSystemLocale;
+    export import findBestLocale = exports.findBestLocale;
     export import fetchLocale = exports.fetchLocale;
     export import loadLocale = exports.loadLocale;
     export import translations = exports.translations;

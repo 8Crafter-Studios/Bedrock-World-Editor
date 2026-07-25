@@ -116,8 +116,8 @@ const fileMenu: Electron.Menu = Menu.buildFromTemplate([
                     });
                     if (result.canceled) return;
                     const configPaths: string[] = result.filePaths;
-                    configPaths.forEach((path: string): void => {
-                        currentWindow.webContents.send<1>("open-world-folder", path);
+                    configPaths.forEach((folderPath: string): void => {
+                        currentWindow.webContents.send<1>("open-world-folder", folderPath, undefined /* TEMP */);
                     });
                 },
             },

@@ -1,5 +1,5 @@
-// TODO: Test this with custom dimensions.
-// TODO: Test this with custom biomes.
+// TEST: Test this with custom dimensions.
+// TEST: Test this with custom biomes.
 import { app, clipboard, dialog } from "@electron/remote";
 import { ControlledMenu, MenuDivider, MenuHeader, MenuItem, SubMenu } from "@szhsin/react-menu";
 import type { MessageBoxReturnValue, SaveDialogReturnValue } from "electron";
@@ -7,6 +7,7 @@ import {
     BiomeData,
     chunkBlockIndexToOffset,
     DBChunkKeyEntryContentTypes,
+    DBChunkLinkedContentTypes,
     DBEntryContentTypes,
     dimensions,
     dimensionVectorDimensionToInt,
@@ -21,6 +22,7 @@ import {
     offsetToChunkBlockIndex,
     toLong,
     type DBChunkKeyEntryContentType,
+    type DBChunkLinkedContentType,
     type DBEntryContentType,
     type Dimension,
     type DimensionLocation,
@@ -127,6 +129,12 @@ export type WorldEditor2DDataStorageObject = {
              */
             entities: boolean;
             /**
+             * Renders bounding boxes for spawning for structures (HardcodedSpawners and AABBVolumes).
+             *
+             * @todo
+             */
+            structureSpawningBoundingBoxes: boolean;
+            /**
              * Renders portals on the map.
              */
             portals: boolean;
@@ -148,17 +156,18 @@ export function initWorldEditor2DDataStorageObjectProps<T extends object>(dataSt
     return Object.assign(dataStorageObject, {
         worldEditor2D: {
             renderType: "biomes",
-            heightmap: false,
+            heightmap: config.views.world.modeSettings["2D"].showHeightmapDefault,
             layer: "surface",
             zoom: config.views.world.modeSettings["2D"].defaultMapScale,
             dimension: "overworld",
             position: { x: 0, y: 0 },
-            showGrid: "auto",
+            showGrid: config.views.world.modeSettings["2D"].showGridDefault /* "auto" */ /* TEMP */,
             showCorrespondingNetherOrOverworldCoordinates: true,
             dataOverlays: {
                 players: false,
                 entities: false,
-                portals: false,
+                structureSpawningBoundingBoxes: false,
+                portals: true,
             },
         },
     } satisfies WorldEditor2DDataStorageObject);
@@ -242,7 +251,7 @@ const MAP_LAYERS = {
     portalsOverlay: 52,
 } as const satisfies Record<string, number>;
 
-// TODO: These should be moved to the config.
+// TODO (Important): These should be moved to the config.
 const HEIGHT_MAP_MODE: "normalized" | "difference" = "difference";
 const HEIGHT_MAP_DIFFERENCE_MODE_STRENGTH: number = 1 / 10;
 const HEIGHT_MAP_DIFFERENCE_MODE_MIN_TINT: number = 0.2; /* 0.6 */
@@ -442,25 +451,163 @@ async function getHeightRangeForChunk(
     db: LevelDB,
     chunk: DimensionVectorXZ,
     levelChunkMetaDataDictionary: NBTSchemas.NBTSchemaTypes.LevelChunkMetaDataDictionary | undefined,
-    additionalInfo?: { type: "Data3D"; subchunkCount?: number } | { type: "Data2D" | "Data2DLegacy" | "LegacyTerrain" }
+    additionalInfo?:
+        | {
+              type: "Data3D";
+              subchunkCount?: number | undefined;
+              dimension?: Dimension | number | undefined;
+              version?: number | undefined;
+              isOldWorldType?: boolean | undefined;
+          }
+        | {
+              type: "Data2D";
+              dimension?: Dimension | number | undefined;
+              legacyVersion?: never; // In case this is ever needed.s
+              version?: number | undefined;
+              isOldWorldType?: boolean | undefined;
+          }
+        | { type: "Data2DLegacy" | "LegacyTerrain" }
 ): Promise<[min: number, max: number] | null> {
     if (additionalInfo?.type === "LegacyTerrain") return [0, 128];
     if (additionalInfo?.type === "Data2DLegacy") return [0, 128];
+    if (additionalInfo?.type === "Data2D" && additionalInfo.dimension === "overworld" && additionalInfo.isOldWorldType === true) return [0, 128];
+    if (
+        additionalInfo?.type === "Data2D" &&
+        additionalInfo.dimension === "overworld" &&
+        additionalInfo.isOldWorldType === undefined &&
+        additionalInfo.version !== undefined &&
+        additionalInfo.version > 22
+    ) {
+        return [0, 128];
+    }
+    if (additionalInfo?.type === "Data2D" && additionalInfo.dimension === "overworld") return [0, 256];
+    if (additionalInfo?.type === "Data2D" && additionalInfo.dimension === "nether") return [0, 128];
+    if (additionalInfo?.type === "Data2D" && additionalInfo.dimension === "the_end") return [0, 256];
     try {
-        const chunkMetaData = await getLevelChunkMetaDataForChunk(db, chunk);
+        const chunkMetaData = await getLevelChunkMetaDataForChunk(db, chunk, levelChunkMetaDataDictionary);
         const heightRange = (chunkMetaData.LastSavedDimensionHeightRange ?? chunkMetaData.OriginalDimensionHeightRange).value;
         return [heightRange.min.value, heightRange.max.value];
     } catch (e) {
         if (e instanceof ReferenceError && e.message === "LevelChunkMetaDataDictionary data not found.") {
             if (additionalInfo?.type === "Data3D" && additionalInfo.subchunkCount !== undefined) {
-                if (additionalInfo.subchunkCount === 8) return [0, 128];
-                if (additionalInfo.subchunkCount === 16) return [0, 256];
+                if (
+                    additionalInfo.subchunkCount === 8 ||
+                    (additionalInfo.subchunkCount === 25 && (additionalInfo.dimension === "nether" || additionalInfo.dimension === 1))
+                )
+                    return [0, 128];
+                if (
+                    additionalInfo.subchunkCount === 16 ||
+                    (additionalInfo.subchunkCount === 25 && (additionalInfo.dimension === "the_end" || additionalInfo.dimension === 2))
+                )
+                    return [0, 256];
+                if (
+                    additionalInfo.subchunkCount === 24 ||
+                    (additionalInfo.subchunkCount === 25 && (additionalInfo.dimension === "overworld" || additionalInfo.dimension === 0))
+                )
+                    return [-64, 320];
+
+                if (
+                    additionalInfo.version !== undefined &&
+                    additionalInfo.version < 39 &&
+                    additionalInfo.subchunkCount === 32 &&
+                    (additionalInfo.dimension === "overworld" || additionalInfo.dimension === 0) &&
+                    additionalInfo.isOldWorldType === false
+                ) {
+                    return [-64, 320];
+                }
+                // TEST: Figure out what happens if a 1.17.41.1 old world with the C&C experimental toggle has the toggle disabled.
+                // TEST: Figure out what happens if a 1.17.41.1 old world with the C&C experimental toggle is changed to an infinite world. Maybe it will lower the terrain to be a much lower y level? In which case the below logic is perfect.
+                // NOTE: The above two tests apply to the duplicate of the below code inside of the missing meta data hash handling below.
+                if (
+                    additionalInfo.version !== undefined &&
+                    additionalInfo.version < 39 && // Version 35 fixed the old world type to use Data2D instead of Data3D.
+                    additionalInfo.subchunkCount === 32 &&
+                    (additionalInfo.dimension === "overworld" || additionalInfo.dimension === 0) &&
+                    additionalInfo.isOldWorldType === true
+                ) {
+                    return [0, 128];
+                }
+
+                // In version 1.18.0.22, the only way for an updated chunk to have 32 subchunks is if it was from an old world type, where new Data2D keys were generated and the Data3D keys were left alone.
+                if (
+                    additionalInfo.version !== undefined &&
+                    additionalInfo.version > 34 &&
+                    additionalInfo.version < 37 &&
+                    additionalInfo.subchunkCount === 32 &&
+                    (additionalInfo.dimension === "overworld" || additionalInfo.dimension === 0)
+                ) {
+                    return [0, 128];
+                }
+
+                // In version 1.18.0.22, the old world type's Data3D keys were not updated to have 65 subchunks.
+                if (
+                    additionalInfo.version !== undefined &&
+                    additionalInfo.version > 34 &&
+                    additionalInfo.version < 37 &&
+                    additionalInfo.subchunkCount === 65 &&
+                    (additionalInfo.dimension === "overworld" || additionalInfo.dimension === 0)
+                ) {
+                    return [-64, 320];
+                }
             }
         } else if (e instanceof ReferenceError && e.message === "Level chunk meta data hash not found.") {
             if (additionalInfo?.type === "Data3D" && additionalInfo.subchunkCount !== undefined) {
-                if (additionalInfo.subchunkCount === 8) return [0, 128];
-                if (additionalInfo.subchunkCount === 16) return [0, 256];
-                if (additionalInfo.subchunkCount === 24) return [-64, 320];
+                if (
+                    additionalInfo.subchunkCount === 8 ||
+                    (additionalInfo.subchunkCount === 25 && (additionalInfo.dimension === "nether" || additionalInfo.dimension === 1))
+                )
+                    return [0, 128];
+                if (
+                    additionalInfo.subchunkCount === 16 ||
+                    (additionalInfo.subchunkCount === 25 && (additionalInfo.dimension === "the_end" || additionalInfo.dimension === 2))
+                )
+                    return [0, 256];
+                if (
+                    additionalInfo.subchunkCount === 24 ||
+                    (additionalInfo.subchunkCount === 25 && (additionalInfo.dimension === "overworld" || additionalInfo.dimension === 0))
+                )
+                    return [-64, 320];
+
+                if (
+                    additionalInfo.version !== undefined &&
+                    additionalInfo.version < 39 &&
+                    additionalInfo.subchunkCount === 32 &&
+                    (additionalInfo.dimension === "overworld" || additionalInfo.dimension === 0) &&
+                    additionalInfo.isOldWorldType === false
+                ) {
+                    return [-64, 320];
+                }
+                if (
+                    additionalInfo.version !== undefined &&
+                    additionalInfo.version < 39 && // Version 35 fixed the old world type to use Data2D instead of Data3D.
+                    additionalInfo.subchunkCount === 32 &&
+                    (additionalInfo.dimension === "overworld" || additionalInfo.dimension === 0) &&
+                    additionalInfo.isOldWorldType === true
+                ) {
+                    return [0, 128];
+                }
+
+                // In version 1.18.0.22, the only way for an updated chunk to have 32 subchunks is if it was from an old world type, where new Data2D keys were generated and the Data3D keys were left alone.
+                if (
+                    additionalInfo.version !== undefined &&
+                    additionalInfo.version > 34 &&
+                    additionalInfo.version < 37 &&
+                    additionalInfo.subchunkCount === 32 &&
+                    (additionalInfo.dimension === "overworld" || additionalInfo.dimension === 0)
+                ) {
+                    return [0, 128];
+                }
+
+                // In version 1.18.0.22, the old world type's Data3D keys were not updated to have 65 subchunks.
+                if (
+                    additionalInfo.version !== undefined &&
+                    additionalInfo.version > 34 &&
+                    additionalInfo.version < 37 &&
+                    additionalInfo.subchunkCount === 65 &&
+                    (additionalInfo.dimension === "overworld" || additionalInfo.dimension === 0)
+                ) {
+                    return [-64, 320];
+                }
             }
         }
         return null;
@@ -624,65 +771,103 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     const [worldEditor2DAddMarkerMenu_isOpen, worldEditor2DAddMarkerMenu_setOpen] = useState(false);
     const [worldEditor2DAddMarkerMenu_anchorPoint, worldEditor2DAddMarkerMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
 
-    let levelDatLoaded: boolean = false;
+    let levelDatLoaded: boolean | "loading" | "error" = false;
+    let isOldWorld: boolean | null | undefined = undefined;
     let worldSpawn: DimensionLocation | null | undefined = undefined;
     let worldBorder: { from: VectorXZ; to: VectorXZ } | null | undefined = undefined;
     let netherScale: number | null | undefined = undefined;
     function unloadLevelDatData(): void {
         levelDatLoaded = false;
+        isOldWorld = undefined;
         worldSpawn = undefined;
         worldBorder = undefined;
         netherScale = undefined;
     }
     async function loadNeededDataFromLevelDat(): Promise<void> {
-        if (props.tab.type !== "world") return;
-        const filePath: string = path.join(props.tab.tempPath ?? props.tab.path, "level.dat");
-        if (!existsSync(filePath)) throw new ReferenceError(`Could not find the level.dat file: ${filePath}`);
-        const levelDat = await entryContentTypeToFormatMap.LevelDat.parse(await readFile(filePath));
-        if (levelDat.value.SpawnX && levelDat.value.SpawnY && levelDat.value.SpawnZ) {
-            worldSpawn = {
-                x: levelDat.value.SpawnX.value,
-                y: levelDat.value.SpawnY.value,
-                z: levelDat.value.SpawnZ.value,
-                // NOTE: If a way is added to set the world spawn to be in a different dimension, it should be added here.
-                dimension: "overworld",
-            };
-        } else worldSpawn = null;
-        // REVIEW: This may be incorrect for other old world sizes, try changing the associated LevelDat properties and comparing the real world border to the one calculated here.
-        if (
-            levelDat.value.Generator?.value === 0 &&
-            levelDat.value.LimitedWorldOriginX &&
-            levelDat.value.LimitedWorldOriginZ &&
-            levelDat.value.limitedWorldWidth &&
-            levelDat.value.limitedWorldDepth
-        ) {
-            // LimitedWorldOriginX: 52,
-            // LimitedWorldOriginY: 32767,
-            // LimitedWorldOriginZ: 4,
-            // limitedWorldDepth: 16,
-            // limitedWorldWidth: 16,
-            // border is from -192, -224 to 303, 239
-            const originX = Math.floor(levelDat.value.LimitedWorldOriginX.value / 16) * 16;
-            const originZ = Math.floor(levelDat.value.LimitedWorldOriginZ.value / 16) * 16;
+        levelDatLoaded = "loading";
+        try {
+            if (props.tab.type !== "world") return;
+            const filePath: string = path.join(props.tab.tempPath ?? props.tab.path, "level.dat");
+            if (!existsSync(filePath)) throw new ReferenceError(`Could not find the level.dat file: ${filePath}`);
+            let levelDat: NBTSchemas.NBTSchemaTypes.LevelDat;
+            try {
+                levelDat = await entryContentTypeToFormatMap.LevelDat.parse(await readFile(filePath));
+            } catch (e) {
+                console.error("Error while parsing the level.dat file while loading needed data from level.dat:", e, "filePath:", filePath);
+                const fallbackFilePath: string = path.join(props.tab.tempPath ?? props.tab.path, "level.dat_old");
+                if (!existsSync(fallbackFilePath)) throw new ReferenceError(`Could not find the level.dat_old file: ${fallbackFilePath}`, { cause: e });
+                try {
+                    levelDat = await entryContentTypeToFormatMap.LevelDat.parse(await readFile(fallbackFilePath));
+                } catch (e) {
+                    console.error(
+                        "Error while parsing the level.dat_old file as a fallback while loading needed data from level.dat:",
+                        e,
+                        "fallbackFilePath:",
+                        fallbackFilePath
+                    );
+                    levelDatLoaded = "error";
+                    return;
+                }
+            }
+            if (levelDat.value.Generator) isOldWorld = levelDat.value.Generator.value === 0;
+            else isOldWorld = null;
+            if (levelDat.value.SpawnX && levelDat.value.SpawnY && levelDat.value.SpawnZ) {
+                worldSpawn = {
+                    x: levelDat.value.SpawnX.value,
+                    y: levelDat.value.SpawnY.value,
+                    z: levelDat.value.SpawnZ.value,
+                    // NOTE: If a way is added to set the world spawn to be in a different dimension, it should be added here.
+                    dimension: "overworld",
+                };
+            } else worldSpawn = null;
+            // REVIEW: This may be incorrect for other old world sizes, try changing the associated LevelDat properties and comparing the real world border to the one calculated here.
+            if (
+                levelDat.value.Generator?.value === 0 &&
+                levelDat.value.LimitedWorldOriginX &&
+                levelDat.value.LimitedWorldOriginZ &&
+                levelDat.value.limitedWorldWidth &&
+                levelDat.value.limitedWorldDepth
+            ) {
+                // LimitedWorldOriginX: 52,
+                // LimitedWorldOriginY: 32767,
+                // LimitedWorldOriginZ: 4,
+                // limitedWorldDepth: 16,
+                // limitedWorldWidth: 16,
+                // border is from -192, -224 to 303, 239
+                const originX = Math.floor(levelDat.value.LimitedWorldOriginX.value / 16) * 16;
+                const originZ = Math.floor(levelDat.value.LimitedWorldOriginZ.value / 16) * 16;
 
-            const widthChunks = levelDat.value.limitedWorldWidth.value;
-            const depthChunks = levelDat.value.limitedWorldDepth.value;
+                // BUG: On a 1.18.0.22 beta world using the old world type, this gave incorrect results:
+                // LimitedWorldOriginX: 308,
+                // LimitedWorldOriginY: 32767,
+                // LimitedWorldOriginZ: 24,
+                // limitedWorldDepth: 16,
+                // limitedWorldWidth: 16,
+                // border is from 176, -112 to 431, 143
+                // but this calculated the border as from 64, -208 to 559, 255
 
-            worldBorder = {
-                from: {
-                    x: originX - (widthChunks - 1) * 16,
-                    z: originZ - (depthChunks - 2) * 16,
-                },
-                to: {
-                    x: originX + widthChunks * 16 - 1,
-                    z: originZ + (depthChunks - 1) * 16 - 1,
-                },
-            };
-        } else worldBorder = null;
-        if (levelDat.value.NetherScale) netherScale = levelDat.value.NetherScale.value;
-        else netherScale = null;
-        levelDatLoaded = true;
-        onLevelDatDataChanged();
+                const widthChunks = levelDat.value.limitedWorldWidth.value;
+                const depthChunks = levelDat.value.limitedWorldDepth.value;
+
+                worldBorder = {
+                    from: {
+                        x: originX - (widthChunks - 1) * 16,
+                        z: originZ - (depthChunks - 2) * 16,
+                    },
+                    to: {
+                        x: originX + widthChunks * 16 - 1,
+                        z: originZ + (depthChunks - 1) * 16 - 1,
+                    },
+                };
+            } else worldBorder = null;
+            if (levelDat.value.NetherScale) netherScale = levelDat.value.NetherScale.value;
+            else netherScale = null;
+            levelDatLoaded = true;
+            onLevelDatDataChanged();
+        } catch (e) {
+            console.error("Error while loading needed data from level.dat:", e);
+            if (levelDatLoaded === "loading") levelDatLoaded = "error";
+        }
     }
     function onLevelDatDataChanged(): void {
         if (!engineRef.current?.isReady) return;
@@ -700,12 +885,12 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             );
         }
     }
-    loadNeededDataFromLevelDat().catch((error: unknown): void => console.error("Error while loading needed data from level.dat:", error));
+    loadNeededDataFromLevelDat();
 
     useEffect((): (() => void) => {
         const widgetID: string = `WorldEditor2D_${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
         if (engineRef.current?.isReady) {
-            if (levelDatLoaded) onLevelDatDataChanged();
+            if (levelDatLoaded === true) onLevelDatDataChanged();
             // updateMap();
             // stopCurrentInteraction = void function a(): void {};
             stopCurrentInteraction = void function stopCurrentInteractionCallback(): void {
@@ -795,19 +980,18 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 class="image-only-button"
                                 onMouseDown={(event: JSX.TargetedMouseEvent<HTMLButtonElement>): void => {
                                     event.currentTarget.dataset.preventImmediateReopen = "false";
-                                    if (!dimensionSwitcherContextMenuInteractionRef.current) return;
-                                    if (!dimensionSwitcherContextMenuInteractionRef.current.isOpen) return;
+                                    if (!settingsContextMenuInteractionRef.current) return;
+                                    if (!settingsContextMenuInteractionRef.current.isOpen) return;
                                     event.currentTarget.dataset.preventImmediateReopen = "true";
-                                    dimensionSwitcherContextMenuInteractionRef.current.setOpen(false);
+                                    settingsContextMenuInteractionRef.current.setOpen(false);
                                 }}
                                 onClick={async (event: JSX.TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
-                                    // TODO
                                     if (event.currentTarget.dataset.preventImmediateReopen === "true") {
                                         event.currentTarget.dataset.preventImmediateReopen = "false";
                                         return;
                                     }
                                     if (!containerRef.current) return;
-                                    // if (!dimensionSwitcherContextMenuInteractionRef.current) return;
+                                    if (!settingsContextMenuInteractionRef.current) return;
                                     if (!engineRef.current?.instance) {
                                         dialog.showMessageBox({
                                             type: "error",
@@ -818,9 +1002,8 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                         });
                                         return;
                                     }
-                                    // dimensionSwitcherContextMenuInteractionRef.current.openContextMenu({ x: event.clientX, y: event.clientY });
+                                    settingsContextMenuInteractionRef.current.openContextMenu({ x: event.clientX, y: event.clientY });
                                 }}
-                                disabled
                             >
                                 <img
                                     src="resource://images/ui/glyphs/config_small_down1.png"
@@ -920,7 +1103,9 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                         });
                                         return;
                                     }
+                                    const centerPosition: import("@canvas-tile-engine/core").Coords = engineRef.current.getCenterCoords();
                                     engineRef.current.instance?.zoomOut(1.5);
+                                    engineRef.current.goCoords(centerPosition.x, centerPosition.y, 0);
                                 }}
                             >
                                 <img src="resource://images/ui/glyphs/zoom_out.png" style={{ width: "16px", imageRendering: "pixelated" }} aria-hidden="true" />
@@ -941,7 +1126,9 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                         });
                                         return;
                                     }
+                                    const centerPosition: import("@canvas-tile-engine/core").Coords = engineRef.current.getCenterCoords();
                                     engineRef.current.setScale(config.views.world.modeSettings["2D"].defaultMapScale);
+                                    engineRef.current.goCoords(centerPosition.x, centerPosition.y, 0);
                                 }}
                             >
                                 <img
@@ -966,7 +1153,9 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                         });
                                         return;
                                     }
+                                    const centerPosition: import("@canvas-tile-engine/core").Coords = engineRef.current.getCenterCoords();
                                     engineRef.current.instance?.zoomIn(1.5);
+                                    engineRef.current.goCoords(centerPosition.x, centerPosition.y, 0);
                                 }}
                             >
                                 <img src="resource://images/ui/glyphs/zoom_in.png" style={{ width: "16px", imageRendering: "pixelated" }} aria-hidden="true" />
@@ -1108,15 +1297,12 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 onClick={async (event: JSX.TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
                                     if (!containerRef.current) return;
                                     if (worldSpawn === undefined) {
-                                        try {
-                                            await loadNeededDataFromLevelDat();
-                                        } catch (e) {
-                                            console.error("Error while loading needed data from level.dat:", e);
+                                        await loadNeededDataFromLevelDat();
+                                        if (levelDatLoaded === "error") {
                                             dialog.showMessageBox({
                                                 type: "error",
                                                 title: "Error",
                                                 message: "An error occured while loading the needed data from level.dat.",
-                                                detail: String(e),
                                                 buttons: ["OK"],
                                                 noLink: true,
                                             });
@@ -1396,6 +1582,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             }
         }
     }
+    /** @deprecated */
     function cullCachedOutOfBoundsImageBitmaps(bounds: { min: Vector2; max: Vector2 }, scale: number): void {
         for (const zoom in cachedChunkImageBitmaps) {
             if (Number(zoom) !== scale) {
@@ -1481,6 +1668,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     function normalizeHeightValue(value: number, min: number, range: number): number {
         return (value - min) / range;
     }
+    // BUG: In some older chunk verisons in the nether and possible other dimensions, the height map is actually not shifted up 1, so the nether would say 127 instead of 128, though this may just be it not including bedrock. The heightmap displays should be updated to reflect this.
     async function getChunkBiomeColorData(
         chunk: DimensionVectorXZ
     ): Promise<{ colorData: Uint8ClampedArray; biomeData: Int32Array; heightMap?: Uint16Array; heightRange?: [min: number, max: number] | null } | null> {
@@ -1506,6 +1694,9 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         const colorData = new Uint8ClampedArray(16 * 16 * 4);
         const biomeData = new Int32Array(16 * 16);
         const heightMap = new Uint16Array(16 * 16);
+        let __cachedOldWorldData2D__: Buffer | null = null;
+        let version: number | undefined = undefined;
+        // FIXME: If the world is an old world, and both Data3D and Data2D are present, and the version is between 35 and 38 (inclusive), then the Data2D should be used instead of the Data3D.
         data3dParser: {
             const data3dKey: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(chunk, "Data3D");
             // if (CHECK_CACHED_DB_KEYS_FOR_DATA3D_KEY_IF_AVAILABLE && !props.tab.cachedDBKeys?.Data3D.some((key: Buffer): boolean => key.equals(data3dKey))) {
@@ -1517,6 +1708,32 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 !data3dKeySet.has(data3dKey.toString("hex"))
             )
                 break data3dParser;
+
+            const versionRaw: Buffer | null = await props.tab.db.get(generateChunkKeyFromIndices(chunk, "Version"));
+            version = versionRaw ? (versionRaw[0] ?? undefined) : undefined;
+
+            checkIfOldWorldShouldUseData2D: if (
+                isOldWorld &&
+                version !== undefined &&
+                version >= 35 // TEMP: See if maybe some versions between 23 and 30 (inclusive) had the old world type using Data2D keys instead of Data3D. For those versions, and maybe for these two, maybe this should be after Data3D is parsed so it can check the number of subchunks in the Data3D.
+            ) {
+                const data2dKey: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(chunk, "Data2D");
+                if (config.views.world.modeSettings["2D"].checkCachedDBKeysForBiomeDataKeysIfAvailable && data2dKeySet) {
+                    if (!data2dKeySet.has(data2dKey.toString("hex"))) break checkIfOldWorldShouldUseData2D;
+                } else if (!props.tab.cachedDBKeys || props.tab.cachedDBKeys.Data2D.length) {
+                    __cachedOldWorldData2D__ = await props.tab.db.get(data2dKey);
+                    if (!__cachedOldWorldData2D__) break checkIfOldWorldShouldUseData2D;
+                } else break checkIfOldWorldShouldUseData2D;
+                if (!props.tab.cachedDBKeys || props.tab.cachedDBKeys.GeneratedPreCavesAndCliffsBlending.length) {
+                    const generatedPreCavesAndCliffsBlendingKey: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(chunk, "GeneratedPreCavesAndCliffsBlending");
+                    const generatedPreCavesAndCliffsBlending: Buffer | null = await props.tab.db.get(generatedPreCavesAndCliffsBlendingKey);
+                    if (generatedPreCavesAndCliffsBlending?.[0] === 1) break checkIfOldWorldShouldUseData2D;
+                    // TEST: Check if GeneratedPreCavesAndCliffsBlending was present on all versions where Data2D is used instead of Data3D and if it was 0 in all of those versions for old world chunks, if that is the case, then this being 0 while Data2D is present can be used as a required condition to skip Data3D and use Data2D instead, and it would guarantee that this chunk data is for an old world chunk.
+                    if (generatedPreCavesAndCliffsBlending?.[0] === 0) break data3dParser;
+                }
+                break data3dParser;
+            }
+
             const data3d: Buffer | null = await props.tab.db.get(data3dKey);
             if (!data3d) break data3dParser;
             const data3dData: NBTSchemas.NBTSchemaTypes.Data3D = entryContentTypeToFormatMap.Data3D.parse(data3d);
@@ -1526,7 +1743,13 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                     props.tab.db,
                     chunk,
                     typeof levelChunkMetaDataDictionary === "object" ? levelChunkMetaDataDictionary : undefined,
-                    { type: "Data3D", subchunkCount: data3dData.value.biomes.value.value.length }
+                    {
+                        type: "Data3D",
+                        subchunkCount: data3dData.value.biomes.value.value.length,
+                        dimension: chunk.dimension,
+                        version,
+                        isOldWorldType: isOldWorld ?? undefined,
+                    }
                 );
             } catch (e) {
                 console.error("Error getting height range for chunk:", chunk, "Error:", e);
@@ -1574,11 +1797,23 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             heightMap[colorDataIndex / 4] = heightMapPosition_unclamped;
                             continue;
                         }
+
+                        // This is for chunks generated on worlds using the Caves & Cliffs experimental toggle or in 1.18.0 betas before 1.18.0.25.
+                        let maxOceanOnlySubchunkIndex: number | null = null;
+                        if (version !== undefined && version < 39 && heightMapPosition_unclamped !== undefined) {
+                            const heightMapPosition: number = (heightMapPosition_unclamped & 0xffff) - 1;
+                            maxOceanOnlySubchunkIndex = Math.floor(heightMapPosition / 16);
+                        }
+
                         for (let i = data3dData.value.biomes.value.value.length - 1; i >= 0; i--) {
                             const subchunk = data3dData.value.biomes.value.value[i];
                             if (!subchunk) continue;
                             if (subchunk.values.value.value.length !== 4096) continue;
                             const palette: number[] = subchunk.palette.value.value;
+
+                            // This is for chunks generated on worlds using the Caves & Cliffs experimental toggle or in 1.18.0 betas before 1.18.0.25.
+                            if (maxOceanOnlySubchunkIndex !== null && i > maxOceanOnlySubchunkIndex && palette.length === 1 && palette[0] === 0) continue;
+
                             const biomeId: number | undefined = palette[subchunk.values.value.value[offsetToChunkBlockIndex({ x, y: 15, z })]!];
                             if (biomeId === -1) {
                                 for (let subchunkYOffset = 15; subchunkYOffset >= 0; subchunkYOffset--) {
@@ -1623,6 +1858,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                         heightMap[colorDataIndex / 4] = data3dData.value.heightMap.value.value[x]?.value[z] ?? 0;
                         continue;
                     }
+
                     if (props.dataStorageObject.worldEditor2D.layer === "underground") {
                         let fallbackBiomeId: number | undefined;
                         let fallbackBiomeIdDetails: (Vector3 & { i: number }) | undefined;
@@ -1633,7 +1869,6 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             BiomeData.int_map["minecraft:lush_caves"],
                             BiomeData.int_map["minecraft:sulfur_caves"],
                         ];
-                        // TODO: Figure out the actual Y level or algorithm ChunkBase uses for this.
                         for (let i = data3dData.value.biomes.value.value.length - 1; i >= 0; i--) {
                             const subchunk = data3dData.value.biomes.value.value[i];
                             if (!subchunk) continue;
@@ -1685,6 +1920,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                         heightMap[colorDataIndex / 4] = data3dData.value.heightMap.value.value[x]?.value[z] ?? 0;
                         continue;
                     }
+
                     if (props.dataStorageObject.worldEditor2D.layer === "bottom") {
                         const y = -51;
                         const minSubChunk = heightRange ? heightRange[0] / 16 : -4;
@@ -1726,6 +1962,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                         heightMap[colorDataIndex / 4] = data3dData.value.heightMap.value.value[x]?.value[z] ?? 0;
                         continue;
                     }
+
                     if (typeof props.dataStorageObject.worldEditor2D.layer === "number") {
                         const y: number = props.dataStorageObject.worldEditor2D.layer;
                         const minSubChunk = heightRange ? heightRange[0] / 16 : -4;
@@ -1774,12 +2011,13 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         data2dParser: {
             const data2dKey: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(chunk, "Data2D");
             if (
+                !__cachedOldWorldData2D__ &&
                 config.views.world.modeSettings["2D"].checkCachedDBKeysForBiomeDataKeysIfAvailable &&
                 data2dKeySet &&
                 !data2dKeySet.has(data2dKey.toString("hex"))
             )
                 break data2dParser;
-            const data2d: Buffer | null = await props.tab.db.get(data2dKey);
+            const data2d: Buffer | null = __cachedOldWorldData2D__ ?? (await props.tab.db.get(data2dKey));
             if (!data2d) break data2dParser;
             const data2dData: NBTSchemas.NBTSchemaTypes.Data2D = entryContentTypeToFormatMap.Data2D.parse(data2d);
             if (data2dData.value.biomeData.value.value.length !== 16) {
@@ -1796,7 +2034,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                     props.tab.db,
                     chunk,
                     typeof levelChunkMetaDataDictionary === "object" ? levelChunkMetaDataDictionary : undefined,
-                    { type: "Data2D" }
+                    { type: "Data2D", dimension: chunk.dimension, version, isOldWorldType: isOldWorld ?? undefined }
                 );
             } catch (e) {
                 console.error("Error getting height range for chunk:", chunk, "Error:", e);
@@ -1952,6 +2190,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     //         max: { x: Math.ceil(((block.x + 1) / 16 - bounds.min.x) * scale), y: Math.ceil(((block.z + 1) / 16 - bounds.min.y) * scale) },
     //     };
     // }
+    /** @deprecated */
     function drawCachedChunks(
         ctx: CanvasRenderingContext2D,
         bounds: { min: Vector2; max: Vector2 },
@@ -2051,6 +2290,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             }
         }
     }
+    /** @deprecated */
     function drawCachedChunks_v2(
         ctx: CanvasRenderingContext2D,
         bounds: { min: Vector2; max: Vector2 },
@@ -2171,8 +2411,14 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 const chunkPixelX = (cx - bounds.min.x) * scale;
                 const chunkPixelY = (cy - bounds.min.y) * scale;
 
+                const chunkWidth = Math.floor((cx + 1 - bounds.min.x) * scale) - Math.floor((cx - bounds.min.x) * scale);
+                const chunkHeight = Math.floor((cy + 1 - bounds.min.y) * scale) - Math.floor((cy - bounds.min.y) * scale);
+
                 const baseX = Math.floor(chunkPixelX);
                 const baseY = Math.floor(chunkPixelY);
+                // UNDONE: This fixes the gaps but makes the chunks misaligned with the chunk grid and cursor.
+                // const baseX = Math.round((cx - bounds.min.x) * tileSizePx);
+                // const baseY = Math.round((cy - bounds.min.y) * tileSizePx);
 
                 if (baseX + tileSizePx < 0 || baseY + tileSizePx < 0 || baseX >= frameWidth || baseY >= frameHeight) {
                     continue;
@@ -2185,7 +2431,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
 
                 if (!entry) {
                     src = loadingPendingTile;
-                } else if (entry === "loading" || entry === "has_data" /* TEMP */) {
+                } else if (entry === "loading" || entry === "has_data" /* TEMP: The has_data and loading tiles should be different colors. */) {
                     src = loadingTile;
                 } else if (entry === "no_data") {
                     src = noDataTile;
@@ -2194,7 +2440,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 } else {
                     src = entry.imageData.data;
                     isChunk = true;
-                    // TODO: Add a mode where it uses lighter tints on blocks that are higher than the block above or to the left, and darker on blocks that are lower than the block above or to the left. Maybe also cache the normalized height values in the same object as the height maps, and maybe use actual height values instead of normalized ones and just compare those.
+                    // OPTIMIZE: This needs to cache the height map tint values where they don't have to be recalculated every frame. Maybe it should also store a last modified time of the chunks above and to the left, so when those are updated, it can update the height map tint values.
                     if (heightMapEnabled) {
                         if (HEIGHT_MAP_MODE === "difference") {
                             if (entry.heightMap) {
@@ -2271,17 +2517,17 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 if (isChunk) {
                     const sw = 16,
                         sh = 16;
-                    const xRatio = sw / tileSizePx;
-                    const yRatio = sh / tileSizePx;
+                    const xRatio = sw / chunkWidth;
+                    const yRatio = sh / chunkHeight;
 
-                    for (let dy = 0; dy < tileSizePx; dy++) {
+                    for (let dy = 0; dy < chunkHeight; dy++) {
                         const dstY = baseY + dy;
                         if (dstY < 0 || dstY >= frameHeight) continue;
 
                         const srcY = Math.floor(dy * yRatio);
                         const rowOffset = dstY * frameWidth * 4;
 
-                        for (let dx = 0; dx < tileSizePx; dx++) {
+                        for (let dx = 0; dx < chunkWidth; dx++) {
                             const dstX = baseX + dx;
                             if (dstX < 0 || dstX >= frameWidth) continue;
 
@@ -2300,14 +2546,14 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                         }
                     }
                 } else {
-                    for (let dy = 0; dy < tileSizePx; dy++) {
+                    for (let dy = 0; dy < chunkHeight; dy++) {
                         const dstY = baseY + dy;
                         if (dstY < 0 || dstY >= frameHeight) continue;
 
                         const rowOffset = dstY * frameWidth * 4;
-                        const srcRow = dy * tileSizePx * 4;
+                        const srcRow = Math.floor((dy / chunkHeight) * tileSizePx) * tileSizePx * 4;
 
-                        for (let dx = 0; dx < tileSizePx; dx++) {
+                        for (let dx = 0; dx < chunkWidth; dx++) {
                             const dstX = baseX + dx;
                             if (dstX < 0 || dstX >= frameWidth) continue;
 
@@ -2328,6 +2574,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         ctx.putImageData(img, 0, 0);
     }
 
+    /** @deprecated */
     async function loadChunkImageBitmapsInBounds(bounds: { min: Vector2; max: Vector2 }, scale: number): Promise<void> {
         bounds = { min: { x: Math.floor(bounds.min.x), y: Math.floor(bounds.min.y) }, max: { x: Math.ceil(bounds.max.x), y: Math.ceil(bounds.max.y) } };
         const hasMaxParallelizationLimit: boolean = Number.isFinite(config.views.world.modeSettings["2D"].maxParallelImageBitmapCreations);
@@ -2609,7 +2856,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             biomeIdsTable = undefined;
             loadBiomeIdsTable();
             unloadLevelDatData();
-            loadNeededDataFromLevelDat().catch((error: unknown): void => console.error("Error while loading needed data from level.dat:", error));
+            loadNeededDataFromLevelDat();
         }
         if (rerenderMode === "rerenderContents") contentsInteractionRef.current?.rerenderContents();
         else if (rerenderMode === "renderFrame") engineRef.current?.render();
@@ -2821,6 +3068,138 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             </ControlledMenu>
         );
     }
+    interface SettingsContextMenuInteraction extends BaseContextMenuInteraction {
+        $?: never;
+    }
+    const settingsContextMenuInteractionRef: RefObject<SettingsContextMenuInteraction> = useRef<SettingsContextMenuInteraction>(null);
+    function SettingsContextMenu({ interactionRef }: { interactionRef: RefObject<SettingsContextMenuInteraction> }): JSX.Element {
+        const [worldEditor2DSettingsContextMenu_isOpen, worldEditor2DSettingsContextMenu_setOpen] = useState(false);
+        const [worldEditor2DSettingsContextMenu_anchorPoint, worldEditor2DSettingsContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
+        interactionRef.current = {
+            openContextMenu(anchorPoint: Vector2): void {
+                worldEditor2DSettingsContextMenu_setAnchorPoint(anchorPoint);
+                worldEditor2DSettingsContextMenu_setOpen(true);
+            },
+            setOpen(isOpen: boolean): void {
+                worldEditor2DSettingsContextMenu_setOpen(isOpen);
+            },
+            get isOpen(): boolean {
+                return worldEditor2DSettingsContextMenu_isOpen;
+            },
+            setAnchorPoint(anchorPoint: Vector2): void {
+                worldEditor2DSettingsContextMenu_setAnchorPoint(anchorPoint);
+            },
+            get anchorPoint(): Vector2 {
+                return worldEditor2DSettingsContextMenu_anchorPoint;
+            },
+        };
+        return (
+            <ControlledMenu
+                anchorPoint={worldEditor2DSettingsContextMenu_anchorPoint}
+                state={worldEditor2DSettingsContextMenu_isOpen ? "open" : "closed"}
+                direction="right"
+                onClose={(): void => void worldEditor2DSettingsContextMenu_setOpen(false)}
+            >
+                <MenuHeader>Settings</MenuHeader>
+                <SubMenu label="Render Type">
+                    <MenuItem
+                        type="checkbox"
+                        checked={props.dataStorageObject.worldEditor2D.renderType === "biomes"}
+                        onClick={async (): Promise<void> => {
+                            props.dataStorageObject.worldEditor2D.renderType = "biomes";
+                            engineRef.current?.render();
+                        }}
+                    >
+                        Biomes
+                    </MenuItem>
+                    <MenuItem
+                        type="checkbox"
+                        checked={props.dataStorageObject.worldEditor2D.renderType === "blocks_accurate"}
+                        onClick={async (): Promise<void> => {
+                            props.dataStorageObject.worldEditor2D.renderType = "blocks_accurate";
+                            engineRef.current?.render();
+                        }}
+                        disabled
+                        title="Not implemented yet."
+                    >
+                        Blocks - Accurate
+                    </MenuItem>
+                    <MenuItem
+                        type="checkbox"
+                        checked={props.dataStorageObject.worldEditor2D.renderType === "blocks_map"}
+                        onClick={async (): Promise<void> => {
+                            props.dataStorageObject.worldEditor2D.renderType = "blocks_map";
+                            engineRef.current?.render();
+                        }}
+                        disabled
+                        title="Not implemented yet."
+                    >
+                        Blocks - Map
+                    </MenuItem>
+                    <MenuItem
+                        type="checkbox"
+                        checked={props.dataStorageObject.worldEditor2D.renderType === "heightmap"}
+                        onClick={async (): Promise<void> => {
+                            props.dataStorageObject.worldEditor2D.renderType = "heightmap";
+                            engineRef.current?.render();
+                        }}
+                        disabled
+                        title="Not implemented yet."
+                    >
+                        Heightmap
+                    </MenuItem>
+                </SubMenu>
+                <MenuDivider />
+                <MenuItem
+                    type="checkbox"
+                    checked={props.dataStorageObject.worldEditor2D.heightmap}
+                    onClick={async (): Promise<void> => {
+                        props.dataStorageObject.worldEditor2D.heightmap = !props.dataStorageObject.worldEditor2D.heightmap;
+                        engineRef.current?.render();
+                    }}
+                >
+                    Show Heightmap
+                </MenuItem>
+                {/* TODO: At some point, this should have an option to have "Show Grid" in "auto" mode, and maybe an option to change the "auto" mode zoom level threshold. */}
+                <MenuItem
+                    type="checkbox"
+                    checked={props.dataStorageObject.worldEditor2D.showGrid === true || props.dataStorageObject.worldEditor2D.showGrid === "auto"}
+                    onClick={async (): Promise<void> => {
+                        props.dataStorageObject.worldEditor2D.showGrid = !props.dataStorageObject.worldEditor2D.showGrid;
+                        if (!engineRef.current) return;
+                        engineRef.current.clearLayer(1);
+                        if (/* props.dataStorageObject.worldEditor2D.showGrid === "auto" ? scale >= 8 : */ props.dataStorageObject.worldEditor2D.showGrid) {
+                            engineRef.current.drawGridLines(1, 1, "#1e293b", 1);
+                        }
+                    }}
+                >
+                    Show Grid Lines
+                </MenuItem>
+                <MenuDivider />
+                <SubMenu label="Set defaults...">
+                    <MenuItem
+                        type="checkbox"
+                        checked={config.views.world.modeSettings["2D"].showHeightmapDefault}
+                        onClick={async (): Promise<void> => {
+                            config.views.world.modeSettings["2D"].showHeightmapDefault = !config.views.world.modeSettings["2D"].showHeightmapDefault;
+                        }}
+                    >
+                        Show Heightmap
+                    </MenuItem>
+                    <MenuItem
+                        type="checkbox"
+                        checked={config.views.world.modeSettings["2D"].showGridDefault}
+                        onClick={async (): Promise<void> => {
+                            config.views.world.modeSettings["2D"].showGridDefault = !config.views.world.modeSettings["2D"].showGridDefault;
+                        }}
+                    >
+                        Show Grid Lines
+                    </MenuItem>
+                    {/* TODO: Add the render type option to here too once at least one other render type is implemented. */}
+                </SubMenu>
+            </ControlledMenu>
+        );
+    }
     interface VisibleOverlaysContextMenuInteraction extends BaseContextMenuInteraction {
         $?: never;
     }
@@ -2864,17 +3243,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 >
                     Portals
                 </MenuItem>
-                {/* TEMP: This needs to be in a different context menu, and the option should probably be stored and read from the config. */}
-                <MenuItem
-                    type="checkbox"
-                    checked={props.dataStorageObject.worldEditor2D.heightmap}
-                    onClick={async (): Promise<void> => {
-                        props.dataStorageObject.worldEditor2D.heightmap = !props.dataStorageObject.worldEditor2D.heightmap;
-                        engineRef.current?.render();
-                    }}
-                >
-                    Heightmap
-                </MenuItem>
+                {/* TODO: Add a set defaults submenu here. */}
             </ControlledMenu>
         );
     }
@@ -2937,9 +3306,9 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             typeof chunkColorData === "object" ? chunkColorData.heightMap?.[offsetTo2DChunkBlockColorDataIndex(targetChunkDetails.block) / 4] : undefined;
         const minHeight: number | undefined = typeof chunkColorData === "object" ? chunkColorData.heightRange?.[0] : undefined;
         const noCachedDBKeys: boolean = props.tab.cachedDBKeys === undefined;
-        const existingKeys: ([rawKey: Buffer, contentType: DBChunkKeyEntryContentType] | [rawKeys: Buffer[], contentType: DBChunkKeyEntryContentType])[] = [];
+        const existingKeys: ([rawKey: Buffer, contentType: DBChunkLinkedContentType] | [rawKeys: Buffer[], contentType: DBChunkLinkedContentType])[] = [];
         if (props.tab.cachedDBKeys) {
-            for (const contentType of DBChunkKeyEntryContentTypes) {
+            for (const contentType of DBChunkLinkedContentTypes) {
                 switch (contentType) {
                     case "AABBVolumes":
                     case "ActorDigestVersion":
@@ -2964,7 +3333,8 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                     case "MetaDataHash":
                     case "PendingTicks":
                     case "RandomTicks":
-                    case "Version": {
+                    case "Version":
+                    case "Digest": {
                         const key: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(
                             { ...targetChunkDetails.chunk, dimension: targetChunkDetails.dimension },
                             contentType
@@ -3007,7 +3377,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                         `${height - 1 + minHeight}`
                                     :   `${height - 1}`
                                 :   "~"
-                            } ${targetChunkDetails.block.z }`
+                            } ${targetChunkDetails.block.z}`
                         );
                     }}
                 >
@@ -3038,7 +3408,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
 
                 <SubMenu label="Open LevelDB entry...">
                     {existingKeys.map(
-                        ([rawKey, contentType]: [rawKey: Buffer | Buffer[], contentType: DBChunkKeyEntryContentType]): JSX.Element =>
+                        ([rawKey, contentType]: [rawKey: Buffer | Buffer[], contentType: DBChunkLinkedContentType]): JSX.Element =>
                             rawKey instanceof Array ?
                                 <SubMenu label={contentType}>
                                     {rawKey.map((key: Buffer): JSX.Element => {
@@ -3163,7 +3533,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 :   "Brings you to the associated location in the Nether dimension on the map"
                             }
                             onClick={async (): Promise<void> => {
-                                if (levelDatLoaded && netherScale === undefined) {
+                                if (levelDatLoaded === true && netherScale === undefined) {
                                     dialog.showMessageBox({
                                         type: "error",
                                         title: "Error",
@@ -3265,7 +3635,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 :   "Brings you to the associated location in the Overworld dimension on the map"
                             }
                             onClick={async (): Promise<void> => {
-                                if (levelDatLoaded && netherScale === undefined) {
+                                if (levelDatLoaded === true && netherScale === undefined) {
                                     dialog.showMessageBox({
                                         type: "error",
                                         title: "Error",
@@ -3456,8 +3826,9 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                     ></div>
                 </div>
                 <VisibleOverlaysContextMenu interactionRef={visibleOverlaysContextMenuInteractionRef} />
-                <DimensionSwitcherContextMenu interactionRef={dimensionSwitcherContextMenuInteractionRef} />
+                <SettingsContextMenu interactionRef={settingsContextMenuInteractionRef} />
                 <LayerContextMenu interactionRef={layerContextMenuInteractionRef} />
+                <DimensionSwitcherContextMenu interactionRef={dimensionSwitcherContextMenuInteractionRef} />
                 <ChunkContextMenu interactionRef={chunkContextMenuInteractionRef} />
                 {/* <ControlledMenu
                 anchorPoint={worldEditor2DCanvasContextMenu_anchorPoint}
@@ -3724,6 +4095,10 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             cullCachedOutOfBoundsChunks(bounds);
                             // cullCachedOutOfBoundsImageBitmaps(bounds, config.scale);
                             cullEmptyZoomParallelChunkImageBitmapLists(config.scale);
+
+                            // Wait for the level.dat to finish attempting to load before loading chunk data.
+                            if (isOldWorld === undefined && levelDatLoaded === "loading") return;
+
                             loadChunksInBounds(bounds);
                             // loadChunkImageBitmapsInBounds(bounds, config.scale);
 
@@ -3763,7 +4138,9 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             // console.log(ctx, coords, config);
                         }}
                     </CanvasTileEngine.DrawFunction>
-                    <CanvasTileEngine.GridLines cellSize={1} strokeStyle="#1e293b" layer={1} />
+                    {(props.dataStorageObject.worldEditor2D.showGrid === "auto" ?
+                        props.dataStorageObject.worldEditor2D.zoom >= 8
+                    :   props.dataStorageObject.worldEditor2D.showGrid) && <CanvasTileEngine.GridLines cellSize={1} strokeStyle="#1e293b" layer={1} />}
                 </CanvasTileEngine>
                 {/* <div style={{ maxHeight: "round(down, 100%, 128px)", display: "flex", justifyContent: "center", aspectRatio: "1 / 1" }}>
                 <canvas
