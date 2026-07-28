@@ -99,25 +99,23 @@ jobs:
                   LEVELDB_ZLIB_ARCH_OVERRIDE: ${{ matrix.arch }}
               run: npm run publish -- --arch="${{ matrix.arch }}" --dry-run
 
-            - name: Create combined ZIP for SignPath
+            - name: Create directory of artifacts for SignPath signing
               if: matrix.os == 'windows-latest'
               shell: pwsh
               run: |
-                New-Item -ItemType Directory -Force combined
+                New-Item -ItemType Directory -Force artifacts-to-sign-${{matrix.arch}}
 
-                Copy-Item "out/make/squirrel.windows/${{matrix.arch}}/*Setup*.exe" combined
+                Copy-Item "out/make/squirrel.windows/${{matrix.arch}}/*Setup*.exe" artifacts-to-sign-${{matrix.arch}}
 
-                Copy-Item "out/make/zip/win32/${{matrix.arch}}/*.zip" combined
+                Copy-Item "out/make/zip/win32/${{matrix.arch}}/*.zip" artifacts-to-sign-${{matrix.arch}}
 
-                Compress-Archive -Path combined\* -DestinationPath windows-${{matrix.arch}}-artifacts.zip -Force
-
-            - name: Upload unsigned Windows installer for signing
+            - name: Upload unsigned Windows artifacts for signing
               if: matrix.os == 'windows-latest'
               id: upload-for-signing
               uses: actions/upload-artifact@v4
               with:
                 name: windows-${{matrix.arch}}-artifacts
-                path: windows-${{matrix.arch}}-artifacts.zip
+                path: artifacts-to-sign-${{matrix.arch}}
 
             - name: Submit signing request
               if: matrix.os == 'windows-latest'
