@@ -16,20 +16,20 @@ jobs:
                 # os: [ubuntu-latest, macos-latest, windows-latest]
                 # arch: [x64, ia32]
                 include:
-                    - os: ubuntu-latest
-                      arch: x64
+                    # - os: ubuntu-latest # TEMP: Temporarily disabled while testing SignPath code signing setup.
+                    #   arch: x64
                     # - os: ubuntu-latest # BUG: This one doesn't work.
                     #   arch: ia32
-                    - os: ubuntu-latest
-                      arch: arm64
-                    - os: ubuntu-latest
-                      arch: armv7l
-                    - os: macos-latest
-                      arch: x64
+                    # - os: ubuntu-latest # TEMP: Temporarily disabled while testing SignPath code signing setup.
+                    #   arch: arm64
+                    # - os: ubuntu-latest # TEMP: Temporarily disabled while testing SignPath code signing setup.
+                    #   arch: armv7l
+                    # - os: macos-latest # TEMP: Temporarily disabled while testing SignPath code signing setup.
+                    #   arch: x64
                     # - os: macos-latest # BUG: This one doesn't work.
                     #   arch: ia32
-                    - os: macos-latest
-                      arch: arm64
+                    # - os: macos-latest # TEMP: Temporarily disabled while testing SignPath code signing setup.
+                    #   arch: arm64
                     # - os: macos-latest # BUG: This one doesn't work.
                     #   arch: armv7l
                     - os: windows-latest
@@ -80,7 +80,8 @@ jobs:
             # - name: Make distributables
             #   run: npm run make -- --dry-run --arch="${{ matrix.arch }}"
 
-            - name: Publish to GitHub Releases
+            - name: Publish to GitHub Releases (Non-Windows)
+              if: matrix.os != 'windows-latest'
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   NODE_OPTIONS: --max-old-space-size=4096
@@ -89,6 +90,90 @@ jobs:
                   APPLE_ID_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_ID_APP_SPECIFIC_PASSWORD }}
                   APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
               run: npm run publish -- --arch="${{ matrix.arch }}"
+
+            - name: Publish to GitHub Releases (Windows) (Dry Run)
+              if: matrix.os == 'windows-latest'
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  NODE_OPTIONS: --max-old-space-size=4096
+                  LEVELDB_ZLIB_ARCH_OVERRIDE: ${{ matrix.arch }}
+              run: npm run publish -- --arch="${{ matrix.arch }}" --dry-run
+
+            - name: Create combined ZIP for SignPath
+              if: matrix.os == 'windows-latest'
+              shell: pwsh
+              run: |
+                New-Item -ItemType Directory -Force combined
+
+                Copy-Item "out/make/squirrel.windows/${{matrix.arch}}/*Setup*.exe" combined
+
+                Copy-Item "out/make/zip/win32/${{matrix.arch}}/*.zip" combined
+
+                Compress-Archive -Path combined\* -DestinationPath windows-${{matrix.arch}}-artifacts.zip -Force
+
+            - name: Upload unsigned Windows installer for signing
+              if: matrix.os == 'windows-latest'
+              id: upload-for-signing
+              uses: actions/upload-artifact@v4
+              with:
+                name: windows-${{matrix.arch}}-artifacts
+                path: windows-${{matrix.arch}}-artifacts.zip
+
+            - name: Submit signing request
+              if: matrix.os == 'windows-latest'
+              id: sign
+              uses: signpath/github-action-submit-signing-request@v2
+              with:
+                api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+                organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+                project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+                signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+                artifact-configuration-slug: installer_and_portable
+                github-artifact-id: ${{ steps.upload-for-signing.outputs.artifact-id }}
+                wait-for-completion: true
+                output-artifact-directory: signed/
+                wait-for-completion-timeout-in-seconds: 3600
+
+            - name: Extract signed ZIP and replace unsigned artifacts
+              if: matrix.os == 'windows-latest'
+              shell: pwsh
+              run: |
+                $signedZip = "signed/windows-${{matrix.arch}}-artifacts.zip"
+
+                $extractDir = "signed-extracted"
+                New-Item -ItemType Directory -Force $extractDir | Out-Null
+
+                Expand-Archive -Path $signedZip -DestinationPath $extractDir -Force
+
+                $signedExe = Get-ChildItem $extractDir -Filter "*Setup*.exe" | Select-Object -First 1
+
+                if (-not $signedExe) {
+                  Write-Error "No signed installer EXE (*Setup*.exe) found in $extractDir"
+                }
+
+                $signedPortableZip = Get-ChildItem $extractDir -Filter "*.zip" | Select-Object -First 1
+
+                if (-not $signedPortableZip) {
+                  Write-Error "No signed portable ZIP (*.zip) found in $extractDir"
+                }
+
+                $origExeDir = "out/make/squirrel.windows/${{matrix.arch}}"
+                $origZipDir = "out/make/zip/win32/${{matrix.arch}}"
+
+                Remove-Item "$origExeDir/*Setup*.exe" -Force -ErrorAction SilentlyContinue
+                Remove-Item "$origZipDir/*.zip" -Force -ErrorAction SilentlyContinue
+
+                Copy-Item $signedExe.FullName $origExeDir
+                Copy-Item $signedPortableZip.FullName $origZipDir
+
+
+            - name: Publish to GitHub Releases (Windows) (From Dry Run)
+              if: matrix.os == 'windows-latest'
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  NODE_OPTIONS: --max-old-space-size=4096
+                  LEVELDB_ZLIB_ARCH_OVERRIDE: ${{ matrix.arch }}
+              run: npm run publish -- --arch="${{ matrix.arch }}" --from-dry-run
 
             - name: Attest artifacts
               uses: actions/attest@v4
