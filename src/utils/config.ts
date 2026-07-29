@@ -196,52 +196,104 @@ namespace exports {
          */
         public static readonly defaults = Object.freeze({
             minecraftDataFolders: [
+                // ======== UWP (Windows) ========
+                // Minecraft for Windows
                 "%localappdata%/Packages/Microsoft.MinecraftUWP_8wekyb3d8bbwe/LocalState/games/com.mojang",
+                // Minecraft Preview
                 "%localappdata%/Packages/Microsoft.MinecraftWindowsBeta_8wekyb3d8bbwe/LocalState/games/com.mojang",
+                // Minecraft Education
                 "%localappdata%/Packages/Microsoft.MinecraftEducationEdition_8wekyb3d8bbwe/LocalState/games/com.mojang",
+                // Minecraft Education Preview
                 "%localappdata%/Packages/Microsoft.MinecraftEducationPreview_8wekyb3d8bbwe/LocalState/games/com.mojang",
+
+                // ======== GDK (Windows) ========
+                // Minecraft for Windows
+                "%appdata%/Minecraft Bedrock/Users/*/games/com.mojang",
+                "%appdata%/Minecraft Bedrock/games/com.mojang",
+                // Minecraft Preview
+                "%appdata%/Minecraft Bedrock Preview/Users/*/games/com.mojang",
+                "%appdata%/Minecraft Bedrock Preview/games/com.mojang",
+                // Minecraft Education
+                "%appdata%/Minecraft Education Edition/Users/*/games/com.mojang",
+                "%appdata%/Minecraft Education Edition/games/com.mojang",
+                // There is no GDK version of Minecraft Education Preview yet.
+
+                // ======== Other Platforms ========
+                // Minecraft Education and Minecraft Education Beta (macOS)
+                "Home/Library/Application Support/minecraftpe/games/com.mojang",
+
+                // ======== Custom Launchers ========
+                // MCPELauncher (Linux/macOS)
                 "Home/.var/app/io.mrarm.mcpelauncher/data/mcpelauncher/games/com.mojang",
                 "Home/.local/share/mcpelauncher/games/com.mojang",
                 "Home/Library/Application Support/mcpelauncher/games/com.mojang",
-                "%appdata%/Minecraft Bedrock Preview/Users/*/games/com.mojang",
-                "%appdata%/Minecraft Bedrock Preview/games/com.mojang",
-                "%appdata%/Minecraft Bedrock/Users/*/games/com.mojang",
-                "%appdata%/Minecraft Bedrock/games/com.mojang",
+                // LeviLauncher (Windows)
                 "%appdata%/levilauncher.exe/versions/*/Minecraft Bedrock/Users/*/games/com.mojang",
                 "%appdata%/levilauncher.exe/versions/*/Minecraft Bedrock Preview/Users/*/games/com.mojang",
                 "%appdata%/levilauncher.exe/versions/*/Minecraft Bedrock/games/com.mojang",
                 "%appdata%/levilauncher.exe/versions/*/Minecraft Bedrock Preview/games/com.mojang",
+                // PlayCover (macOS)
                 "Home/Library/Containers/com.mojang.minecraftpe/Data/Documents/games/com.mojang",
                 "Home/Library/Containers/com.mojang.minecraftpreview/Data/Documents/games/com.mojang",
             ],
             isolatedMinecraftWorldsFolders: [],
             extraMinecraftDataFolders: [
+                // ======== Custom Launchers ========
+                // Bedrock Launcher (UWP) (Windows)
                 "%appdata%/.minecraft_bedrock/installations/*/packageData",
                 "%appdata%/.minecraft_bedrock/installations/*/*/packageData",
+
+                // ================ Mounted Volumes ================
+
+                // ======== UWP (Windows Volumes) ========
+                // Minecraft for Windows
                 "/Volumes/*/Users/*/AppData/Local/Packages/Microsoft.MinecraftUWP_8wekyb3d8bbwe/LocalState/games/com.mojang",
+                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Local/Packages/Microsoft.MinecraftUWP_8wekyb3d8bbwe/LocalState/games/com.mojang",
+                // Minecraft Preview
                 "/Volumes/*/Users/*/AppData/Local/Packages/Microsoft.MinecraftWindowsBeta_8wekyb3d8bbwe/LocalState/games/com.mojang",
+                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Local/Packages/Microsoft.MinecraftWindowsBeta_8wekyb3d8bbwe/LocalState/games/com.mojang",
+                // Minecraft Education
+                "/Volumes/*/Users/*/AppData/Local/Packages/Microsoft.MinecraftEducationEdition_8wekyb3d8bbwe/LocalState/games/com.mojang",
+                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Local/Packages/Microsoft.MinecraftEducationEdition_8wekyb3d8bbwe/LocalState/games/com.mojang",
+                // Minecraft Education Preview
+                "/Volumes/*/Users/*/AppData/Local/Packages/Microsoft.MinecraftEducationPreview_8wekyb3d8bbwe/LocalState/games/com.mojang",
+                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Local/Packages/Microsoft.MinecraftEducationPreview_8wekyb3d8bbwe/LocalState/games/com.mojang",
+
+                // ======== GDK (Windows) ========
+                // Minecraft for Windows
                 "/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/Users/*/games/com.mojang",
-                "/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/Users/*/games/com.mojang",
                 "/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/games/com.mojang",
+                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/Users/*/games/com.mojang",
+                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/games/com.mojang",
+                // Minecraft Preview
+                "/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/Users/*/games/com.mojang",
                 "/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/games/com.mojang",
+                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/Users/*/games/com.mojang",
+                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/games/com.mojang",
+                // Minecraft Education
+                "/Volumes/*/Users/*/AppData/Roaming/Minecraft Education Edition/Users/*/games/com.mojang",
+                "/Volumes/*/Users/*/AppData/Roaming/Minecraft Education Edition/games/com.mojang",
+                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/Minecraft Education Edition/Users/*/games/com.mojang",
+                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/Minecraft Education Edition/games/com.mojang",
+                // There is no GDK version of Minecraft Education Preview yet.
+
+                // ======== Other Platforms ========
+                // All Minecraft Editions (iOS (mounted))
+                "/Volumes/*/games/com.mojang",
+                "/Volumes/*/Documents/games/com.mojang",
+                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/games/com.mojang",
+                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Documents/games/com.mojang",
+
+                // ======== Custom Launchers ========
+                // LeviLauncher (Windows)
                 "/Volumes/*/Users/*/AppData/Roaming/levilauncher.exe/versions/*/Minecraft Bedrock/Users/*/games/com.mojang",
                 "/Volumes/*/Users/*/AppData/Roaming/levilauncher.exe/versions/*/Minecraft Bedrock Preview/Users/*/games/com.mojang",
                 "/Volumes/*/Users/*/AppData/Roaming/levilauncher.exe/versions/*/Minecraft Bedrock/games/com.mojang",
                 "/Volumes/*/Users/*/AppData/Roaming/levilauncher.exe/versions/*/Minecraft Bedrock Preview/games/com.mojang",
-                "/Volumes/*/games/com.mojang",
-                "/Volumes/*/Documents/games/com.mojang",
-                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Local/Packages/Microsoft.MinecraftUWP_8wekyb3d8bbwe/LocalState/games/com.mojang",
-                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Local/Packages/Microsoft.MinecraftWindowsBeta_8wekyb3d8bbwe/LocalState/games/com.mojang",
-                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/Users/*/games/com.mojang",
-                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/Users/*/games/com.mojang",
-                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/games/com.mojang",
-                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/games/com.mojang",
                 "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/levilauncher.exe/versions/*/Minecraft Bedrock/Users/*/games/com.mojang",
                 "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/levilauncher.exe/versions/*/Minecraft Bedrock Preview/Users/*/games/com.mojang",
                 "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/levilauncher.exe/versions/*/Minecraft Bedrock/games/com.mojang",
                 "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/levilauncher.exe/versions/*/Minecraft Bedrock Preview/games/com.mojang",
-                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/games/com.mojang",
-                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Documents/games/com.mojang",
             ],
             extraIsolatedMinecraftWorldsFolders: [],
             enabledAutoApplyIntegrations: [],
@@ -534,6 +586,37 @@ namespace exports {
                 }
                 if (currentMinecraftDataFolders.length !== originalLength) this.minecraftDataFolders = currentMinecraftDataFolders;
             }
+            if (semver.compareBuild(currentConfigVersion, "1.0.0-beta.35+BUILD.2") < 0) {
+                {
+                    const currentMinecraftDataFolders: string[] = this.minecraftDataFolders;
+                    const originalLength: number = currentMinecraftDataFolders.length;
+                    for (const path of [
+                        "%appdata%/Minecraft Education Edition/Users/*/games/com.mojang",
+                        "%appdata%/Minecraft Education Edition/games/com.mojang",
+                        "Home/Library/Application Support/minecraftpe/games/com.mojang",
+                    ]) {
+                        if (!currentMinecraftDataFolders.includes(path)) currentMinecraftDataFolders.push(path);
+                    }
+                    if (currentMinecraftDataFolders.length !== originalLength) this.minecraftDataFolders = currentMinecraftDataFolders;
+                }
+                {
+                    const currentExtraMinecraftDataFolders: string[] = this.extraMinecraftDataFolders;
+                    const originalLength: number = currentExtraMinecraftDataFolders.length;
+                    for (const path of [
+                        "/Volumes/*/Users/*/AppData/Local/Packages/Microsoft.MinecraftEducationEdition_8wekyb3d8bbwe/LocalState/games/com.mojang",
+                        "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Local/Packages/Microsoft.MinecraftEducationEdition_8wekyb3d8bbwe/LocalState/games/com.mojang",
+                        "/Volumes/*/Users/*/AppData/Local/Packages/Microsoft.MinecraftEducationPreview_8wekyb3d8bbwe/LocalState/games/com.mojang",
+                        "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Local/Packages/Microsoft.MinecraftEducationPreview_8wekyb3d8bbwe/LocalState/games/com.mojang",
+                        "/Volumes/*/Users/*/AppData/Roaming/Minecraft Education Edition/Users/*/games/com.mojang",
+                        "/Volumes/*/Users/*/AppData/Roaming/Minecraft Education Edition/games/com.mojang",
+                        "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/Minecraft Education Edition/Users/*/games/com.mojang",
+                        "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/Minecraft Education Edition/games/com.mojang",
+                    ]) {
+                        if (!currentExtraMinecraftDataFolders.includes(path)) currentExtraMinecraftDataFolders.push(path);
+                    }
+                    if (currentExtraMinecraftDataFolders.length !== originalLength) this.extraMinecraftDataFolders = currentExtraMinecraftDataFolders;
+                }
+            }
             // TODO: Uncomment this at add the correct version number when grouped search mode for the raw players tab mode is implemented.
             // if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.?", { includePrerelease: true })) {
             //     this.views.players.modeSettings.raw.searchMode = "grouped";
@@ -674,13 +757,45 @@ namespace exports {
          * @default
          * ```typescript
          * [
+         *     // ======== UWP (Windows) ========
+         *     // Minecraft for Windows
          *     "%localappdata%/Packages/Microsoft.MinecraftUWP_8wekyb3d8bbwe/LocalState/games/com.mojang",
+         *     // Minecraft Preview
          *     "%localappdata%/Packages/Microsoft.MinecraftWindowsBeta_8wekyb3d8bbwe/LocalState/games/com.mojang",
+         *     // Minecraft Education
+         *     "%localappdata%/Packages/Microsoft.MinecraftEducationEdition_8wekyb3d8bbwe/LocalState/games/com.mojang",
+         *     // Minecraft Education Preview
+         *     "%localappdata%/Packages/Microsoft.MinecraftEducationPreview_8wekyb3d8bbwe/LocalState/games/com.mojang",
+         *
+         *     // ======== GDK (Windows) ========
+         *     // Minecraft for Windows
+         *     "%appdata%/Minecraft Bedrock/Users/*\/games/com.mojang",
+         *     "%appdata%/Minecraft Bedrock/games/com.mojang",
+         *     // Minecraft Preview
+         *     "%appdata%/Minecraft Bedrock Preview/Users/*\/games/com.mojang",
+         *     "%appdata%/Minecraft Bedrock Preview/games/com.mojang",
+         *     // Minecraft Education
+         *     "%appdata%/Minecraft Education Edition/Users/*\/games/com.mojang",
+         *     "%appdata%/Minecraft Education Edition/games/com.mojang",
+         *     // There is no GDK version of Minecraft Education Preview yet.
+         *
+         *     // ======== Other Platforms ========
+         *     // Minecraft Education and Minecraft Education Beta (macOS)
+         *     "Home/Library/Application Support/minecraftpe/games/com.mojang",
+         *
+         *     // ======== Custom Launchers ========
+         *     // MCPELauncher (Linux/macOS)
          *     "Home/.var/app/io.mrarm.mcpelauncher/data/mcpelauncher/games/com.mojang",
          *     "Home/.local/share/mcpelauncher/games/com.mojang",
          *     "Home/Library/Application Support/mcpelauncher/games/com.mojang",
-         *     "%appdata%/Minecraft Bedrock Preview/Users/*\/games/com.mojang",
-         *     "%appdata%/Minecraft Bedrock Preview/games/com.mojang",
+         *     // LeviLauncher (Windows)
+         *     "%appdata%/levilauncher.exe/versions/*\/Minecraft Bedrock/Users/*\/games/com.mojang",
+         *     "%appdata%/levilauncher.exe/versions/*\/Minecraft Bedrock Preview/Users/*\/games/com.mojang",
+         *     "%appdata%/levilauncher.exe/versions/*\/Minecraft Bedrock/games/com.mojang",
+         *     "%appdata%/levilauncher.exe/versions/*\/Minecraft Bedrock Preview/games/com.mojang",
+         *     // PlayCover (macOS)
+         *     "Home/Library/Containers/com.mojang.minecraftpe/Data/Documents/games/com.mojang",
+         *     "Home/Library/Containers/com.mojang.minecraftpreview/Data/Documents/games/com.mojang",
          * ]
          * ```
          */
@@ -718,8 +833,62 @@ namespace exports {
          * @default
          * ```typescript
          * [
+         *     // ======== Custom Launchers ========
+         *     // Bedrock Launcher (UWP) (Windows)
          *     "%appdata%/.minecraft_bedrock/installations/*\/packageData",
          *     "%appdata%/.minecraft_bedrock/installations/*\/*\/packageData",
+         *
+         *     // ================ Mounted Volumes ================
+         *
+         *     // ======== UWP (Windows Volumes) ========
+         *     // Minecraft for Windows
+         *     "/Volumes/*\/Users/*\/AppData/Local/Packages/Microsoft.MinecraftUWP_8wekyb3d8bbwe/LocalState/games/com.mojang",
+         *     "%APP_DATA_FOLDER_PATH%/mounted_volumes/*\/Users/*\/AppData/Local/Packages/Microsoft.MinecraftUWP_8wekyb3d8bbwe/LocalState/games/com.mojang",
+         *     // Minecraft Preview
+         *     "/Volumes/*\/Users/*\/AppData/Local/Packages/Microsoft.MinecraftWindowsBeta_8wekyb3d8bbwe/LocalState/games/com.mojang",
+         *     "%APP_DATA_FOLDER_PATH%/mounted_volumes/*\/Users/*\/AppData/Local/Packages/Microsoft.MinecraftWindowsBeta_8wekyb3d8bbwe/LocalState/games/com.mojang",
+         *     // Minecraft Education
+         *     "/Volumes/*\/Users/*\/AppData/Local/Packages/Microsoft.MinecraftEducationEdition_8wekyb3d8bbwe/LocalState/games/com.mojang",
+         *     "%APP_DATA_FOLDER_PATH%/mounted_volumes/*\/Users/*\/AppData/Local/Packages/Microsoft.MinecraftEducationEdition_8wekyb3d8bbwe/LocalState/games/com.mojang",
+         *     // Minecraft Education Preview
+         *     "/Volumes/*\/Users/*\/AppData/Local/Packages/Microsoft.MinecraftEducationPreview_8wekyb3d8bbwe/LocalState/games/com.mojang",
+         *     "%APP_DATA_FOLDER_PATH%/mounted_volumes/*\/Users/*\/AppData/Local/Packages/Microsoft.MinecraftEducationPreview_8wekyb3d8bbwe/LocalState/games/com.mojang",
+         *
+         *     // ======== GDK (Windows) ========
+         *     // Minecraft for Windows
+         *     "/Volumes/*\/Users/*\/AppData/Roaming/Minecraft Bedrock/Users/*\/games/com.mojang",
+         *     "/Volumes/*\/Users/*\/AppData/Roaming/Minecraft Bedrock/games/com.mojang",
+         *     "%APP_DATA_FOLDER_PATH%/mounted_volumes/*\/Users/*\/AppData/Roaming/Minecraft Bedrock/Users/*\/games/com.mojang",
+         *     "%APP_DATA_FOLDER_PATH%/mounted_volumes/*\/Users/*\/AppData/Roaming/Minecraft Bedrock/games/com.mojang",
+         *     // Minecraft Preview
+         *     "/Volumes/*\/Users/*\/AppData/Roaming/Minecraft Bedrock Preview/Users/*\/games/com.mojang",
+         *     "/Volumes/*\/Users/*\/AppData/Roaming/Minecraft Bedrock Preview/games/com.mojang",
+         *     "%APP_DATA_FOLDER_PATH%/mounted_volumes/*\/Users/*\/AppData/Roaming/Minecraft Bedrock Preview/Users/*\/games/com.mojang",
+         *     "%APP_DATA_FOLDER_PATH%/mounted_volumes/*\/Users/*\/AppData/Roaming/Minecraft Bedrock Preview/games/com.mojang",
+         *     // Minecraft Education
+         *     "/Volumes/*\/Users/*\/AppData/Roaming/Minecraft Education Edition/Users/*\/games/com.mojang",
+         *     "/Volumes/*\/Users/*\/AppData/Roaming/Minecraft Education Edition/games/com.mojang",
+         *     "%APP_DATA_FOLDER_PATH%/mounted_volumes/*\/Users/*\/AppData/Roaming/Minecraft Education Edition/Users/*\/games/com.mojang",
+         *     "%APP_DATA_FOLDER_PATH%/mounted_volumes/*\/Users/*\/AppData/Roaming/Minecraft Education Edition/games/com.mojang",
+         *     // There is no GDK version of Minecraft Education Preview yet.
+         *
+         *     // ======== Other Platforms ========
+         *     // All Minecraft Editions (iOS (mounted))
+         *     "/Volumes/*\/games/com.mojang",
+         *     "/Volumes/*\/Documents/games/com.mojang",
+         *     "%APP_DATA_FOLDER_PATH%/mounted_volumes/*\/games/com.mojang",
+         *     "%APP_DATA_FOLDER_PATH%/mounted_volumes/*\/Documents/games/com.mojang",
+         *
+         *     // ======== Custom Launchers ========
+         *     // LeviLauncher (Windows)
+         *     "/Volumes/*\/Users/*\/AppData/Roaming/levilauncher.exe/versions/*\/Minecraft Bedrock/Users/*\/games/com.mojang",
+         *     "/Volumes/*\/Users/*\/AppData/Roaming/levilauncher.exe/versions/*\/Minecraft Bedrock Preview/Users/*\/games/com.mojang",
+         *     "/Volumes/*\/Users/*\/AppData/Roaming/levilauncher.exe/versions/*\/Minecraft Bedrock/games/com.mojang",
+         *     "/Volumes/*\/Users/*\/AppData/Roaming/levilauncher.exe/versions/*\/Minecraft Bedrock Preview/games/com.mojang",
+         *     "%APP_DATA_FOLDER_PATH%/mounted_volumes/*\/Users/*\/AppData/Roaming/levilauncher.exe/versions/*\/Minecraft Bedrock/Users/*\/games/com.mojang",
+         *     "%APP_DATA_FOLDER_PATH%/mounted_volumes/*\/Users/*\/AppData/Roaming/levilauncher.exe/versions/*\/Minecraft Bedrock Preview/Users/*\/games/com.mojang",
+         *     "%APP_DATA_FOLDER_PATH%/mounted_volumes/*\/Users/*\/AppData/Roaming/levilauncher.exe/versions/*\/Minecraft Bedrock/games/com.mojang",
+         *     "%APP_DATA_FOLDER_PATH%/mounted_volumes/*\/Users/*\/AppData/Roaming/levilauncher.exe/versions/*\/Minecraft Bedrock Preview/games/com.mojang",
          * ]
          * ```
          */

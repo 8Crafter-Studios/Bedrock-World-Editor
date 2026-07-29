@@ -1,3 +1,12 @@
+# v1.0.0-beta.35
+
+## Additions
+
+-   Windows builds are now code signed.
+-   Added the paths to the world folder locations for the Minecraft Education Edition desktop version to the config.
+-   Added the paths to the world folder locations for Minecraft Education Edition on macOS to the config.
+-   Added paths to the extra world folder locations for Minecraft Education Edition, Minecraft Education Edition Preview, and the desktop version of Minecraft Education Edition, that are inside of mounted Windows volumes, to the config.
+
 # v1.0.0-beta.34
 
 ## Critical Fixes
