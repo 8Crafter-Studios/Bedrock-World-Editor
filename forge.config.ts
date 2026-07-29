@@ -55,7 +55,6 @@ const config: ForgeConfig = {
         new MakerSquirrel((arch: string) => ({
             setupIcon: "resources/icon.ico",
             setupExe: `Bedrock.World.Editor-win32-${arch}-${(require("./package.json") as typeof import("./package.json")).version} Setup.exe`,
-            // setupMsi: `bedrock-world-editor_${arch}_${(require("./package.json") as typeof import("./package.json")).version} Setup.msi`,
             iconUrl: "https://raw.githubusercontent.com/8Crafter-Studios/Bedrock-World-Editor/refs/heads/main/resources/icon.ico",
             // loadingGif // TODO: Make a custom loading GIF for the installer.
         })),
