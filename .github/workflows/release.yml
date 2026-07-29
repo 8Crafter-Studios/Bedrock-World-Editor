@@ -132,16 +132,15 @@ jobs:
                 output-artifact-directory: signed/
                 wait-for-completion-timeout-in-seconds: 3600
 
+            - name: Debug signed dir (Windows)
+              if: always() && matrix.os == 'windows-latest'
+              run: dir -r signed
+
             - name: Extract signed ZIP and replace unsigned artifacts
               if: matrix.os == 'windows-latest'
               shell: pwsh
               run: |
-                $signedZip = "signed/windows-${{matrix.arch}}-artifacts.zip"
-
-                $extractDir = "signed-extracted"
-                New-Item -ItemType Directory -Force $extractDir | Out-Null
-
-                Expand-Archive -Path $signedZip -DestinationPath $extractDir -Force
+                $extractDir = "signed"
 
                 $signedExe = Get-ChildItem $extractDir -Filter "*Setup*.exe" | Select-Object -First 1
 
