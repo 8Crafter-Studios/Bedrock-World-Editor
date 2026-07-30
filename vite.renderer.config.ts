@@ -30,10 +30,37 @@ export default defineConfig((env: ConfigEnv) => ({
         minifyWhitespace: false,
         treeShaking: false,
     },
+    // optimizeDeps: { exclude: ["monaco-editor/esm/vs/editor/contrib/clipboard/browser/clipboard.js"] },
+    optimizeDeps: {
+        esbuildOptions: {
+            plugins: [
+                {
+                    name: "override-monaco-clipboard",
+                    setup(build) {
+                        build.onResolve({ filter: /^\.\/contrib\/clipboard\/browser\/clipboard\.js$/ }, (args) => {
+                            return {
+                                path: path.resolve(__dirname, "module_file_overrides/monaco-editor.clipboard.override.js"),
+                            };
+                        });
+                    },
+                },
+            ],
+        },
+    },
     plugins: [
         commonjsExternals({
             externals,
         }),
+        // {
+        //     name: "override-module",
+        //     transform(code, id, options) {
+        //         console.log(id);
+        //         if (id.includes("node_modules/monaco-editor/esm/vs/editor/contrib/clipboard/browser/clipboard.js")) {
+        //             console.log("found file", id);
+        //             return { code: readFileSync(path.resolve(__dirname, "module_file_overrides/monaco-editor.clipboard.override.js"), "utf-8") };
+        //         }
+        //     },
+        // },
     ],
     resolve: {
         alias: {
@@ -46,4 +73,3 @@ export default defineConfig((env: ConfigEnv) => ({
         },
     },
 }));
-

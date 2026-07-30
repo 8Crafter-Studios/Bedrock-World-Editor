@@ -28,6 +28,22 @@ export default defineConfig((env: ConfigEnv) => ({
         minifyWhitespace: false,
         treeShaking: false,
     },
+    optimizeDeps: {
+        esbuildOptions: {
+            plugins: [
+                {
+                    name: "override-monaco-clipboard",
+                    setup(build) {
+                        build.onResolve({ filter: /^\.\/contrib\/clipboard\/browser\/clipboard\.js$/ }, (args) => {
+                            return {
+                                path: path.resolve(__dirname, "module_file_overrides/monaco-editor.clipboard.override.js"),
+                            };
+                        });
+                    },
+                },
+            ],
+        },
+    },
     plugins: [
         commonjsExternals({
             externals,
@@ -44,4 +60,3 @@ export default defineConfig((env: ConfigEnv) => ({
         },
     },
 }));
-

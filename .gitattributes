@@ -11,7 +11,7 @@
 **/package-lock.json -linguist-detectable
 **/.package-lock.json -linguist-detectable
 **/manifest.json -linguist-detectable
-**/.*rc.json  -linguist-detectable
+**/.*rc.json -linguist-detectable
 **/eslint.config.cjs -linguist-detectable
 test/**    -linguist-detectable
 deprecated/** -linguist-detectable
@@ -20,3 +20,4 @@ development_scripts/** -linguist-detectable
 .github/** -linguist-detectable
 
 src/libs/** linguist-vendored
+module_file_overrides/** linguist-vendored

@@ -1,5 +1,9 @@
 # v1.0.0-beta.35
 
+## Critical Fixes
+
+-   Fixed an issue where pasting in editors that used Monaco Editor did not work ([#1](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/1)).
+
 ## Additions
 
 -   Windows builds are now code signed.
