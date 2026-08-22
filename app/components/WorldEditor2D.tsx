@@ -4023,7 +4023,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                         netherScale === undefined ?
                                             "\nNether Coordinates: Loading...\nNether Chunk: Loading..."
                                         :   `\nNether Coordinates: ${formatter.format(Math.floor((coords.raw.x * 16) / netherScale))}, ${formatter.format(
-                                                Math.floor((coords.raw.x * 16) / netherScale)
+                                                Math.floor((coords.raw.y * 16) / netherScale)
                                             )}\nNether Chunk: ${formatter.format(Math.floor(coords.raw.x / netherScale))}, ${formatter.format(
                                                 Math.floor(coords.raw.y / netherScale)
                                             )}`
