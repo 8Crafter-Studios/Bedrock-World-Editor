@@ -3819,6 +3819,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             top: 0,
                             left: 0,
                             /* width: "100%", height: "100%", */ overflow: "auto",
+                            color: "white",
                             backgroundColor: "rgba(0, 0, 0, 0.5)",
                             whiteSpace: "pre-wrap",
                         }}
