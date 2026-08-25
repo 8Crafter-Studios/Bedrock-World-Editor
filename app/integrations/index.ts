@@ -1,5 +1,11 @@
 import type { JSX } from "preact";
 import WorldEdit_Bedrock from "./WorldEdit_Bedrock";
+// meow :3 (thingy to ctrl + ssift + f to find back later that i should remove later but will probably forget to remove because im dumb)
+import LilyMoney from "./LilyMoney";
+
+
+
+
 
 /**
  * An integration.
@@ -155,6 +161,7 @@ export interface IntegrationMenuProps {
  */
 export const integrations = {
     WorldEdit_Bedrock,
+    LilyMoney, // meow :3 (also a thingy to remove before sending this on github to not look stoopid even tho ill probably forget)
 } as const satisfies Record<string, Integration>;
 
 /**
