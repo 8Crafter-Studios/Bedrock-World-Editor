@@ -4,7 +4,19 @@ export const LILYMONEY_PACK_UUID = "9cde84d4-c9d8-499f-8ad4-2cd241cf9c64";
 export const LILYMONEY_STORAGE_IDENTIFIER = "lilymoney:money_storage";
 export const LILYMONEY_STRUCTURE_PREFIX = "structuretemplate_lilymoney:moneylog_";
 
-type UnknownRecord = Record<string, unknown>;
+import {
+    emptyLilyMoneyNameDatabase,
+    readLilyMoneyNameDatabase,
+
+    type LilyMoneyNameDatabase,
+} from "./LilyMoneyNames";
+
+export type LilyMoneyDynamicPropertyNamespace =
+    Record<string, unknown>;
+
+type UnknownRecord =
+    LilyMoneyDynamicPropertyNamespace;
+
 
 
 import {
@@ -62,6 +74,8 @@ export interface LilyMoneyStorageSummary {
 
     checksumActual: string | null;
     checksumValid: boolean | null;
+
+    pendingJobBatchStateRaw: string | null;
 }
 
 export interface LilyMoneyDiscoveryResult {
@@ -87,6 +101,9 @@ export interface LilyMoneyDiscoveryResult {
     activeStorages: LilyMoneyStorageSummary[];
 
     errors: string[];
+
+    nameDatabase:
+        LilyMoneyNameDatabase;
 }
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -407,6 +424,15 @@ function summarizeStorage(
 
         checksumValid:
             decoded.checksumValid,
+
+        pendingJobBatchStateRaw:
+            typeof namespace[
+                "lilymoney:job_batch_state_v1"
+            ] === "string"
+                ? namespace[
+                    "lilymoney:job_batch_state_v1"
+                ] as string
+                : null,
     };
 }
 
@@ -551,6 +577,11 @@ export async function scanLilyMoneyData(
             ? summarizeProperties(worldNamespace)
             : [];
 
+    const nameDatabase: LilyMoneyNameDatabase =
+        worldNamespace !== null
+            ? readLilyMoneyNameDatabase(worldNamespace)
+            : emptyLilyMoneyNameDatabase();
+
     const worldId: string | null =
         worldNamespace !== null
             ? toStringValue(worldNamespace["lilymoney:world_id"])
@@ -584,11 +615,7 @@ export async function scanLilyMoneyData(
             : null;
 
     const nameDatabaseChunkCount: number =
-        worldNamespace !== null
-            ? Object.keys(worldNamespace).filter((key: string): boolean => {
-                  return /^lilynames:nameDataBase(?:\d+)?$/.test(key);
-              }).length
-            : 0;
+        nameDatabase.chunkCountRead;
 
     let pendingJobBatchStateFound: boolean = false;
 
@@ -745,17 +772,12 @@ export async function scanLilyMoneyData(
                 }`
             );
         }
-    } // <-- THIS closes the whole ActorPrefix for-loop
+    }
 
-
-    // ADD THE NEW CODE HERE:
     pendingJobBatchStateFound =
         activeStorages.some(
             (storage: LilyMoneyStorageSummary): boolean =>
-                storage.properties.some(
-                    (property: LilyMoneyPropertySummary): boolean =>
-                        property.key === "lilymoney:job_batch_state_v1"
-                )
+                storage.pendingJobBatchStateRaw !== null
         );
 
 
@@ -784,5 +806,7 @@ export async function scanLilyMoneyData(
         activeStorages,
 
         errors,
+
+        nameDatabase,
     };
 }

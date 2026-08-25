@@ -5,22 +5,27 @@ import _React, { useEffect, useState } from "preact/compat";
 import {
     assembleLilyMoneyDatabase,
     type LilyMoneyDatabase,
-} from "./LilyMoneyDatabase";
+} from "./LilyMoney/LilyMoneyDatabase";
 
+
+import {
+    analyzeLilyMoneyDatabase,
+    formatLilyMoneyCents,
+    type LilyMoneyAnalysis,
+} from "./LilyMoney/LilyMoneyAnalysis";
 
 import type { Integration, IntegrationMenuProps } from ".";
 import {
-    LILYMONEY_STRUCTURE_PREFIX,
     scanLilyMoneyData,
     detectLilyMoneyData,
     type LilyMoneyDiscoveryResult,
     type LilyMoneyPropertySummary,
     type LilyMoneyStorageSummary,
-} from "./LilyMoneyData";
+} from "./LilyMoney/LilyMoneyData";
 
 import type {
     LilyMoneyRecord,
-} from "./LilyMoneyRecords";
+} from "./LilyMoney/LilyMoneyRecords";
 
 function PropertyTable(props: {
     properties: LilyMoneyPropertySummary[];
@@ -412,6 +417,13 @@ function DiscoveryResults(props: {
     const database: LilyMoneyDatabase =
         assembleLilyMoneyDatabase(result);
 
+    const analysis: LilyMoneyAnalysis =
+        analyzeLilyMoneyDatabase(
+            database,
+            result,
+            result.nameDatabase
+        );
+
     const expectedActiveStorages: number = result.activeStorages.filter(
         (storage: LilyMoneyStorageSummary): boolean =>
             storage.isExpectedActiveShard
@@ -496,6 +508,214 @@ function DiscoveryResults(props: {
                                 <li key={warning}>
                                     <code>{warning}</code>
                                 </li>
+                            )
+                        )}
+                    </ul>
+                </>
+            )}
+
+            <hr />
+
+            <h3>LilyMoney Analysis Test</h3>
+
+            <p>
+                <strong>Name Database players:</strong>{" "}
+                {result.nameDatabase.entries.length}
+                <br />
+
+                <strong>Name Database chunks:</strong>{" "}
+                {result.nameDatabase.chunkCountRead}
+                <br />
+
+                <strong>Parsed events:</strong>{" "}
+                {analysis.events.length}
+                <br />
+
+                <strong>Valid events:</strong>{" "}
+                {analysis.validEventCount}
+                <br />
+
+                <strong>Invalid events:</strong>{" "}
+                {analysis.invalidEventCount}
+                <br />
+
+                <strong>Players discovered:</strong>{" "}
+                {analysis.players.length}
+                <br />
+
+                <strong>Balance anomalies:</strong>{" "}
+                {analysis.anomalies.length}
+                <br />
+
+                <strong>Sessions:</strong>{" "}
+                {analysis.sessions.length}
+                <br />
+
+                <strong>Pending JOB state:</strong>{" "}
+                {analysis.pendingJobs.present
+                    ? analysis.pendingJobs.valid
+                        ? "VALID"
+                        : "INVALID"
+                    : "not present"}
+            </p>
+
+            <h4>Event Types</h4>
+
+            <ul>
+                {Object.entries(analysis.eventTypeCounts)
+                    .sort(
+                        (a, b): number =>
+                            a[0].localeCompare(b[0])
+                    )
+                    .map(
+                        ([type, count]): JSX.Element => (
+                            <li key={type}>
+                                <code>{type}</code>: {count}
+                            </li>
+                        )
+                    )}
+            </ul>
+
+            <h4>Player Analysis</h4>
+
+            <div style={{ overflow: "auto" }}>
+                <table
+                    style={{
+                        width: "100%",
+                        borderCollapse: "collapse",
+                    }}
+                >
+                    <thead>
+                        <tr>
+                            <th style={{ textAlign: "left" }}>Identity</th>
+                            <th style={{ textAlign: "left" }}>Player</th>
+                            <th style={{ textAlign: "left" }}>Committed</th>
+                            <th style={{ textAlign: "left" }}>Income</th>
+                            <th style={{ textAlign: "left" }}>Spending</th>
+                            <th style={{ textAlign: "left" }}>Job Income</th>
+                            <th style={{ textAlign: "left" }}>Unexplained +</th>
+                            <th style={{ textAlign: "left" }}>Unexplained -</th>
+                            <th style={{ textAlign: "left" }}>Pending Jobs</th>
+                            <th style={{ textAlign: "left" }}>Provisional</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {analysis.players.map(
+                            (player): JSX.Element => (
+                                <tr
+                                    key={
+                                        player.identityId ||
+                                        player.displayName
+                                    }
+                                >
+                                    <td><code>{player.identityId}</code></td>
+                                    <td>{player.displayName}</td>
+                                    <td>{formatLilyMoneyCents(player.latestCommittedBalanceCents)}</td>
+                                    <td>{formatLilyMoneyCents(player.totalIncomeCents)}</td>
+                                    <td>{formatLilyMoneyCents(player.totalSpendingCents)}</td>
+                                    <td>{formatLilyMoneyCents(player.jobIncomeCents)}</td>
+                                    <td>{formatLilyMoneyCents(player.unexplainedEarnedCents)}</td>
+                                    <td>{formatLilyMoneyCents(player.unexplainedLostCents)}</td>
+                                    <td>{formatLilyMoneyCents(player.pendingJobRewardCents)}</td>
+                                    <td>{formatLilyMoneyCents(player.provisionalBalanceCents)}</td>
+                                </tr>
+                            )
+                        )}
+                    </tbody>
+                </table>
+            </div>
+
+            <h4>Pending JOB Rewards</h4>
+
+            {analysis.pendingJobs.players.length === 0 ? (
+                <p>No pending JOB rewards.</p>
+            ) : (
+                analysis.pendingJobs.players.map(
+                    (player): JSX.Element => (
+                        <details key={player.identityId} style={{ marginBottom: "8px" }}>
+                            <summary>
+                                <strong>{player.displayName}</strong>
+                                {" — "}
+                                {formatLilyMoneyCents(player.provisionalAmountCents)}
+                                {" pending"}
+                            </summary>
+
+                            <p>
+                                <strong>Base balance:</strong>{" "}
+                                {formatLilyMoneyCents(player.baseBalanceCents)}
+                                <br />
+                                <strong>Stored final:</strong>{" "}
+                                {formatLilyMoneyCents(player.finalBalanceCents)}
+                                <br />
+                                <strong>Reward groups:</strong>{" "}
+                                {player.rewards.length}
+                            </p>
+
+                            <ul>
+                                {player.rewards.map(
+                                    (reward): JSX.Element => (
+                                        <li key={reward.batchId}>
+                                            <code>{reward.jobId}</code>{" / "}
+                                            <code>{reward.action}</code>{" / "}
+                                            <code>{reward.sourceId}</code>{" — x"}
+                                            {reward.quantity}{" — "}
+                                            {formatLilyMoneyCents(reward.amountCents)}
+                                            {reward.alreadyCanonical
+                                                ? " — ALREADY CANONICAL"
+                                                : " — provisional"}
+                                        </li>
+                                    )
+                                )}
+                            </ul>
+                        </details>
+                    )
+                )
+            )}
+
+            <h4>Balance Reconciliation</h4>
+
+            {analysis.anomalies.length === 0 ? (
+                <p>No unexplained balance movements detected.</p>
+            ) : (
+                <ul>
+                    {analysis.anomalies.map(
+                        (anomaly): JSX.Element => (
+                            <li key={`${anomaly.recordId}-${anomaly.identityId}`}>
+                                Record #{anomaly.recordId}{" — "}
+                                {anomaly.playerName}{" — "}
+                                {anomaly.eventType}{" — expected "}
+                                {formatLilyMoneyCents(anomaly.expectedBalanceCents)}
+                                {" but got "}
+                                {formatLilyMoneyCents(anomaly.actualBalanceCents)}
+                                {" — difference "}
+                                {formatLilyMoneyCents(anomaly.differenceCents)}
+                            </li>
+                        )
+                    )}
+                </ul>
+            )}
+
+            {analysis.errors.length > 0 && (
+                <>
+                    <h4>Analysis Errors</h4>
+                    <ul>
+                        {analysis.errors.map(
+                            (error: string, index: number): JSX.Element => (
+                                <li key={`${index}-${error}`}><code>{error}</code></li>
+                            )
+                        )}
+                    </ul>
+                </>
+            )}
+
+            {analysis.warnings.length > 0 && (
+                <>
+                    <h4>Analysis Warnings</h4>
+                    <ul>
+                        {analysis.warnings.map(
+                            (warning: string, index: number): JSX.Element => (
+                                <li key={`${index}-${warning}`}><code>{warning}</code></li>
                             )
                         )}
                     </ul>
