@@ -572,7 +572,7 @@ export function parseLilyMoneyEvent(
                 );
 
             const sellerAfter =
-                requireInt(
+                nullableInt(
                     9,
                     "Seller balance after"
                 );

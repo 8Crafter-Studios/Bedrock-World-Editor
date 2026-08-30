@@ -21,6 +21,8 @@ import type {
     ParsedLilyMoneyEvent,
 } from "./LilyMoneyEvents";
 import type { LilyMoneyRecord } from "./LilyMoneyRecords";
+import LilyMoneyAddonInfo from "./LilyMoneyAddonInfo";
+import "./LilyMoneyWorkspace.css";
 
 export type LilyMoneyWorkspacePage =
     | "overview"
@@ -28,7 +30,8 @@ export type LilyMoneyWorkspacePage =
     | "jobs"
     | "graphs"
     | "raw"
-    | "database";
+    | "database"
+    | "addonInfo";
 
 interface LilyMoneyWorkspaceProps {
     result: LilyMoneyDiscoveryResult;
@@ -38,7 +41,6 @@ interface LilyMoneyWorkspaceProps {
 }
 
 interface WorkspaceTheme {
-    dark: boolean;
     bg: string;
     panel: string;
     panelAlt: string;
@@ -192,83 +194,34 @@ type TransactionCategory =
 
 type MoneyDirection = "gain" | "loss" | "neutral";
 
-const DARK_THEME: WorkspaceTheme = {
-    dark: true,
-    bg: "#101318",
-    panel: "#171b22",
-    panelAlt: "#1c222b",
-    panelStrong: "#222a35",
-    border: "#2b3441",
-    borderStrong: "#3b4757",
-    text: "#f2f5f9",
-    muted: "#9ca9ba",
-    accent: "#b987ff",
-    accentSoft: "#2d2140",
-    positive: "#62d994",
-    negative: "#ff7b86",
-    warning: "#f0c75e",
-    danger: "#ff6674",
-    blue: "#67b4ff",
-    teal: "#5bd6cf",
-    shadow: "rgba(0, 0, 0, 0.28)",
-};
-
-const LIGHT_THEME: WorkspaceTheme = {
-    dark: false,
-    bg: "#f4f6f9",
-    panel: "#ffffff",
-    panelAlt: "#f8f9fb",
-    panelStrong: "#eef1f5",
-    border: "#d9dee7",
-    borderStrong: "#c5ccd8",
-    text: "#1b2430",
-    muted: "#637083",
-    accent: "#7a45c7",
-    accentSoft: "#eee5fb",
-    positive: "#168852",
-    negative: "#c63f4b",
-    warning: "#a77700",
-    danger: "#c93645",
-    blue: "#196db8",
-    teal: "#147e79",
-    shadow: "rgba(37, 48, 64, 0.12)",
+const BWE_THEME: WorkspaceTheme = {
+    bg: "var(--bg-color)",
+    panel: "var(--alternating-bg-color-1)",
+    panelAlt: "var(--alternating-bg-color-2)",
+    panelStrong: "var(--generic-button-bg-color)",
+    border: "var(--table-outline-color)",
+    borderStrong: "var(--table-header-bg-color)",
+    text: "var(--text-color)",
+    muted: "color-mix(in srgb, var(--text-color) 62%, transparent)",
+    accent: "#00a86b",
+    accentSoft: "color-mix(in srgb, #00a86b 22%, transparent)",
+    positive: "#35c759",
+    negative: "#e74c3c",
+    warning: "#f0b429",
+    danger: "#d9363e",
+    blue: "#4aa3df",
+    teal: "#27b5a9",
+    shadow: "rgba(0, 0, 0, 0.35)",
 };
 
 const PAGE_SIZE = 100;
 
-function useWorkspaceTheme(): WorkspaceTheme {
-    const query = "(prefers-color-scheme: dark)";
-    const [dark, setDark] = useState<boolean>(
-        typeof window !== "undefined" && typeof window.matchMedia === "function"
-            ? window.matchMedia(query).matches
-            : true
-    );
-
-    useEffect((): (() => void) | void => {
-        if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
-            return;
-        }
-
-        const media = window.matchMedia(query);
-        const listener = (event: MediaQueryListEvent): void => setDark(event.matches);
-
-        media.addEventListener?.("change", listener);
-
-        return (): void => {
-            media.removeEventListener?.("change", listener);
-        };
-    }, []);
-
-    return dark ? DARK_THEME : LIGHT_THEME;
-}
-
 function panelStyle(theme: WorkspaceTheme): Record<string, string> {
     return {
-        border: `1px solid ${theme.border}`,
-        borderRadius: "12px",
+        border: `2px solid ${theme.border}`,
         background: theme.panel,
         boxSizing: "border-box",
-        boxShadow: `0 8px 24px ${theme.shadow}`,
+        boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${theme.text} 10%, transparent), 3px 3px 0 ${theme.shadow}`,
     };
 }
 
@@ -281,8 +234,7 @@ function smallMutedStyle(theme: WorkspaceTheme): Record<string, string> {
 
 function controlStyle(theme: WorkspaceTheme): Record<string, string> {
     return {
-        border: `1px solid ${theme.borderStrong}`,
-        borderRadius: "8px",
+        border: `2px solid ${theme.borderStrong}`,
         background: theme.panelAlt,
         color: theme.text,
         padding: "7px 10px",
@@ -293,8 +245,7 @@ function controlStyle(theme: WorkspaceTheme): Record<string, string> {
 
 function buttonStyle(theme: WorkspaceTheme, selected: boolean = false): Record<string, string> {
     return {
-        border: `1px solid ${selected ? theme.accent : theme.borderStrong}`,
-        borderRadius: "9px",
+        border: `2px solid ${selected ? theme.accent : theme.borderStrong}`,
         background: selected ? theme.accentSoft : theme.panelAlt,
         color: theme.text,
         padding: "8px 11px",
@@ -485,6 +436,56 @@ function formatShortWhen(timestamp: number): string {
         hour: "2-digit",
         minute: "2-digit",
     });
+}
+
+function formatAxisWhen(timestamp: number, span: number): string {
+    if (span <= 36 * 60 * 60 * 1000) {
+        return new Date(timestamp).toLocaleTimeString(undefined, {
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    }
+
+    if (span <= 120 * 24 * 60 * 60 * 1000) {
+        return new Date(timestamp).toLocaleDateString(undefined, {
+            month: "short",
+            day: "2-digit",
+        });
+    }
+
+    return new Date(timestamp).toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+    });
+}
+
+function niceMoneyAxis(minimum: number, maximum: number, targetTicks: number = 6): {
+    minimum: number;
+    maximum: number;
+    ticks: number[];
+} {
+    if (!Number.isFinite(minimum) || !Number.isFinite(maximum)) {
+        return { minimum: 0, maximum: 100, ticks: [0, 20, 40, 60, 80, 100] };
+    }
+
+    if (minimum === maximum) {
+        minimum -= 100;
+        maximum += 100;
+    }
+
+    const rawStep = Math.max(1, (maximum - minimum) / Math.max(1, targetTicks - 1));
+    const magnitude = 10 ** Math.floor(Math.log10(rawStep));
+    const normalized = rawStep / magnitude;
+    const niceNormalized = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+    const step = niceNormalized * magnitude;
+    const axisMinimum = Math.floor(minimum / step) * step;
+    const axisMaximum = Math.ceil(maximum / step) * step;
+    const tickCount = Math.round((axisMaximum - axisMinimum) / step);
+    const ticks = Array.from({ length: tickCount + 1 }, (_: unknown, index: number): number =>
+        axisMinimum + step * index
+    );
+
+    return { minimum: axisMinimum, maximum: axisMaximum, ticks };
 }
 
 function formatSignedCents(cents: number): string {
@@ -825,21 +826,16 @@ function TimeSeriesChart(props: {
     }
 
     const width = 1000;
-    const height = 300;
-    const left = 28;
-    const right = 22;
+    const height = 330;
+    const left = 104;
+    const right = 26;
     const top = 26;
-    const bottom = 34;
+    const bottom = 58;
 
     const values: number[] = sampled.map((point: BalancePoint): number => point.balanceCents);
-    let minimum: number = Math.min(...values);
-    let maximum: number = Math.max(...values);
-
-    if (minimum === maximum) {
-        minimum -= 100;
-        maximum += 100;
-    }
-
+    const axis = niceMoneyAxis(Math.min(...values), Math.max(...values));
+    const minimum = axis.minimum;
+    const maximum = axis.maximum;
     const range: number = maximum - minimum;
     const xSpan: number = width - left - right;
     const ySpan: number = height - top - bottom;
@@ -882,6 +878,8 @@ function TimeSeriesChart(props: {
     const zeroY = minimum < 0 && maximum > 0
         ? top + ((maximum - 0) / range) * ySpan
         : null;
+    const yTicks = [...axis.ticks].reverse();
+    const xTicks = Array.from({ length: 5 }, (_: unknown, index: number): number => index / 4);
 
     return (
         <div style={{ ...panelStyle(theme), padding: "16px", minHeight: "360px" }}>
@@ -914,9 +912,15 @@ function TimeSeriesChart(props: {
                     ...smallMutedStyle(theme),
                 }}
             >
-                <span style={{ color: theme.positive }}>● Gain</span>
-                <span style={{ color: theme.negative }}>● Loss</span>
-                <span style={{ color: theme.muted }}>● No change</span>
+                <span style={{ color: theme.positive, display: "inline-flex", alignItems: "center", gap: "5px" }}>
+                    <span style={{ width: "8px", height: "8px", background: theme.positive }} /> Gain
+                </span>
+                <span style={{ color: theme.negative, display: "inline-flex", alignItems: "center", gap: "5px" }}>
+                    <span style={{ width: "8px", height: "8px", background: theme.negative }} /> Loss
+                </span>
+                <span style={{ color: theme.muted, display: "inline-flex", alignItems: "center", gap: "5px" }}>
+                    <span style={{ width: "8px", height: "8px", background: theme.muted }} /> No change
+                </span>
                 {visibleMarkers.some((marker: ChartMarker): boolean => marker.tone === "join") ? (
                     <span style={{ color: theme.teal }}>│ Join</span>
                 ) : null}
@@ -930,34 +934,65 @@ function TimeSeriesChart(props: {
 
             <svg
                 viewBox={`0 0 ${width} ${height}`}
-                preserveAspectRatio="none"
-                style={{ width: "100%", height: "280px", overflow: "visible", marginTop: "4px" }}
+                preserveAspectRatio="xMidYMid meet"
+                style={{ width: "100%", height: "315px", overflow: "visible", marginTop: "4px" }}
                 aria-label={props.title}
             >
-                <line
-                    x1={left}
-                    y1={top}
-                    x2={width - right}
-                    y2={top}
-                    stroke={theme.borderStrong}
-                    stroke-width="1"
-                />
-                <line
-                    x1={left}
-                    y1={top + ySpan / 2}
-                    x2={width - right}
-                    y2={top + ySpan / 2}
-                    stroke={theme.border}
-                    stroke-width="1"
-                />
-                <line
-                    x1={left}
-                    y1={top + ySpan}
-                    x2={width - right}
-                    y2={top + ySpan}
-                    stroke={theme.borderStrong}
-                    stroke-width="1"
-                />
+                {yTicks.map((tick: number, index: number): JSX.Element => {
+                    const y = top + (index / (yTicks.length - 1)) * ySpan;
+                    return (
+                        <g key={`y-${index}`}>
+                            <line
+                                x1={left}
+                                y1={y}
+                                x2={width - right}
+                                y2={y}
+                                stroke={index === 0 || index === yTicks.length - 1 ? theme.borderStrong : theme.border}
+                                stroke-width="1"
+                                shape-rendering="crispEdges"
+                            />
+                            <text
+                                x={left - 10}
+                                y={y + 4}
+                                text-anchor="end"
+                                fill={theme.muted}
+                                font-size="13"
+                            >
+                                {formatLilyMoneyCents(Math.round(tick))}
+                            </text>
+                        </g>
+                    );
+                })}
+
+                {xTicks.map((ratio: number, index: number): JSX.Element => {
+                    const x = left + ratio * xSpan;
+                    const label = props.xMode === "time"
+                        ? formatAxisWhen(Math.round(minimumTime + ratio * timeSpan), timeSpan)
+                        : `${Math.round(ratio * Math.max(0, sampled.length - 1)).toLocaleString()}`;
+                    return (
+                        <g key={`x-${index}`}>
+                            <line
+                                x1={x}
+                                y1={top}
+                                x2={x}
+                                y2={top + ySpan}
+                                stroke={theme.border}
+                                stroke-width="1"
+                                opacity="0.45"
+                                shape-rendering="crispEdges"
+                            />
+                            <text
+                                x={x}
+                                y={height - 18}
+                                text-anchor={index === 0 ? "start" : index === xTicks.length - 1 ? "end" : "middle"}
+                                fill={theme.muted}
+                                font-size="12"
+                            >
+                                {label}
+                            </text>
+                        </g>
+                    );
+                })}
 
                 {zeroY !== null ? (
                     <line
@@ -988,9 +1023,9 @@ function TimeSeriesChart(props: {
                                   >
                                       <title>{`${marker.label} • ${formatWhen(marker.timestamp)}`}</title>
                                   </line>
-                                  <circle cx={x} cy={top + 5} r="3" fill={markerColor(marker)}>
+                                  <rect x={x - 3} y={top + 2} width="6" height="6" fill={markerColor(marker)}>
                                       <title>{`${marker.label} • ${formatWhen(marker.timestamp)}`}</title>
-                                  </circle>
+                                  </rect>
                               </g>
                           );
                       })
@@ -999,10 +1034,11 @@ function TimeSeriesChart(props: {
                 {sampledSegments.map((segment: BalancePoint[], segmentIndex: number): JSX.Element => (
                     <g key={`segment-${segmentIndex}`}>
                         {segment.length === 1 ? (
-                            <circle
-                                cx={pointX(segment[0]!)}
-                                cy={pointY(segment[0]!)}
-                                r="4"
+                            <rect
+                                x={pointX(segment[0]!) - 4}
+                                y={pointY(segment[0]!) - 4}
+                                width="8"
+                                height="8"
                                 fill={theme.accent}
                             />
                         ) : null}
@@ -1024,7 +1060,7 @@ function TimeSeriesChart(props: {
                                     y2={pointY(next)}
                                     stroke={directionColor}
                                     stroke-width="3"
-                                    stroke-linecap="round"
+                                    stroke-linecap="square"
                                 />
                             );
                         })}
@@ -1041,10 +1077,7 @@ function TimeSeriesChart(props: {
                 }}
             >
                 <span>{formatShortWhen(first.timestamp)}</span>
-                <span>
-                    min {formatLilyMoneyCents(Math.min(...values))} • max{" "}
-                    {formatLilyMoneyCents(Math.max(...values))}
-                </span>
+                <span>{sampled.length.toLocaleString()} plotted points</span>
                 <span>{formatShortWhen(last.timestamp)}</span>
             </div>
         </div>
@@ -1142,7 +1175,7 @@ function HorizontalBarChart(props: {
                                 <div
                                     style={{
                                         height: "7px",
-                                        borderRadius: "999px",
+                                        borderRadius: "0",
                                         background: theme.panelStrong,
                                         marginTop: "6px",
                                         overflow: "hidden",
@@ -1152,7 +1185,7 @@ function HorizontalBarChart(props: {
                                         style={{
                                             height: "100%",
                                             width: `${Math.max(2, widthPercent)}%`,
-                                            borderRadius: "999px",
+                                            borderRadius: "0",
                                             background: color,
                                         }}
                                     />
@@ -1224,6 +1257,8 @@ function MoneyBarGraph(props: {
     const plotWidth = plotRight - plotLeft;
     const height = top + bottom + rows.length * rowHeight;
     const maximum = Math.max(...rows.map((row: BarRow): number => row.valueCents));
+    const axis = niceMoneyAxis(0, maximum, 5);
+    const axisMaximum = Math.max(1, axis.maximum);
 
     return (
         <div style={{ ...panelStyle(theme), padding: "18px", overflow: "hidden" }}>
@@ -1244,18 +1279,30 @@ function MoneyBarGraph(props: {
                 }}
                 aria-label={props.title}
             >
-                {[0, 0.25, 0.5, 0.75, 1].map((fraction: number): JSX.Element => {
+                {axis.ticks.map((tick: number, index: number): JSX.Element => {
+                    const fraction = tick / axisMaximum;
                     const x = plotLeft + plotWidth * fraction;
                     return (
-                        <line
-                            key={`grid-${fraction}`}
-                            x1={x}
-                            y1={top - 6}
-                            x2={x}
-                            y2={height - bottom + 4}
-                            stroke={fraction === 0 ? theme.borderStrong : theme.border}
-                            stroke-width="1"
-                        />
+                        <g key={`grid-${tick}`}>
+                            <line
+                                x1={x}
+                                y1={top - 6}
+                                x2={x}
+                                y2={height - bottom + 4}
+                                stroke={index === 0 ? theme.borderStrong : theme.border}
+                                stroke-width="1"
+                                shape-rendering="crispEdges"
+                            />
+                            <text
+                                x={x}
+                                y={height - 10}
+                                fill={theme.muted}
+                                font-size="12"
+                                text-anchor={index === 0 ? "start" : index === axis.ticks.length - 1 ? "end" : "middle"}
+                            >
+                                {formatLilyMoneyCents(Math.round(tick))}
+                            </text>
+                        </g>
                     );
                 })}
 
@@ -1265,7 +1312,7 @@ function MoneyBarGraph(props: {
                     const barY = y + 9;
                     const barWidth = maximum === 0
                         ? 0
-                        : (row.valueCents / maximum) * plotWidth;
+                        : (row.valueCents / axisMaximum) * plotWidth;
 
                     return (
                         <g key={`${row.label}-${index}`}>
@@ -1283,7 +1330,7 @@ function MoneyBarGraph(props: {
                                 y={barY}
                                 width={plotWidth}
                                 height={barHeight}
-                                rx="5"
+                                rx="0"
                                 fill={theme.panelStrong}
                             />
                             <rect
@@ -1291,7 +1338,7 @@ function MoneyBarGraph(props: {
                                 y={barY}
                                 width={Math.max(2, barWidth)}
                                 height={barHeight}
-                                rx="5"
+                                rx="0"
                                 fill={color}
                             />
                             <text
@@ -1307,23 +1354,6 @@ function MoneyBarGraph(props: {
                     );
                 })}
 
-                <text
-                    x={plotLeft}
-                    y={height - 10}
-                    fill={theme.muted}
-                    font-size="12"
-                >
-                    $0
-                </text>
-                <text
-                    x={plotRight}
-                    y={height - 10}
-                    fill={theme.muted}
-                    font-size="12"
-                    text-anchor="end"
-                >
-                    {formatLilyMoneyCents(maximum)}
-                </text>
             </svg>
         </div>
     );
@@ -1389,7 +1419,7 @@ function Badge(props: {
                 display: "inline-flex",
                 alignItems: "center",
                 border: `1px solid ${color}66`,
-                borderRadius: "999px",
+                borderRadius: "0",
                 color,
                 background: `${color}16`,
                 padding: "2px 7px",
@@ -1951,6 +1981,7 @@ function RankingPanel(props: {
                     <div style={smallMutedStyle(props.theme)}>Compare players without adding separate leaderboards</div>
                 </div>
                 <select
+                    class="search-mode-dropdown lilymoney-select"
                     value={metric}
                     onChange={(event: Event): void => setMetric((event.currentTarget as HTMLSelectElement).value as typeof metric)}
                     style={{ ...controlStyle(props.theme), minWidth: "160px" }}
@@ -2535,7 +2566,7 @@ function eventSearchText(event: ParsedLilyMoneyEvent): string {
         event.action ?? "",
         event.sourceId ?? "",
         event.people.map((person) => `${person.identityId} ${person.displayName}`).join(" "),
-        JSON.stringify(event.record.payload),
+        stringifyForDisplay(event.record.payload),
         String(event.record.id),
     ]
         .join(" ")
@@ -2595,6 +2626,7 @@ function TransactionsPage(props: {
                 }}
             >
                 <input
+                    class="search-text-input lilymoney-input"
                     type="search"
                     value={search}
                     placeholder="Search player, item, event, record ID…"
@@ -2604,6 +2636,7 @@ function TransactionsPage(props: {
                     style={{ ...controlStyle(theme), flex: "1 1 300px", minWidth: "220px" }}
                 />
                 <select
+                    class="search-mode-dropdown lilymoney-select"
                     value={category}
                     onChange={(event: Event): void =>
                         setCategory((event.currentTarget as HTMLSelectElement).value)
@@ -2620,7 +2653,7 @@ function TransactionsPage(props: {
                 {(search || category !== "all") ? (
                     <button
                         type="button"
-                        class="genericRoundButton"
+                        class="lilymoney-mc-button"
                         onClick={(): void => {
                             setSearch("");
                             setCategory("all");
@@ -3011,6 +3044,7 @@ function JobsPage(props: {
                     tone="positive"
                     headerRight={
                         <select
+                            class="search-mode-dropdown lilymoney-select"
                             value={jobFilter}
                             onChange={(event: Event): void =>
                                 setJobFilter((event.currentTarget as HTMLSelectElement).value)
@@ -3040,6 +3074,7 @@ function JobsPage(props: {
                 }}
             >
                 <input
+                    class="search-text-input lilymoney-input"
                     type="search"
                     value={search}
                     placeholder="Search block, source, player…"
@@ -3051,7 +3086,7 @@ function JobsPage(props: {
                 {(search || jobFilter !== "all") ? (
                     <button
                         type="button"
-                        class="genericRoundButton"
+                        class="lilymoney-mc-button"
                         onClick={(): void => {
                             setSearch("");
                             setJobFilter("all");
@@ -3349,6 +3384,14 @@ function GraphsPage(props: {
     );
 }
 
+function stringifyForDisplay(value: unknown): string {
+    try {
+        return JSONB.stringify(value);
+    } catch {
+        return String(value);
+    }
+}
+
 function csvEscape(value: string | number | null): string {
     const text = value === null ? "" : String(value);
     return `"${text.replaceAll('"', '""')}"`;
@@ -3387,7 +3430,7 @@ function exportRawRecords(records: LilyMoneyRecord[]): void {
             record.shardIndex,
             record.source,
             record.sourceKey,
-            JSON.stringify(record.payload),
+            stringifyForDisplay(record.payload),
         ]
             .map((value) => csvEscape(value))
             .join(",")
@@ -3443,7 +3486,7 @@ function RawRecordsPage(props: {
             }
 
             if (query) {
-                const haystack = `${record.id} ${record.timestamp} ${record.type} ${record.shardIndex ?? ""} ${record.source} ${record.sourceKey} ${JSON.stringify(record.payload)}`.toLocaleLowerCase();
+                const haystack = `${record.id} ${record.timestamp} ${record.type} ${record.shardIndex ?? ""} ${record.source} ${record.sourceKey} ${stringifyForDisplay(record.payload)}`.toLocaleLowerCase();
                 if (!haystack.includes(query)) return false;
             }
 
@@ -3476,6 +3519,7 @@ function RawRecordsPage(props: {
                 }}
             >
                 <input
+                    class="search-text-input lilymoney-input"
                     type="search"
                     value={search}
                     placeholder="Search payload, ID, type, source…"
@@ -3485,6 +3529,7 @@ function RawRecordsPage(props: {
                     style={{ ...controlStyle(theme), flex: "1 1 300px", minWidth: "220px" }}
                 />
                 <select
+                    class="search-mode-dropdown lilymoney-select"
                     value={eventType}
                     onChange={(event: Event): void =>
                         setEventType((event.currentTarget as HTMLSelectElement).value)
@@ -3497,6 +3542,7 @@ function RawRecordsPage(props: {
                     ))}
                 </select>
                 <select
+                    class="search-mode-dropdown lilymoney-select"
                     value={shard}
                     onChange={(event: Event): void =>
                         setShard((event.currentTarget as HTMLSelectElement).value)
@@ -3510,7 +3556,7 @@ function RawRecordsPage(props: {
                 </select>
                 <button
                     type="button"
-                    class="genericRoundButton"
+                    class="lilymoney-mc-button"
                     onClick={(): void => exportRawRecords(filtered)}
                     style={buttonStyle(theme)}
                     disabled={filtered.length === 0}
@@ -3520,7 +3566,7 @@ function RawRecordsPage(props: {
                 {(search || eventType !== "all" || shard !== "all") ? (
                     <button
                         type="button"
-                        class="genericRoundButton"
+                        class="lilymoney-mc-button"
                         onClick={(): void => {
                             setSearch("");
                             setEventType("all");
@@ -3599,7 +3645,7 @@ function RawRecordsPage(props: {
                                     </td>
                                     <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}`, verticalAlign: "top" }}>
                                         <code style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
-                                            {JSON.stringify(record.payload)}
+                                            {stringifyForDisplay(record.payload)}
                                         </code>
                                     </td>
                                 </tr>
@@ -3808,6 +3854,7 @@ function BalanceAuditPanel(props: {
 
                 <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
                     <select
+                        class="search-mode-dropdown lilymoney-select"
                         value={identityId}
                         onChange={(event: Event): void => setIdentityId((event.currentTarget as HTMLSelectElement).value)}
                         style={{ ...controlStyle(props.theme), minWidth: "220px" }}
@@ -3931,7 +3978,7 @@ function DatabasePage(props: {
                     style={{
                         width: "14px",
                         height: "14px",
-                        borderRadius: "999px",
+                        borderRadius: "0",
                         background: healthColor(theme, props.health.level),
                         boxShadow: `0 0 0 4px ${healthColor(theme, props.health.level)}22`,
                         flex: "0 0 auto",
@@ -4036,7 +4083,7 @@ function DatabasePage(props: {
                                         gap: "10px",
                                         padding: "9px 10px",
                                         border: `1px solid ${theme.warning}44`,
-                                        borderRadius: "8px",
+                                        borderRadius: "0",
                                         background: `${theme.warning}0d`,
                                     }}
                                 >
@@ -4246,31 +4293,31 @@ function Pagination(props: {
         >
             <button
                 type="button"
-                class="genericRoundButton"
+                class="lilymoney-mc-button"
                 style={buttonStyle(props.theme)}
                 disabled={props.page <= 0}
                 onClick={(): void => props.onPage(Math.max(0, props.page - 1))}
             >
-                ← Previous
+                Previous
             </button>
             <div style={smallMutedStyle(props.theme)}>
                 Page {(props.page + 1).toLocaleString()} of {props.pageCount.toLocaleString()}
             </div>
             <button
                 type="button"
-                class="genericRoundButton"
+                class="lilymoney-mc-button"
                 style={buttonStyle(props.theme)}
                 disabled={props.page >= props.pageCount - 1}
                 onClick={(): void => props.onPage(Math.min(props.pageCount - 1, props.page + 1))}
             >
-                Next →
+                Next
             </button>
         </div>
     );
 }
 
 export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.Element {
-    const theme = useWorkspaceTheme();
+    const theme = BWE_THEME;
     const database: LilyMoneyDatabase = useMemo(
         () => assembleLilyMoneyDatabase(props.result),
         [props.result]
@@ -4319,14 +4366,14 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
     const navItems: Array<{
         id: LilyMoneyWorkspacePage;
         label: string;
-        icon: string;
     }> = [
-        { id: "overview", label: "Overview", icon: "⌂" },
-        { id: "transactions", label: "Transactions", icon: "⇄" },
-        { id: "jobs", label: "Jobs", icon: "⚒" },
-        { id: "graphs", label: "Graphs", icon: "⌁" },
-        { id: "raw", label: "Raw Records", icon: "{}" },
-        { id: "database", label: "Database", icon: "◫" },
+        { id: "overview", label: "Overview" },
+        { id: "transactions", label: "Transactions" },
+        { id: "jobs", label: "Jobs" },
+        { id: "graphs", label: "Graphs" },
+        { id: "raw", label: "Raw Records" },
+        { id: "database", label: "Database" },
+        { id: "addonInfo", label: "Addon Information" },
     ];
 
     let content: JSX.Element;
@@ -4390,10 +4437,14 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
                 />
             );
             break;
+        case "addonInfo":
+            content = <LilyMoneyAddonInfo />;
+            break;
     }
 
     return (
         <div
+            class="lilymoney-workspace"
             style={{
                 width: "100%",
                 height: "100%",
@@ -4403,11 +4454,11 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
                 boxSizing: "border-box",
                 background: theme.bg,
                 color: theme.text,
-                colorScheme: theme.dark ? "dark" : "light",
                 forcedColorAdjust: "none",
             }}
         >
             <header
+                class="lilymoney-header"
                 style={{
                     display: "flex",
                     alignItems: "center",
@@ -4422,15 +4473,15 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
                 <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
                     <button
                         type="button"
-                        class="genericRoundButton"
+                        class="lilymoney-mc-button"
                         onClick={props.onBack}
                         style={buttonStyle(theme)}
                     >
-                        ← Back
+                        Back
                     </button>
 
                     <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: "20px", fontWeight: 760, lineHeight: 1.1 }}>
+                        <div class="lilymoney-title" style={{ fontSize: "20px", fontWeight: 760, lineHeight: 1.1 }}>
                             LilyMoney
                         </div>
                         <div style={smallMutedStyle(theme)}>Economy & Transaction History</div>
@@ -4439,11 +4490,11 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
 
                 <button
                     type="button"
-                    class="genericRoundButton"
+                    class="lilymoney-mc-button"
                     onClick={props.onRescan}
                     style={buttonStyle(theme)}
                 >
-                    ↻ Rescan
+                    Rescan
                 </button>
             </header>
 
@@ -4471,6 +4522,7 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
                 >
                     <span style={{ fontWeight: 650 }}>Player</span>
                     <input
+                        class="search-text-input lilymoney-input"
                         type="search"
                         value={playerSearch}
                         placeholder="Search players…"
@@ -4480,6 +4532,7 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
                         style={{ ...controlStyle(theme), width: "190px" }}
                     />
                     <select
+                        class="search-mode-dropdown lilymoney-select"
                         value={playerSort}
                         onChange={(event: Event): void =>
                             setPlayerSort((event.currentTarget as HTMLSelectElement).value as PlayerSortMode)
@@ -4497,6 +4550,7 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
                         <option value="audit">Audit flags</option>
                     </select>
                     <select
+                        class="search-mode-dropdown lilymoney-select"
                         value={effectiveIdentityId}
                         onChange={(event: Event): void => {
                             setSelectedIdentityId((event.currentTarget as HTMLSelectElement).value);
@@ -4539,6 +4593,7 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
 
             <div style={{ display: "flex", flex: "1 1 auto", minHeight: 0 }}>
                 <nav
+                    class="lilymoney-nav"
                     style={{
                         width: "190px",
                         flex: "0 0 190px",
@@ -4557,14 +4612,13 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
                                 <button
                                     key={item.id}
                                     type="button"
+                                    class={`sidebar_button lilymoney-nav-button${selected ? " active" : ""}`}
                                     onClick={(): void => setPage(item.id)}
                                     style={{
                                         width: "100%",
-                                        border: `1px solid ${selected ? theme.accent : "transparent"}`,
-                                        borderRadius: "9px",
+                                        border: "none",
                                         padding: "10px 11px",
                                         textAlign: "left",
-                                        background: selected ? theme.accentSoft : "transparent",
                                         color: theme.text,
                                         cursor: "pointer",
                                         display: "flex",
@@ -4573,9 +4627,6 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
                                         fontWeight: selected ? 680 : 500,
                                     }}
                                 >
-                                    <span style={{ width: "22px", textAlign: "center", color: selected ? theme.accent : theme.muted }}>
-                                        {item.icon}
-                                    </span>
                                     <span style={{ flex: "1 1 auto" }}>{item.label}</span>
                                     {item.id === "database" && health.level !== "healthy" ? (
                                         <span
@@ -4583,7 +4634,7 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
                                             style={{
                                                 width: "8px",
                                                 height: "8px",
-                                                borderRadius: "999px",
+                                                borderRadius: "0",
                                                 background: healthColor(theme, health.level),
                                                 flex: "0 0 auto",
                                             }}
@@ -4606,6 +4657,7 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
                 </nav>
 
                 <main
+                    class="lilymoney-main"
                     style={{
                         flex: "1 1 auto",
                         minWidth: 0,

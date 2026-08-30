@@ -164,19 +164,10 @@ function toStringValue(value: unknown): string | null {
 
 function safeJsonStringify(value: unknown): string {
     try {
-        return JSON.stringify(
+        return JSONB.stringify(
             value,
-            (_key: string, item: unknown): unknown => {
-                if (typeof item === "bigint") {
-                    return `${item.toString()}n`;
-                }
-
-                if (Buffer.isBuffer(item)) {
-                    return `<Buffer ${item.length} bytes>`;
-                }
-
-                return item;
-            },
+            (_key: string, item: unknown): unknown =>
+                Buffer.isBuffer(item) ? `<Buffer ${item.length} bytes>` : item,
             2
         );
     } catch {
@@ -261,7 +252,7 @@ function getPropertySummary(key: string, value: unknown): LilyMoneyPropertySumma
                     ? `${value.slice(0, 180)}…`
                     : value;
 
-            preview = JSON.stringify(shortened);
+            preview = JSONB.stringify(shortened);
 
             if (value.length > 180) {
                 preview += ` (${value.length.toLocaleString()} characters total)`;
