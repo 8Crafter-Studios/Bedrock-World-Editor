@@ -1,6 +1,6 @@
 .lilymoney-workspace {
-    font-family: "Minecraft-Seven-v4", "Minecraft-Seven", Mojangles, sans-serif;
-    letter-spacing: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    /* anoyed mumble from not useing the minecraft font for all texts */
 }
 
 .lilymoney-workspace .lilymoney-title,
@@ -84,8 +84,6 @@
 
 
 .lilymoney-workspace .lilymoney-nav-button.active {
-    font-family: "Minecraft-Five", "Minecraft Five v3", "Minecraft-Seven-v4", sans-serif;
-
     background: var(--alternating-bg-3);
     color: var(--text-color);
 }
