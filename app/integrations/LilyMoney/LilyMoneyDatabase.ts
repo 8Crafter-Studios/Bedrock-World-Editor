@@ -1,11 +1,6 @@
-import type {
-    LilyMoneyDiscoveryResult,
-    LilyMoneyStorageSummary,
-} from "./LilyMoneyData";
+import type { LilyMoneyDiscoveryResult, LilyMoneyStorageSummary } from "./LilyMoneyData";
 
-import type {
-    LilyMoneyRecord,
-} from "./LilyMoneyRecords";
+import type { LilyMoneyRecord } from "./LilyMoneyRecords";
 
 export interface LilyMoneyDatabase {
     records: LilyMoneyRecord[];
@@ -31,9 +26,7 @@ export interface LilyMoneyDatabase {
     warnings: string[];
 }
 
-export function assembleLilyMoneyDatabase(
-    discovery: LilyMoneyDiscoveryResult
-): LilyMoneyDatabase {
+export function assembleLilyMoneyDatabase(discovery: LilyMoneyDiscoveryResult): LilyMoneyDatabase {
     const errors: string[] = [];
     const warnings: string[] = [];
 
@@ -41,90 +34,56 @@ export function assembleLilyMoneyDatabase(
     // Select sealed shards
     // ---------------------------------------------------------------------
 
-    const sealedByShard: Map<number, LilyMoneyStorageSummary> =
-        new Map();
+    const sealedByShard: Map<number, LilyMoneyStorageSummary> = new Map();
 
     for (const storage of discovery.sealedStorages) {
         if (storage.shardIndex === null) {
-            errors.push(
-                `Sealed storage ${storage.sourceKey} has no shard index.`
-            );
+            errors.push(`Sealed storage ${storage.sourceKey} has no shard index.`);
 
             continue;
         }
 
         if (storage.sealed !== true) {
-            warnings.push(
-                `Structure ${storage.sourceKey} contains a storage entity that is not marked sealed.`
-            );
+            warnings.push(`Structure ${storage.sourceKey} contains a storage entity that is not marked sealed.`);
         }
 
-        if (
-            discovery.worldId !== null &&
-            storage.worldId !== null &&
-            storage.worldId !== discovery.worldId
-        ) {
-            errors.push(
-                `Shard ${storage.shardIndex} belongs to world ${storage.worldId}, expected ${discovery.worldId}.`
-            );
+        if (discovery.worldId !== null && storage.worldId !== null && storage.worldId !== discovery.worldId) {
+            errors.push(`Shard ${storage.shardIndex} belongs to world ${storage.worldId}, expected ${discovery.worldId}.`);
 
             continue;
         }
 
-        const previous =
-            sealedByShard.get(storage.shardIndex);
+        const previous = sealedByShard.get(storage.shardIndex);
 
         if (previous) {
-            errors.push(
-                `Multiple sealed structures claim shard ${storage.shardIndex}: ${previous.sourceKey} and ${storage.sourceKey}.`
-            );
+            errors.push(`Multiple sealed structures claim shard ${storage.shardIndex}: ${previous.sourceKey} and ${storage.sourceKey}.`);
 
             continue;
         }
 
-        sealedByShard.set(
-            storage.shardIndex,
-            storage
-        );
+        sealedByShard.set(storage.shardIndex, storage);
     }
 
     // ---------------------------------------------------------------------
     // Select active shard
     // ---------------------------------------------------------------------
 
-    const expectedActiveCandidates =
-        discovery.activeStorages.filter(
-            (storage: LilyMoneyStorageSummary): boolean =>
-                storage.isExpectedActiveShard
-        );
+    const expectedActiveCandidates = discovery.activeStorages.filter((storage: LilyMoneyStorageSummary): boolean => storage.isExpectedActiveShard);
 
-    let activeStorage:
-        LilyMoneyStorageSummary | null = null;
+    let activeStorage: LilyMoneyStorageSummary | null = null;
 
     if (expectedActiveCandidates.length === 1) {
-        activeStorage =
-            expectedActiveCandidates[0]!;
+        activeStorage = expectedActiveCandidates[0]!;
     } else if (expectedActiveCandidates.length > 1) {
-        errors.push(
-            `Found ${expectedActiveCandidates.length} ActorPrefix storage entities claiming to be the expected active shard.`
-        );
-    } else if (
-        discovery.activeOpen === true
-    ) {
+        errors.push(`Found ${expectedActiveCandidates.length} ActorPrefix storage entities claiming to be the expected active shard.`);
+    } else if (discovery.activeOpen === true) {
         errors.push(
             `World metadata says active shard ${String(discovery.activeShardIndex)} is open, but no matching money_storage ActorPrefix entity was found.`
         );
     }
 
-    if (
-        activeStorage !== null &&
-        discovery.worldId !== null &&
-        activeStorage.worldId !== null &&
-        activeStorage.worldId !== discovery.worldId
-    ) {
-        errors.push(
-            `Active shard belongs to world ${activeStorage.worldId}, expected ${discovery.worldId}.`
-        );
+    if (activeStorage !== null && discovery.worldId !== null && activeStorage.worldId !== null && activeStorage.worldId !== discovery.worldId) {
+        errors.push(`Active shard belongs to world ${activeStorage.worldId}, expected ${discovery.worldId}.`);
 
         activeStorage = null;
     }
@@ -133,58 +92,32 @@ export function assembleLilyMoneyDatabase(
     // Build selected shard list
     // ---------------------------------------------------------------------
 
-    const selectedShards: LilyMoneyStorageSummary[] =
-        [...sealedByShard.values()];
+    const selectedShards: LilyMoneyStorageSummary[] = [...sealedByShard.values()];
 
     if (activeStorage !== null) {
-        if (
-            activeStorage.shardIndex !== null &&
-            sealedByShard.has(activeStorage.shardIndex)
-        ) {
-            errors.push(
-                `Shard ${activeStorage.shardIndex} exists as both sealed history and the expected active shard.`
-            );
+        if (activeStorage.shardIndex !== null && sealedByShard.has(activeStorage.shardIndex)) {
+            errors.push(`Shard ${activeStorage.shardIndex} exists as both sealed history and the expected active shard.`);
         } else {
             selectedShards.push(activeStorage);
         }
     }
 
-    selectedShards.sort(
-        (
-            a: LilyMoneyStorageSummary,
-            b: LilyMoneyStorageSummary
-        ): number => {
-            return (
-                (a.shardIndex ?? Number.MAX_SAFE_INTEGER) -
-                (b.shardIndex ?? Number.MAX_SAFE_INTEGER)
-            );
-        }
-    );
+    selectedShards.sort((a: LilyMoneyStorageSummary, b: LilyMoneyStorageSummary): number => {
+        return (a.shardIndex ?? Number.MAX_SAFE_INTEGER) - (b.shardIndex ?? Number.MAX_SAFE_INTEGER);
+    });
 
     // ---------------------------------------------------------------------
     // Validate shard continuity
     // ---------------------------------------------------------------------
 
-    let shardIndexesContinuous: boolean | null =
-        selectedShards.length > 0
-            ? true
-            : null;
+    let shardIndexesContinuous: boolean | null = selectedShards.length > 0 ? true : null;
 
-    for (
-        let index = 1;
-        index < selectedShards.length;
-        index++
-    ) {
-        const previous =
-            selectedShards[index - 1]!.shardIndex;
+    for (let index = 1; index < selectedShards.length; index++) {
+        const previous = selectedShards[index - 1]!.shardIndex;
 
-        const current =
-            selectedShards[index]!.shardIndex;
+        const current = selectedShards[index]!.shardIndex;
 
-        if (
-            previous === null ||
-            current === null
-        ) {
+        if (previous === null || current === null) {
             shardIndexesContinuous = false;
             continue;
         }
@@ -192,9 +125,7 @@ export function assembleLilyMoneyDatabase(
         if (current !== previous + 1) {
             shardIndexesContinuous = false;
 
-            errors.push(
-                `Shard discontinuity: shard ${previous} is followed by shard ${current}.`
-            );
+            errors.push(`Shard discontinuity: shard ${previous} is followed by shard ${current}.`);
         }
     }
 
@@ -212,16 +143,12 @@ export function assembleLilyMoneyDatabase(
     for (const shard of selectedShards) {
         if (shard.recordDecodeErrors.length > 0) {
             for (const error of shard.recordDecodeErrors) {
-                errors.push(
-                    `Shard ${String(shard.shardIndex)}: ${error}`
-                );
+                errors.push(`Shard ${String(shard.shardIndex)}: ${error}`);
             }
         }
 
         for (const warning of shard.recordDecodeWarnings) {
-            warnings.push(
-                `Shard ${String(shard.shardIndex)}: ${warning}`
-            );
+            warnings.push(`Shard ${String(shard.shardIndex)}: ${warning}`);
         }
 
         records.push(...shard.records);
@@ -238,34 +165,22 @@ export function assembleLilyMoneyDatabase(
         before: number;
     }> = [];
 
-    const seenIds: Set<number> =
-        new Set();
+    const seenIds: Set<number> = new Set();
 
     for (const record of records) {
         if (seenIds.has(record.id)) {
-            duplicateRecordIds.push(
-                record.id
-            );
+            duplicateRecordIds.push(record.id);
         } else {
             seenIds.add(record.id);
         }
     }
 
-    let idsContinuous: boolean | null =
-        records.length > 0
-            ? true
-            : null;
+    let idsContinuous: boolean | null = records.length > 0 ? true : null;
 
-    for (
-        let index = 1;
-        index < records.length;
-        index++
-    ) {
-        const previous =
-            records[index - 1]!;
+    for (let index = 1; index < records.length; index++) {
+        const previous = records[index - 1]!;
 
-        const current =
-            records[index]!;
+        const current = records[index]!;
 
         if (current.id === previous.id) {
             idsContinuous = false;
@@ -280,41 +195,28 @@ export function assembleLilyMoneyDatabase(
                 before: current.id,
             });
 
-            errors.push(
-                `Global record discontinuity: #${previous.id} is followed by #${current.id}.`
-            );
+            errors.push(`Global record discontinuity: #${previous.id} is followed by #${current.id}.`);
         }
     }
 
     if (duplicateRecordIds.length > 0) {
-        const uniqueDuplicates =
-            [...new Set(duplicateRecordIds)];
+        const uniqueDuplicates = [...new Set(duplicateRecordIds)];
 
-        errors.push(
-            `Duplicate global record IDs found: ${uniqueDuplicates.join(", ")}.`
-        );
+        errors.push(`Duplicate global record IDs found: ${uniqueDuplicates.join(", ")}.`);
     }
 
-    const firstRecordId =
-        records.length > 0
-            ? records[0]!.id
-            : null;
+    const firstRecordId = records.length > 0 ? records[0]!.id : null;
 
-    const lastRecordId =
-        records.length > 0
-            ? records[records.length - 1]!.id
-            : null;
+    const lastRecordId = records.length > 0 ? records[records.length - 1]!.id : null;
 
     return {
         records,
 
         selectedShards,
 
-        sealedShardCount:
-            sealedByShard.size,
+        sealedShardCount: sealedByShard.size,
 
-        activeShardFound:
-            activeStorage !== null,
+        activeShardFound: activeStorage !== null,
 
         firstRecordId,
         lastRecordId,
@@ -322,8 +224,7 @@ export function assembleLilyMoneyDatabase(
         idsContinuous,
         shardIndexesContinuous,
 
-        duplicateRecordIds:
-            [...new Set(duplicateRecordIds)],
+        duplicateRecordIds: [...new Set(duplicateRecordIds)],
 
         missingRecordRanges,
 

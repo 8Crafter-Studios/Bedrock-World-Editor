@@ -2,11 +2,7 @@ import type { JSX } from "preact";
 import _React, { useEffect, useState } from "preact/compat";
 
 import type { Integration, IntegrationMenuProps } from ".";
-import {
-    detectLilyMoneyData,
-    scanLilyMoneyData,
-    type LilyMoneyDiscoveryResult,
-} from "./LilyMoney/LilyMoneyData";
+import { detectLilyMoneyData, scanLilyMoneyData, type LilyMoneyDiscoveryResult } from "./LilyMoney/LilyMoneyData";
 import LilyMoneyWorkspace from "./LilyMoney/LilyMoneyWorkspace";
 
 const LilyMoney = {
@@ -31,12 +27,9 @@ const LilyMoney = {
             setFatalError(null);
             setProgress("Starting LilyMoney scan...");
 
-            scanLilyMoneyData(
-                props.tab,
-                (message: string): void => {
-                    if (!cancelled) setProgress(message);
-                }
-            ).then(
+            scanLilyMoneyData(props.tab, (message: string): void => {
+                if (!cancelled) setProgress(message);
+            }).then(
                 (scanResult: LilyMoneyDiscoveryResult): void => {
                     if (cancelled) return;
 
@@ -46,18 +39,12 @@ const LilyMoney = {
                 (error: unknown): void => {
                     if (cancelled) return;
 
-                    const message: string =
-                        error instanceof Error
-                            ? error.stack ?? error.message
-                            : String(error);
+                    const message: string = error instanceof Error ? (error.stack ?? error.message) : String(error);
 
                     setFatalError(message);
                     setProgress("Scan failed");
 
-                    console.error(
-                        "[integration::LilyMoney] Data scan failed:",
-                        error
-                    );
+                    console.error("[integration::LilyMoney] Data scan failed:", error);
                 }
             );
 
@@ -76,27 +63,15 @@ const LilyMoney = {
                         padding: "20px",
                     }}
                 >
-                    <button
-                        type="button"
-                        class="genericRoundButton"
-                        onClick={(): void => props.closeIntegrationMenu()}
-                    >
+                    <button type="button" class="genericRoundButton" onClick={(): void => props.closeIntegrationMenu()}>
                         ← Back
                     </button>
 
                     <h2>LilyMoney</h2>
                     <h3>Database scan failed</h3>
-                    <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
-                        {fatalError}
-                    </pre>
+                    <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{fatalError}</pre>
 
-                    <button
-                        type="button"
-                        class="genericRoundButton"
-                        onClick={(): void =>
-                            setScanNumber((current: number): number => current + 1)
-                        }
-                    >
+                    <button type="button" class="genericRoundButton" onClick={(): void => setScanNumber((current: number): number => current + 1)}>
                         Try Again
                     </button>
                 </div>
@@ -128,9 +103,7 @@ const LilyMoney = {
                 result={result}
                 progress={progress}
                 onBack={(): void => props.closeIntegrationMenu()}
-                onRescan={(): void =>
-                    setScanNumber((current: number): number => current + 1)
-                }
+                onRescan={(): void => setScanNumber((current: number): number => current + 1)}
             />
         );
     },

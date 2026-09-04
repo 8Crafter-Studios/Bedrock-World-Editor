@@ -4,27 +4,13 @@ export const LILYMONEY_PACK_UUID = "9cde84d4-c9d8-499f-8ad4-2cd241cf9c64";
 export const LILYMONEY_STORAGE_IDENTIFIER = "lilymoney:money_storage";
 export const LILYMONEY_STRUCTURE_PREFIX = "structuretemplate_lilymoney:moneylog_";
 
-import {
-    emptyLilyMoneyNameDatabase,
-    readLilyMoneyNameDatabase,
+import { emptyLilyMoneyNameDatabase, readLilyMoneyNameDatabase, type LilyMoneyNameDatabase } from "./LilyMoneyNames";
 
-    type LilyMoneyNameDatabase,
-} from "./LilyMoneyNames";
+export type LilyMoneyDynamicPropertyNamespace = Record<string, unknown>;
 
-export type LilyMoneyDynamicPropertyNamespace =
-    Record<string, unknown>;
+type UnknownRecord = LilyMoneyDynamicPropertyNamespace;
 
-type UnknownRecord =
-    LilyMoneyDynamicPropertyNamespace;
-
-
-
-import {
-    decodeLilyMoneyRecords,
-    type LilyMoneyRecord,
-    type LilyMoneyRecordDecodeResult,
-} from "./LilyMoneyRecords";
-
+import { decodeLilyMoneyRecords, type LilyMoneyRecord, type LilyMoneyRecordDecodeResult } from "./LilyMoneyRecords";
 
 export interface LilyMoneyPropertySummary {
     key: string;
@@ -102,8 +88,7 @@ export interface LilyMoneyDiscoveryResult {
 
     errors: string[];
 
-    nameDatabase:
-        LilyMoneyNameDatabase;
+    nameDatabase: LilyMoneyNameDatabase;
 }
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -111,32 +96,20 @@ function isRecord(value: unknown): value is UnknownRecord {
 }
 
 function toNumber(value: unknown): number | null {
-    if (
-        typeof value === "number" &&
-        Number.isSafeInteger(value)
-    ) {
+    if (typeof value === "number" && Number.isSafeInteger(value)) {
         return value;
     }
 
     if (typeof value === "bigint") {
-        const result: number =
-            Number(value);
+        const result: number = Number(value);
 
-        return Number.isSafeInteger(result)
-            ? result
-            : null;
+        return Number.isSafeInteger(result) ? result : null;
     }
 
-    if (
-        typeof value === "string" &&
-        /^-?\d+$/.test(value)
-    ) {
-        const result: number =
-            Number(value);
+    if (typeof value === "string" && /^-?\d+$/.test(value)) {
+        const result: number = Number(value);
 
-        return Number.isSafeInteger(result)
-            ? result
-            : null;
+        return Number.isSafeInteger(result) ? result : null;
     }
 
     return null;
@@ -164,12 +137,7 @@ function toStringValue(value: unknown): string | null {
 
 function safeJsonStringify(value: unknown): string {
     try {
-        return JSONB.stringify(
-            value,
-            (_key: string, item: unknown): unknown =>
-                Buffer.isBuffer(item) ? `<Buffer ${item.length} bytes>` : item,
-            2
-        );
+        return JSONB.stringify(value, (_key: string, item: unknown): unknown => (Buffer.isBuffer(item) ? `<Buffer ${item.length} bytes>` : item), 2);
     } catch {
         return String(value);
     }
@@ -188,10 +156,7 @@ function getPropertyCategory(key: string): string {
         return "Pending Job Batches";
     }
 
-    if (
-        key.startsWith("lilymoney:moneylog_death_recovery") ||
-        key.startsWith("lilymoney:moneylog_dead_entity_quarantine")
-    ) {
+    if (key.startsWith("lilymoney:moneylog_death_recovery") || key.startsWith("lilymoney:moneylog_dead_entity_quarantine")) {
         return "Recovery";
     }
 
@@ -247,10 +212,7 @@ function getPropertySummary(key: string, value: unknown): LilyMoneyPropertySumma
         if (/^lilymoney:page_\d+$/.test(key)) {
             preview = `<record page: ${value.length.toLocaleString()} characters>`;
         } else {
-            const shortened: string =
-                value.length > 180
-                    ? `${value.slice(0, 180)}…`
-                    : value;
+            const shortened: string = value.length > 180 ? `${value.slice(0, 180)}…` : value;
 
             preview = JSONB.stringify(shortened);
 
@@ -268,10 +230,7 @@ function getPropertySummary(key: string, value: unknown): LilyMoneyPropertySumma
         type = Array.isArray(value) ? "array" : "object";
 
         const json: string = safeJsonStringify(value);
-        preview =
-            json.length > 500
-                ? `${json.slice(0, 500)}…`
-                : json;
+        preview = json.length > 500 ? `${json.slice(0, 500)}…` : json;
     }
 
     return {
@@ -317,20 +276,13 @@ function sortPageKeys(keys: string[]): string[] {
     });
 }
 
-
-
-
-
 function summarizeStorage(
     source: "sealed" | "active",
     sourceKey: string,
     entity: UnknownRecord,
     expectedActiveShardIndex: number | null
 ): LilyMoneyStorageSummary {
-    const identifier: string | null =
-        typeof entity.identifier === "string"
-            ? entity.identifier
-            : null;
+    const identifier: string | null = typeof entity.identifier === "string" ? entity.identifier : null;
 
     const namespace: UnknownRecord = getPackNamespace(entity) ?? {};
 
@@ -352,15 +304,11 @@ function summarizeStorage(
 
     const shardIndex: number | null = toNumber(namespace["lilymoney:shard_index"]);
 
-    const decoded: LilyMoneyRecordDecodeResult =
-        decodeLilyMoneyRecords(
-            namespace,
-            {
-                source,
-                sourceKey,
-                shardIndex,
-            }
-        );
+    const decoded: LilyMoneyRecordDecodeResult = decodeLilyMoneyRecords(namespace, {
+        source,
+        sourceKey,
+        shardIndex,
+    });
 
     return {
         source,
@@ -381,9 +329,7 @@ function summarizeStorage(
         dbFormat: toNumber(namespace["lilymoney:db_format"]),
         recordFormat: toNumber(namespace["lilymoney:record_format"]),
         dbKind: toStringValue(namespace["lilymoney:db_kind"]),
-        worldId:
-            toStringValue(namespace["lilymoney:db_world_id"]) ??
-            toStringValue(namespace["lilymoney:world_id"]),
+        worldId: toStringValue(namespace["lilymoney:db_world_id"]) ?? toStringValue(namespace["lilymoney:world_id"]),
 
         sealed: toBoolean(namespace["lilymoney:sealed"]),
         checksum: toStringValue(namespace["lilymoney:checksum_fnv1a32"]),
@@ -391,47 +337,27 @@ function summarizeStorage(
         pageKeys,
         pageCharacters,
 
-        isExpectedActiveShard:
-            source === "active" &&
-            expectedActiveShardIndex !== null &&
-            shardIndex === expectedActiveShardIndex,
+        isExpectedActiveShard: source === "active" && expectedActiveShardIndex !== null && shardIndex === expectedActiveShardIndex,
 
         properties: summarizeProperties(namespace),
 
-        records:
-            decoded.records,
+        records: decoded.records,
 
-        recordDecodeErrors:
-            decoded.errors,
+        recordDecodeErrors: decoded.errors,
 
-        recordDecodeWarnings:
-            decoded.warnings,
+        recordDecodeWarnings: decoded.warnings,
 
-        idsContinuous:
-            decoded.idsContinuous,
+        idsContinuous: decoded.idsContinuous,
 
-        checksumActual:
-            decoded.checksumActual,
+        checksumActual: decoded.checksumActual,
 
-        checksumValid:
-            decoded.checksumValid,
+        checksumValid: decoded.checksumValid,
 
-        pendingJobBatchStateRaw:
-            typeof namespace[
-                "lilymoney:job_batch_state_v1"
-            ] === "string"
-                ? namespace[
-                    "lilymoney:job_batch_state_v1"
-                ] as string
-                : null,
+        pendingJobBatchStateRaw: typeof namespace["lilymoney:job_batch_state_v1"] === "string" ? (namespace["lilymoney:job_batch_state_v1"] as string) : null,
     };
 }
 
-
-
-export async function detectLilyMoneyData(
-    tab: TabManagerTab
-): Promise<boolean> {
+export async function detectLilyMoneyData(tab: TabManagerTab): Promise<boolean> {
     if (tab.type !== "world" && tab.type !== "leveldb") {
         return false;
     }
@@ -451,23 +377,16 @@ export async function detectLilyMoneyData(
     // -------------------------------------------------------------
 
     try {
-        const dynamicPropertiesData: Buffer | null =
-            await tab.db.get("DynamicProperties");
+        const dynamicPropertiesData: Buffer | null = await tab.db.get("DynamicProperties");
 
         if (dynamicPropertiesData) {
-            const plain: unknown =
-                await parseNbtToPlain(dynamicPropertiesData);
+            const plain: unknown = await parseNbtToPlain(dynamicPropertiesData);
 
             if (isRecord(plain)) {
-                const namespace: unknown =
-                    plain[LILYMONEY_PACK_UUID];
+                const namespace: unknown = plain[LILYMONEY_PACK_UUID];
 
                 if (isRecord(namespace)) {
-                    const hasLilyMoneyProperty: boolean =
-                        Object.keys(namespace).some(
-                            (key: string): boolean =>
-                                key.startsWith("lilymoney:")
-                        );
+                    const hasLilyMoneyProperty: boolean = Object.keys(namespace).some((key: string): boolean => key.startsWith("lilymoney:"));
 
                     if (hasLilyMoneyProperty) {
                         return true;
@@ -476,10 +395,7 @@ export async function detectLilyMoneyData(
             }
         }
     } catch (error) {
-        console.warn(
-            "[integration::LilyMoney] Could not inspect DynamicProperties during detection:",
-            error
-        );
+        console.warn("[integration::LilyMoney] Could not inspect DynamicProperties during detection:", error);
     }
 
     // -------------------------------------------------------------
@@ -492,19 +408,10 @@ export async function detectLilyMoneyData(
         return false;
     }
 
-    return tab.cachedDBKeys.StructureTemplate.some(
-        (key: Buffer): boolean =>
-            key
-                .toString()
-                .startsWith(LILYMONEY_STRUCTURE_PREFIX)
-    );
+    return tab.cachedDBKeys.StructureTemplate.some((key: Buffer): boolean => key.toString().startsWith(LILYMONEY_STRUCTURE_PREFIX));
 }
 
-
-export async function scanLilyMoneyData(
-    tab: TabManagerTab,
-    onProgress?: (message: string) => void
-): Promise<LilyMoneyDiscoveryResult> {
+export async function scanLilyMoneyData(tab: TabManagerTab, onProgress?: (message: string) => void): Promise<LilyMoneyDiscoveryResult> {
     if (tab.type !== "world" && tab.type !== "leveldb") {
         throw new TypeError("LilyMoney only supports world and LevelDB tabs.");
     }
@@ -553,30 +460,17 @@ export async function scanLilyMoneyData(
                 }
             }
         } catch (error) {
-            errors.push(
-                `Could not parse world DynamicProperties: ${
-                    error instanceof Error ? error.message : String(error)
-                }`
-            );
+            errors.push(`Could not parse world DynamicProperties: ${error instanceof Error ? error.message : String(error)}`);
         }
     } else {
         errors.push("World DynamicProperties LevelDB entry was not found.");
     }
 
-    const worldProperties: LilyMoneyPropertySummary[] =
-        worldNamespace !== null
-            ? summarizeProperties(worldNamespace)
-            : [];
+    const worldProperties: LilyMoneyPropertySummary[] = worldNamespace !== null ? summarizeProperties(worldNamespace) : [];
 
-    const nameDatabase: LilyMoneyNameDatabase =
-        worldNamespace !== null
-            ? readLilyMoneyNameDatabase(worldNamespace)
-            : emptyLilyMoneyNameDatabase();
+    const nameDatabase: LilyMoneyNameDatabase = worldNamespace !== null ? readLilyMoneyNameDatabase(worldNamespace) : emptyLilyMoneyNameDatabase();
 
-    const worldId: string | null =
-        worldNamespace !== null
-            ? toStringValue(worldNamespace["lilymoney:world_id"])
-            : null;
+    const worldId: string | null = worldNamespace !== null ? toStringValue(worldNamespace["lilymoney:world_id"]) : null;
 
     let loggingEnabled: boolean | null = null;
 
@@ -590,47 +484,30 @@ export async function scanLilyMoneyData(
         }
     }
 
-    const activeOpen: boolean | null =
-        worldNamespace !== null
-            ? toBoolean(worldNamespace["lilymoney:moneylog_active_open_v1"])
-            : null;
+    const activeOpen: boolean | null = worldNamespace !== null ? toBoolean(worldNamespace["lilymoney:moneylog_active_open_v1"]) : null;
 
-    const activeShardIndex: number | null =
-        worldNamespace !== null
-            ? toNumber(worldNamespace["lilymoney:moneylog_active_shard_v1"])
-            : null;
+    const activeShardIndex: number | null = worldNamespace !== null ? toNumber(worldNamespace["lilymoney:moneylog_active_shard_v1"]) : null;
 
-    const lastSealedRecordId: number | null =
-        worldNamespace !== null
-            ? toNumber(worldNamespace["lilymoney:moneylog_last_sealed_record_v1"])
-            : null;
+    const lastSealedRecordId: number | null = worldNamespace !== null ? toNumber(worldNamespace["lilymoney:moneylog_last_sealed_record_v1"]) : null;
 
-    const nameDatabaseChunkCount: number =
-        nameDatabase.chunkCountRead;
+    const nameDatabaseChunkCount: number = nameDatabase.chunkCountRead;
 
     let pendingJobBatchStateFound: boolean = false;
 
-    
-
     const recoveryPropertyCount: number =
-        worldNamespace !== null
-            ? Object.keys(worldNamespace).filter((key: string): boolean => {
-                  return (
-                      key.startsWith("lilymoney:moneylog_death_recovery") ||
-                      key.startsWith("lilymoney:moneylog_dead_entity_quarantine")
-                  );
-              }).length
-            : 0;
+        worldNamespace !== null ?
+            Object.keys(worldNamespace).filter((key: string): boolean => {
+                return key.startsWith("lilymoney:moneylog_death_recovery") || key.startsWith("lilymoney:moneylog_dead_entity_quarantine");
+            }).length
+        :   0;
 
     // ---------------------------------------------------------------------
     // Sealed structures
     // ---------------------------------------------------------------------
 
-    const structureKeys: Buffer[] = tab.cachedDBKeys.StructureTemplate.filter(
-        (key: Buffer): boolean => {
-            return key.toString().startsWith(LILYMONEY_STRUCTURE_PREFIX);
-        }
-    );
+    const structureKeys: Buffer[] = tab.cachedDBKeys.StructureTemplate.filter((key: Buffer): boolean => {
+        return key.toString().startsWith(LILYMONEY_STRUCTURE_PREFIX);
+    });
 
     const sealedStorages: LilyMoneyStorageSummary[] = [];
 
@@ -638,9 +515,7 @@ export async function scanLilyMoneyData(
         const key: Buffer = structureKeys[index]!;
         const keyText: string = key.toString();
 
-        onProgress?.(
-            `Reading sealed LilyMoney structure ${index + 1}/${structureKeys.length}: ${keyText}`
-        );
+        onProgress?.(`Reading sealed LilyMoney structure ${index + 1}/${structureKeys.length}: ${keyText}`);
 
         try {
             const data: Buffer | null = await tab.db.get(key);
@@ -671,36 +546,18 @@ export async function scanLilyMoneyData(
                 continue;
             }
 
-            const storageEntity: UnknownRecord | undefined = entities.find(
-                (entity: unknown): entity is UnknownRecord => {
-                    return (
-                        isRecord(entity) &&
-                        entity.identifier === LILYMONEY_STORAGE_IDENTIFIER
-                    );
-                }
-            );
+            const storageEntity: UnknownRecord | undefined = entities.find((entity: unknown): entity is UnknownRecord => {
+                return isRecord(entity) && entity.identifier === LILYMONEY_STORAGE_IDENTIFIER;
+            });
 
             if (!storageEntity) {
-                errors.push(
-                    `No ${LILYMONEY_STORAGE_IDENTIFIER} entity found inside ${keyText}`
-                );
+                errors.push(`No ${LILYMONEY_STORAGE_IDENTIFIER} entity found inside ${keyText}`);
                 continue;
             }
 
-            sealedStorages.push(
-                summarizeStorage(
-                    "sealed",
-                    keyText,
-                    storageEntity,
-                    activeShardIndex
-                )
-            );
+            sealedStorages.push(summarizeStorage("sealed", keyText, storageEntity, activeShardIndex));
         } catch (error) {
-            errors.push(
-                `Could not read ${keyText}: ${
-                    error instanceof Error ? error.message : String(error)
-                }`
-            );
+            errors.push(`Could not read ${keyText}: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 
@@ -711,16 +568,11 @@ export async function scanLilyMoneyData(
     const actorKeys: Buffer[] = tab.cachedDBKeys.ActorPrefix;
     const activeStorages: LilyMoneyStorageSummary[] = [];
 
-    const storageIdentifierBytes: Buffer = Buffer.from(
-        LILYMONEY_STORAGE_IDENTIFIER,
-        "utf8"
-    );
+    const storageIdentifierBytes: Buffer = Buffer.from(LILYMONEY_STORAGE_IDENTIFIER, "utf8");
 
     for (let index: number = 0; index < actorKeys.length; index++) {
         if (index % 100 === 0 || index === actorKeys.length - 1) {
-            onProgress?.(
-                `Scanning entities ${Math.min(index + 1, actorKeys.length)}/${actorKeys.length}...`
-            );
+            onProgress?.(`Scanning entities ${Math.min(index + 1, actorKeys.length)}/${actorKeys.length}...`);
         }
 
         const key: Buffer = actorKeys[index]!;
@@ -748,29 +600,13 @@ export async function scanLilyMoneyData(
                 continue;
             }
 
-            activeStorages.push(
-                summarizeStorage(
-                    "active",
-                    key.toString("hex"),
-                    plain,
-                    activeShardIndex
-                )
-            );
+            activeStorages.push(summarizeStorage("active", key.toString("hex"), plain, activeShardIndex));
         } catch (error) {
-            errors.push(
-                `Could not inspect ActorPrefix ${key.toString("hex")}: ${
-                    error instanceof Error ? error.message : String(error)
-                }`
-            );
+            errors.push(`Could not inspect ActorPrefix ${key.toString("hex")}: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 
-    pendingJobBatchStateFound =
-        activeStorages.some(
-            (storage: LilyMoneyStorageSummary): boolean =>
-                storage.pendingJobBatchStateRaw !== null
-        );
-
+    pendingJobBatchStateFound = activeStorages.some((storage: LilyMoneyStorageSummary): boolean => storage.pendingJobBatchStateRaw !== null);
 
     onProgress?.("LilyMoney data scan complete.");
 

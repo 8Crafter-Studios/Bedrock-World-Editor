@@ -21,7 +21,14 @@ const QUICK_START: Array<{ title: string; lines: string[] }> = [
     { title: "1. Check your money", lines: ["Use /balance to see how much money you have."] },
     { title: "2. Pick a job", lines: ["Use /job to choose a job.", "Jobs can pay you for breaking blocks, placing blocks, or killing mobs."] },
     { title: "3. Use the shop", lines: ["Use /shop to buy and sell server shop items.", "Admins can also edit the shop from the shop UI."] },
-    { title: "4. Use the Auction House", lines: ["Use /ah to browse player auctions.", "Use /ah sell to sell the item in your hand.", "Use /ah sell 500 to quickly list your held stack for $500."] },
+    {
+        title: "4. Use the Auction House",
+        lines: [
+            "Use /ah to browse player auctions.",
+            "Use /ah sell to sell the item in your hand.",
+            "Use /ah sell 500 to quickly list your held stack for $500.",
+        ],
+    },
     { title: "5. Customize your display", lines: ["Use /moneysettings to edit your personal money display settings."] },
 ];
 
@@ -204,16 +211,13 @@ function sectionStyle(): Record<string, string> {
 function LinkButtons(props: { links: ExternalLink[] }): JSX.Element {
     return (
         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-            {props.links.map((link): JSX.Element => (
-                <button
-                    key={link.url}
-                    type="button"
-                    class="lilymoney-mc-button"
-                    onClick={(): void => void shell.openExternal(link.url)}
-                >
-                    {link.label}
-                </button>
-            ))}
+            {props.links.map(
+                (link): JSX.Element => (
+                    <button key={link.url} type="button" class="lilymoney-mc-button" onClick={(): void => void shell.openExternal(link.url)}>
+                        {link.label}
+                    </button>
+                )
+            )}
         </div>
     );
 }
@@ -223,9 +227,7 @@ export default function LilyMoneyAddonInfo(): JSX.Element {
         <div style={{ display: "grid", gap: "16px" }}>
             <div>
                 <h2 style={{ margin: 0 }}>Addon Information</h2>
-                <div style={{ marginTop: "4px", opacity: 0.7 }}>
-                    Lily's Money v3.3.0 help, commands, downloads, and credits.
-                </div>
+                <div style={{ marginTop: "4px", opacity: 0.7 }}>Lily's Money v3.3.0 help, commands, downloads, and credits.</div>
             </div>
 
             <section style={sectionStyle()}>
@@ -236,16 +238,20 @@ export default function LilyMoneyAddonInfo(): JSX.Element {
             <section style={sectionStyle()}>
                 <h3 style={{ margin: "0 0 10px" }}>Quick Start</h3>
                 <div style={{ display: "grid", gap: "10px" }}>
-                    {QUICK_START.map((step): JSX.Element => (
-                        <div key={step.title}>
-                            <strong>{step.title}</strong>
-                            {step.lines.map((line): JSX.Element => (
-                                <div key={line} style={{ marginTop: "3px", opacity: 0.82 }}>
-                                    {line}
-                                </div>
-                            ))}
-                        </div>
-                    ))}
+                    {QUICK_START.map(
+                        (step): JSX.Element => (
+                            <div key={step.title}>
+                                <strong>{step.title}</strong>
+                                {step.lines.map(
+                                    (line): JSX.Element => (
+                                        <div key={line} style={{ marginTop: "3px", opacity: 0.82 }}>
+                                            {line}
+                                        </div>
+                                    )
+                                )}
+                            </div>
+                        )
+                    )}
                 </div>
             </section>
 
@@ -256,33 +262,41 @@ export default function LilyMoneyAddonInfo(): JSX.Element {
                 </div>
 
                 <div style={{ display: "grid", gap: "8px", marginTop: "12px" }}>
-                    {COMMANDS.map((command): JSX.Element => (
-                        <details
-                            key={command.name}
-                            style={{
-                                border: `2px solid ${commandColor(command.type)}`,
-                                background: "var(--alternating-bg-color-2)",
-                                padding: "8px 10px",
-                            }}
-                        >
-                            <summary style={{ cursor: "pointer", fontWeight: 700 }}>
-                                <code>{command.name}</code>
-                                {command.aliases ? <span style={{ opacity: 0.65 }}> ({command.aliases})</span> : null}
-                                <span style={{ opacity: 0.72 }}> — {command.summary}</span>
-                            </summary>
-                            <div style={{ display: "grid", gap: "7px", marginTop: "10px", paddingLeft: "4px" }}>
-                                {command.body.map((line): JSX.Element => (
-                                    <div key={line}>{line}</div>
-                                ))}
-                            </div>
-                        </details>
-                    ))}
+                    {COMMANDS.map(
+                        (command): JSX.Element => (
+                            <details
+                                key={command.name}
+                                style={{
+                                    border: `2px solid ${commandColor(command.type)}`,
+                                    background: "var(--alternating-bg-color-2)",
+                                    padding: "8px 10px",
+                                }}
+                            >
+                                <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+                                    <code>{command.name}</code>
+                                    {command.aliases ?
+                                        <span style={{ opacity: 0.65 }}> ({command.aliases})</span>
+                                    :   null}
+                                    <span style={{ opacity: 0.72 }}> — {command.summary}</span>
+                                </summary>
+                                <div style={{ display: "grid", gap: "7px", marginTop: "10px", paddingLeft: "4px" }}>
+                                    {command.body.map(
+                                        (line): JSX.Element => (
+                                            <div key={line}>{line}</div>
+                                        )
+                                    )}
+                                </div>
+                            </details>
+                        )
+                    )}
                 </div>
             </section>
 
             <section style={sectionStyle()}>
                 <h3 style={{ margin: "0 0 8px" }}>About & Links</h3>
-                <div>Made by <strong>LilyTheCatgirl</strong> • Minecraft: <strong>LilyTheCat9862</strong></div>
+                <div>
+                    Made by <strong>LilyTheCatgirl</strong> • Minecraft: <strong>LilyTheCat9862</strong>
+                </div>
                 <div style={{ marginTop: "12px" }}>
                     <h4 style={{ margin: "0 0 8px" }}>Lily Links</h4>
                     <LinkButtons links={LILY_LINKS} />

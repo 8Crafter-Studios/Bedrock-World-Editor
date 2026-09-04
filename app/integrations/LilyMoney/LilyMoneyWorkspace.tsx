@@ -1,37 +1,15 @@
 import type { JSX } from "preact";
 import _React, { useEffect, useMemo, useState } from "preact/compat";
 
-import {
-    analyzeLilyMoneyDatabase,
-    formatLilyMoneyCents,
-    type LilyMoneyAnalysis,
-    type LilyMoneyPlayerAnalysis,
-} from "./LilyMoneyAnalysis";
-import {
-    assembleLilyMoneyDatabase,
-    type LilyMoneyDatabase,
-} from "./LilyMoneyDatabase";
-import type {
-    LilyMoneyDiscoveryResult,
-    LilyMoneyPropertySummary,
-    LilyMoneyStorageSummary,
-} from "./LilyMoneyData";
-import type {
-    LilyMoneyEventEffect,
-    ParsedLilyMoneyEvent,
-} from "./LilyMoneyEvents";
+import { analyzeLilyMoneyDatabase, formatLilyMoneyCents, type LilyMoneyAnalysis, type LilyMoneyPlayerAnalysis } from "./LilyMoneyAnalysis";
+import { assembleLilyMoneyDatabase, type LilyMoneyDatabase } from "./LilyMoneyDatabase";
+import type { LilyMoneyDiscoveryResult, LilyMoneyPropertySummary, LilyMoneyStorageSummary } from "./LilyMoneyData";
+import type { LilyMoneyEventEffect, ParsedLilyMoneyEvent } from "./LilyMoneyEvents";
 import type { LilyMoneyRecord } from "./LilyMoneyRecords";
 import LilyMoneyAddonInfo from "./LilyMoneyAddonInfo";
 import "./LilyMoneyWorkspace.css";
 
-export type LilyMoneyWorkspacePage =
-    | "overview"
-    | "transactions"
-    | "jobs"
-    | "graphs"
-    | "raw"
-    | "database"
-    | "addonInfo";
+export type LilyMoneyWorkspacePage = "overview" | "transactions" | "jobs" | "graphs" | "raw" | "database" | "addonInfo";
 
 interface LilyMoneyWorkspaceProps {
     result: LilyMoneyDiscoveryResult;
@@ -132,15 +110,7 @@ interface ChartMarker {
     tone: "join" | "leave" | "logging";
 }
 
-type PlayerSortMode =
-    | "name"
-    | "richest"
-    | "poorest"
-    | "latest"
-    | "moneyMoved"
-    | "spending"
-    | "jobs"
-    | "audit";
+type PlayerSortMode = "name" | "richest" | "poorest" | "latest" | "moneyMoved" | "spending" | "jobs" | "audit";
 
 interface PlayerBreakdownRow {
     direction: "income" | "spending" | "adjustment";
@@ -185,12 +155,7 @@ interface BalanceAuditRow {
     baseline: boolean;
 }
 
-type TransactionCategory =
-    | "shop"
-    | "payment"
-    | "auction"
-    | "admin"
-    | "command";
+type TransactionCategory = "shop" | "payment" | "auction" | "admin" | "command";
 
 type MoneyDirection = "gain" | "loss" | "neutral";
 
@@ -254,9 +219,7 @@ function buttonStyle(theme: WorkspaceTheme, selected: boolean = false): Record<s
 }
 
 function sumNullable(values: Array<number | null>): number | null {
-    const available: number[] = values.filter(
-        (value: number | null): value is number => value !== null
-    );
+    const available: number[] = values.filter((value: number | null): value is number => value !== null);
 
     if (available.length === 0) return null;
     return available.reduce((sum: number, value: number): number => sum + value, 0);
@@ -274,36 +237,20 @@ function userFacingIncome(player: LilyMoneyPlayerAnalysis): number {
     return player.totalIncomeCents + player.pendingJobRewardCents;
 }
 
-function databaseHealth(
-    result: LilyMoneyDiscoveryResult,
-    database: LilyMoneyDatabase,
-    analysis: LilyMoneyAnalysis
-): DatabaseHealth {
-    const checksumFailures: number = database.selectedShards.filter(
-        (storage: LilyMoneyStorageSummary): boolean => storage.checksumValid === false
-    ).length;
+function databaseHealth(result: LilyMoneyDiscoveryResult, database: LilyMoneyDatabase, analysis: LilyMoneyAnalysis): DatabaseHealth {
+    const checksumFailures: number = database.selectedShards.filter((storage: LilyMoneyStorageSummary): boolean => storage.checksumValid === false).length;
 
     const decoderErrors: number = database.selectedShards.reduce(
-        (count: number, storage: LilyMoneyStorageSummary): number =>
-            count + storage.recordDecodeErrors.length,
+        (count: number, storage: LilyMoneyStorageSummary): number => count + storage.recordDecodeErrors.length,
         0
     );
 
-    const errorCount: number =
-        result.errors.length +
-        database.errors.length +
-        analysis.errors.length +
-        decoderErrors +
-        checksumFailures;
+    const errorCount: number = result.errors.length + database.errors.length + analysis.errors.length + decoderErrors + checksumFailures;
 
     const warningCount: number =
         database.warnings.length +
         analysis.warnings.length +
-        database.selectedShards.reduce(
-            (count: number, storage: LilyMoneyStorageSummary): number =>
-                count + storage.recordDecodeWarnings.length,
-            0
-        );
+        database.selectedShards.reduce((count: number, storage: LilyMoneyStorageSummary): number => count + storage.recordDecodeWarnings.length, 0);
 
     if (errorCount > 0) {
         return {
@@ -345,16 +292,8 @@ function healthColor(theme: WorkspaceTheme, level: DatabaseHealth["level"]): str
     }
 }
 
-function getPlayer(
-    analysis: LilyMoneyAnalysis,
-    identityId: string
-): LilyMoneyPlayerAnalysis | null {
-    return (
-        analysis.players.find(
-            (player: LilyMoneyPlayerAnalysis): boolean =>
-                player.identityId === identityId
-        ) ?? null
-    );
+function getPlayer(analysis: LilyMoneyAnalysis, identityId: string): LilyMoneyPlayerAnalysis | null {
+    return analysis.players.find((player: LilyMoneyPlayerAnalysis): boolean => player.identityId === identityId) ?? null;
 }
 
 function eventMatchesPlayer(event: ParsedLilyMoneyEvent, identityId: string): boolean {
@@ -459,7 +398,11 @@ function formatAxisWhen(timestamp: number, span: number): string {
     });
 }
 
-function niceMoneyAxis(minimum: number, maximum: number, targetTicks: number = 6): {
+function niceMoneyAxis(
+    minimum: number,
+    maximum: number,
+    targetTicks: number = 6
+): {
     minimum: number;
     maximum: number;
     ticks: number[];
@@ -476,14 +419,16 @@ function niceMoneyAxis(minimum: number, maximum: number, targetTicks: number = 6
     const rawStep = Math.max(1, (maximum - minimum) / Math.max(1, targetTicks - 1));
     const magnitude = 10 ** Math.floor(Math.log10(rawStep));
     const normalized = rawStep / magnitude;
-    const niceNormalized = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+    const niceNormalized =
+        normalized <= 1 ? 1
+        : normalized <= 2 ? 2
+        : normalized <= 5 ? 5
+        : 10;
     const step = niceNormalized * magnitude;
     const axisMinimum = Math.floor(minimum / step) * step;
     const axisMaximum = Math.ceil(maximum / step) * step;
     const tickCount = Math.round((axisMaximum - axisMinimum) / step);
-    const ticks = Array.from({ length: tickCount + 1 }, (_: unknown, index: number): number =>
-        axisMinimum + step * index
-    );
+    const ticks = Array.from({ length: tickCount + 1 }, (_: unknown, index: number): number => axisMinimum + step * index);
 
     return { minimum: axisMinimum, maximum: axisMaximum, ticks };
 }
@@ -493,21 +438,11 @@ function formatSignedCents(cents: number): string {
     return formatLilyMoneyCents(cents);
 }
 
-function eventEffectForPlayer(
-    event: ParsedLilyMoneyEvent,
-    identityId: string
-): LilyMoneyEventEffect | null {
-    return (
-        event.effects.find(
-            (effect: LilyMoneyEventEffect): boolean => effect.identityId === identityId
-        ) ?? null
-    );
+function eventEffectForPlayer(event: ParsedLilyMoneyEvent, identityId: string): LilyMoneyEventEffect | null {
+    return event.effects.find((effect: LilyMoneyEventEffect): boolean => effect.identityId === identityId) ?? null;
 }
 
-function playerBalanceTimeline(
-    analysis: LilyMoneyAnalysis,
-    selectedIdentityId: string
-): BalanceTimeline {
+function playerBalanceTimeline(analysis: LilyMoneyAnalysis, selectedIdentityId: string): BalanceTimeline {
     if (selectedIdentityId === "all") {
         const points: BalancePoint[] = [];
 
@@ -523,10 +458,7 @@ function playerBalanceTimeline(
             points.push({
                 recordId: event.record.id,
                 timestamp: event.record.timestamp,
-                balanceCents: balances.reduce(
-                    (sum: number, value: number): number => sum + value,
-                    0
-                ),
+                balanceCents: balances.reduce((sum: number, value: number): number => sum + value, 0),
             });
         }
 
@@ -546,11 +478,7 @@ function playerBalanceTimeline(
     let pointCount = 0;
     let cleanOfflineSpans = 0;
 
-    const appendPoint = (
-        recordId: number,
-        timestamp: number,
-        balanceCents: number
-    ): void => {
+    const appendPoint = (recordId: number, timestamp: number, balanceCents: number): void => {
         const point: BalancePoint = {
             recordId,
             timestamp,
@@ -558,13 +486,9 @@ function playerBalanceTimeline(
         };
 
         const previous = current[current.length - 1];
-        if (
-            !previous ||
-            previous.timestamp !== point.timestamp ||
-            previous.balanceCents !== point.balanceCents
-        ) {
+        if (!previous || previous.timestamp !== point.timestamp || previous.balanceCents !== point.balanceCents) {
             current.push(point);
-            pointCount += 1;
+            pointCount++;
         }
 
         lastDisplayBalance = balanceCents;
@@ -597,9 +521,7 @@ function playerBalanceTimeline(
         }
 
         const matchingEffects = event.effects.filter(
-            (effect: LilyMoneyEventEffect): boolean =>
-                effect.identityId === selectedIdentityId &&
-                effect.balanceAfterCents !== null
+            (effect: LilyMoneyEventEffect): boolean => effect.identityId === selectedIdentityId && effect.balanceAfterCents !== null
         );
 
         for (const effect of matchingEffects) {
@@ -609,11 +531,7 @@ function playerBalanceTimeline(
             const balance = effect.balanceAfterCents;
 
             if (event.type === "PLAYER_JOIN") {
-                if (
-                    connected === false &&
-                    lastDisplayBalance !== null &&
-                    current.length > 0
-                ) {
+                if (connected === false && lastDisplayBalance !== null && current.length > 0) {
                     const leaveBalance = lastDisplayBalance;
 
                     // Cleanly known offline interval: keep the visual balance
@@ -625,7 +543,7 @@ function playerBalanceTimeline(
                         appendPoint(event.record.id, timestamp, balance);
                     }
 
-                    cleanOfflineSpans += 1;
+                    cleanOfflineSpans++;
                 } else if (connected === true) {
                     // JOIN without a prior LEAVE: session boundary is ambiguous,
                     // so do not invent a continuous line across it.
@@ -658,21 +576,10 @@ function playerBalanceTimeline(
         }
     }
 
-    if (
-        trusted &&
-        connected === false &&
-        current.length > 0 &&
-        lastDisplayBalance !== null &&
-        lastDisplayTimestamp !== null &&
-        analysis.events.length > 0
-    ) {
+    if (trusted && connected === false && current.length > 0 && lastDisplayBalance !== null && lastDisplayTimestamp !== null && analysis.events.length > 0) {
         const finalEvent = analysis.events[analysis.events.length - 1];
         if (finalEvent && finalEvent.record.timestamp > lastDisplayTimestamp) {
-            appendPoint(
-                finalEvent.record.id,
-                finalEvent.record.timestamp,
-                lastDisplayBalance
-            );
+            appendPoint(finalEvent.record.id, finalEvent.record.timestamp, lastDisplayBalance);
         }
     }
 
@@ -685,10 +592,7 @@ function playerBalanceTimeline(
     };
 }
 
-function balanceChartMarkers(
-    analysis: LilyMoneyAnalysis,
-    selectedIdentityId: string
-): ChartMarker[] {
+function balanceChartMarkers(analysis: LilyMoneyAnalysis, selectedIdentityId: string): ChartMarker[] {
     if (selectedIdentityId === "all") return [];
 
     const markers: ChartMarker[] = [];
@@ -732,10 +636,7 @@ function balanceChartMarkers(
     return markers;
 }
 
-function netLoggedFlowPoints(
-    analysis: LilyMoneyAnalysis,
-    selectedIdentityId: string
-): BalancePoint[] {
+function netLoggedFlowPoints(analysis: LilyMoneyAnalysis, selectedIdentityId: string): BalancePoint[] {
     const points: BalancePoint[] = [];
     let cumulative: number = 0;
 
@@ -789,16 +690,10 @@ function TimeSeriesChart(props: {
     markers?: ChartMarker[];
 }): JSX.Element {
     const theme = props.theme;
-    const nonEmptySegments = props.segments.filter(
-        (segment: BalancePoint[]): boolean => segment.length > 0
-    );
-    const perSegmentMaximum = Math.max(
-        90,
-        Math.floor(600 / Math.max(1, nonEmptySegments.length))
-    );
-    const sampledSegments: BalancePoint[][] = nonEmptySegments.map(
-        (segment: BalancePoint[]): BalancePoint[] =>
-            sampleBalancePoints(segment, perSegmentMaximum)
+    const nonEmptySegments = props.segments.filter((segment: BalancePoint[]): boolean => segment.length > 0);
+    const perSegmentMaximum = Math.max(90, Math.floor(600 / Math.max(1, nonEmptySegments.length)));
+    const sampledSegments: BalancePoint[][] = nonEmptySegments.map((segment: BalancePoint[]): BalancePoint[] =>
+        sampleBalancePoints(segment, perSegmentMaximum)
     );
     const sampled: BalancePoint[] = sampledSegments.flat();
 
@@ -817,9 +712,7 @@ function TimeSeriesChart(props: {
                     color: theme.muted,
                 }}
             >
-                <div style={{ fontWeight: 650, color: theme.text, marginBottom: "7px" }}>
-                    {props.title}
-                </div>
+                <div style={{ fontWeight: 650, color: theme.text, marginBottom: "7px" }}>{props.title}</div>
                 {props.emptyText}
             </div>
         );
@@ -848,11 +741,9 @@ function TimeSeriesChart(props: {
         .slice(-60);
 
     const markerColor = (marker: ChartMarker): string =>
-        marker.tone === "join"
-            ? theme.teal
-            : marker.tone === "leave"
-              ? theme.warning
-              : theme.danger;
+        marker.tone === "join" ? theme.teal
+        : marker.tone === "leave" ? theme.warning
+        : theme.danger;
 
     const eventIndexes = new Map<BalancePoint, number>();
     sampled.forEach((point: BalancePoint, index: number): void => {
@@ -865,19 +756,14 @@ function TimeSeriesChart(props: {
         }
 
         const index = eventIndexes.get(point) ?? 0;
-        return sampled.length === 1
-            ? left + xSpan / 2
-            : left + (index / (sampled.length - 1)) * xSpan;
+        return sampled.length === 1 ? left + xSpan / 2 : left + (index / (sampled.length - 1)) * xSpan;
     };
 
-    const pointY = (point: BalancePoint): number =>
-        top + ((maximum - point.balanceCents) / range) * ySpan;
+    const pointY = (point: BalancePoint): number => top + ((maximum - point.balanceCents) / range) * ySpan;
 
     const first = sampled[0]!;
     const last = sampled[sampled.length - 1]!;
-    const zeroY = minimum < 0 && maximum > 0
-        ? top + ((maximum - 0) / range) * ySpan
-        : null;
+    const zeroY = minimum < 0 && maximum > 0 ? top + ((maximum - 0) / range) * ySpan : null;
     const yTicks = [...axis.ticks].reverse();
     const xTicks = Array.from({ length: 5 }, (_: unknown, index: number): number => index / 4);
 
@@ -896,14 +782,13 @@ function TimeSeriesChart(props: {
                     <div style={smallMutedStyle(theme)}>{props.subtitle}</div>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                    <div style={{ fontWeight: 680 }}>
-                        {formatLilyMoneyCents(last.balanceCents)}
-                    </div>
+                    <div style={{ fontWeight: 680 }}>{formatLilyMoneyCents(last.balanceCents)}</div>
                     <div style={smallMutedStyle(theme)}>latest value</div>
                 </div>
             </div>
 
             <div
+                class="nsel"
                 style={{
                     display: "flex",
                     gap: "14px",
@@ -921,15 +806,15 @@ function TimeSeriesChart(props: {
                 <span style={{ color: theme.muted, display: "inline-flex", alignItems: "center", gap: "5px" }}>
                     <span style={{ width: "8px", height: "8px", background: theme.muted }} /> No change
                 </span>
-                {visibleMarkers.some((marker: ChartMarker): boolean => marker.tone === "join") ? (
+                {visibleMarkers.some((marker: ChartMarker): boolean => marker.tone === "join") ?
                     <span style={{ color: theme.teal }}>│ Join</span>
-                ) : null}
-                {visibleMarkers.some((marker: ChartMarker): boolean => marker.tone === "leave") ? (
+                :   null}
+                {visibleMarkers.some((marker: ChartMarker): boolean => marker.tone === "leave") ?
                     <span style={{ color: theme.warning }}>│ Leave</span>
-                ) : null}
-                {visibleMarkers.some((marker: ChartMarker): boolean => marker.tone === "logging") ? (
+                :   null}
+                {visibleMarkers.some((marker: ChartMarker): boolean => marker.tone === "logging") ?
                     <span style={{ color: theme.danger }}>┆ Logging boundary</span>
-                ) : null}
+                :   null}
             </div>
 
             <svg
@@ -951,13 +836,7 @@ function TimeSeriesChart(props: {
                                 stroke-width="1"
                                 shape-rendering="crispEdges"
                             />
-                            <text
-                                x={left - 10}
-                                y={y + 4}
-                                text-anchor="end"
-                                fill={theme.muted}
-                                font-size="13"
-                            >
+                            <text x={left - 10} y={y + 4} text-anchor="end" fill={theme.muted} font-size="13">
                                 {formatLilyMoneyCents(Math.round(tick))}
                             </text>
                         </g>
@@ -966,25 +845,22 @@ function TimeSeriesChart(props: {
 
                 {xTicks.map((ratio: number, index: number): JSX.Element => {
                     const x = left + ratio * xSpan;
-                    const label = props.xMode === "time"
-                        ? formatAxisWhen(Math.round(minimumTime + ratio * timeSpan), timeSpan)
-                        : `${Math.round(ratio * Math.max(0, sampled.length - 1)).toLocaleString()}`;
+                    const label =
+                        props.xMode === "time" ?
+                            formatAxisWhen(Math.round(minimumTime + ratio * timeSpan), timeSpan)
+                        :   `${Math.round(ratio * Math.max(0, sampled.length - 1)).toLocaleString()}`;
                     return (
                         <g key={`x-${index}`}>
-                            <line
-                                x1={x}
-                                y1={top}
-                                x2={x}
-                                y2={top + ySpan}
-                                stroke={theme.border}
-                                stroke-width="1"
-                                opacity="0.45"
-                                shape-rendering="crispEdges"
-                            />
+                            <line x1={x} y1={top} x2={x} y2={top + ySpan} stroke={theme.border} stroke-width="1" opacity="0.45" shape-rendering="crispEdges" />
                             <text
                                 x={x}
                                 y={height - 18}
-                                text-anchor={index === 0 ? "start" : index === xTicks.length - 1 ? "end" : "middle"}
+                                text-anchor={
+                                    index === 0 ? "start"
+                                    : index === xTicks.length - 1 ?
+                                        "end"
+                                    :   "middle"
+                                }
                                 fill={theme.muted}
                                 font-size="12"
                             >
@@ -994,78 +870,65 @@ function TimeSeriesChart(props: {
                     );
                 })}
 
-                {zeroY !== null ? (
-                    <line
-                        x1={left}
-                        y1={zeroY}
-                        x2={width - right}
-                        y2={zeroY}
-                        stroke={theme.muted}
-                        stroke-width="1.2"
-                        stroke-dasharray="6 5"
-                    />
-                ) : null}
+                {zeroY !== null ?
+                    <line x1={left} y1={zeroY} x2={width - right} y2={zeroY} stroke={theme.muted} stroke-width="1.2" stroke-dasharray="6 5" />
+                :   null}
 
-                {props.xMode === "time"
-                    ? visibleMarkers.map((marker: ChartMarker, index: number): JSX.Element => {
-                          const x = left + ((marker.timestamp - minimumTime) / timeSpan) * xSpan;
-                          return (
-                              <g key={`${marker.timestamp}-${marker.label}-${index}`}>
-                                  <line
-                                      x1={x}
-                                      y1={top}
-                                      x2={x}
-                                      y2={top + ySpan}
-                                      stroke={markerColor(marker)}
-                                      stroke-width="1.5"
-                                      stroke-dasharray={marker.tone === "logging" ? "3 4" : "5 5"}
-                                      opacity="0.8"
-                                  >
-                                      <title>{`${marker.label} • ${formatWhen(marker.timestamp)}`}</title>
-                                  </line>
-                                  <rect x={x - 3} y={top + 2} width="6" height="6" fill={markerColor(marker)}>
-                                      <title>{`${marker.label} • ${formatWhen(marker.timestamp)}`}</title>
-                                  </rect>
-                              </g>
-                          );
-                      })
-                    : null}
-
-                {sampledSegments.map((segment: BalancePoint[], segmentIndex: number): JSX.Element => (
-                    <g key={`segment-${segmentIndex}`}>
-                        {segment.length === 1 ? (
-                            <rect
-                                x={pointX(segment[0]!) - 4}
-                                y={pointY(segment[0]!) - 4}
-                                width="8"
-                                height="8"
-                                fill={theme.accent}
-                            />
-                        ) : null}
-
-                        {segment.slice(0, -1).map((point: BalancePoint, index: number): JSX.Element => {
-                            const next = segment[index + 1]!;
-                            const directionColor = next.balanceCents > point.balanceCents
-                                ? theme.positive
-                                : next.balanceCents < point.balanceCents
-                                  ? theme.negative
-                                  : theme.muted;
-
-                            return (
+                {props.xMode === "time" ?
+                    visibleMarkers.map((marker: ChartMarker, index: number): JSX.Element => {
+                        const x = left + ((marker.timestamp - minimumTime) / timeSpan) * xSpan;
+                        return (
+                            <g key={`${marker.timestamp}-${marker.label}-${index}`}>
                                 <line
-                                    key={`${segmentIndex}-${point.recordId}-${index}`}
-                                    x1={pointX(point)}
-                                    y1={pointY(point)}
-                                    x2={pointX(next)}
-                                    y2={pointY(next)}
-                                    stroke={directionColor}
-                                    stroke-width="3"
-                                    stroke-linecap="square"
-                                />
-                            );
-                        })}
-                    </g>
-                ))}
+                                    x1={x}
+                                    y1={top}
+                                    x2={x}
+                                    y2={top + ySpan}
+                                    stroke={markerColor(marker)}
+                                    stroke-width="1.5"
+                                    stroke-dasharray={marker.tone === "logging" ? "3 4" : "5 5"}
+                                    opacity="0.8"
+                                >
+                                    <title>{`${marker.label} • ${formatWhen(marker.timestamp)}`}</title>
+                                </line>
+                                <rect x={x - 3} y={top + 2} width="6" height="6" fill={markerColor(marker)}>
+                                    <title>{`${marker.label} • ${formatWhen(marker.timestamp)}`}</title>
+                                </rect>
+                            </g>
+                        );
+                    })
+                :   null}
+
+                {sampledSegments.map(
+                    (segment: BalancePoint[], segmentIndex: number): JSX.Element => (
+                        <g key={`segment-${segmentIndex}`}>
+                            {segment.length === 1 ?
+                                <rect x={pointX(segment[0]!) - 4} y={pointY(segment[0]!) - 4} width="8" height="8" fill={theme.accent} />
+                            :   null}
+
+                            {segment.slice(0, -1).map((point: BalancePoint, index: number): JSX.Element => {
+                                const next = segment[index + 1]!;
+                                const directionColor =
+                                    next.balanceCents > point.balanceCents ? theme.positive
+                                    : next.balanceCents < point.balanceCents ? theme.negative
+                                    : theme.muted;
+
+                                return (
+                                    <line
+                                        key={`${segmentIndex}-${point.recordId}-${index}`}
+                                        x1={pointX(point)}
+                                        y1={pointY(point)}
+                                        x2={pointX(next)}
+                                        y2={pointY(next)}
+                                        stroke={directionColor}
+                                        stroke-width="3"
+                                        stroke-linecap="square"
+                                    />
+                                );
+                            })}
+                        </g>
+                    )
+                )}
             </svg>
 
             <div
@@ -1100,10 +963,7 @@ function HorizontalBarChart(props: {
         .sort((a: BarRow, b: BarRow): number => Math.abs(b.valueCents) - Math.abs(a.valueCents))
         .slice(0, props.maximumRows ?? 10);
 
-    const maximum: number = rows.reduce(
-        (value: number, row: BarRow): number => Math.max(value, Math.abs(row.valueCents)),
-        0
-    );
+    const maximum: number = rows.reduce((value: number, row: BarRow): number => Math.max(value, Math.abs(row.valueCents)), 0);
 
     return (
         <div style={{ ...panelStyle(theme), padding: "16px", minHeight: "220px" }}>
@@ -1118,37 +978,24 @@ function HorizontalBarChart(props: {
             >
                 <div>
                     <div style={{ fontWeight: 680 }}>{props.title}</div>
-                    {props.subtitle ? (
+                    {props.subtitle ?
                         <div style={{ ...smallMutedStyle(theme), marginTop: "2px" }}>{props.subtitle}</div>
-                    ) : null}
+                    :   null}
                 </div>
                 {props.headerRight ?? null}
             </div>
 
-            {rows.length === 0 ? (
-                <div style={{ color: theme.muted, padding: "42px 8px", textAlign: "center" }}>
-                    {props.emptyText}
-                </div>
-            ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "16px" }}>
+            {rows.length === 0 ?
+                <div style={{ color: theme.muted, padding: "42px 8px", textAlign: "center" }}>{props.emptyText}</div>
+            :   <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "16px" }}>
                     {rows.map((row: BarRow, index: number): JSX.Element => {
-                        const widthPercent: number = maximum === 0
-                            ? 0
-                            : (Math.abs(row.valueCents) / maximum) * 100;
-                        const mixedPalette = [
-                            theme.accent,
-                            theme.blue,
-                            theme.teal,
-                            theme.positive,
-                            theme.warning,
-                        ];
-                        const color = props.tone === "positive"
-                            ? theme.positive
-                            : props.tone === "negative"
-                              ? theme.negative
-                              : row.valueCents < 0
-                                ? theme.negative
-                                : mixedPalette[index % mixedPalette.length]!;
+                        const widthPercent: number = maximum === 0 ? 0 : (Math.abs(row.valueCents) / maximum) * 100;
+                        const mixedPalette = [theme.accent, theme.blue, theme.teal, theme.positive, theme.warning];
+                        const color =
+                            props.tone === "positive" ? theme.positive
+                            : props.tone === "negative" ? theme.negative
+                            : row.valueCents < 0 ? theme.negative
+                            : mixedPalette[index % mixedPalette.length]!;
 
                         return (
                             <div key={`${row.label}-${index}`}>
@@ -1161,16 +1008,12 @@ function HorizontalBarChart(props: {
                                     }}
                                 >
                                     <div style={{ minWidth: 0 }}>
-                                        <div style={{ fontWeight: 600, overflowWrap: "anywhere" }}>
-                                            {row.label}
-                                        </div>
-                                        {row.detail ? (
+                                        <div style={{ fontWeight: 600, overflowWrap: "anywhere" }}>{row.label}</div>
+                                        {row.detail ?
                                             <div style={smallMutedStyle(theme)}>{row.detail}</div>
-                                        ) : null}
+                                        :   null}
                                     </div>
-                                    <div style={{ fontWeight: 650, whiteSpace: "nowrap", color }}>
-                                        {formatLilyMoneyCents(row.valueCents)}
-                                    </div>
+                                    <div style={{ fontWeight: 650, whiteSpace: "nowrap", color }}>{formatLilyMoneyCents(row.valueCents)}</div>
                                 </div>
                                 <div
                                     style={{
@@ -1194,7 +1037,7 @@ function HorizontalBarChart(props: {
                         );
                     })}
                 </div>
-            )}
+            }
         </div>
     );
 }
@@ -1227,9 +1070,9 @@ function MoneyBarGraph(props: {
                 }}
             >
                 <div style={{ fontWeight: 680 }}>{props.title}</div>
-                {props.subtitle ? (
+                {props.subtitle ?
                     <div style={{ ...smallMutedStyle(theme), marginTop: "2px" }}>{props.subtitle}</div>
-                ) : null}
+                :   null}
                 <div
                     style={{
                         flex: 1,
@@ -1263,9 +1106,9 @@ function MoneyBarGraph(props: {
     return (
         <div style={{ ...panelStyle(theme), padding: "18px", overflow: "hidden" }}>
             <div style={{ fontWeight: 680 }}>{props.title}</div>
-            {props.subtitle ? (
+            {props.subtitle ?
                 <div style={{ ...smallMutedStyle(theme), marginTop: "2px" }}>{props.subtitle}</div>
-            ) : null}
+            :   null}
 
             <svg
                 viewBox={`0 0 ${width} ${height}`}
@@ -1298,7 +1141,12 @@ function MoneyBarGraph(props: {
                                 y={height - 10}
                                 fill={theme.muted}
                                 font-size="12"
-                                text-anchor={index === 0 ? "start" : index === axis.ticks.length - 1 ? "end" : "middle"}
+                                text-anchor={
+                                    index === 0 ? "start"
+                                    : index === axis.ticks.length - 1 ?
+                                        "end"
+                                    :   "middle"
+                                }
                             >
                                 {formatLilyMoneyCents(Math.round(tick))}
                             </text>
@@ -1310,63 +1158,27 @@ function MoneyBarGraph(props: {
                     const y = top + index * rowHeight;
                     const barHeight = 22;
                     const barY = y + 9;
-                    const barWidth = maximum === 0
-                        ? 0
-                        : (row.valueCents / axisMaximum) * plotWidth;
+                    const barWidth = maximum === 0 ? 0 : (row.valueCents / axisMaximum) * plotWidth;
 
                     return (
                         <g key={`${row.label}-${index}`}>
-                            <text
-                                x="4"
-                                y={barY + 15}
-                                fill={theme.text}
-                                font-size="15"
-                                font-weight="600"
-                            >
+                            <text x="4" y={barY + 15} fill={theme.text} font-size="15" font-weight="600">
                                 {row.label.length > 28 ? `${row.label.slice(0, 27)}…` : row.label}
                             </text>
-                            <rect
-                                x={plotLeft}
-                                y={barY}
-                                width={plotWidth}
-                                height={barHeight}
-                                rx="0"
-                                fill={theme.panelStrong}
-                            />
-                            <rect
-                                x={plotLeft}
-                                y={barY}
-                                width={Math.max(2, barWidth)}
-                                height={barHeight}
-                                rx="0"
-                                fill={color}
-                            />
-                            <text
-                                x={plotRight + 12}
-                                y={barY + 15}
-                                fill={color}
-                                font-size="15"
-                                font-weight="700"
-                            >
+                            <rect x={plotLeft} y={barY} width={plotWidth} height={barHeight} rx="0" fill={theme.panelStrong} />
+                            <rect x={plotLeft} y={barY} width={Math.max(2, barWidth)} height={barHeight} rx="0" fill={color} />
+                            <text x={plotRight + 12} y={barY + 15} fill={color} font-size="15" font-weight="700">
                                 {formatLilyMoneyCents(row.valueCents)}
                             </text>
                         </g>
                     );
                 })}
-
             </svg>
         </div>
     );
 }
 
-function MetricCard(props: {
-    theme: WorkspaceTheme;
-    title: string;
-    value: string;
-    detail?: string;
-    large?: boolean;
-    accent?: string;
-}): JSX.Element {
+function MetricCard(props: { theme: WorkspaceTheme; title: string; value: string; detail?: string; large?: boolean; accent?: string }): JSX.Element {
     const theme = props.theme;
 
     return (
@@ -1389,29 +1201,21 @@ function MetricCard(props: {
             >
                 {props.value}
             </div>
-            {props.detail ? (
+            {props.detail ?
                 <div style={{ ...smallMutedStyle(theme), marginTop: "8px" }}>{props.detail}</div>
-            ) : null}
+            :   null}
         </div>
     );
 }
 
-function Badge(props: {
-    theme: WorkspaceTheme;
-    label: string;
-    tone?: "accent" | "positive" | "negative" | "warning" | "muted";
-}): JSX.Element {
+function Badge(props: { theme: WorkspaceTheme; label: string; tone?: "accent" | "positive" | "negative" | "warning" | "muted" }): JSX.Element {
     const theme = props.theme;
     const color =
-        props.tone === "positive"
-            ? theme.positive
-            : props.tone === "negative"
-              ? theme.negative
-              : props.tone === "warning"
-                ? theme.warning
-                : props.tone === "muted"
-                  ? theme.muted
-                  : theme.accent;
+        props.tone === "positive" ? theme.positive
+        : props.tone === "negative" ? theme.negative
+        : props.tone === "warning" ? theme.warning
+        : props.tone === "muted" ? theme.muted
+        : theme.accent;
 
     return (
         <span
@@ -1434,11 +1238,7 @@ function Badge(props: {
     );
 }
 
-function EmptyState(props: {
-    theme: WorkspaceTheme;
-    title: string;
-    detail: string;
-}): JSX.Element {
+function EmptyState(props: { theme: WorkspaceTheme; title: string; detail: string }): JSX.Element {
     return (
         <div
             style={{
@@ -1454,16 +1254,10 @@ function EmptyState(props: {
     );
 }
 
-function RecentActivity(props: {
-    theme: WorkspaceTheme;
-    events: ParsedLilyMoneyEvent[];
-    selectedIdentityId: string;
-}): JSX.Element {
+function RecentActivity(props: { theme: WorkspaceTheme; events: ParsedLilyMoneyEvent[]; selectedIdentityId: string }): JSX.Element {
     const theme = props.theme;
     const events: ParsedLilyMoneyEvent[] = props.events
-        .filter((event: ParsedLilyMoneyEvent): boolean =>
-            eventMatchesPlayer(event, props.selectedIdentityId)
-        )
+        .filter((event: ParsedLilyMoneyEvent): boolean => eventMatchesPlayer(event, props.selectedIdentityId))
         .slice(-10)
         .reverse();
 
@@ -1474,38 +1268,36 @@ function RecentActivity(props: {
                 <div style={smallMutedStyle(theme)}>Newest saved activity first</div>
             </div>
 
-            {events.length === 0 ? (
+            {events.length === 0 ?
                 <div style={{ padding: "24px", color: theme.muted }}>No matching activity.</div>
-            ) : (
-                events.map((event: ParsedLilyMoneyEvent): JSX.Element => (
-                    <div
-                        key={event.record.id}
-                        style={{
-                            display: "grid",
-                            gridTemplateColumns: "76px minmax(0, 1fr) auto",
-                            gap: "12px",
-                            alignItems: "center",
-                            padding: "12px 18px",
-                            borderBottom: `1px solid ${theme.border}`,
-                        }}
-                    >
-                        <code style={{ color: theme.muted }}>#{event.record.id}</code>
-                        <div style={{ minWidth: 0 }}>
-                            <div style={{ overflowWrap: "anywhere" }}>{describeEvent(event)}</div>
-                            <div style={smallMutedStyle(theme)}>{formatWhen(event.record.timestamp)}</div>
+            :   events.map(
+                    (event: ParsedLilyMoneyEvent): JSX.Element => (
+                        <div
+                            key={event.record.id}
+                            style={{
+                                display: "grid",
+                                gridTemplateColumns: "76px minmax(0, 1fr) auto",
+                                gap: "12px",
+                                alignItems: "center",
+                                padding: "12px 18px",
+                                borderBottom: `1px solid ${theme.border}`,
+                            }}
+                        >
+                            <code style={{ color: theme.muted }}>#{event.record.id}</code>
+                            <div style={{ minWidth: 0 }}>
+                                <div style={{ overflowWrap: "anywhere" }}>{describeEvent(event)}</div>
+                                <div style={smallMutedStyle(theme)}>{formatWhen(event.record.timestamp)}</div>
+                            </div>
+                            <Badge theme={theme} tone="muted" label={event.type} />
                         </div>
-                        <Badge theme={theme} tone="muted" label={event.type} />
-                    </div>
-                ))
-            )}
+                    )
+                )
+            }
         </div>
     );
 }
 
-function TopBalances(props: {
-    theme: WorkspaceTheme;
-    analysis: LilyMoneyAnalysis;
-}): JSX.Element {
+function TopBalances(props: { theme: WorkspaceTheme; analysis: LilyMoneyAnalysis }): JSX.Element {
     const rows = [...props.analysis.players]
         .map((player: LilyMoneyPlayerAnalysis) => ({
             player,
@@ -1521,30 +1313,31 @@ function TopBalances(props: {
                 <div style={{ fontWeight: 680 }}>Top Balances</div>
                 <div style={smallMutedStyle(props.theme)}>Current tracked balances</div>
             </div>
-            {rows.length === 0 ? (
+            {rows.length === 0 ?
                 <div style={{ padding: "24px", color: props.theme.muted }}>No balances available.</div>
-            ) : (
-                rows.map((row, index: number): JSX.Element => (
-                    <div
-                        key={row.player.identityId || row.player.displayName}
-                        style={{
-                            display: "grid",
-                            gridTemplateColumns: "42px minmax(0, 1fr) auto",
-                            gap: "10px",
-                            alignItems: "center",
-                            padding: "11px 18px",
-                            borderBottom: `1px solid ${props.theme.border}`,
-                        }}
-                    >
-                        <div style={{ color: props.theme.muted }}>#{index + 1}</div>
-                        <div>
-                            <div style={{ fontWeight: 600 }}>{row.player.displayName}</div>
-                            <div style={smallMutedStyle(props.theme)}>Identity {row.player.identityId || "unknown"}</div>
+            :   rows.map(
+                    (row, index: number): JSX.Element => (
+                        <div
+                            key={row.player.identityId || row.player.displayName}
+                            style={{
+                                display: "grid",
+                                gridTemplateColumns: "42px minmax(0, 1fr) auto",
+                                gap: "10px",
+                                alignItems: "center",
+                                padding: "11px 18px",
+                                borderBottom: `1px solid ${props.theme.border}`,
+                            }}
+                        >
+                            <div style={{ color: props.theme.muted }}>#{index + 1}</div>
+                            <div>
+                                <div style={{ fontWeight: 600 }}>{row.player.displayName}</div>
+                                <div style={smallMutedStyle(props.theme)}>Identity {row.player.identityId || "unknown"}</div>
+                            </div>
+                            <div style={{ fontWeight: 680 }}>{formatLilyMoneyCents(row.balance)}</div>
                         </div>
-                        <div style={{ fontWeight: 680 }}>{formatLilyMoneyCents(row.balance)}</div>
-                    </div>
-                ))
-            )}
+                    )
+                )
+            }
         </div>
     );
 }
@@ -1644,10 +1437,7 @@ function medianCents(values: number[]): number | null {
     return left === undefined || right === undefined ? null : Math.trunc((left + right) / 2);
 }
 
-function buildPlayerProfileMetrics(
-    analysis: LilyMoneyAnalysis,
-    identityId: string
-): PlayerProfileMetrics | null {
+function buildPlayerProfileMetrics(analysis: LilyMoneyAnalysis, identityId: string): PlayerProfileMetrics | null {
     const player = getPlayer(analysis, identityId);
     if (!player) return null;
 
@@ -1706,7 +1496,7 @@ function buildPlayerProfileMetrics(
 
         const effect = eventEffectForPlayer(event, identityId);
         if (effect?.balanceAfterCents !== null && effect?.balanceAfterCents !== undefined) {
-            exactObservationCount += 1;
+            exactObservationCount++;
             if (firstExactBalanceCents === null) firstExactBalanceCents = effect.balanceAfterCents;
         }
 
@@ -1717,18 +1507,18 @@ function buildPlayerProfileMetrics(
             row.amountCents += event.amountCents;
             row.quantity += event.quantity ?? 0;
             jobs.set(jobId, row);
-            jobRewardGroups += 1;
+            jobRewardGroups++;
             jobActions += event.quantity ?? 0;
             continue;
         }
 
         const category = transactionCategory(event);
         if (category === null) continue;
-        transactionCount += 1;
+        transactionCount++;
 
         const auditReason = auditReasonForEvent(event);
         if (auditReason) {
-            auditFlagCount += 1;
+            auditFlagCount++;
             auditFlagVolumeCents += Math.abs(event.amountCents ?? 0);
         }
 
@@ -1738,20 +1528,18 @@ function buildPlayerProfileMetrics(
         const item = displayItemName(event);
 
         if (effect.deltaCents !== null && effect.deltaCents > 0) {
-            const counterpart = event.type === "PAY"
-                ? event.people.find((person): boolean => person.identityId !== identityId)?.displayName
-                : event.type === "AH_BUY"
-                  ? event.people.find((person): boolean => person.identityId !== identityId)?.displayName
-                  : item;
+            const counterpart =
+                event.type === "PAY" ? event.people.find((person): boolean => person.identityId !== identityId)?.displayName
+                : event.type === "AH_BUY" ? event.people.find((person): boolean => person.identityId !== identityId)?.displayName
+                : item;
             const candidate = { amountCents: effect.deltaCents, label: `${friendlyEventType(event.type)}${counterpart ? ` • ${counterpart}` : ""}` };
             if (!biggestIncoming || candidate.amountCents > biggestIncoming.amountCents) biggestIncoming = candidate;
         }
         if (effect.deltaCents !== null && effect.deltaCents < 0) {
-            const counterpart = event.type === "PAY"
-                ? event.people.find((person): boolean => person.identityId !== identityId)?.displayName
-                : event.type === "AH_BUY"
-                  ? event.people.find((person): boolean => person.identityId !== identityId)?.displayName
-                  : item;
+            const counterpart =
+                event.type === "PAY" ? event.people.find((person): boolean => person.identityId !== identityId)?.displayName
+                : event.type === "AH_BUY" ? event.people.find((person): boolean => person.identityId !== identityId)?.displayName
+                : item;
             const candidate = { amountCents: -effect.deltaCents, label: `${friendlyEventType(event.type)}${counterpart ? ` • ${counterpart}` : ""}` };
             if (!biggestOutgoing || candidate.amountCents > biggestOutgoing.amountCents) biggestOutgoing = candidate;
         }
@@ -1814,14 +1602,12 @@ function buildPlayerProfileMetrics(
                 if (effect.role === "target") totals.adminRemove += amount;
                 break;
             case "SET_MONEY":
-                if (effect.role === "target") setMoneyCount += 1;
+                if (effect.role === "target") setMoneyCount++;
                 break;
         }
     }
 
-    const pendingPlayer = analysis.pendingJobs.players.find(
-        (pending): boolean => pending.identityId === identityId
-    );
+    const pendingPlayer = analysis.pendingJobs.players.find((pending): boolean => pending.identityId === identityId);
     if (pendingPlayer) {
         updateSeen(pendingPlayer.lastUpdatedAt);
         for (const reward of pendingPlayer.rewards) {
@@ -1834,7 +1620,7 @@ function buildPlayerProfileMetrics(
             row.amountCents += reward.amountCents;
             row.quantity += reward.quantity;
             jobs.set(reward.jobId, row);
-            jobRewardGroups += 1;
+            jobRewardGroups++;
             jobActions += reward.quantity;
         }
     }
@@ -1882,9 +1668,7 @@ function buildPlayerProfileMetrics(
         exactObservationCount,
         firstExactBalanceCents,
         exactBalanceChangeCents:
-            firstExactBalanceCents === null || currentPlayerBalance(player) === null
-                ? null
-                : (currentPlayerBalance(player) as number) - firstExactBalanceCents,
+            firstExactBalanceCents === null || currentPlayerBalance(player) === null ? null : (currentPlayerBalance(player) as number) - firstExactBalanceCents,
         breakdown,
         topJob: topByAmount(jobs.values()),
         topBought: topByAmount(boughtItems.values()),
@@ -1909,54 +1693,55 @@ function playerLatestActivity(analysis: LilyMoneyAnalysis, identityId: string): 
     return latest;
 }
 
-function sortPlayersForSelector(
-    analysis: LilyMoneyAnalysis,
-    metricsById: Map<string, PlayerProfileMetrics>,
-    mode: PlayerSortMode
-): LilyMoneyPlayerAnalysis[] {
+function sortPlayersForSelector(analysis: LilyMoneyAnalysis, metricsById: Map<string, PlayerProfileMetrics>, mode: PlayerSortMode): LilyMoneyPlayerAnalysis[] {
     const rows = [...analysis.players];
-    const nameCompare = (a: LilyMoneyPlayerAnalysis, b: LilyMoneyPlayerAnalysis): number =>
-        a.displayName.localeCompare(b.displayName);
+    const nameCompare = (a: LilyMoneyPlayerAnalysis, b: LilyMoneyPlayerAnalysis): number => a.displayName.localeCompare(b.displayName);
 
     switch (mode) {
         case "richest":
-            return rows.sort((a, b): number => (currentPlayerBalance(b) ?? Number.NEGATIVE_INFINITY) - (currentPlayerBalance(a) ?? Number.NEGATIVE_INFINITY) || nameCompare(a, b));
+            return rows.sort(
+                (a, b): number =>
+                    (currentPlayerBalance(b) ?? Number.NEGATIVE_INFINITY) - (currentPlayerBalance(a) ?? Number.NEGATIVE_INFINITY) || nameCompare(a, b)
+            );
         case "poorest":
-            return rows.sort((a, b): number => (currentPlayerBalance(a) ?? Number.POSITIVE_INFINITY) - (currentPlayerBalance(b) ?? Number.POSITIVE_INFINITY) || nameCompare(a, b));
+            return rows.sort(
+                (a, b): number =>
+                    (currentPlayerBalance(a) ?? Number.POSITIVE_INFINITY) - (currentPlayerBalance(b) ?? Number.POSITIVE_INFINITY) || nameCompare(a, b)
+            );
         case "latest":
-            return rows.sort((a, b): number => (playerLatestActivity(analysis, b.identityId) ?? 0) - (playerLatestActivity(analysis, a.identityId) ?? 0) || nameCompare(a, b));
+            return rows.sort(
+                (a, b): number => (playerLatestActivity(analysis, b.identityId) ?? 0) - (playerLatestActivity(analysis, a.identityId) ?? 0) || nameCompare(a, b)
+            );
         case "moneyMoved":
-            return rows.sort((a, b): number => (b.moneyMovedCents + b.pendingJobRewardCents) - (a.moneyMovedCents + a.pendingJobRewardCents) || nameCompare(a, b));
+            return rows.sort(
+                (a, b): number => b.moneyMovedCents + b.pendingJobRewardCents - (a.moneyMovedCents + a.pendingJobRewardCents) || nameCompare(a, b)
+            );
         case "spending":
             return rows.sort((a, b): number => b.totalSpendingCents - a.totalSpendingCents || nameCompare(a, b));
         case "jobs":
             return rows.sort((a, b): number => userFacingJobRewards(b) - userFacingJobRewards(a) || nameCompare(a, b));
         case "audit":
-            return rows.sort((a, b): number => (metricsById.get(b.identityId)?.auditFlagCount ?? 0) - (metricsById.get(a.identityId)?.auditFlagCount ?? 0) || nameCompare(a, b));
+            return rows.sort(
+                (a, b): number =>
+                    (metricsById.get(b.identityId)?.auditFlagCount ?? 0) - (metricsById.get(a.identityId)?.auditFlagCount ?? 0) || nameCompare(a, b)
+            );
         case "name":
         default:
             return rows.sort(nameCompare);
     }
 }
 
-function RankingPanel(props: {
-    theme: WorkspaceTheme;
-    analysis: LilyMoneyAnalysis;
-    metricsById: Map<string, PlayerProfileMetrics>;
-}): JSX.Element {
+function RankingPanel(props: { theme: WorkspaceTheme; analysis: LilyMoneyAnalysis; metricsById: Map<string, PlayerProfileMetrics> }): JSX.Element {
     const [metric, setMetric] = useState<"balance" | "moneyMoved" | "spending" | "jobs" | "audit">("balance");
     const rows = [...props.analysis.players]
         .map((player: LilyMoneyPlayerAnalysis) => {
             const metrics = props.metricsById.get(player.identityId);
-            const value = metric === "balance"
-                ? currentPlayerBalance(player) ?? Number.NEGATIVE_INFINITY
-                : metric === "moneyMoved"
-                  ? player.moneyMovedCents + player.pendingJobRewardCents
-                  : metric === "spending"
-                    ? player.totalSpendingCents
-                    : metric === "jobs"
-                      ? userFacingJobRewards(player)
-                      : metrics?.auditFlagCount ?? 0;
+            const value =
+                metric === "balance" ? (currentPlayerBalance(player) ?? Number.NEGATIVE_INFINITY)
+                : metric === "moneyMoved" ? player.moneyMovedCents + player.pendingJobRewardCents
+                : metric === "spending" ? player.totalSpendingCents
+                : metric === "jobs" ? userFacingJobRewards(player)
+                : (metrics?.auditFlagCount ?? 0);
             return { player, metrics, value };
         })
         .filter((row): boolean => Number.isFinite(row.value))
@@ -1993,45 +1778,44 @@ function RankingPanel(props: {
                     <option value="audit">Audit flags</option>
                 </select>
             </div>
-            {rows.map((row, index: number): JSX.Element => (
-                <div
-                    key={row.player.identityId || row.player.displayName}
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns: "38px minmax(0, 1fr) auto",
-                        gap: "10px",
-                        alignItems: "center",
-                        padding: "10px 16px",
-                        borderBottom: `1px solid ${props.theme.border}`,
-                    }}
-                >
-                    <div style={{ color: props.theme.muted }}>#{index + 1}</div>
-                    <div>
-                        <div style={{ fontWeight: 600 }}>{row.player.displayName}</div>
-                        <div style={smallMutedStyle(props.theme)}>Identity {row.player.identityId || "unknown"}</div>
+            {rows.map(
+                (row, index: number): JSX.Element => (
+                    <div
+                        key={row.player.identityId || row.player.displayName}
+                        style={{
+                            display: "grid",
+                            gridTemplateColumns: "38px minmax(0, 1fr) auto",
+                            gap: "10px",
+                            alignItems: "center",
+                            padding: "10px 16px",
+                            borderBottom: `1px solid ${props.theme.border}`,
+                        }}
+                    >
+                        <div style={{ color: props.theme.muted }}>#{index + 1}</div>
+                        <div>
+                            <div style={{ fontWeight: 600 }}>{row.player.displayName}</div>
+                            <div style={smallMutedStyle(props.theme)}>Identity {row.player.identityId || "unknown"}</div>
+                        </div>
+                        <div style={{ textAlign: "right", fontWeight: 680 }}>
+                            {metric === "audit" ?
+                                <>
+                                    <span style={{ color: row.value > 0 ? props.theme.warning : props.theme.muted }}>
+                                        {row.value.toLocaleString()} flag{row.value === 1 ? "" : "s"}
+                                    </span>
+                                    {row.metrics && row.metrics.auditFlagVolumeCents > 0 ?
+                                        <div style={smallMutedStyle(props.theme)}>{formatLilyMoneyCents(row.metrics.auditFlagVolumeCents)} moved</div>
+                                    :   null}
+                                </>
+                            :   formatLilyMoneyCents(row.value)}
+                        </div>
                     </div>
-                    <div style={{ textAlign: "right", fontWeight: 680 }}>
-                        {metric === "audit" ? (
-                            <>
-                                <span style={{ color: row.value > 0 ? props.theme.warning : props.theme.muted }}>
-                                    {row.value.toLocaleString()} flag{row.value === 1 ? "" : "s"}
-                                </span>
-                                {row.metrics && row.metrics.auditFlagVolumeCents > 0 ? (
-                                    <div style={smallMutedStyle(props.theme)}>{formatLilyMoneyCents(row.metrics.auditFlagVolumeCents)} moved</div>
-                                ) : null}
-                            </>
-                        ) : formatLilyMoneyCents(row.value)}
-                    </div>
-                </div>
-            ))}
+                )
+            )}
         </div>
     );
 }
 
-function PlayerMoneyBreakdown(props: {
-    theme: WorkspaceTheme;
-    metrics: PlayerProfileMetrics;
-}): JSX.Element {
+function PlayerMoneyBreakdown(props: { theme: WorkspaceTheme; metrics: PlayerProfileMetrics }): JSX.Element {
     const rows = props.metrics.breakdown.filter((row): boolean => row.amountCents !== 0);
     return (
         <div style={{ ...panelStyle(props.theme), overflow: "hidden" }}>
@@ -2039,80 +1823,93 @@ function PlayerMoneyBreakdown(props: {
                 <div style={{ fontWeight: 680 }}>Money Breakdown</div>
                 <div style={smallMutedStyle(props.theme)}>Where money came from and where it went</div>
             </div>
-            {rows.length === 0 ? (
+            {rows.length === 0 ?
                 <div style={{ padding: "24px", color: props.theme.muted }}>No money movement to break down.</div>
-            ) : rows.map((row: PlayerBreakdownRow): JSX.Element => {
-                const color = row.direction === "income"
-                    ? props.theme.positive
-                    : row.direction === "spending"
-                      ? props.theme.negative
-                      : props.theme.warning;
-                return (
-                    <div
-                        key={`${row.direction}-${row.label}`}
-                        style={{
-                            display: "grid",
-                            gridTemplateColumns: "94px minmax(0, 1fr) auto",
-                            gap: "10px",
-                            padding: "9px 16px",
-                            borderBottom: `1px solid ${props.theme.border}`,
-                            alignItems: "center",
-                        }}
-                    >
-                        <Badge
-                            theme={props.theme}
-                            tone={row.direction === "income" ? "positive" : row.direction === "spending" ? "negative" : "warning"}
-                            label={row.direction === "income" ? "Income" : row.direction === "spending" ? "Spending" : "Audit"}
-                        />
-                        <span>{row.label}</span>
-                        <strong style={{ color }}>{formatLilyMoneyCents(row.amountCents)}</strong>
-                    </div>
-                );
-            })}
+            :   rows.map((row: PlayerBreakdownRow): JSX.Element => {
+                    const color =
+                        row.direction === "income" ? props.theme.positive
+                        : row.direction === "spending" ? props.theme.negative
+                        : props.theme.warning;
+                    return (
+                        <div
+                            key={`${row.direction}-${row.label}`}
+                            style={{
+                                display: "grid",
+                                gridTemplateColumns: "94px minmax(0, 1fr) auto",
+                                gap: "10px",
+                                padding: "9px 16px",
+                                borderBottom: `1px solid ${props.theme.border}`,
+                                alignItems: "center",
+                            }}
+                        >
+                            <Badge
+                                theme={props.theme}
+                                tone={
+                                    row.direction === "income" ? "positive"
+                                    : row.direction === "spending" ?
+                                        "negative"
+                                    :   "warning"
+                                }
+                                label={
+                                    row.direction === "income" ? "Income"
+                                    : row.direction === "spending" ?
+                                        "Spending"
+                                    :   "Audit"
+                                }
+                            />
+                            <span>{row.label}</span>
+                            <strong style={{ color }}>{formatLilyMoneyCents(row.amountCents)}</strong>
+                        </div>
+                    );
+                })
+            }
         </div>
     );
 }
 
-function PlayerHighlights(props: {
-    theme: WorkspaceTheme;
-    metrics: PlayerProfileMetrics;
-}): JSX.Element {
-    const rows: Array<{ label: string; value: string; tone?: "warning" }> = [
+function PlayerHighlights(props: { theme: WorkspaceTheme; metrics: PlayerProfileMetrics }): JSX.Element {
+    const rows: Array<{ label: string; value: string; tone?: "warning" | undefined }> = [
         {
             label: "Top job",
-            value: props.metrics.topJob
-                ? `${props.metrics.topJob.label} — ${formatLilyMoneyCents(props.metrics.topJob.amountCents)} from ${props.metrics.topJob.quantity.toLocaleString()} actions`
-                : "None",
+            value:
+                props.metrics.topJob ?
+                    `${props.metrics.topJob.label} — ${formatLilyMoneyCents(props.metrics.topJob.amountCents)} from ${props.metrics.topJob.quantity.toLocaleString()} actions`
+                :   "None",
         },
         {
             label: "Top bought item",
-            value: props.metrics.topBought
-                ? `${props.metrics.topBought.label} — ${props.metrics.topBought.quantity.toLocaleString()} items / ${formatLilyMoneyCents(props.metrics.topBought.amountCents)}`
-                : "None",
+            value:
+                props.metrics.topBought ?
+                    `${props.metrics.topBought.label} — ${props.metrics.topBought.quantity.toLocaleString()} items / ${formatLilyMoneyCents(props.metrics.topBought.amountCents)}`
+                :   "None",
         },
         {
             label: "Top sold item",
-            value: props.metrics.topSold
-                ? `${props.metrics.topSold.label} — ${props.metrics.topSold.quantity.toLocaleString()} items / ${formatLilyMoneyCents(props.metrics.topSold.amountCents)}`
-                : "None",
+            value:
+                props.metrics.topSold ?
+                    `${props.metrics.topSold.label} — ${props.metrics.topSold.quantity.toLocaleString()} items / ${formatLilyMoneyCents(props.metrics.topSold.amountCents)}`
+                :   "None",
         },
         {
             label: "Top payment partner",
-            value: props.metrics.topPartner
-                ? `${props.metrics.topPartner.label} — sent ${formatLilyMoneyCents(props.metrics.topPartner.sentCents)}, received ${formatLilyMoneyCents(props.metrics.topPartner.receivedCents)}`
-                : "None",
+            value:
+                props.metrics.topPartner ?
+                    `${props.metrics.topPartner.label} — sent ${formatLilyMoneyCents(props.metrics.topPartner.sentCents)}, received ${formatLilyMoneyCents(props.metrics.topPartner.receivedCents)}`
+                :   "None",
         },
         {
             label: "Largest incoming transaction",
-            value: props.metrics.biggestIncoming
-                ? `${formatLilyMoneyCents(props.metrics.biggestIncoming.amountCents)} — ${props.metrics.biggestIncoming.label}`
-                : "None",
+            value:
+                props.metrics.biggestIncoming ?
+                    `${formatLilyMoneyCents(props.metrics.biggestIncoming.amountCents)} — ${props.metrics.biggestIncoming.label}`
+                :   "None",
         },
         {
             label: "Largest outgoing transaction",
-            value: props.metrics.biggestOutgoing
-                ? `${formatLilyMoneyCents(props.metrics.biggestOutgoing.amountCents)} — ${props.metrics.biggestOutgoing.label}`
-                : "None",
+            value:
+                props.metrics.biggestOutgoing ?
+                    `${formatLilyMoneyCents(props.metrics.biggestOutgoing.amountCents)} — ${props.metrics.biggestOutgoing.label}`
+                :   "None",
         },
         {
             label: "Audit flags",
@@ -2128,33 +1925,34 @@ function PlayerHighlights(props: {
                 <div style={{ fontWeight: 680 }}>Highlights</div>
                 <div style={smallMutedStyle(props.theme)}>Useful profile facts and audit-sensitive activity</div>
             </div>
-            {rows.map((row): JSX.Element => (
-                <div
-                    key={row.label}
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns: "190px minmax(0, 1fr)",
-                        gap: "12px",
-                        padding: "9px 16px",
-                        borderBottom: `1px solid ${props.theme.border}`,
-                    }}
-                >
-                    <span style={smallMutedStyle(props.theme)}>{row.label}</span>
-                    <strong style={{ color: row.tone === "warning" ? props.theme.warning : props.theme.text }}>{row.value}</strong>
-                </div>
-            ))}
+            {rows.map(
+                (row): JSX.Element => (
+                    <div
+                        key={row.label}
+                        style={{
+                            display: "grid",
+                            gridTemplateColumns: "190px minmax(0, 1fr)",
+                            gap: "12px",
+                            padding: "9px 16px",
+                            borderBottom: `1px solid ${props.theme.border}`,
+                        }}
+                    >
+                        <span style={smallMutedStyle(props.theme)}>{row.label}</span>
+                        <strong style={{ color: row.tone === "warning" ? props.theme.warning : props.theme.text }}>{row.value}</strong>
+                    </div>
+                )
+            )}
         </div>
     );
 }
 
-function PlayerDetails(props: {
-    theme: WorkspaceTheme;
-    metrics: PlayerProfileMetrics;
-}): JSX.Element {
+function PlayerDetails(props: { theme: WorkspaceTheme; metrics: PlayerProfileMetrics }): JSX.Element {
     const aliases = props.metrics.aliases.length > 0 ? props.metrics.aliases.join(", ") : props.metrics.displayName;
     return (
         <details style={{ ...panelStyle(props.theme), padding: "12px 16px" }}>
-            <summary style={{ cursor: "pointer", fontWeight: 680 }}>Player Details</summary>
+            <summary class="nsel" style={{ cursor: "pointer", fontWeight: 680 }}>
+                Player Details
+            </summary>
             <div
                 style={{
                     display: "grid",
@@ -2164,55 +1962,100 @@ function PlayerDetails(props: {
                     lineHeight: 1.5,
                 }}
             >
-                <div><strong>Identity:</strong> <code>{props.metrics.identityId || "unknown"}</code></div>
-                <div><strong>Known names:</strong> {aliases}</div>
-                <div><strong>First seen:</strong> {props.metrics.firstSeen === null ? "Unknown" : formatWhen(props.metrics.firstSeen)}</div>
-                <div><strong>Last seen:</strong> {props.metrics.lastSeen === null ? "Unknown" : formatWhen(props.metrics.lastSeen)}</div>
-                <div><strong>Transactions:</strong> {props.metrics.transactionCount.toLocaleString()}</div>
-                <div><strong>Job reward groups:</strong> {props.metrics.jobRewardGroups.toLocaleString()}</div>
-                <div><strong>Rewarded job actions:</strong> {props.metrics.jobActions.toLocaleString()}</div>
-                <div><strong>Exact balance observations:</strong> {props.metrics.exactObservationCount.toLocaleString()}</div>
-                <div><strong>First exact balance:</strong> {formatLilyMoneyCents(props.metrics.firstExactBalanceCents)}</div>
-                <div><strong>Exact balance change:</strong> {formatLilyMoneyCents(props.metrics.exactBalanceChangeCents)}</div>
+                <div>
+                    <strong>Identity:</strong> <code>{props.metrics.identityId || "unknown"}</code>
+                </div>
+                <div>
+                    <strong>Known names:</strong> {aliases}
+                </div>
+                <div>
+                    <strong>First seen:</strong> {props.metrics.firstSeen === null ? "Unknown" : formatWhen(props.metrics.firstSeen)}
+                </div>
+                <div>
+                    <strong>Last seen:</strong> {props.metrics.lastSeen === null ? "Unknown" : formatWhen(props.metrics.lastSeen)}
+                </div>
+                <div>
+                    <strong>Transactions:</strong> {props.metrics.transactionCount.toLocaleString()}
+                </div>
+                <div>
+                    <strong>Job reward groups:</strong> {props.metrics.jobRewardGroups.toLocaleString()}
+                </div>
+                <div>
+                    <strong>Rewarded job actions:</strong> {props.metrics.jobActions.toLocaleString()}
+                </div>
+                <div>
+                    <strong>Exact balance observations:</strong> {props.metrics.exactObservationCount.toLocaleString()}
+                </div>
+                <div>
+                    <strong>First exact balance:</strong> {formatLilyMoneyCents(props.metrics.firstExactBalanceCents)}
+                </div>
+                <div>
+                    <strong>Exact balance change:</strong> {formatLilyMoneyCents(props.metrics.exactBalanceChangeCents)}
+                </div>
             </div>
         </details>
     );
 }
 
-function ServerCheckpointHistory(props: {
-    theme: WorkspaceTheme;
-    analysis: LilyMoneyAnalysis;
-}): JSX.Element {
+function ServerCheckpointHistory(props: { theme: WorkspaceTheme; analysis: LilyMoneyAnalysis }): JSX.Element {
     const rows = serverCheckpointHistory(props.analysis).reverse();
     return (
         <details style={{ ...panelStyle(props.theme), padding: "12px 16px" }}>
-            <summary style={{ cursor: "pointer", fontWeight: 680 }}>
-                Server Checkpoint History ({rows.length.toLocaleString()})
-            </summary>
+            <summary style={{ cursor: "pointer", fontWeight: 680 }}>Server Checkpoint History ({rows.length.toLocaleString()})</summary>
             <div style={{ overflow: "auto", marginTop: "12px" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "720px" }}>
                     <thead>
                         <tr style={{ background: props.theme.panelAlt }}>
-                            {["Record", "Date", "Reason", "Players", "Total Server Money", "Change"].map((heading): JSX.Element => (
-                                <th key={heading} style={{ textAlign: heading === "Players" || heading.includes("Money") || heading === "Change" ? "right" : "left", padding: "9px 10px", color: props.theme.muted }}>
-                                    {heading}
-                                </th>
-                            ))}
+                            {["Record", "Date", "Reason", "Players", "Total Server Money", "Change"].map(
+                                (heading): JSX.Element => (
+                                    <th
+                                        key={heading}
+                                        style={{
+                                            textAlign: heading === "Players" || heading.includes("Money") || heading === "Change" ? "right" : "left",
+                                            padding: "9px 10px",
+                                            color: props.theme.muted,
+                                        }}
+                                    >
+                                        {heading}
+                                    </th>
+                                )
+                            )}
                         </tr>
                     </thead>
                     <tbody>
-                        {rows.map((row): JSX.Element => (
-                            <tr key={row.recordId}>
-                                <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}` }}><code>#{row.recordId}</code></td>
-                                <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}`, whiteSpace: "nowrap" }}>{formatShortWhen(row.timestamp)}</td>
-                                <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}` }}>{row.reason}</td>
-                                <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}`, textAlign: "right" }}>{row.playerCount.toLocaleString()}</td>
-                                <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}`, textAlign: "right", fontWeight: 650 }}>{formatLilyMoneyCents(row.totalCents)}</td>
-                                <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}`, textAlign: "right", color: row.changeCents === null ? props.theme.muted : row.changeCents > 0 ? props.theme.positive : row.changeCents < 0 ? props.theme.negative : props.theme.muted }}>
-                                    {row.changeCents === null ? "—" : formatSignedCents(row.changeCents)}
-                                </td>
-                            </tr>
-                        ))}
+                        {rows.map(
+                            (row): JSX.Element => (
+                                <tr key={row.recordId}>
+                                    <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}` }}>
+                                        <code>#{row.recordId}</code>
+                                    </td>
+                                    <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}`, whiteSpace: "nowrap" }}>
+                                        {formatShortWhen(row.timestamp)}
+                                    </td>
+                                    <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}` }}>{row.reason}</td>
+                                    <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}`, textAlign: "right" }}>
+                                        {row.playerCount.toLocaleString()}
+                                    </td>
+                                    <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}`, textAlign: "right", fontWeight: 650 }}>
+                                        {formatLilyMoneyCents(row.totalCents)}
+                                    </td>
+                                    <td
+                                        style={{
+                                            padding: "9px 10px",
+                                            borderTop: `1px solid ${props.theme.border}`,
+                                            textAlign: "right",
+                                            color:
+                                                row.changeCents === null ? props.theme.muted
+                                                : row.changeCents > 0 ? props.theme.positive
+                                                : row.changeCents < 0 ? props.theme.negative
+                                                : props.theme.muted,
+                                        }}
+                                    >
+                                        {row.changeCents === null ? "—" : formatSignedCents(row.changeCents)}
+                                    </td>
+                                </tr>
+                            )
+                        )}
                     </tbody>
                 </table>
             </div>
@@ -2220,20 +2063,11 @@ function ServerCheckpointHistory(props: {
     );
 }
 
-function OverviewPage(props: {
-    theme: WorkspaceTheme;
-    analysis: LilyMoneyAnalysis;
-    database: LilyMoneyDatabase;
-    selectedIdentityId: string;
-}): JSX.Element {
+function OverviewPage(props: { theme: WorkspaceTheme; analysis: LilyMoneyAnalysis; database: LilyMoneyDatabase; selectedIdentityId: string }): JSX.Element {
     const theme = props.theme;
-    const selectedPlayer: LilyMoneyPlayerAnalysis | null =
-        props.selectedIdentityId === "all"
-            ? null
-            : getPlayer(props.analysis, props.selectedIdentityId);
+    const selectedPlayer: LilyMoneyPlayerAnalysis | null = props.selectedIdentityId === "all" ? null : getPlayer(props.analysis, props.selectedIdentityId);
     const selectedMetrics = useMemo(
-        (): PlayerProfileMetrics | null =>
-            selectedPlayer ? buildPlayerProfileMetrics(props.analysis, selectedPlayer.identityId) : null,
+        (): PlayerProfileMetrics | null => (selectedPlayer ? buildPlayerProfileMetrics(props.analysis, selectedPlayer.identityId) : null),
         [props.analysis, selectedPlayer]
     );
     const allMetrics = useMemo((): Map<string, PlayerProfileMetrics> => {
@@ -2246,74 +2080,52 @@ function OverviewPage(props: {
     }, [props.analysis]);
 
     const checkpoint = latestServerCheckpoint(props.analysis);
-    const checkpointBalances = checkpoint
-        ? checkpoint.fullCheckpointRows
-              .map((row): number | null => row.balanceCents)
-              .filter((value: number | null): value is number => value !== null)
-        : [];
-    const checkpointTotal = checkpointBalances.length > 0
-        ? checkpointBalances.reduce((sum: number, value: number): number => sum + value, 0)
-        : null;
+    const checkpointBalances =
+        checkpoint ?
+            checkpoint.fullCheckpointRows.map((row): number | null => row.balanceCents).filter((value: number | null): value is number => value !== null)
+        :   [];
+    const checkpointTotal = checkpointBalances.length > 0 ? checkpointBalances.reduce((sum: number, value: number): number => sum + value, 0) : null;
 
-    const balance: number | null = selectedPlayer
-        ? currentPlayerBalance(selectedPlayer)
-        : checkpointTotal ?? sumNullable(
-              props.analysis.players.map(
-                  (player: LilyMoneyPlayerAnalysis): number | null => currentPlayerBalance(player)
-              )
-          );
+    const balance: number | null =
+        selectedPlayer ?
+            currentPlayerBalance(selectedPlayer)
+        :   (checkpointTotal ?? sumNullable(props.analysis.players.map((player: LilyMoneyPlayerAnalysis): number | null => currentPlayerBalance(player))));
 
-    const jobRewards: number = selectedPlayer
-        ? userFacingJobRewards(selectedPlayer)
-        : props.analysis.players.reduce(
-              (sum: number, player: LilyMoneyPlayerAnalysis): number =>
-                  sum + userFacingJobRewards(player),
-              0
-          );
+    const jobRewards: number =
+        selectedPlayer ?
+            userFacingJobRewards(selectedPlayer)
+        :   props.analysis.players.reduce((sum: number, player: LilyMoneyPlayerAnalysis): number => sum + userFacingJobRewards(player), 0);
 
-    const income: number = selectedPlayer
-        ? userFacingIncome(selectedPlayer)
-        : props.analysis.players.reduce(
-              (sum: number, player: LilyMoneyPlayerAnalysis): number =>
-                  sum + userFacingIncome(player),
-              0
-          );
+    const income: number =
+        selectedPlayer ?
+            userFacingIncome(selectedPlayer)
+        :   props.analysis.players.reduce((sum: number, player: LilyMoneyPlayerAnalysis): number => sum + userFacingIncome(player), 0);
 
-    const spending: number = selectedPlayer
-        ? selectedPlayer.totalSpendingCents
-        : props.analysis.players.reduce(
-              (sum: number, player: LilyMoneyPlayerAnalysis): number =>
-                  sum + player.totalSpendingCents,
-              0
-          );
+    const spending: number =
+        selectedPlayer ?
+            selectedPlayer.totalSpendingCents
+        :   props.analysis.players.reduce((sum: number, player: LilyMoneyPlayerAnalysis): number => sum + player.totalSpendingCents, 0);
 
-    const balanceTimeline: BalanceTimeline = playerBalanceTimeline(
-        props.analysis,
-        props.selectedIdentityId
-    );
+    const balanceTimeline: BalanceTimeline = playerBalanceTimeline(props.analysis, props.selectedIdentityId);
     const markers = balanceChartMarkers(props.analysis, props.selectedIdentityId);
 
     const checkpointRows = serverCheckpointHistory(props.analysis);
     const firstCheckpoint = checkpointRows[0] ?? null;
     const lastCheckpoint = checkpointRows[checkpointRows.length - 1] ?? null;
-    const exactServerChange = firstCheckpoint && lastCheckpoint
-        ? lastCheckpoint.totalCents - firstCheckpoint.totalCents
-        : null;
-    const averageBalance = checkpointBalances.length > 0
-        ? Math.trunc(checkpointBalances.reduce((sum, value): number => sum + value, 0) / checkpointBalances.length)
-        : null;
+    const exactServerChange = firstCheckpoint && lastCheckpoint ? lastCheckpoint.totalCents - firstCheckpoint.totalCents : null;
+    const averageBalance =
+        checkpointBalances.length > 0 ? Math.trunc(checkpointBalances.reduce((sum, value): number => sum + value, 0) / checkpointBalances.length) : null;
     const medianBalance = medianCents(checkpointBalances);
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             <div>
-                <h2 style={{ margin: 0 }}>
-                    {selectedPlayer ? selectedPlayer.displayName : "Economy Overview"}
-                </h2>
+                <h2 style={{ margin: 0 }}>{selectedPlayer ? selectedPlayer.displayName : "Economy Overview"}</h2>
                 <div style={{ ...smallMutedStyle(theme), marginTop: "4px" }}>
-                    {selectedPlayer
-                        ? `${selectedPlayer.participatingRecordCount.toLocaleString()} activity records • Identity ${selectedPlayer.identityId}`
-                        : `${props.analysis.players.length.toLocaleString()} player${props.analysis.players.length === 1 ? "" : "s"} • ${props.database.records.length.toLocaleString()} saved records`}
+                    {selectedPlayer ?
+                        `${selectedPlayer.participatingRecordCount.toLocaleString()} activity records • Identity ${selectedPlayer.identityId}`
+                    :   `${props.analysis.players.length.toLocaleString()} player${props.analysis.players.length === 1 ? "" : "s"} • ${props.database.records.length.toLocaleString()} saved records`
+                    }
                 </div>
             </div>
 
@@ -2328,7 +2140,12 @@ function OverviewPage(props: {
                     theme={theme}
                     title={selectedPlayer ? "Balance" : "Total Balance"}
                     value={formatLilyMoneyCents(balance)}
-                    detail={selectedPlayer ? "Current tracked balance" : checkpoint ? `Latest full checkpoint • ${formatShortWhen(checkpoint.record.timestamp)}` : "Current tracked player total"}
+                    detail={
+                        selectedPlayer ? "Current tracked balance"
+                        : checkpoint ?
+                            `Latest full checkpoint • ${formatShortWhen(checkpoint.record.timestamp)}`
+                        :   "Current tracked player total"
+                    }
                     large
                     accent={theme.accent}
                 />
@@ -2339,41 +2156,29 @@ function OverviewPage(props: {
                     detail="Rewards earned from jobs"
                     accent={theme.positive}
                 />
-                <MetricCard
-                    theme={theme}
-                    title="Income"
-                    value={formatLilyMoneyCents(income)}
-                    detail="Money received or earned"
-                    accent={theme.positive}
-                />
-                <MetricCard
-                    theme={theme}
-                    title="Spending"
-                    value={formatLilyMoneyCents(spending)}
-                    detail="Money paid or spent"
-                    accent={theme.negative}
-                />
+                <MetricCard theme={theme} title="Income" value={formatLilyMoneyCents(income)} detail="Money received or earned" accent={theme.positive} />
+                <MetricCard theme={theme} title="Spending" value={formatLilyMoneyCents(spending)} detail="Money paid or spent" accent={theme.negative} />
             </div>
 
             <TimeSeriesChart
                 theme={theme}
                 title="Balance History"
                 subtitle={
-                    props.selectedIdentityId === "all"
-                        ? "Exact totals from full balance checkpoints"
-                        : `${balanceTimeline.pointCount.toLocaleString()} exact observations • ${balanceTimeline.cleanOfflineSpans.toLocaleString()} offline span${balanceTimeline.cleanOfflineSpans === 1 ? "" : "s"} shown flat`
+                    props.selectedIdentityId === "all" ?
+                        "Exact totals from full balance checkpoints"
+                    :   `${balanceTimeline.pointCount.toLocaleString()} exact observations • ${balanceTimeline.cleanOfflineSpans.toLocaleString()} offline span${balanceTimeline.cleanOfflineSpans === 1 ? "" : "s"} shown flat`
                 }
                 segments={balanceTimeline.segments}
                 markers={markers}
                 xMode="time"
                 emptyText={
-                    props.selectedIdentityId === "all"
-                        ? "No full balance checkpoints are available yet."
-                        : "No saved balance observations are available for this player yet."
+                    props.selectedIdentityId === "all" ?
+                        "No full balance checkpoints are available yet."
+                    :   "No saved balance observations are available for this player yet."
                 }
             />
 
-            {props.selectedIdentityId === "all" ? (
+            {props.selectedIdentityId === "all" ?
                 <>
                     <div
                         style={{
@@ -2382,9 +2187,27 @@ function OverviewPage(props: {
                             gap: "12px",
                         }}
                     >
-                        <MetricCard theme={theme} title="Average Balance" value={formatLilyMoneyCents(averageBalance)} detail="Latest full checkpoint" accent={theme.blue} />
-                        <MetricCard theme={theme} title="Median Balance" value={formatLilyMoneyCents(medianBalance)} detail="Latest full checkpoint" accent={theme.teal} />
-                        <MetricCard theme={theme} title="Exact Server Change" value={formatLilyMoneyCents(exactServerChange)} detail={`${checkpointRows.length.toLocaleString()} full checkpoint${checkpointRows.length === 1 ? "" : "s"}`} accent={exactServerChange !== null && exactServerChange < 0 ? theme.negative : theme.positive} />
+                        <MetricCard
+                            theme={theme}
+                            title="Average Balance"
+                            value={formatLilyMoneyCents(averageBalance)}
+                            detail="Latest full checkpoint"
+                            accent={theme.blue}
+                        />
+                        <MetricCard
+                            theme={theme}
+                            title="Median Balance"
+                            value={formatLilyMoneyCents(medianBalance)}
+                            detail="Latest full checkpoint"
+                            accent={theme.teal}
+                        />
+                        <MetricCard
+                            theme={theme}
+                            title="Exact Server Change"
+                            value={formatLilyMoneyCents(exactServerChange)}
+                            detail={`${checkpointRows.length.toLocaleString()} full checkpoint${checkpointRows.length === 1 ? "" : "s"}`}
+                            accent={exactServerChange !== null && exactServerChange < 0 ? theme.negative : theme.positive}
+                        />
                     </div>
                     <div
                         style={{
@@ -2394,15 +2217,11 @@ function OverviewPage(props: {
                         }}
                     >
                         <RankingPanel theme={theme} analysis={props.analysis} metricsById={allMetrics} />
-                        <RecentActivity
-                            theme={theme}
-                            events={props.analysis.events}
-                            selectedIdentityId={props.selectedIdentityId}
-                        />
+                        <RecentActivity theme={theme} events={props.analysis.events} selectedIdentityId={props.selectedIdentityId} />
                     </div>
                     <ServerCheckpointHistory theme={theme} analysis={props.analysis} />
                 </>
-            ) : selectedMetrics ? (
+            : selectedMetrics ?
                 <>
                     <div
                         style={{
@@ -2415,23 +2234,12 @@ function OverviewPage(props: {
                         <PlayerHighlights theme={theme} metrics={selectedMetrics} />
                     </div>
                     <PlayerDetails theme={theme} metrics={selectedMetrics} />
-                    <RecentActivity
-                        theme={theme}
-                        events={props.analysis.events}
-                        selectedIdentityId={props.selectedIdentityId}
-                    />
+                    <RecentActivity theme={theme} events={props.analysis.events} selectedIdentityId={props.selectedIdentityId} />
                 </>
-            ) : (
-                <RecentActivity
-                    theme={theme}
-                    events={props.analysis.events}
-                    selectedIdentityId={props.selectedIdentityId}
-                />
-            )}
+            :   <RecentActivity theme={theme} events={props.analysis.events} selectedIdentityId={props.selectedIdentityId} />}
         </div>
     );
 }
-
 
 function transactionCategory(event: ParsedLilyMoneyEvent): TransactionCategory | null {
     switch (event.type) {
@@ -2508,15 +2316,10 @@ function balanceLabelForEvent(event: ParsedLilyMoneyEvent, selectedIdentityId: s
         return formatLilyMoneyCents(event.effects[0]?.balanceAfterCents ?? null);
     }
 
-    return formatLilyMoneyCents(
-        eventEffectForPlayer(event, selectedIdentityId)?.balanceAfterCents ?? null
-    );
+    return formatLilyMoneyCents(eventEffectForPlayer(event, selectedIdentityId)?.balanceAfterCents ?? null);
 }
 
-function transactionDirection(
-    event: ParsedLilyMoneyEvent,
-    selectedIdentityId: string
-): MoneyDirection {
+function transactionDirection(event: ParsedLilyMoneyEvent, selectedIdentityId: string): MoneyDirection {
     if (selectedIdentityId !== "all") {
         const effect = eventEffectForPlayer(event, selectedIdentityId);
 
@@ -2573,11 +2376,7 @@ function eventSearchText(event: ParsedLilyMoneyEvent): string {
         .toLocaleLowerCase();
 }
 
-function TransactionsPage(props: {
-    theme: WorkspaceTheme;
-    analysis: LilyMoneyAnalysis;
-    selectedIdentityId: string;
-}): JSX.Element {
+function TransactionsPage(props: { theme: WorkspaceTheme; analysis: LilyMoneyAnalysis; selectedIdentityId: string }): JSX.Element {
     const theme = props.theme;
     const [search, setSearch] = useState<string>("");
     const [category, setCategory] = useState<string>("all");
@@ -2630,17 +2429,13 @@ function TransactionsPage(props: {
                     type="search"
                     value={search}
                     placeholder="Search player, item, event, record ID…"
-                    onInput={(event: Event): void =>
-                        setSearch((event.currentTarget as HTMLInputElement).value)
-                    }
+                    onInput={(event: Event): void => setSearch((event.currentTarget as HTMLInputElement).value)}
                     style={{ ...controlStyle(theme), flex: "1 1 300px", minWidth: "220px" }}
                 />
                 <select
                     class="search-mode-dropdown lilymoney-select"
                     value={category}
-                    onChange={(event: Event): void =>
-                        setCategory((event.currentTarget as HTMLSelectElement).value)
-                    }
+                    onChange={(event: Event): void => setCategory((event.currentTarget as HTMLSelectElement).value)}
                     style={{ ...controlStyle(theme), minWidth: "180px" }}
                 >
                     <option value="all">All transactions</option>
@@ -2650,7 +2445,7 @@ function TransactionsPage(props: {
                     <option value="admin">Admin</option>
                     <option value="command">Buy / Sell Commands</option>
                 </select>
-                {(search || category !== "all") ? (
+                {search || category !== "all" ?
                     <button
                         type="button"
                         class="lilymoney-mc-button"
@@ -2662,57 +2457,44 @@ function TransactionsPage(props: {
                     >
                         Reset filters
                     </button>
-                ) : null}
+                :   null}
                 <div style={{ ...smallMutedStyle(theme), marginLeft: "auto" }}>
                     {filtered.length.toLocaleString()} result{filtered.length === 1 ? "" : "s"}
                 </div>
             </div>
 
-            {visible.length === 0 ? (
-                <EmptyState
-                    theme={theme}
-                    title="No matching transactions"
-                    detail="Try clearing the search or changing the activity filter."
-                />
-            ) : (
-                <div style={{ ...panelStyle(theme), overflow: "auto" }}>
+            {visible.length === 0 ?
+                <EmptyState theme={theme} title="No matching transactions" detail="Try clearing the search or changing the activity filter." />
+            :   <div style={{ ...panelStyle(theme), overflow: "auto" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "900px" }}>
                         <thead>
                             <tr style={{ background: theme.panelAlt }}>
-                                {[
-                                    "Record",
-                                    "Date",
-                                    "Type",
-                                    "Details",
-                                    "Amount",
-                                    "Balance",
-                                ].map((heading: string): JSX.Element => (
-                                    <th
-                                        key={heading}
-                                        style={{
-                                            textAlign: heading === "Amount" || heading === "Balance" ? "right" : "left",
-                                            padding: "10px 12px",
-                                            borderBottom: `1px solid ${theme.borderStrong}`,
-                                            color: theme.muted,
-                                            fontSize: "12px",
-                                            position: "sticky",
-                                            top: 0,
-                                            background: theme.panelAlt,
-                                            zIndex: 1,
-                                        }}
-                                    >
-                                        {heading}
-                                    </th>
-                                ))}
+                                {["Record", "Date", "Type", "Details", "Amount", "Balance"].map(
+                                    (heading: string): JSX.Element => (
+                                        <th
+                                            key={heading}
+                                            style={{
+                                                textAlign: heading === "Amount" || heading === "Balance" ? "right" : "left",
+                                                padding: "10px 12px",
+                                                borderBottom: `1px solid ${theme.borderStrong}`,
+                                                color: theme.muted,
+                                                fontSize: "12px",
+                                                position: "sticky",
+                                                top: 0,
+                                                background: theme.panelAlt,
+                                                zIndex: 1,
+                                            }}
+                                        >
+                                            {heading}
+                                        </th>
+                                    )
+                                )}
                             </tr>
                         </thead>
                         <tbody>
                             {visible.map((event: ParsedLilyMoneyEvent): JSX.Element => {
                                 const categoryValue = transactionCategory(event);
-                                const direction = transactionDirection(
-                                    event,
-                                    props.selectedIdentityId
-                                );
+                                const direction = transactionDirection(event, props.selectedIdentityId);
                                 const moneyColor = directionColor(theme, direction);
                                 const auditReason = auditReasonForEvent(event);
 
@@ -2735,24 +2517,21 @@ function TransactionsPage(props: {
                                             <Badge
                                                 theme={theme}
                                                 tone={
-                                                    direction === "gain"
-                                                        ? "positive"
-                                                        : direction === "loss"
-                                                          ? "negative"
-                                                          : "muted"
+                                                    direction === "gain" ? "positive"
+                                                    : direction === "loss" ?
+                                                        "negative"
+                                                    :   "muted"
                                                 }
                                                 label={categoryValue ? transactionCategoryLabel(categoryValue) : event.type}
                                             />
                                             <div style={{ ...smallMutedStyle(theme), marginTop: "4px" }}>{event.type}</div>
-                                            {auditReason ? (
+                                            {auditReason ?
                                                 <div style={{ marginTop: "5px" }}>
                                                     <Badge theme={theme} tone="warning" label="⚑ Audit" />
                                                 </div>
-                                            ) : null}
+                                            :   null}
                                         </td>
-                                        <td style={{ padding: "11px 12px", borderBottom: `1px solid ${theme.border}` }}>
-                                            {describeEvent(event)}
-                                        </td>
+                                        <td style={{ padding: "11px 12px", borderBottom: `1px solid ${theme.border}` }}>{describeEvent(event)}</td>
                                         <td
                                             style={{
                                                 padding: "11px 12px",
@@ -2765,7 +2544,14 @@ function TransactionsPage(props: {
                                         >
                                             {amountLabelForEvent(event, props.selectedIdentityId)}
                                         </td>
-                                        <td style={{ padding: "11px 12px", borderBottom: `1px solid ${theme.border}`, textAlign: "right", whiteSpace: "nowrap" }}>
+                                        <td
+                                            style={{
+                                                padding: "11px 12px",
+                                                borderBottom: `1px solid ${theme.border}`,
+                                                textAlign: "right",
+                                                whiteSpace: "nowrap",
+                                            }}
+                                        >
                                             {balanceLabelForEvent(event, props.selectedIdentityId)}
                                         </td>
                                     </tr>
@@ -2774,16 +2560,11 @@ function TransactionsPage(props: {
                         </tbody>
                     </table>
                 </div>
-            )}
+            }
 
-            {filtered.length > PAGE_SIZE ? (
-                <Pagination
-                    theme={theme}
-                    page={safePage}
-                    pageCount={pageCount}
-                    onPage={setPageIndex}
-                />
-            ) : null}
+            {filtered.length > PAGE_SIZE ?
+                <Pagination theme={theme} page={safePage} pageCount={pageCount} onPage={setPageIndex} />
+            :   null}
         </div>
     );
 }
@@ -2831,7 +2612,7 @@ function buildJobData(
 
         job.amountCents += amountCents;
         job.quantity += quantity;
-        job.rewardGroups += 1;
+        job.rewardGroups++;
         job.lastTimestamp = Math.max(job.lastTimestamp, timestamp);
         if (current) job.currentAmountCents += amountCents;
         else job.canonicalAmountCents += amountCents;
@@ -2850,7 +2631,7 @@ function buildJobData(
         };
         source.amountCents += amountCents;
         source.quantity += quantity;
-        source.rewardGroups += 1;
+        source.rewardGroups++;
         source.lastTimestamp = Math.max(source.lastTimestamp, timestamp);
         sources.set(sourceKey, source);
 
@@ -2916,16 +2697,9 @@ function buildJobData(
     };
 }
 
-function JobsPage(props: {
-    theme: WorkspaceTheme;
-    analysis: LilyMoneyAnalysis;
-    selectedIdentityId: string;
-}): JSX.Element {
+function JobsPage(props: { theme: WorkspaceTheme; analysis: LilyMoneyAnalysis; selectedIdentityId: string }): JSX.Element {
     const theme = props.theme;
-    const data = useMemo(
-        () => buildJobData(props.analysis, props.selectedIdentityId),
-        [props.analysis, props.selectedIdentityId]
-    );
+    const data = useMemo(() => buildJobData(props.analysis, props.selectedIdentityId), [props.analysis, props.selectedIdentityId]);
     const [jobFilter, setJobFilter] = useState<string>("all");
     const [search, setSearch] = useState<string>("");
     const [pageIndex, setPageIndex] = useState<number>(0);
@@ -2942,18 +2716,13 @@ function JobsPage(props: {
     const totalQuantity = data.jobs.reduce((sum, job): number => sum + job.quantity, 0);
     const totalGroups = data.jobs.reduce((sum, job): number => sum + job.rewardGroups, 0);
     const topJob = data.jobs[0] ?? null;
-    const selectedSourceRows = data.sources.filter(
-        (source: JobSourceAggregate): boolean =>
-            jobFilter === "all" || source.jobId === jobFilter
-    );
+    const selectedSourceRows = data.sources.filter((source: JobSourceAggregate): boolean => jobFilter === "all" || source.jobId === jobFilter);
 
     const query = search.trim().toLocaleLowerCase();
     const filteredActivity = data.activity.filter((row: JobActivityRow): boolean => {
         if (jobFilter !== "all" && row.jobId !== jobFilter) return false;
         if (!query) return true;
-        return `${row.playerName} ${row.jobId} ${row.action} ${row.sourceId}`
-            .toLocaleLowerCase()
-            .includes(query);
+        return `${row.playerName} ${row.jobId} ${row.action} ${row.sourceId}`.toLocaleLowerCase().includes(query);
     });
 
     const pageCount = Math.max(1, Math.ceil(filteredActivity.length / PAGE_SIZE));
@@ -2964,9 +2733,7 @@ function JobsPage(props: {
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             <div>
                 <h2 style={{ margin: 0 }}>Jobs</h2>
-                <div style={{ ...smallMutedStyle(theme), marginTop: "4px" }}>
-                    Job rewards, actions, sources, and recent activity
-                </div>
+                <div style={{ ...smallMutedStyle(theme), marginTop: "4px" }}>Job rewards, actions, sources, and recent activity</div>
             </div>
 
             <div
@@ -2976,19 +2743,8 @@ function JobsPage(props: {
                     gap: "12px",
                 }}
             >
-                <MetricCard
-                    theme={theme}
-                    title="Job Rewards"
-                    value={formatLilyMoneyCents(totalRewards)}
-                    accent={theme.positive}
-                />
-                <MetricCard
-                    theme={theme}
-                    title="Actions"
-                    value={totalQuantity.toLocaleString()}
-                    detail="Blocks / kills / job actions"
-                    accent={theme.blue}
-                />
+                <MetricCard theme={theme} title="Job Rewards" value={formatLilyMoneyCents(totalRewards)} accent={theme.positive} />
+                <MetricCard theme={theme} title="Actions" value={totalQuantity.toLocaleString()} detail="Blocks / kills / job actions" accent={theme.blue} />
                 <MetricCard
                     theme={theme}
                     title="Reward Groups"
@@ -3016,11 +2772,13 @@ function JobsPage(props: {
                     theme={theme}
                     title="Rewards by Job"
                     subtitle={`${data.jobs.length.toLocaleString()} job${data.jobs.length === 1 ? "" : "s"}`}
-                    rows={data.jobs.map((job: JobAggregate): BarRow => ({
-                        label: prettifyIdentifier(job.jobId),
-                        valueCents: job.amountCents,
-                        detail: `${job.quantity.toLocaleString()} actions • ${job.rewardGroups.toLocaleString()} reward groups`,
-                    }))}
+                    rows={data.jobs.map(
+                        (job: JobAggregate): BarRow => ({
+                            label: prettifyIdentifier(job.jobId),
+                            valueCents: job.amountCents,
+                            detail: `${job.quantity.toLocaleString()} actions • ${job.rewardGroups.toLocaleString()} reward groups`,
+                        })
+                    )}
                     emptyText="No job rewards are available."
                     maximumRows={12}
                     tone="positive"
@@ -3030,15 +2788,17 @@ function JobsPage(props: {
                     theme={theme}
                     title="Top Job Sources"
                     subtitle={
-                        jobFilter === "all"
-                            ? "Highest earning blocks / sources across all jobs"
-                            : `Highest earning sources for ${prettifyIdentifier(jobFilter)}`
+                        jobFilter === "all" ?
+                            "Highest earning blocks / sources across all jobs"
+                        :   `Highest earning sources for ${prettifyIdentifier(jobFilter)}`
                     }
-                    rows={selectedSourceRows.slice(0, 12).map((source: JobSourceAggregate): BarRow => ({
-                        label: prettifyIdentifier(source.sourceId),
-                        valueCents: source.amountCents,
-                        detail: `${prettifyIdentifier(source.jobId)} • ${source.quantity.toLocaleString()} actions`,
-                    }))}
+                    rows={selectedSourceRows.slice(0, 12).map(
+                        (source: JobSourceAggregate): BarRow => ({
+                            label: prettifyIdentifier(source.sourceId),
+                            valueCents: source.amountCents,
+                            detail: `${prettifyIdentifier(source.jobId)} • ${source.quantity.toLocaleString()} actions`,
+                        })
+                    )}
                     emptyText="No job source data is available for this job."
                     maximumRows={12}
                     tone="positive"
@@ -3046,18 +2806,18 @@ function JobsPage(props: {
                         <select
                             class="search-mode-dropdown lilymoney-select"
                             value={jobFilter}
-                            onChange={(event: Event): void =>
-                                setJobFilter((event.currentTarget as HTMLSelectElement).value)
-                            }
+                            onChange={(event: Event): void => setJobFilter((event.currentTarget as HTMLSelectElement).value)}
                             style={{ ...controlStyle(theme), minWidth: "170px" }}
                             aria-label="Select job for source details"
                         >
                             <option value="all">All jobs</option>
-                            {data.jobs.map((job: JobAggregate): JSX.Element => (
-                                <option key={job.jobId} value={job.jobId}>
-                                    {prettifyIdentifier(job.jobId)}
-                                </option>
-                            ))}
+                            {data.jobs.map(
+                                (job: JobAggregate): JSX.Element => (
+                                    <option key={job.jobId} value={job.jobId}>
+                                        {prettifyIdentifier(job.jobId)}
+                                    </option>
+                                )
+                            )}
                         </select>
                     }
                 />
@@ -3078,12 +2838,10 @@ function JobsPage(props: {
                     type="search"
                     value={search}
                     placeholder="Search block, source, player…"
-                    onInput={(event: Event): void =>
-                        setSearch((event.currentTarget as HTMLInputElement).value)
-                    }
+                    onInput={(event: Event): void => setSearch((event.currentTarget as HTMLInputElement).value)}
                     style={{ ...controlStyle(theme), flex: "1 1 280px", minWidth: "220px" }}
                 />
-                {(search || jobFilter !== "all") ? (
+                {search || jobFilter !== "all" ?
                     <button
                         type="button"
                         class="lilymoney-mc-button"
@@ -3095,109 +2853,84 @@ function JobsPage(props: {
                     >
                         Reset filters
                     </button>
-                ) : null}
+                :   null}
                 <div style={{ ...smallMutedStyle(theme), marginLeft: "auto" }}>
                     {filteredActivity.length.toLocaleString()} activit{filteredActivity.length === 1 ? "y" : "ies"}
                 </div>
             </div>
 
-            {visible.length === 0 ? (
-                <EmptyState
-                    theme={theme}
-                    title="No matching job activity"
-                    detail="Try clearing the search or selecting another job."
-                />
-            ) : (
-                <div style={{ ...panelStyle(theme), overflow: "auto" }}>
+            {visible.length === 0 ?
+                <EmptyState theme={theme} title="No matching job activity" detail="Try clearing the search or selecting another job." />
+            :   <div style={{ ...panelStyle(theme), overflow: "auto" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "900px" }}>
                         <thead>
                             <tr style={{ background: theme.panelAlt }}>
-                                {[
-                                    "Date",
-                                    "Player",
-                                    "Job",
-                                    "Action",
-                                    "Source",
-                                    "Quantity",
-                                    "Reward",
-                                    "State",
-                                ].map((heading: string): JSX.Element => (
-                                    <th
-                                        key={heading}
-                                        style={{
-                                            textAlign: heading === "Quantity" || heading === "Reward" ? "right" : "left",
-                                            padding: "10px 12px",
-                                            borderBottom: `1px solid ${theme.borderStrong}`,
-                                            color: theme.muted,
-                                            fontSize: "12px",
-                                            position: "sticky",
-                                            top: 0,
-                                            background: theme.panelAlt,
-                                            zIndex: 1,
-                                        }}
-                                    >
-                                        {heading}
-                                    </th>
-                                ))}
+                                {["Date", "Player", "Job", "Action", "Source", "Quantity", "Reward", "State"].map(
+                                    (heading: string): JSX.Element => (
+                                        <th
+                                            key={heading}
+                                            style={{
+                                                textAlign: heading === "Quantity" || heading === "Reward" ? "right" : "left",
+                                                padding: "10px 12px",
+                                                borderBottom: `1px solid ${theme.borderStrong}`,
+                                                color: theme.muted,
+                                                fontSize: "12px",
+                                                position: "sticky",
+                                                top: 0,
+                                                background: theme.panelAlt,
+                                                zIndex: 1,
+                                            }}
+                                        >
+                                            {heading}
+                                        </th>
+                                    )
+                                )}
                             </tr>
                         </thead>
                         <tbody>
-                            {visible.map((row: JobActivityRow): JSX.Element => (
-                                <tr key={row.key}>
-                                    <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}`, whiteSpace: "nowrap" }}>
-                                        {formatShortWhen(row.timestamp)}
-                                        {row.recordId !== null ? (
-                                            <div style={smallMutedStyle(theme)}>record #{row.recordId}</div>
-                                        ) : null}
-                                    </td>
-                                    <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}` }}>
-                                        {row.playerName}
-                                    </td>
-                                    <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}` }}>
-                                        {prettifyIdentifier(row.jobId)}
-                                    </td>
-                                    <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}` }}>
-                                        {prettifyIdentifier(row.action)}
-                                    </td>
-                                    <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}` }}>
-                                        <code>{row.sourceId}</code>
-                                    </td>
-                                    <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}`, textAlign: "right" }}>
-                                        {row.quantity.toLocaleString()}
-                                    </td>
-                                    <td
-                                        style={{
-                                            padding: "10px 12px",
-                                            borderBottom: `1px solid ${theme.border}`,
-                                            textAlign: "right",
-                                            fontWeight: 700,
-                                            color: theme.positive,
-                                        }}
-                                    >
-                                        {formatLilyMoneyCents(row.amountCents)}
-                                    </td>
-                                    <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}` }}>
-                                        <Badge
-                                            theme={theme}
-                                            tone={row.current ? "positive" : "muted"}
-                                            label={row.current ? "Current" : "History"}
-                                        />
-                                    </td>
-                                </tr>
-                            ))}
+                            {visible.map(
+                                (row: JobActivityRow): JSX.Element => (
+                                    <tr key={row.key}>
+                                        <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}`, whiteSpace: "nowrap" }}>
+                                            {formatShortWhen(row.timestamp)}
+                                            {row.recordId !== null ?
+                                                <div style={smallMutedStyle(theme)}>record #{row.recordId}</div>
+                                            :   null}
+                                        </td>
+                                        <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}` }}>{row.playerName}</td>
+                                        <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}` }}>{prettifyIdentifier(row.jobId)}</td>
+                                        <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}` }}>{prettifyIdentifier(row.action)}</td>
+                                        <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}` }}>
+                                            <code>{row.sourceId}</code>
+                                        </td>
+                                        <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}`, textAlign: "right" }}>
+                                            {row.quantity.toLocaleString()}
+                                        </td>
+                                        <td
+                                            style={{
+                                                padding: "10px 12px",
+                                                borderBottom: `1px solid ${theme.border}`,
+                                                textAlign: "right",
+                                                fontWeight: 700,
+                                                color: theme.positive,
+                                            }}
+                                        >
+                                            {formatLilyMoneyCents(row.amountCents)}
+                                        </td>
+                                        <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}` }}>
+                                            <Badge theme={theme} tone={row.current ? "positive" : "muted"} label={row.current ? "Current" : "History"} />
+                                        </td>
+                                    </tr>
+                                )
+                            )}
                         </tbody>
                     </table>
                 </div>
-            )}
+            }
 
-            {filteredActivity.length > PAGE_SIZE ? (
-                <Pagination
-                    theme={theme}
-                    page={safePage}
-                    pageCount={pageCount}
-                    onPage={setPageIndex}
-                />
-            ) : null}
+            {filteredActivity.length > PAGE_SIZE ?
+                <Pagination theme={theme} page={safePage} pageCount={pageCount} onPage={setPageIndex} />
+            :   null}
         </div>
     );
 }
@@ -3242,19 +2975,13 @@ function spendingSourceLabel(event: ParsedLilyMoneyEvent, effect: LilyMoneyEvent
     }
 }
 
-function moneySourceRows(
-    analysis: LilyMoneyAnalysis,
-    selectedIdentityId: string,
-    direction: "income" | "spending"
-): MoneySourceRow[] {
+function moneySourceRows(analysis: LilyMoneyAnalysis, selectedIdentityId: string, direction: "income" | "spending"): MoneySourceRow[] {
     const values = new Map<string, number>();
 
     for (const event of analysis.events) {
         for (const effect of event.effects) {
             if (selectedIdentityId !== "all" && effect.identityId !== selectedIdentityId) continue;
-            const label = direction === "income"
-                ? incomeSourceLabel(event, effect)
-                : spendingSourceLabel(event, effect);
+            const label = direction === "income" ? incomeSourceLabel(event, effect) : spendingSourceLabel(event, effect);
             if (!label || effect.deltaCents === null) continue;
             values.set(label, (values.get(label) ?? 0) + Math.abs(effect.deltaCents));
         }
@@ -3264,65 +2991,36 @@ function moneySourceRows(
         for (const player of analysis.pendingJobs.players) {
             if (selectedIdentityId !== "all" && player.identityId !== selectedIdentityId) continue;
             if (player.provisionalAmountCents <= 0) continue;
-            values.set(
-                "Job Rewards",
-                (values.get("Job Rewards") ?? 0) + player.provisionalAmountCents
-            );
+            values.set("Job Rewards", (values.get("Job Rewards") ?? 0) + player.provisionalAmountCents);
         }
     }
 
-    return [...values.entries()]
-        .map(([label, amountCents]): MoneySourceRow => ({ label, amountCents }))
-        .sort((a, b): number => b.amountCents - a.amountCents);
+    return [...values.entries()].map(([label, amountCents]): MoneySourceRow => ({ label, amountCents })).sort((a, b): number => b.amountCents - a.amountCents);
 }
 
-function GraphsPage(props: {
-    theme: WorkspaceTheme;
-    analysis: LilyMoneyAnalysis;
-    selectedIdentityId: string;
-}): JSX.Element {
+function GraphsPage(props: { theme: WorkspaceTheme; analysis: LilyMoneyAnalysis; selectedIdentityId: string }): JSX.Element {
     const theme = props.theme;
-    const balanceTimeline = useMemo(
-        () => playerBalanceTimeline(props.analysis, props.selectedIdentityId),
-        [props.analysis, props.selectedIdentityId]
-    );
-    const balanceMarkers = useMemo(
-        () => balanceChartMarkers(props.analysis, props.selectedIdentityId),
-        [props.analysis, props.selectedIdentityId]
-    );
-    const netPoints = useMemo(
-        () => netLoggedFlowPoints(props.analysis, props.selectedIdentityId),
-        [props.analysis, props.selectedIdentityId]
-    );
-    const income = useMemo(
-        () => moneySourceRows(props.analysis, props.selectedIdentityId, "income"),
-        [props.analysis, props.selectedIdentityId]
-    );
-    const spending = useMemo(
-        () => moneySourceRows(props.analysis, props.selectedIdentityId, "spending"),
-        [props.analysis, props.selectedIdentityId]
-    );
-    const jobData = useMemo(
-        () => buildJobData(props.analysis, props.selectedIdentityId),
-        [props.analysis, props.selectedIdentityId]
-    );
+    const balanceTimeline = useMemo(() => playerBalanceTimeline(props.analysis, props.selectedIdentityId), [props.analysis, props.selectedIdentityId]);
+    const balanceMarkers = useMemo(() => balanceChartMarkers(props.analysis, props.selectedIdentityId), [props.analysis, props.selectedIdentityId]);
+    const netPoints = useMemo(() => netLoggedFlowPoints(props.analysis, props.selectedIdentityId), [props.analysis, props.selectedIdentityId]);
+    const income = useMemo(() => moneySourceRows(props.analysis, props.selectedIdentityId, "income"), [props.analysis, props.selectedIdentityId]);
+    const spending = useMemo(() => moneySourceRows(props.analysis, props.selectedIdentityId, "spending"), [props.analysis, props.selectedIdentityId]);
+    const jobData = useMemo(() => buildJobData(props.analysis, props.selectedIdentityId), [props.analysis, props.selectedIdentityId]);
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             <div>
                 <h2 style={{ margin: 0 }}>Graphs</h2>
-                <div style={{ ...smallMutedStyle(theme), marginTop: "4px" }}>
-                    Balance, money flow, spending, income, and job earnings
-                </div>
+                <div style={{ ...smallMutedStyle(theme), marginTop: "4px" }}>Balance, money flow, spending, income, and job earnings</div>
             </div>
 
             <TimeSeriesChart
                 theme={theme}
                 title="Balance History"
                 subtitle={
-                    props.selectedIdentityId === "all"
-                        ? "Exact server totals from full balance checkpoints"
-                        : `${balanceTimeline.cleanOfflineSpans.toLocaleString()} clean offline span${balanceTimeline.cleanOfflineSpans === 1 ? "" : "s"} shown flat; interrupted sessions break the line`
+                    props.selectedIdentityId === "all" ?
+                        "Exact server totals from full balance checkpoints"
+                    :   `${balanceTimeline.cleanOfflineSpans.toLocaleString()} clean offline span${balanceTimeline.cleanOfflineSpans === 1 ? "" : "s"} shown flat; interrupted sessions break the line`
                 }
                 segments={balanceTimeline.segments}
                 markers={balanceMarkers}
@@ -3334,9 +3032,9 @@ function GraphsPage(props: {
                 theme={theme}
                 title="Net Logged Flow"
                 subtitle={
-                    props.selectedIdentityId === "all"
-                        ? "Cumulative money created or removed by logged activity; transfers cancel out"
-                        : "Cumulative logged gains and spending by money event; offline time is not stretched into flat segments"
+                    props.selectedIdentityId === "all" ?
+                        "Cumulative money created or removed by logged activity; transfers cancel out"
+                    :   "Cumulative logged gains and spending by money event; offline time is not stretched into flat segments"
                 }
                 segments={netPoints.length > 0 ? [netPoints] : []}
                 xMode="events"
@@ -3347,10 +3045,12 @@ function GraphsPage(props: {
                 theme={theme}
                 title="Income Sources"
                 subtitle="Where earned or received money came from"
-                rows={income.map((row: MoneySourceRow): BarRow => ({
-                    label: row.label,
-                    valueCents: row.amountCents,
-                }))}
+                rows={income.map(
+                    (row: MoneySourceRow): BarRow => ({
+                        label: row.label,
+                        valueCents: row.amountCents,
+                    })
+                )}
                 emptyText="No income sources are available."
                 tone="positive"
             />
@@ -3359,10 +3059,12 @@ function GraphsPage(props: {
                 theme={theme}
                 title="Spending Sources"
                 subtitle="Where money was spent or removed"
-                rows={spending.map((row: MoneySourceRow): BarRow => ({
-                    label: row.label,
-                    valueCents: row.amountCents,
-                }))}
+                rows={spending.map(
+                    (row: MoneySourceRow): BarRow => ({
+                        label: row.label,
+                        valueCents: row.amountCents,
+                    })
+                )}
                 emptyText="No spending sources are available."
                 tone="negative"
             />
@@ -3371,11 +3073,13 @@ function GraphsPage(props: {
                 theme={theme}
                 title="Job Earnings"
                 subtitle="Current and saved job rewards by job"
-                rows={jobData.jobs.map((job: JobAggregate): BarRow => ({
-                    label: prettifyIdentifier(job.jobId),
-                    valueCents: job.amountCents,
-                    detail: `${job.quantity.toLocaleString()} actions`,
-                }))}
+                rows={jobData.jobs.map(
+                    (job: JobAggregate): BarRow => ({
+                        label: prettifyIdentifier(job.jobId),
+                        valueCents: job.amountCents,
+                        detail: `${job.quantity.toLocaleString()} actions`,
+                    })
+                )}
                 emptyText="No job earnings are available."
                 tone="positive"
                 maximumRows={16}
@@ -3410,16 +3114,7 @@ function downloadTextFile(filename: string, text: string, mimeType: string): voi
 }
 
 function exportRawRecords(records: LilyMoneyRecord[]): void {
-    const header = [
-        "record_id",
-        "timestamp_ms",
-        "timestamp_iso",
-        "event_type",
-        "shard_index",
-        "source",
-        "source_key",
-        "payload_json",
-    ];
+    const header = ["record_id", "timestamp_ms", "timestamp_iso", "event_type", "shard_index", "source", "source_key", "payload_json"];
 
     const rows = records.map((record: LilyMoneyRecord): string =>
         [
@@ -3441,12 +3136,7 @@ function exportRawRecords(records: LilyMoneyRecord[]): void {
     downloadTextFile(`LilyMoney_raw_records_${stamp}.csv`, csv, "text/csv;charset=utf-8");
 }
 
-function RawRecordsPage(props: {
-    theme: WorkspaceTheme;
-    analysis: LilyMoneyAnalysis;
-    database: LilyMoneyDatabase;
-    selectedIdentityId: string;
-}): JSX.Element {
+function RawRecordsPage(props: { theme: WorkspaceTheme; analysis: LilyMoneyAnalysis; database: LilyMoneyDatabase; selectedIdentityId: string }): JSX.Element {
     const theme = props.theme;
     const [search, setSearch] = useState<string>("");
     const [eventType, setEventType] = useState<string>("all");
@@ -3467,9 +3157,10 @@ function RawRecordsPage(props: {
     );
 
     const shards = useMemo(
-        () => [...new Set(props.database.records.map((record: LilyMoneyRecord): number | null => record.shardIndex))]
-            .filter((value): value is number => value !== null)
-            .sort((a: number, b: number): number => a - b),
+        () =>
+            [...new Set(props.database.records.map((record: LilyMoneyRecord): number | null => record.shardIndex))]
+                .filter((value): value is number => value !== null)
+                .sort((a: number, b: number): number => a - b),
         [props.database.records]
     );
 
@@ -3486,7 +3177,8 @@ function RawRecordsPage(props: {
             }
 
             if (query) {
-                const haystack = `${record.id} ${record.timestamp} ${record.type} ${record.shardIndex ?? ""} ${record.source} ${record.sourceKey} ${stringifyForDisplay(record.payload)}`.toLocaleLowerCase();
+                const haystack =
+                    `${record.id} ${record.timestamp} ${record.type} ${record.shardIndex ?? ""} ${record.source} ${record.sourceKey} ${stringifyForDisplay(record.payload)}`.toLocaleLowerCase();
                 if (!haystack.includes(query)) return false;
             }
 
@@ -3503,9 +3195,7 @@ function RawRecordsPage(props: {
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             <div>
                 <h2 style={{ margin: 0 }}>Raw Records</h2>
-                <div style={{ ...smallMutedStyle(theme), marginTop: "4px" }}>
-                    Literal canonical DB-v1 records in global record-ID order
-                </div>
+                <div style={{ ...smallMutedStyle(theme), marginTop: "4px" }}>Literal canonical DB-v1 records in global record-ID order</div>
             </div>
 
             <div
@@ -3523,36 +3213,38 @@ function RawRecordsPage(props: {
                     type="search"
                     value={search}
                     placeholder="Search payload, ID, type, source…"
-                    onInput={(event: Event): void =>
-                        setSearch((event.currentTarget as HTMLInputElement).value)
-                    }
+                    onInput={(event: Event): void => setSearch((event.currentTarget as HTMLInputElement).value)}
                     style={{ ...controlStyle(theme), flex: "1 1 300px", minWidth: "220px" }}
                 />
                 <select
                     class="search-mode-dropdown lilymoney-select"
                     value={eventType}
-                    onChange={(event: Event): void =>
-                        setEventType((event.currentTarget as HTMLSelectElement).value)
-                    }
+                    onChange={(event: Event): void => setEventType((event.currentTarget as HTMLSelectElement).value)}
                     style={{ ...controlStyle(theme), minWidth: "180px" }}
                 >
                     <option value="all">All event types</option>
-                    {eventTypes.map((type: string): JSX.Element => (
-                        <option key={type} value={type}>{type}</option>
-                    ))}
+                    {eventTypes.map(
+                        (type: string): JSX.Element => (
+                            <option key={type} value={type}>
+                                {type}
+                            </option>
+                        )
+                    )}
                 </select>
                 <select
                     class="search-mode-dropdown lilymoney-select"
                     value={shard}
-                    onChange={(event: Event): void =>
-                        setShard((event.currentTarget as HTMLSelectElement).value)
-                    }
+                    onChange={(event: Event): void => setShard((event.currentTarget as HTMLSelectElement).value)}
                     style={{ ...controlStyle(theme), minWidth: "130px" }}
                 >
                     <option value="all">All shards</option>
-                    {shards.map((value: number): JSX.Element => (
-                        <option key={value} value={String(value)}>Shard {value}</option>
-                    ))}
+                    {shards.map(
+                        (value: number): JSX.Element => (
+                            <option key={value} value={String(value)}>
+                                Shard {value}
+                            </option>
+                        )
+                    )}
                 </select>
                 <button
                     type="button"
@@ -3563,7 +3255,7 @@ function RawRecordsPage(props: {
                 >
                     Export filtered CSV
                 </button>
-                {(search || eventType !== "all" || shard !== "all") ? (
+                {search || eventType !== "all" || shard !== "all" ?
                     <button
                         type="button"
                         class="lilymoney-mc-button"
@@ -3576,101 +3268,92 @@ function RawRecordsPage(props: {
                     >
                         Reset filters
                     </button>
-                ) : null}
+                :   null}
             </div>
 
             <div style={{ ...smallMutedStyle(theme) }}>
                 {filtered.length.toLocaleString()} matching record{filtered.length === 1 ? "" : "s"}
             </div>
 
-            {visible.length === 0 ? (
-                <EmptyState
-                    theme={theme}
-                    title="No matching raw records"
-                    detail="Try clearing one of the filters."
-                />
-            ) : (
-                <div style={{ ...panelStyle(theme), overflow: "auto" }}>
+            {visible.length === 0 ?
+                <EmptyState theme={theme} title="No matching raw records" detail="Try clearing one of the filters." />
+            :   <div style={{ ...panelStyle(theme), overflow: "auto" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1120px" }}>
                         <thead>
                             <tr style={{ background: theme.panelAlt }}>
-                                {[
-                                    "ID",
-                                    "Timestamp",
-                                    "Event",
-                                    "Shard",
-                                    "Source",
-                                    "Payload",
-                                ].map((heading: string): JSX.Element => (
-                                    <th
-                                        key={heading}
-                                        style={{
-                                            textAlign: "left",
-                                            padding: "10px 12px",
-                                            borderBottom: `1px solid ${theme.borderStrong}`,
-                                            color: theme.muted,
-                                            fontSize: "12px",
-                                            position: "sticky",
-                                            top: 0,
-                                            background: theme.panelAlt,
-                                            zIndex: 1,
-                                        }}
-                                    >
-                                        {heading}
-                                    </th>
-                                ))}
+                                {["ID", "Timestamp", "Event", "Shard", "Source", "Payload"].map(
+                                    (heading: string): JSX.Element => (
+                                        <th
+                                            key={heading}
+                                            style={{
+                                                textAlign: "left",
+                                                padding: "10px 12px",
+                                                borderBottom: `1px solid ${theme.borderStrong}`,
+                                                color: theme.muted,
+                                                fontSize: "12px",
+                                                position: "sticky",
+                                                top: 0,
+                                                background: theme.panelAlt,
+                                                zIndex: 1,
+                                            }}
+                                        >
+                                            {heading}
+                                        </th>
+                                    )
+                                )}
                             </tr>
                         </thead>
                         <tbody>
-                            {visible.map((record: LilyMoneyRecord): JSX.Element => (
-                                <tr key={`${record.source}-${record.shardIndex}-${record.id}`}>
-                                    <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}`, verticalAlign: "top" }}>
-                                        <code>#{record.id}</code>
-                                    </td>
-                                    <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}`, verticalAlign: "top", whiteSpace: "nowrap" }}>
-                                        {formatShortWhen(record.timestamp)}
-                                        <div style={smallMutedStyle(theme)}><code>{record.timestamp}</code></div>
-                                    </td>
-                                    <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}`, verticalAlign: "top" }}>
-                                        <code>{record.type}</code>
-                                    </td>
-                                    <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}`, verticalAlign: "top" }}>
-                                        {record.shardIndex ?? "?"}
-                                    </td>
-                                    <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}`, verticalAlign: "top" }}>
-                                        <div>{record.source}</div>
-                                        <div style={{ ...smallMutedStyle(theme), maxWidth: "240px", overflowWrap: "anywhere" }}>
-                                            <code>{record.sourceKey}</code>
-                                        </div>
-                                    </td>
-                                    <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}`, verticalAlign: "top" }}>
-                                        <code style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
-                                            {stringifyForDisplay(record.payload)}
-                                        </code>
-                                    </td>
-                                </tr>
-                            ))}
+                            {visible.map(
+                                (record: LilyMoneyRecord): JSX.Element => (
+                                    <tr key={`${record.source}-${record.shardIndex}-${record.id}`}>
+                                        <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}`, verticalAlign: "top" }}>
+                                            <code>#{record.id}</code>
+                                        </td>
+                                        <td
+                                            style={{
+                                                padding: "10px 12px",
+                                                borderBottom: `1px solid ${theme.border}`,
+                                                verticalAlign: "top",
+                                                whiteSpace: "nowrap",
+                                            }}
+                                        >
+                                            {formatShortWhen(record.timestamp)}
+                                            <div style={smallMutedStyle(theme)}>
+                                                <code>{record.timestamp}</code>
+                                            </div>
+                                        </td>
+                                        <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}`, verticalAlign: "top" }}>
+                                            <code>{record.type}</code>
+                                        </td>
+                                        <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}`, verticalAlign: "top" }}>
+                                            {record.shardIndex ?? "?"}
+                                        </td>
+                                        <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}`, verticalAlign: "top" }}>
+                                            <div>{record.source}</div>
+                                            <div style={{ ...smallMutedStyle(theme), maxWidth: "240px", overflowWrap: "anywhere" }}>
+                                                <code>{record.sourceKey}</code>
+                                            </div>
+                                        </td>
+                                        <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}`, verticalAlign: "top" }}>
+                                            <code style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{stringifyForDisplay(record.payload)}</code>
+                                        </td>
+                                    </tr>
+                                )
+                            )}
                         </tbody>
                     </table>
                 </div>
-            )}
+            }
 
-            {filtered.length > PAGE_SIZE ? (
-                <Pagination
-                    theme={theme}
-                    page={safePage}
-                    pageCount={pageCount}
-                    onPage={setPageIndex}
-                />
-            ) : null}
+            {filtered.length > PAGE_SIZE ?
+                <Pagination theme={theme} page={safePage} pageCount={pageCount} onPage={setPageIndex} />
+            :   null}
         </div>
     );
 }
 
-function PropertyTable(props: {
-    theme: WorkspaceTheme;
-    properties: LilyMoneyPropertySummary[];
-}): JSX.Element {
+function PropertyTable(props: { theme: WorkspaceTheme; properties: LilyMoneyPropertySummary[] }): JSX.Element {
     if (props.properties.length === 0) {
         return <div style={{ color: props.theme.muted }}>No properties found.</div>;
     }
@@ -3680,54 +3363,56 @@ function PropertyTable(props: {
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "780px" }}>
                 <thead>
                     <tr style={{ background: props.theme.panelAlt }}>
-                        {[
-                            "Category",
-                            "Key",
-                            "Type",
-                            "Value / Preview",
-                        ].map((heading: string): JSX.Element => (
-                            <th
-                                key={heading}
-                                style={{
-                                    textAlign: "left",
-                                    padding: "9px 10px",
-                                    borderBottom: `1px solid ${props.theme.borderStrong}`,
-                                    color: props.theme.muted,
-                                    fontSize: "12px",
-                                }}
-                            >
-                                {heading}
-                            </th>
-                        ))}
+                        {["Category", "Key", "Type", "Value / Preview"].map(
+                            (heading: string): JSX.Element => (
+                                <th
+                                    key={heading}
+                                    style={{
+                                        textAlign: "left",
+                                        padding: "9px 10px",
+                                        borderBottom: `1px solid ${props.theme.borderStrong}`,
+                                        color: props.theme.muted,
+                                        fontSize: "12px",
+                                    }}
+                                >
+                                    {heading}
+                                </th>
+                            )
+                        )}
                     </tr>
                 </thead>
                 <tbody>
-                    {props.properties.map((property: LilyMoneyPropertySummary): JSX.Element => (
-                        <tr key={property.key}>
-                            <td style={{ padding: "9px 10px", borderBottom: `1px solid ${props.theme.border}`, verticalAlign: "top" }}>
-                                {property.category}
-                            </td>
-                            <td style={{ padding: "9px 10px", borderBottom: `1px solid ${props.theme.border}`, verticalAlign: "top" }}>
-                                <code>{property.key}</code>
-                            </td>
-                            <td style={{ padding: "9px 10px", borderBottom: `1px solid ${props.theme.border}`, verticalAlign: "top" }}>
-                                {property.type}
-                            </td>
-                            <td style={{ padding: "9px 10px", borderBottom: `1px solid ${props.theme.border}`, verticalAlign: "top", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
-                                <code>{property.preview}</code>
-                            </td>
-                        </tr>
-                    ))}
+                    {props.properties.map(
+                        (property: LilyMoneyPropertySummary): JSX.Element => (
+                            <tr key={property.key}>
+                                <td style={{ padding: "9px 10px", borderBottom: `1px solid ${props.theme.border}`, verticalAlign: "top" }}>
+                                    {property.category}
+                                </td>
+                                <td style={{ padding: "9px 10px", borderBottom: `1px solid ${props.theme.border}`, verticalAlign: "top" }}>
+                                    <code>{property.key}</code>
+                                </td>
+                                <td style={{ padding: "9px 10px", borderBottom: `1px solid ${props.theme.border}`, verticalAlign: "top" }}>{property.type}</td>
+                                <td
+                                    style={{
+                                        padding: "9px 10px",
+                                        borderBottom: `1px solid ${props.theme.border}`,
+                                        verticalAlign: "top",
+                                        whiteSpace: "pre-wrap",
+                                        overflowWrap: "anywhere",
+                                    }}
+                                >
+                                    <code>{property.preview}</code>
+                                </td>
+                            </tr>
+                        )
+                    )}
                 </tbody>
             </table>
         </div>
     );
 }
 
-function buildBalanceAuditRows(
-    analysis: LilyMoneyAnalysis,
-    identityId: string
-): BalanceAuditRow[] {
+function buildBalanceAuditRows(analysis: LilyMoneyAnalysis, identityId: string): BalanceAuditRow[] {
     const rows: BalanceAuditRow[] = [];
     let previousBalance: number | null = null;
     let trusted = true;
@@ -3744,10 +3429,7 @@ function buildBalanceAuditRows(
             continue;
         }
 
-        const effects = event.effects.filter(
-            (effect: LilyMoneyEventEffect): boolean =>
-                effect.identityId === identityId && effect.balanceAfterCents !== null
-        );
+        const effects = event.effects.filter((effect: LilyMoneyEventEffect): boolean => effect.identityId === identityId && effect.balanceAfterCents !== null);
 
         for (const effect of effects) {
             if (effect.balanceAfterCents === null) continue;
@@ -3787,9 +3469,7 @@ function buildBalanceAuditRows(
                 continue;
             }
 
-            const expected = effect.deltaCents === null
-                ? previousBalance
-                : previousBalance + effect.deltaCents;
+            const expected = effect.deltaCents === null ? previousBalance : previousBalance + effect.deltaCents;
             const difference = actual - expected;
 
             rows.push({
@@ -3811,10 +3491,7 @@ function buildBalanceAuditRows(
     return rows;
 }
 
-function BalanceAuditPanel(props: {
-    theme: WorkspaceTheme;
-    analysis: LilyMoneyAnalysis;
-}): JSX.Element {
+function BalanceAuditPanel(props: { theme: WorkspaceTheme; analysis: LilyMoneyAnalysis }): JSX.Element {
     const firstIdentity = props.analysis.players[0]?.identityId ?? "";
     const [identityId, setIdentityId] = useState<string>(firstIdentity);
     const [differencesOnly, setDifferencesOnly] = useState<boolean>(false);
@@ -3825,22 +3502,15 @@ function BalanceAuditPanel(props: {
         }
     }, [props.analysis, identityId]);
 
-    const rows = useMemo(
-        () => identityId ? buildBalanceAuditRows(props.analysis, identityId) : [],
-        [props.analysis, identityId]
-    );
-    const filtered = differencesOnly
-        ? rows.filter((row: BalanceAuditRow): boolean => (row.differenceCents ?? 0) !== 0)
-        : rows;
+    const rows = useMemo(() => (identityId ? buildBalanceAuditRows(props.analysis, identityId) : []), [props.analysis, identityId]);
+    const filtered = differencesOnly ? rows.filter((row: BalanceAuditRow): boolean => (row.differenceCents ?? 0) !== 0) : rows;
     const visible = filtered.slice(-100).reverse();
     const unexplainedEarned = rows.reduce(
-        (sum: number, row: BalanceAuditRow): number =>
-            sum + (row.differenceCents !== null && row.differenceCents > 0 ? row.differenceCents : 0),
+        (sum: number, row: BalanceAuditRow): number => sum + (row.differenceCents !== null && row.differenceCents > 0 ? row.differenceCents : 0),
         0
     );
     const unexplainedLost = rows.reduce(
-        (sum: number, row: BalanceAuditRow): number =>
-            sum + (row.differenceCents !== null && row.differenceCents < 0 ? -row.differenceCents : 0),
+        (sum: number, row: BalanceAuditRow): number => sum + (row.differenceCents !== null && row.differenceCents < 0 ? -row.differenceCents : 0),
         0
     );
 
@@ -3849,7 +3519,8 @@ function BalanceAuditPanel(props: {
             <summary style={{ cursor: "pointer", fontWeight: 680 }}>Balance Audit</summary>
             <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "12px" }}>
                 <div style={{ ...smallMutedStyle(props.theme), lineHeight: 1.5 }}>
-                    Replays exact balance observations in canonical record-ID order. Each row starts from the previous known balance, applies the logged movement (or SET MONEY assignment), then compares the expected balance with the stored exact balance.
+                    Replays exact balance observations in canonical record-ID order. Each row starts from the previous known balance, applies the logged
+                    movement (or SET MONEY assignment), then compares the expected balance with the stored exact balance.
                 </div>
 
                 <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
@@ -3860,11 +3531,13 @@ function BalanceAuditPanel(props: {
                         style={{ ...controlStyle(props.theme), minWidth: "220px" }}
                         aria-label="Player for balance audit"
                     >
-                        {props.analysis.players.map((player: LilyMoneyPlayerAnalysis): JSX.Element => (
-                            <option key={player.identityId || player.displayName} value={player.identityId}>
-                                {player.displayName} • {player.identityId}
-                            </option>
-                        ))}
+                        {props.analysis.players.map(
+                            (player: LilyMoneyPlayerAnalysis): JSX.Element => (
+                                <option key={player.identityId || player.displayName} value={player.identityId}>
+                                    {player.displayName} • {player.identityId}
+                                </option>
+                            )
+                        )}
                     </select>
                     <label style={{ display: "inline-flex", alignItems: "center", gap: "7px", color: props.theme.muted }}>
                         <input
@@ -3875,63 +3548,114 @@ function BalanceAuditPanel(props: {
                         Differences only
                     </label>
                     <div style={{ marginLeft: "auto", display: "flex", gap: "14px", flexWrap: "wrap" }}>
-                        <span style={{ color: props.theme.warning }}><strong>Unexplained +:</strong> {formatLilyMoneyCents(unexplainedEarned)}</span>
-                        <span style={{ color: props.theme.negative }}><strong>Unexplained -:</strong> {formatLilyMoneyCents(unexplainedLost)}</span>
+                        <span style={{ color: props.theme.warning }}>
+                            <strong>Unexplained +:</strong> {formatLilyMoneyCents(unexplainedEarned)}
+                        </span>
+                        <span style={{ color: props.theme.negative }}>
+                            <strong>Unexplained -:</strong> {formatLilyMoneyCents(unexplainedLost)}
+                        </span>
                     </div>
                 </div>
 
-                {visible.length === 0 ? (
+                {visible.length === 0 ?
                     <div style={{ padding: "20px", color: props.theme.muted }}>
-                        {differencesOnly ? "No unexplained balance differences for this player." : "No exact balance observations are available for this player."}
+                        {differencesOnly ?
+                            "No unexplained balance differences for this player."
+                        :   "No exact balance observations are available for this player."}
                     </div>
-                ) : (
-                    <div style={{ overflow: "auto" }}>
+                :   <div style={{ overflow: "auto" }}>
                         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1080px" }}>
                             <thead>
                                 <tr style={{ background: props.theme.panelAlt }}>
-                                    {["Record", "Date", "Event", "Start", "Logged Change", "Set Money", "Expected", "Actual", "Difference"].map((heading: string): JSX.Element => (
-                                        <th
-                                            key={heading}
-                                            style={{
-                                                textAlign: ["Start", "Logged Change", "Set Money", "Expected", "Actual", "Difference"].includes(heading) ? "right" : "left",
-                                                padding: "9px 10px",
-                                                color: props.theme.muted,
-                                                fontSize: "12px",
-                                            }}
-                                        >
-                                            {heading}
-                                        </th>
-                                    ))}
+                                    {["Record", "Date", "Event", "Start", "Logged Change", "Set Money", "Expected", "Actual", "Difference"].map(
+                                        (heading: string): JSX.Element => (
+                                            <th
+                                                key={heading}
+                                                style={{
+                                                    textAlign:
+                                                        ["Start", "Logged Change", "Set Money", "Expected", "Actual", "Difference"].includes(heading) ? "right"
+                                                        :   "left",
+                                                    padding: "9px 10px",
+                                                    color: props.theme.muted,
+                                                    fontSize: "12px",
+                                                }}
+                                            >
+                                                {heading}
+                                            </th>
+                                        )
+                                    )}
                                 </tr>
                             </thead>
                             <tbody>
                                 {visible.map((row: BalanceAuditRow): JSX.Element => {
-                                    const differenceColor = row.differenceCents === null || row.differenceCents === 0
-                                        ? props.theme.muted
-                                        : row.differenceCents > 0
-                                          ? props.theme.warning
-                                          : props.theme.negative;
+                                    const differenceColor =
+                                        row.differenceCents === null || row.differenceCents === 0 ? props.theme.muted
+                                        : row.differenceCents > 0 ? props.theme.warning
+                                        : props.theme.negative;
                                     return (
-                                        <tr key={`${identityId}-${row.recordId}`} style={{ background: row.differenceCents ? `${differenceColor}12` : "transparent" }}>
-                                            <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}` }}><code>#{row.recordId}</code></td>
-                                            <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}`, whiteSpace: "nowrap" }}>{formatShortWhen(row.timestamp)}</td>
-                                            <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}` }}>{friendlyEventType(row.eventType)}{row.baseline ? <div style={smallMutedStyle(props.theme)}>baseline</div> : null}</td>
-                                            <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}`, textAlign: "right" }}>{formatLilyMoneyCents(row.previousBalanceCents)}</td>
-                                            <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}`, textAlign: "right", color: row.loggedDeltaCents === null ? props.theme.muted : row.loggedDeltaCents > 0 ? props.theme.positive : row.loggedDeltaCents < 0 ? props.theme.negative : props.theme.muted }}>{row.loggedDeltaCents === null ? "—" : formatSignedCents(row.loggedDeltaCents)}</td>
-                                            <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}`, textAlign: "right" }}>{formatLilyMoneyCents(row.setBalanceCents)}</td>
-                                            <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}`, textAlign: "right" }}>{formatLilyMoneyCents(row.expectedBalanceCents)}</td>
-                                            <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}`, textAlign: "right" }}>{formatLilyMoneyCents(row.actualBalanceCents)}</td>
-                                            <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}`, textAlign: "right", color: differenceColor, fontWeight: 700 }}>{row.differenceCents === null ? "—" : formatSignedCents(row.differenceCents)}</td>
+                                        <tr
+                                            key={`${identityId}-${row.recordId}`}
+                                            style={{ background: row.differenceCents ? `${differenceColor}12` : "transparent" }}
+                                        >
+                                            <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}` }}>
+                                                <code>#{row.recordId}</code>
+                                            </td>
+                                            <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}`, whiteSpace: "nowrap" }}>
+                                                {formatShortWhen(row.timestamp)}
+                                            </td>
+                                            <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}` }}>
+                                                {friendlyEventType(row.eventType)}
+                                                {row.baseline ?
+                                                    <div style={smallMutedStyle(props.theme)}>baseline</div>
+                                                :   null}
+                                            </td>
+                                            <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}`, textAlign: "right" }}>
+                                                {formatLilyMoneyCents(row.previousBalanceCents)}
+                                            </td>
+                                            <td
+                                                style={{
+                                                    padding: "9px 10px",
+                                                    borderTop: `1px solid ${props.theme.border}`,
+                                                    textAlign: "right",
+                                                    color:
+                                                        row.loggedDeltaCents === null ? props.theme.muted
+                                                        : row.loggedDeltaCents > 0 ? props.theme.positive
+                                                        : row.loggedDeltaCents < 0 ? props.theme.negative
+                                                        : props.theme.muted,
+                                                }}
+                                            >
+                                                {row.loggedDeltaCents === null ? "—" : formatSignedCents(row.loggedDeltaCents)}
+                                            </td>
+                                            <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}`, textAlign: "right" }}>
+                                                {formatLilyMoneyCents(row.setBalanceCents)}
+                                            </td>
+                                            <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}`, textAlign: "right" }}>
+                                                {formatLilyMoneyCents(row.expectedBalanceCents)}
+                                            </td>
+                                            <td style={{ padding: "9px 10px", borderTop: `1px solid ${props.theme.border}`, textAlign: "right" }}>
+                                                {formatLilyMoneyCents(row.actualBalanceCents)}
+                                            </td>
+                                            <td
+                                                style={{
+                                                    padding: "9px 10px",
+                                                    borderTop: `1px solid ${props.theme.border}`,
+                                                    textAlign: "right",
+                                                    color: differenceColor,
+                                                    fontWeight: 700,
+                                                }}
+                                            >
+                                                {row.differenceCents === null ? "—" : formatSignedCents(row.differenceCents)}
+                                            </td>
                                         </tr>
                                     );
                                 })}
                             </tbody>
                         </table>
                     </div>
-                )}
-                {filtered.length > 100 ? (
+                }
+                {filtered.length > 100 ?
                     <div style={smallMutedStyle(props.theme)}>Showing the newest 100 of {filtered.length.toLocaleString()} audit rows.</div>
-                ) : null}
+                :   null}
             </div>
         </details>
     );
@@ -3951,18 +3675,13 @@ function DatabasePage(props: {
         ...props.analysis.errors.map((message: string): string => `Analysis: ${message}`),
     ];
 
-    const warnings: string[] = [
-        ...props.database.warnings,
-        ...props.analysis.warnings,
-    ];
+    const warnings: string[] = [...props.database.warnings, ...props.analysis.warnings];
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             <div>
                 <h2 style={{ margin: 0 }}>Database</h2>
-                <div style={{ ...smallMutedStyle(theme), marginTop: "4px" }}>
-                    Storage, integrity, versions, continuity, and advanced LilyMoney state
-                </div>
+                <div style={{ ...smallMutedStyle(theme), marginTop: "4px" }}>Storage, integrity, versions, continuity, and advanced LilyMoney state</div>
             </div>
 
             <div
@@ -4001,11 +3720,7 @@ function DatabasePage(props: {
                     theme={theme}
                     title="Canonical Records"
                     value={props.database.records.length.toLocaleString()}
-                    detail={
-                        props.database.firstRecordId === null
-                            ? "No record range"
-                            : `#${props.database.firstRecordId} → #${props.database.lastRecordId}`
-                    }
+                    detail={props.database.firstRecordId === null ? "No record range" : `#${props.database.firstRecordId} → #${props.database.lastRecordId}`}
                     accent={theme.blue}
                 />
                 <MetricCard
@@ -4040,22 +3755,64 @@ function DatabasePage(props: {
                         gap: "8px 22px",
                     }}
                 >
-                    <div><strong>World ID:</strong> <code>{props.result.worldId ?? "unknown"}</code></div>
-                    <div><strong>Logging:</strong> {props.result.loggingEnabled === null ? "unknown" : props.result.loggingEnabled ? "enabled" : "disabled"}</div>
-                    <div><strong>Active open:</strong> {props.result.activeOpen === null ? "unknown" : String(props.result.activeOpen)}</div>
-                    <div><strong>Expected active shard:</strong> {props.result.activeShardIndex ?? "unknown"}</div>
-                    <div><strong>Last sealed record:</strong> {props.result.lastSealedRecordId ?? "none"}</div>
-                    <div><strong>Sealed structure keys:</strong> {props.result.structureKeys.length.toLocaleString()}</div>
-                    <div><strong>ActorPrefix entries scanned:</strong> {props.result.actorKeysScanned.toLocaleString()}</div>
-                    <div><strong>Storage ActorPrefix candidates:</strong> {props.result.activeStorages.length.toLocaleString()}</div>
-                    <div><strong>Name DB players:</strong> {props.result.nameDatabase.entries.length.toLocaleString()}</div>
-                    <div><strong>Name DB chunks:</strong> {props.result.nameDatabase.chunkCountRead.toLocaleString()}</div>
-                    <div><strong>Persistent JOB state:</strong> {props.analysis.pendingJobs.present ? props.analysis.pendingJobs.valid ? "VALID" : "INVALID" : "not present"}</div>
-                    <div><strong>Recovery properties:</strong> {props.result.recoveryPropertyCount.toLocaleString()}</div>
-                    <div><strong>Parsed events:</strong> {props.analysis.events.length.toLocaleString()}</div>
-                    <div><strong>Sessions reconstructed:</strong> {props.analysis.sessions.length.toLocaleString()}</div>
-                    <div><strong>Balance anomalies:</strong> {props.analysis.anomalies.length.toLocaleString()}</div>
-                    <div><strong>Invalid events:</strong> {props.analysis.invalidEventCount.toLocaleString()}</div>
+                    <div>
+                        <strong>World ID:</strong> <code>{props.result.worldId ?? "unknown"}</code>
+                    </div>
+                    <div>
+                        <strong>Logging:</strong>{" "}
+                        {props.result.loggingEnabled === null ?
+                            "unknown"
+                        : props.result.loggingEnabled ?
+                            "enabled"
+                        :   "disabled"}
+                    </div>
+                    <div>
+                        <strong>Active open:</strong> {props.result.activeOpen === null ? "unknown" : String(props.result.activeOpen)}
+                    </div>
+                    <div>
+                        <strong>Expected active shard:</strong> {props.result.activeShardIndex ?? "unknown"}
+                    </div>
+                    <div>
+                        <strong>Last sealed record:</strong> {props.result.lastSealedRecordId ?? "none"}
+                    </div>
+                    <div>
+                        <strong>Sealed structure keys:</strong> {props.result.structureKeys.length.toLocaleString()}
+                    </div>
+                    <div>
+                        <strong>ActorPrefix entries scanned:</strong> {props.result.actorKeysScanned.toLocaleString()}
+                    </div>
+                    <div>
+                        <strong>Storage ActorPrefix candidates:</strong> {props.result.activeStorages.length.toLocaleString()}
+                    </div>
+                    <div>
+                        <strong>Name DB players:</strong> {props.result.nameDatabase.entries.length.toLocaleString()}
+                    </div>
+                    <div>
+                        <strong>Name DB chunks:</strong> {props.result.nameDatabase.chunkCountRead.toLocaleString()}
+                    </div>
+                    <div>
+                        <strong>Persistent JOB state:</strong>{" "}
+                        {props.analysis.pendingJobs.present ?
+                            props.analysis.pendingJobs.valid ?
+                                "VALID"
+                            :   "INVALID"
+                        :   "not present"}
+                    </div>
+                    <div>
+                        <strong>Recovery properties:</strong> {props.result.recoveryPropertyCount.toLocaleString()}
+                    </div>
+                    <div>
+                        <strong>Parsed events:</strong> {props.analysis.events.length.toLocaleString()}
+                    </div>
+                    <div>
+                        <strong>Sessions reconstructed:</strong> {props.analysis.sessions.length.toLocaleString()}
+                    </div>
+                    <div>
+                        <strong>Balance anomalies:</strong> {props.analysis.anomalies.length.toLocaleString()}
+                    </div>
+                    <div>
+                        <strong>Invalid events:</strong> {props.analysis.invalidEventCount.toLocaleString()}
+                    </div>
                 </div>
             </div>
 
@@ -4063,38 +3820,51 @@ function DatabasePage(props: {
 
             <details style={{ ...panelStyle(theme), padding: "12px 16px" }}>
                 <summary style={{ cursor: "pointer", fontWeight: 680 }}>
-                    Audit Flags ({props.analysis.events.filter((event: ParsedLilyMoneyEvent): boolean => transactionCategory(event) !== null && auditReasonForEvent(event) !== null).length.toLocaleString()})
+                    Audit Flags (
+                    {props.analysis.events
+                        .filter((event: ParsedLilyMoneyEvent): boolean => transactionCategory(event) !== null && auditReasonForEvent(event) !== null)
+                        .length.toLocaleString()}
+                    )
                 </summary>
                 <div style={{ marginTop: "12px" }}>
                     <div style={{ ...smallMutedStyle(theme), marginBottom: "10px", lineHeight: 1.5 }}>
-                        Audit flags are review hints, not proof of wrongdoing. Administrative balance changes are always flagged; PAY ≥ $50,000, Auction House purchases ≥ $100,000, and any single movement ≥ $250,000 are also flagged.
+                        Audit flags are review hints, not proof of wrongdoing. Administrative balance changes are always flagged; PAY ≥ $50,000, Auction House
+                        purchases ≥ $100,000, and any single movement ≥ $250,000 are also flagged.
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "7px" }}>
                         {props.analysis.events
                             .filter((event: ParsedLilyMoneyEvent): boolean => transactionCategory(event) !== null && auditReasonForEvent(event) !== null)
                             .slice(-100)
                             .reverse()
-                            .map((event: ParsedLilyMoneyEvent): JSX.Element => (
-                                <div
-                                    key={event.record.id}
-                                    style={{
-                                        display: "grid",
-                                        gridTemplateColumns: "86px 160px minmax(0, 1fr)",
-                                        gap: "10px",
-                                        padding: "9px 10px",
-                                        border: `1px solid ${theme.warning}44`,
-                                        borderRadius: "0",
-                                        background: `${theme.warning}0d`,
-                                    }}
-                                >
-                                    <code>#{event.record.id}</code>
-                                    <span style={{ whiteSpace: "nowrap" }}>{formatShortWhen(event.record.timestamp)}</span>
-                                    <span><strong style={{ color: theme.warning }}>⚑ {friendlyEventType(event.type)}</strong> — {auditReasonForEvent(event)}</span>
-                                </div>
-                            ))}
-                        {props.analysis.events.every((event: ParsedLilyMoneyEvent): boolean => transactionCategory(event) === null || auditReasonForEvent(event) === null) ? (
+                            .map(
+                                (event: ParsedLilyMoneyEvent): JSX.Element => (
+                                    <div
+                                        key={event.record.id}
+                                        style={{
+                                            display: "grid",
+                                            gridTemplateColumns: "86px 160px minmax(0, 1fr)",
+                                            gap: "10px",
+                                            padding: "9px 10px",
+                                            border: `1px solid ${theme.warning}44`,
+                                            borderRadius: "0",
+                                            background: `${theme.warning}0d`,
+                                        }}
+                                    >
+                                        <code>#{event.record.id}</code>
+                                        <span style={{ whiteSpace: "nowrap" }}>{formatShortWhen(event.record.timestamp)}</span>
+                                        <span>
+                                            <strong style={{ color: theme.warning }}>⚑ {friendlyEventType(event.type)}</strong> — {auditReasonForEvent(event)}
+                                        </span>
+                                    </div>
+                                )
+                            )}
+                        {(
+                            props.analysis.events.every(
+                                (event: ParsedLilyMoneyEvent): boolean => transactionCategory(event) === null || auditReasonForEvent(event) === null
+                            )
+                        ) ?
                             <div style={{ color: theme.muted }}>No audit-sensitive transactions were found.</div>
-                        ) : null}
+                        :   null}
                     </div>
                 </div>
             </details>
@@ -4105,42 +3875,105 @@ function DatabasePage(props: {
                     (storage: LilyMoneyStorageSummary): JSX.Element => (
                         <details key={storage.sourceKey} style={{ ...panelStyle(theme), padding: "12px 16px" }}>
                             <summary style={{ cursor: "pointer", fontWeight: 650 }}>
-                                Shard {storage.shardIndex ?? "?"} • {storage.source === "sealed" ? "sealed structure" : "active ActorPrefix"} • {storage.records.length.toLocaleString()} records
+                                Shard {storage.shardIndex ?? "?"} • {storage.source === "sealed" ? "sealed structure" : "active ActorPrefix"} •{" "}
+                                {storage.records.length.toLocaleString()} records
                             </summary>
                             <div style={{ marginTop: "12px", lineHeight: 1.65 }}>
-                                <div><strong>Source:</strong> <code>{storage.sourceKey}</code></div>
-                                <div><strong>Identifier:</strong> <code>{storage.identifier ?? "unknown"}</code></div>
-                                <div><strong>World ID:</strong> <code>{storage.worldId ?? "unknown"}</code></div>
-                                <div><strong>DB kind:</strong> <code>{storage.dbKind ?? "unknown"}</code></div>
-                                <div><strong>DB / record format:</strong> {storage.dbFormat ?? "?"} / {storage.recordFormat ?? "?"}</div>
-                                <div><strong>Record range:</strong> #{storage.firstRecordId ?? "?"} → #{storage.lastRecordId ?? "?"}</div>
-                                <div><strong>Metadata record count:</strong> {storage.recordCount ?? "unknown"}</div>
-                                <div><strong>Decoded records:</strong> {storage.records.length.toLocaleString()}</div>
-                                <div><strong>Pages:</strong> {storage.pageKeys.length.toLocaleString()} ({storage.pageCharacters.toLocaleString()} characters)</div>
-                                <div><strong>ID continuity:</strong> {storage.idsContinuous === false ? "BROKEN" : "VALID"}</div>
-                                <div><strong>Sealed flag:</strong> {storage.sealed === null ? "unknown" : String(storage.sealed)}</div>
-                                <div><strong>Stored checksum:</strong> <code>{storage.checksum ?? "none"}</code></div>
-                                <div><strong>Calculated checksum:</strong> <code>{storage.checksumActual ?? "not calculated"}</code></div>
-                                <div><strong>Checksum:</strong> {storage.checksumValid === null ? storage.sealed ? "not available" : "active shard — not sealed" : storage.checksumValid ? "VALID" : "INVALID"}</div>
-                                <div><strong>Pending JOB state property:</strong> {storage.pendingJobBatchStateRaw === null ? "not present" : `${storage.pendingJobBatchStateRaw.length.toLocaleString()} characters`}</div>
+                                <div>
+                                    <strong>Source:</strong> <code>{storage.sourceKey}</code>
+                                </div>
+                                <div>
+                                    <strong>Identifier:</strong> <code>{storage.identifier ?? "unknown"}</code>
+                                </div>
+                                <div>
+                                    <strong>World ID:</strong> <code>{storage.worldId ?? "unknown"}</code>
+                                </div>
+                                <div>
+                                    <strong>DB kind:</strong> <code>{storage.dbKind ?? "unknown"}</code>
+                                </div>
+                                <div>
+                                    <strong>DB / record format:</strong> {storage.dbFormat ?? "?"} / {storage.recordFormat ?? "?"}
+                                </div>
+                                <div>
+                                    <strong>Record range:</strong> #{storage.firstRecordId ?? "?"} → #{storage.lastRecordId ?? "?"}
+                                </div>
+                                <div>
+                                    <strong>Metadata record count:</strong> {storage.recordCount ?? "unknown"}
+                                </div>
+                                <div>
+                                    <strong>Decoded records:</strong> {storage.records.length.toLocaleString()}
+                                </div>
+                                <div>
+                                    <strong>Pages:</strong> {storage.pageKeys.length.toLocaleString()} ({storage.pageCharacters.toLocaleString()} characters)
+                                </div>
+                                <div>
+                                    <strong>ID continuity:</strong> {storage.idsContinuous === false ? "BROKEN" : "VALID"}
+                                </div>
+                                <div>
+                                    <strong>Sealed flag:</strong> {storage.sealed === null ? "unknown" : String(storage.sealed)}
+                                </div>
+                                <div>
+                                    <strong>Stored checksum:</strong> <code>{storage.checksum ?? "none"}</code>
+                                </div>
+                                <div>
+                                    <strong>Calculated checksum:</strong> <code>{storage.checksumActual ?? "not calculated"}</code>
+                                </div>
+                                <div>
+                                    <strong>Checksum:</strong>{" "}
+                                    {storage.checksumValid === null ?
+                                        storage.sealed ?
+                                            "not available"
+                                        :   "active shard — not sealed"
+                                    : storage.checksumValid ?
+                                        "VALID"
+                                    :   "INVALID"}
+                                </div>
+                                <div>
+                                    <strong>Pending JOB state property:</strong>{" "}
+                                    {storage.pendingJobBatchStateRaw === null ?
+                                        "not present"
+                                    :   `${storage.pendingJobBatchStateRaw.length.toLocaleString()} characters`}
+                                </div>
 
-                                {storage.recordDecodeErrors.length > 0 ? (
+                                {storage.recordDecodeErrors.length > 0 ?
                                     <div style={{ marginTop: "8px" }}>
                                         <strong>Decoder errors:</strong>
-                                        <ul>{storage.recordDecodeErrors.map((message: string): JSX.Element => <li key={message}><code>{message}</code></li>)}</ul>
+                                        <ul>
+                                            {storage.recordDecodeErrors.map(
+                                                (message: string): JSX.Element => (
+                                                    <li key={message}>
+                                                        <code>{message}</code>
+                                                    </li>
+                                                )
+                                            )}
+                                        </ul>
                                     </div>
-                                ) : null}
-                                {storage.recordDecodeWarnings.length > 0 ? (
+                                :   null}
+                                {storage.recordDecodeWarnings.length > 0 ?
                                     <div style={{ marginTop: "8px" }}>
                                         <strong>Decoder warnings:</strong>
-                                        <ul>{storage.recordDecodeWarnings.map((message: string): JSX.Element => <li key={message}><code>{message}</code></li>)}</ul>
+                                        <ul>
+                                            {storage.recordDecodeWarnings.map(
+                                                (message: string): JSX.Element => (
+                                                    <li key={message}>
+                                                        <code>{message}</code>
+                                                    </li>
+                                                )
+                                            )}
+                                        </ul>
                                     </div>
-                                ) : null}
+                                :   null}
 
                                 <details style={{ marginTop: "12px" }}>
                                     <summary style={{ cursor: "pointer" }}>Page keys ({storage.pageKeys.length})</summary>
                                     <ul>
-                                        {storage.pageKeys.map((key: string): JSX.Element => <li key={key}><code>{key}</code></li>)}
+                                        {storage.pageKeys.map(
+                                            (key: string): JSX.Element => (
+                                                <li key={key}>
+                                                    <code>{key}</code>
+                                                </li>
+                                            )
+                                        )}
                                     </ul>
                                 </details>
 
@@ -4173,57 +4006,103 @@ function DatabasePage(props: {
                                 </tr>
                             </thead>
                             <tbody>
-                                {props.result.nameDatabase.entries.map((entry): JSX.Element => (
-                                    <tr key={entry.identityId}>
-                                        <td style={{ padding: "9px 10px", borderTop: `1px solid ${theme.border}` }}><code>{entry.identityId}</code></td>
-                                        <td style={{ padding: "9px 10px", borderTop: `1px solid ${theme.border}` }}>{entry.name}</td>
-                                    </tr>
-                                ))}
+                                {props.result.nameDatabase.entries.map(
+                                    (entry): JSX.Element => (
+                                        <tr key={entry.identityId}>
+                                            <td style={{ padding: "9px 10px", borderTop: `1px solid ${theme.border}` }}>
+                                                <code>{entry.identityId}</code>
+                                            </td>
+                                            <td style={{ padding: "9px 10px", borderTop: `1px solid ${theme.border}` }}>{entry.name}</td>
+                                        </tr>
+                                    )
+                                )}
                             </tbody>
                         </table>
                     </div>
-                    {props.result.nameDatabase.errors.length > 0 ? (
-                        <ul>{props.result.nameDatabase.errors.map((message: string): JSX.Element => <li key={message}><code>{message}</code></li>)}</ul>
-                    ) : null}
-                    {props.result.nameDatabase.warnings.length > 0 ? (
-                        <ul>{props.result.nameDatabase.warnings.map((message: string): JSX.Element => <li key={message}><code>{message}</code></li>)}</ul>
-                    ) : null}
+                    {props.result.nameDatabase.errors.length > 0 ?
+                        <ul>
+                            {props.result.nameDatabase.errors.map(
+                                (message: string): JSX.Element => (
+                                    <li key={message}>
+                                        <code>{message}</code>
+                                    </li>
+                                )
+                            )}
+                        </ul>
+                    :   null}
+                    {props.result.nameDatabase.warnings.length > 0 ?
+                        <ul>
+                            {props.result.nameDatabase.warnings.map(
+                                (message: string): JSX.Element => (
+                                    <li key={message}>
+                                        <code>{message}</code>
+                                    </li>
+                                )
+                            )}
+                        </ul>
+                    :   null}
                 </div>
             </details>
 
             <details style={{ ...panelStyle(theme), padding: "12px 16px" }}>
-                <summary style={{ cursor: "pointer", fontWeight: 650 }}>
-                    Persistent JOB Batch State
-                </summary>
+                <summary style={{ cursor: "pointer", fontWeight: 650 }}>Persistent JOB Batch State</summary>
                 <div style={{ marginTop: "12px" }}>
-                    <div><strong>Present:</strong> {String(props.analysis.pendingJobs.present)}</div>
-                    <div><strong>Valid:</strong> {String(props.analysis.pendingJobs.valid)}</div>
-                    <div><strong>Version:</strong> {props.analysis.pendingJobs.version ?? "none"}</div>
-                    <div><strong>Players:</strong> {props.analysis.pendingJobs.players.length.toLocaleString()}</div>
+                    <div>
+                        <strong>Present:</strong> {String(props.analysis.pendingJobs.present)}
+                    </div>
+                    <div>
+                        <strong>Valid:</strong> {String(props.analysis.pendingJobs.valid)}
+                    </div>
+                    <div>
+                        <strong>Version:</strong> {props.analysis.pendingJobs.version ?? "none"}
+                    </div>
+                    <div>
+                        <strong>Players:</strong> {props.analysis.pendingJobs.players.length.toLocaleString()}
+                    </div>
 
-                    {props.analysis.pendingJobs.players.map((player): JSX.Element => (
-                        <details key={player.identityId} style={{ marginTop: "10px", borderTop: `1px solid ${theme.border}`, paddingTop: "10px" }}>
-                            <summary style={{ cursor: "pointer" }}>
-                                {player.displayName} • {player.rewards.length.toLocaleString()} reward groups
-                            </summary>
-                            <div style={{ marginTop: "8px" }}>
-                                <div><strong>Identity:</strong> <code>{player.identityId}</code></div>
-                                <div><strong>Window started:</strong> {formatWhen(player.windowStartedAt)}</div>
-                                <div><strong>Last updated:</strong> {formatWhen(player.lastUpdatedAt)}</div>
-                                <div><strong>Base balance:</strong> {formatLilyMoneyCents(player.baseBalanceCents)}</div>
-                                <div><strong>Stored final:</strong> {formatLilyMoneyCents(player.finalBalanceCents)}</div>
-                                <div><strong>State rewards:</strong> {formatLilyMoneyCents(player.totalStateAmountCents)}</div>
-                                <div><strong>Uncommitted rewards:</strong> {formatLilyMoneyCents(player.provisionalAmountCents)}</div>
-                                <ul>
-                                    {player.rewards.map((reward): JSX.Element => (
-                                        <li key={reward.batchId}>
-                                            <code>{reward.batchId}</code> • {reward.jobId} / {reward.action} / {reward.sourceId} • x{reward.quantity.toLocaleString()} • {formatLilyMoneyCents(reward.amountCents)} {reward.alreadyCanonical ? "• already canonical" : ""}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </details>
-                    ))}
+                    {props.analysis.pendingJobs.players.map(
+                        (player): JSX.Element => (
+                            <details key={player.identityId} style={{ marginTop: "10px", borderTop: `1px solid ${theme.border}`, paddingTop: "10px" }}>
+                                <summary style={{ cursor: "pointer" }}>
+                                    {player.displayName} • {player.rewards.length.toLocaleString()} reward groups
+                                </summary>
+                                <div style={{ marginTop: "8px" }}>
+                                    <div>
+                                        <strong>Identity:</strong> <code>{player.identityId}</code>
+                                    </div>
+                                    <div>
+                                        <strong>Window started:</strong> {formatWhen(player.windowStartedAt)}
+                                    </div>
+                                    <div>
+                                        <strong>Last updated:</strong> {formatWhen(player.lastUpdatedAt)}
+                                    </div>
+                                    <div>
+                                        <strong>Base balance:</strong> {formatLilyMoneyCents(player.baseBalanceCents)}
+                                    </div>
+                                    <div>
+                                        <strong>Stored final:</strong> {formatLilyMoneyCents(player.finalBalanceCents)}
+                                    </div>
+                                    <div>
+                                        <strong>State rewards:</strong> {formatLilyMoneyCents(player.totalStateAmountCents)}
+                                    </div>
+                                    <div>
+                                        <strong>Uncommitted rewards:</strong> {formatLilyMoneyCents(player.provisionalAmountCents)}
+                                    </div>
+                                    <ul>
+                                        {player.rewards.map(
+                                            (reward): JSX.Element => (
+                                                <li key={reward.batchId}>
+                                                    <code>{reward.batchId}</code> • {reward.jobId} / {reward.action} / {reward.sourceId} • x
+                                                    {reward.quantity.toLocaleString()} • {formatLilyMoneyCents(reward.amountCents)}{" "}
+                                                    {reward.alreadyCanonical ? "• already canonical" : ""}
+                                                </li>
+                                            )
+                                        )}
+                                    </ul>
+                                </div>
+                            </details>
+                        )
+                    )}
                 </div>
             </details>
 
@@ -4236,52 +4115,64 @@ function DatabasePage(props: {
                 </div>
             </details>
 
-            {props.analysis.anomalies.length > 0 ? (
+            {props.analysis.anomalies.length > 0 ?
                 <details style={{ ...panelStyle(theme), padding: "12px 16px" }}>
                     <summary style={{ cursor: "pointer", fontWeight: 650 }}>
                         Balance Reconciliation Anomalies ({props.analysis.anomalies.length.toLocaleString()})
                     </summary>
                     <ul>
-                        {props.analysis.anomalies.map((anomaly): JSX.Element => (
-                            <li key={`${anomaly.recordId}-${anomaly.identityId}`}>
-                                Record #{anomaly.recordId} • {anomaly.playerName} • {anomaly.eventType} • expected {formatLilyMoneyCents(anomaly.expectedBalanceCents)}, got {formatLilyMoneyCents(anomaly.actualBalanceCents)} • difference {formatSignedCents(anomaly.differenceCents)}
-                            </li>
-                        ))}
+                        {props.analysis.anomalies.map(
+                            (anomaly): JSX.Element => (
+                                <li key={`${anomaly.recordId}-${anomaly.identityId}`}>
+                                    Record #{anomaly.recordId} • {anomaly.playerName} • {anomaly.eventType} • expected{" "}
+                                    {formatLilyMoneyCents(anomaly.expectedBalanceCents)}, got {formatLilyMoneyCents(anomaly.actualBalanceCents)} • difference{" "}
+                                    {formatSignedCents(anomaly.differenceCents)}
+                                </li>
+                            )
+                        )}
                     </ul>
                 </details>
-            ) : null}
+            :   null}
 
-            {messages.length > 0 || warnings.length > 0 ? (
+            {messages.length > 0 || warnings.length > 0 ?
                 <div style={{ ...panelStyle(theme), padding: "16px" }}>
                     <h3 style={{ marginTop: 0 }}>Diagnostics</h3>
-                    {messages.length > 0 ? (
+                    {messages.length > 0 ?
                         <>
                             <strong style={{ color: theme.danger }}>Errors</strong>
-                            <ul>{messages.map((message: string): JSX.Element => <li key={message}><code>{message}</code></li>)}</ul>
+                            <ul>
+                                {messages.map(
+                                    (message: string): JSX.Element => (
+                                        <li key={message}>
+                                            <code>{message}</code>
+                                        </li>
+                                    )
+                                )}
+                            </ul>
                         </>
-                    ) : null}
-                    {warnings.length > 0 ? (
+                    :   null}
+                    {warnings.length > 0 ?
                         <>
                             <strong style={{ color: theme.warning }}>Warnings</strong>
-                            <ul>{warnings.map((message: string): JSX.Element => <li key={message}><code>{message}</code></li>)}</ul>
+                            <ul>
+                                {warnings.map(
+                                    (message: string): JSX.Element => (
+                                        <li key={message}>
+                                            <code>{message}</code>
+                                        </li>
+                                    )
+                                )}
+                            </ul>
                         </>
-                    ) : null}
+                    :   null}
                 </div>
-            ) : (
-                <div style={{ ...panelStyle(theme), padding: "16px", color: theme.positive }}>
-                    No database, decoder, or analysis diagnostics were reported.
-                </div>
-            )}
+            :   <div style={{ ...panelStyle(theme), padding: "16px", color: theme.positive }}>No database, decoder, or analysis diagnostics were reported.</div>
+            }
         </div>
     );
 }
 
-function Pagination(props: {
-    theme: WorkspaceTheme;
-    page: number;
-    pageCount: number;
-    onPage(page: number): void;
-}): JSX.Element {
+function Pagination(props: { theme: WorkspaceTheme; page: number; pageCount: number; onPage(page: number): void }): JSX.Element {
     return (
         <div
             style={{
@@ -4318,14 +4209,8 @@ function Pagination(props: {
 
 export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.Element {
     const theme = BWE_THEME;
-    const database: LilyMoneyDatabase = useMemo(
-        () => assembleLilyMoneyDatabase(props.result),
-        [props.result]
-    );
-    const analysis: LilyMoneyAnalysis = useMemo(
-        () => analyzeLilyMoneyDatabase(database, props.result, props.result.nameDatabase),
-        [database, props.result]
-    );
+    const database: LilyMoneyDatabase = useMemo(() => assembleLilyMoneyDatabase(props.result), [props.result]);
+    const analysis: LilyMoneyAnalysis = useMemo(() => analyzeLilyMoneyDatabase(database, props.result, props.result.nameDatabase), [database, props.result]);
 
     const [page, setPage] = useState<LilyMoneyWorkspacePage>("overview");
     const [selectedIdentityId, setSelectedIdentityId] = useState<string>("all");
@@ -4355,13 +4240,9 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
         });
     }, [sortedPlayerOptions, playerSearch, playerMetricsById]);
 
-    const selectedPlayerExists: boolean =
-        selectedIdentityId === "all" || getPlayer(analysis, selectedIdentityId) !== null;
+    const selectedPlayerExists: boolean = selectedIdentityId === "all" || getPlayer(analysis, selectedIdentityId) !== null;
     const effectiveIdentityId: string = selectedPlayerExists ? selectedIdentityId : "all";
-    const health: DatabaseHealth = useMemo(
-        () => databaseHealth(props.result, database, analysis),
-        [props.result, database, analysis]
-    );
+    const health: DatabaseHealth = useMemo(() => databaseHealth(props.result, database, analysis), [props.result, database, analysis]);
 
     const navItems: Array<{
         id: LilyMoneyWorkspacePage;
@@ -4380,62 +4261,22 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
 
     switch (page) {
         case "overview":
-            content = (
-                <OverviewPage
-                    theme={theme}
-                    analysis={analysis}
-                    database={database}
-                    selectedIdentityId={effectiveIdentityId}
-                />
-            );
+            content = <OverviewPage theme={theme} analysis={analysis} database={database} selectedIdentityId={effectiveIdentityId} />;
             break;
         case "transactions":
-            content = (
-                <TransactionsPage
-                    theme={theme}
-                    analysis={analysis}
-                    selectedIdentityId={effectiveIdentityId}
-                />
-            );
+            content = <TransactionsPage theme={theme} analysis={analysis} selectedIdentityId={effectiveIdentityId} />;
             break;
         case "jobs":
-            content = (
-                <JobsPage
-                    theme={theme}
-                    analysis={analysis}
-                    selectedIdentityId={effectiveIdentityId}
-                />
-            );
+            content = <JobsPage theme={theme} analysis={analysis} selectedIdentityId={effectiveIdentityId} />;
             break;
         case "graphs":
-            content = (
-                <GraphsPage
-                    theme={theme}
-                    analysis={analysis}
-                    selectedIdentityId={effectiveIdentityId}
-                />
-            );
+            content = <GraphsPage theme={theme} analysis={analysis} selectedIdentityId={effectiveIdentityId} />;
             break;
         case "raw":
-            content = (
-                <RawRecordsPage
-                    theme={theme}
-                    analysis={analysis}
-                    database={database}
-                    selectedIdentityId={effectiveIdentityId}
-                />
-            );
+            content = <RawRecordsPage theme={theme} analysis={analysis} database={database} selectedIdentityId={effectiveIdentityId} />;
             break;
         case "database":
-            content = (
-                <DatabasePage
-                    theme={theme}
-                    result={props.result}
-                    database={database}
-                    analysis={analysis}
-                    health={health}
-                />
-            );
+            content = <DatabasePage theme={theme} result={props.result} database={database} analysis={analysis} health={health} />;
             break;
         case "addonInfo":
             content = <LilyMoneyAddonInfo />;
@@ -4471,12 +4312,7 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
                 }}
             >
                 <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
-                    <button
-                        type="button"
-                        class="lilymoney-mc-button"
-                        onClick={props.onBack}
-                        style={buttonStyle(theme)}
-                    >
+                    <button type="button" class="lilymoney-mc-button" onClick={props.onBack} style={buttonStyle(theme)}>
                         Back
                     </button>
 
@@ -4488,12 +4324,7 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
                     </div>
                 </div>
 
-                <button
-                    type="button"
-                    class="lilymoney-mc-button"
-                    onClick={props.onRescan}
-                    style={buttonStyle(theme)}
-                >
+                <button type="button" class="lilymoney-mc-button" onClick={props.onRescan} style={buttonStyle(theme)}>
                     Rescan
                 </button>
             </header>
@@ -4520,23 +4351,21 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
                         flexWrap: "wrap",
                     }}
                 >
-                    <span style={{ fontWeight: 650 }}>Player</span>
+                    <span class="nsel" style={{ fontWeight: 650 }}>
+                        Player
+                    </span>
                     <input
                         class="search-text-input lilymoney-input"
                         type="search"
                         value={playerSearch}
                         placeholder="Search players…"
-                        onInput={(event: Event): void =>
-                            setPlayerSearch((event.currentTarget as HTMLInputElement).value)
-                        }
+                        onInput={(event: Event): void => setPlayerSearch((event.currentTarget as HTMLInputElement).value)}
                         style={{ ...controlStyle(theme), width: "190px" }}
                     />
                     <select
                         class="search-mode-dropdown lilymoney-select"
                         value={playerSort}
-                        onChange={(event: Event): void =>
-                            setPlayerSort((event.currentTarget as HTMLSelectElement).value as PlayerSortMode)
-                        }
+                        onChange={(event: Event): void => setPlayerSort((event.currentTarget as HTMLSelectElement).value as PlayerSortMode)}
                         style={{ ...controlStyle(theme), minWidth: "150px" }}
                         aria-label="Sort players"
                     >
@@ -4563,27 +4392,34 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
                         }}
                     >
                         <option value="all">All Players ({analysis.players.length.toLocaleString()})</option>
-                        {effectiveIdentityId !== "all" && !filteredPlayerOptions.some((player: LilyMoneyPlayerAnalysis): boolean => player.identityId === effectiveIdentityId) ? (() => {
-                            const current = getPlayer(analysis, effectiveIdentityId);
-                            return current ? (
-                                <option key={`selected-${current.identityId}`} value={current.identityId}>
-                                    {current.displayName}{current.identityId ? ` • ${current.identityId}` : ""}
-                                </option>
-                            ) : null;
-                        })() : null}
+                        {(
+                            effectiveIdentityId !== "all" &&
+                            !filteredPlayerOptions.some((player: LilyMoneyPlayerAnalysis): boolean => player.identityId === effectiveIdentityId)
+                        ) ?
+                            (() => {
+                                const current = getPlayer(analysis, effectiveIdentityId);
+                                return current ?
+                                        <option key={`selected-${current.identityId}`} value={current.identityId}>
+                                            {current.displayName}
+                                            {current.identityId ? ` • ${current.identityId}` : ""}
+                                        </option>
+                                    :   null;
+                            })()
+                        :   null}
                         {filteredPlayerOptions.map(
                             (player: LilyMoneyPlayerAnalysis): JSX.Element => (
                                 <option key={player.identityId || player.displayName} value={player.identityId}>
-                                    {player.displayName}{player.identityId ? ` • ${player.identityId}` : ""}
+                                    {player.displayName}
+                                    {player.identityId ? ` • ${player.identityId}` : ""}
                                 </option>
                             )
                         )}
                     </select>
-                    {playerSearch ? (
+                    {playerSearch ?
                         <span style={smallMutedStyle(theme)}>
                             {filteredPlayerOptions.length.toLocaleString()} match{filteredPlayerOptions.length === 1 ? "" : "es"}
                         </span>
-                    ) : null}
+                    :   null}
                 </div>
 
                 <div style={{ ...smallMutedStyle(theme), textAlign: "right" }}>
@@ -4628,7 +4464,7 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
                                     }}
                                 >
                                     <span style={{ flex: "1 1 auto" }}>{item.label}</span>
-                                    {item.id === "database" && health.level !== "healthy" ? (
+                                    {item.id === "database" && health.level !== "healthy" ?
                                         <span
                                             title={health.label}
                                             style={{
@@ -4639,7 +4475,7 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
                                                 flex: "0 0 auto",
                                             }}
                                         />
-                                    ) : null}
+                                    :   null}
                                 </button>
                             );
                         })}
@@ -4647,9 +4483,7 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
 
                     <div style={{ margin: "18px 8px 0", paddingTop: "14px", borderTop: `1px solid ${theme.border}` }}>
                         <div style={smallMutedStyle(theme)}>Database</div>
-                        <div style={{ fontWeight: 650, marginTop: "3px" }}>
-                            {database.records.length.toLocaleString()} records
-                        </div>
+                        <div style={{ fontWeight: 650, marginTop: "3px" }}>{database.records.length.toLocaleString()} records</div>
                         <div style={{ ...smallMutedStyle(theme), marginTop: "3px" }}>
                             {database.selectedShards.length} shard{database.selectedShards.length === 1 ? "" : "s"}
                         </div>
@@ -4667,9 +4501,7 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
                         background: theme.bg,
                     }}
                 >
-                    <div style={{ width: "100%", maxWidth: "1500px", margin: "0 auto" }}>
-                        {content}
-                    </div>
+                    <div style={{ width: "100%", maxWidth: "1500px", margin: "0 auto" }}>{content}</div>
                 </main>
             </div>
         </div>

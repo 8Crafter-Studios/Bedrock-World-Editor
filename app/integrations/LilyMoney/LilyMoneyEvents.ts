@@ -1,11 +1,6 @@
-import type {
-    LilyMoneyRecord,
-} from "./LilyMoneyRecords";
+import type { LilyMoneyRecord } from "./LilyMoneyRecords";
 
-import {
-    resolveLilyMoneyName,
-    type LilyMoneyNameDatabase,
-} from "./LilyMoneyNames";
+import { resolveLilyMoneyName, type LilyMoneyNameDatabase } from "./LilyMoneyNames";
 
 export type LilyMoneyKnownEventType =
     | "PAY"
@@ -61,8 +56,7 @@ export interface ParsedLilyMoneyEvent {
 
     type: string;
 
-    knownType:
-        LilyMoneyKnownEventType | null;
+    knownType: LilyMoneyKnownEventType | null;
 
     valid: boolean;
 
@@ -70,8 +64,7 @@ export interface ParsedLilyMoneyEvent {
 
     people: LilyMoneyPerson[];
 
-    effects:
-        LilyMoneyEventEffect[];
+    effects: LilyMoneyEventEffect[];
 
     amountCents: number | null;
 
@@ -86,128 +79,80 @@ export interface ParsedLilyMoneyEvent {
 
     reason: string | null;
 
-    jobBatch:
-        LilyMoneyJobBatchMetadata | null;
+    jobBatch: LilyMoneyJobBatchMetadata | null;
 
-    fullCheckpointRows:
-        LilyMoneyFullCheckpointRow[];
+    fullCheckpointRows: LilyMoneyFullCheckpointRow[];
 
-    declaredFullCheckpointCount:
-        number | null;
+    declaredFullCheckpointCount: number | null;
 }
 
-const KNOWN_TYPES =
-    new Set<LilyMoneyKnownEventType>([
-        "PAY",
+const KNOWN_TYPES = new Set<LilyMoneyKnownEventType>([
+    "PAY",
 
-        "SHOP_BUY",
-        "SHOP_SELL",
+    "SHOP_BUY",
+    "SHOP_SELL",
 
-        "AH_BUY",
+    "AH_BUY",
 
-        "BUY_COMMAND",
-        "SELL_COMMAND",
+    "BUY_COMMAND",
+    "SELL_COMMAND",
 
-        "ADD_MONEY",
-        "REMOVE_MONEY",
-        "SET_MONEY",
+    "ADD_MONEY",
+    "REMOVE_MONEY",
+    "SET_MONEY",
 
-        "JOB_REWARD",
+    "JOB_REWARD",
 
-        "PLAYER_JOIN",
-        "PLAYER_LEAVE",
+    "PLAYER_JOIN",
+    "PLAYER_LEAVE",
 
-        "BALANCE_CHECKPOINT",
-        "FULL_BALANCE_CHECKPOINT",
+    "BALANCE_CHECKPOINT",
+    "FULL_BALANCE_CHECKPOINT",
 
-        "LOGGING_ENABLED",
-        "LOGGING_DISABLED",
-    ]);
+    "LOGGING_ENABLED",
+    "LOGGING_DISABLED",
+]);
 
-function safeInt(
-    value: unknown
-): number | null {
-    if (
-        typeof value === "number" &&
-        Number.isSafeInteger(value)
-    ) {
+function safeInt(value: unknown): number | null {
+    if (typeof value === "number" && Number.isSafeInteger(value)) {
         return value;
     }
 
     if (typeof value === "bigint") {
-        const converted: number =
-            Number(value);
+        const converted: number = Number(value);
 
-        return Number.isSafeInteger(
-            converted
-        )
-            ? converted
-            : null;
+        return Number.isSafeInteger(converted) ? converted : null;
     }
 
-    if (
-        typeof value === "string" &&
-        /^-?\d+$/.test(value)
-    ) {
-        const converted: number =
-            Number(value);
+    if (typeof value === "string" && /^-?\d+$/.test(value)) {
+        const converted: number = Number(value);
 
-        return Number.isSafeInteger(
-            converted
-        )
-            ? converted
-            : null;
+        return Number.isSafeInteger(converted) ? converted : null;
     }
 
     return null;
 }
 
-function safeString(
-    value: unknown
-): string {
-    return typeof value === "string"
-        ? value
-        : "";
+function safeString(value: unknown): string {
+    return typeof value === "string" ? value : "";
 }
 
-function makePerson(
-    identityValue: unknown,
-    nameValue: unknown,
-    role: string,
-    names: LilyMoneyNameDatabase
-): LilyMoneyPerson {
-    const identityId: string =
-        safeString(
-            identityValue
-        ).trim();
+function makePerson(identityValue: unknown, nameValue: unknown, role: string, names: LilyMoneyNameDatabase): LilyMoneyPerson {
+    const identityId: string = safeString(identityValue).trim();
 
-    const rawName: string =
-        safeString(
-            nameValue
-        ).trim();
+    const rawName: string = safeString(nameValue).trim();
 
     return {
         identityId,
         rawName,
 
-        displayName:
-            resolveLilyMoneyName(
-                names,
-                identityId,
-                rawName
-            ),
+        displayName: resolveLilyMoneyName(names, identityId, rawName),
 
         role,
     };
 }
 
-function makeEffect(
-    person: LilyMoneyPerson,
-    deltaCents: number | null,
-    balanceAfterCents:
-        number | null,
-    assignment: boolean = false
-): LilyMoneyEventEffect {
+function makeEffect(person: LilyMoneyPerson, deltaCents: number | null, balanceAfterCents: number | null, assignment: boolean = false): LilyMoneyEventEffect {
     return {
         ...person,
 
@@ -218,84 +163,47 @@ function makeEffect(
     };
 }
 
-export function isKnownLilyMoneyEventType(
-    type: string
-): type is LilyMoneyKnownEventType {
-    return KNOWN_TYPES.has(
-        type as LilyMoneyKnownEventType
-    );
+export function isKnownLilyMoneyEventType(type: string): type is LilyMoneyKnownEventType {
+    return KNOWN_TYPES.has(type as LilyMoneyKnownEventType);
 }
 
-export function parseLilyMoneyEvent(
-    record: LilyMoneyRecord,
-    names: LilyMoneyNameDatabase
-): ParsedLilyMoneyEvent {
+export function parseLilyMoneyEvent(record: LilyMoneyRecord, names: LilyMoneyNameDatabase): ParsedLilyMoneyEvent {
     const errors: string[] = [];
 
-    const people:
-        LilyMoneyPerson[] = [];
+    const people: LilyMoneyPerson[] = [];
 
-    const effects:
-        LilyMoneyEventEffect[] = [];
+    const effects: LilyMoneyEventEffect[] = [];
 
-    const fullCheckpointRows:
-        LilyMoneyFullCheckpointRow[] =
-            [];
+    const fullCheckpointRows: LilyMoneyFullCheckpointRow[] = [];
 
-    let amountCents:
-        number | null = null;
+    let amountCents: number | null = null;
 
-    let quantity:
-        number | null = null;
+    let quantity: number | null = null;
 
-    let itemId:
-        string | null = null;
+    let itemId: string | null = null;
 
-    let itemName:
-        string | null = null;
+    let itemName: string | null = null;
 
-    let jobId:
-        string | null = null;
+    let jobId: string | null = null;
 
-    let action:
-        string | null = null;
+    let action: string | null = null;
 
-    let sourceId:
-        string | null = null;
+    let sourceId: string | null = null;
 
-    let reason:
-        string | null = null;
+    let reason: string | null = null;
 
-    let jobBatch:
-        LilyMoneyJobBatchMetadata |
-        null = null;
+    let jobBatch: LilyMoneyJobBatchMetadata | null = null;
 
-    let declaredFullCheckpointCount:
-        number | null = null;
+    let declaredFullCheckpointCount: number | null = null;
 
-    const knownType:
-        LilyMoneyKnownEventType |
-        null =
-            isKnownLilyMoneyEventType(
-                record.type
-            )
-                ? record.type
-                : null;
+    const knownType: LilyMoneyKnownEventType | null = isKnownLilyMoneyEventType(record.type) ? record.type : null;
 
     if (knownType === null) {
-        errors.push(
-            `Unknown event type ${record.type}.`
-        );
+        errors.push(`Unknown event type ${record.type}.`);
     }
 
-    if (
-        !Array.isArray(
-            record.payload
-        )
-    ) {
-        errors.push(
-            "Payload is not an array."
-        );
+    if (!Array.isArray(record.payload)) {
+        errors.push("Payload is not an array.");
 
         return {
             record,
@@ -328,79 +236,38 @@ export function parseLilyMoneyEvent(
         };
     }
 
-    const p: unknown[] =
-        record.payload;
+    const p: unknown[] = record.payload;
 
-    const requireInt = (
-        index: number,
-        label: string
-    ): number | null => {
-        const value:
-            number | null =
-                safeInt(
-                    p[index]
-                );
+    const requireInt = (index: number, label: string): number | null => {
+        const value: number | null = safeInt(p[index]);
 
         if (value === null) {
-            errors.push(
-                `${label} at payload[${index}] is not a safe integer.`
-            );
+            errors.push(`${label} at payload[${index}] is not a safe integer.`);
         }
 
         return value;
     };
 
-    const nullableInt = (
-        index: number,
-        label: string
-    ): number | null => {
-        if (
-            p[index] === null ||
-            p[index] === undefined
-        ) {
+    const nullableInt = (index: number, label: string): number | null => {
+        if (p[index] === null || p[index] === undefined) {
             return null;
         }
 
-        return requireInt(
-            index,
-            label
-        );
+        return requireInt(index, label);
     };
 
-    const requireString = (
-        index: number,
-        label: string
-    ): string => {
-        const value: string =
-            safeString(
-                p[index]
-            );
+    const requireString = (index: number, label: string): string => {
+        const value: string = safeString(p[index]);
 
-        if (
-            typeof p[index] !==
-            "string"
-        ) {
-            errors.push(
-                `${label} at payload[${index}] is not a string.`
-            );
+        if (typeof p[index] !== "string") {
+            errors.push(`${label} at payload[${index}] is not a string.`);
         }
 
         return value;
     };
 
-    const person = (
-        idIndex: number,
-        nameIndex: number,
-        role: string
-    ): LilyMoneyPerson => {
-        const result:
-            LilyMoneyPerson =
-                makePerson(
-                    p[idIndex],
-                    p[nameIndex],
-                    role,
-                    names
-                );
+    const person = (idIndex: number, nameIndex: number, role: string): LilyMoneyPerson => {
+        const result: LilyMoneyPerson = makePerson(p[idIndex], p[nameIndex], role, names);
 
         people.push(result);
 
@@ -409,56 +276,20 @@ export function parseLilyMoneyEvent(
 
     switch (knownType) {
         case "PAY": {
-            const sender =
-                person(
-                    0,
-                    1,
-                    "sender"
-                );
+            const sender = person(0, 1, "sender");
 
-            const recipient =
-                person(
-                    2,
-                    3,
-                    "recipient"
-                );
+            const recipient = person(2, 3, "recipient");
 
-            amountCents =
-                requireInt(
-                    4,
-                    "Payment amount"
-                );
+            amountCents = requireInt(4, "Payment amount");
 
-            const senderAfter =
-                requireInt(
-                    5,
-                    "Sender balance after"
-                );
+            const senderAfter = requireInt(5, "Sender balance after");
 
-            const recipientAfter =
-                requireInt(
-                    6,
-                    "Recipient balance after"
-                );
+            const recipientAfter = requireInt(6, "Recipient balance after");
 
-            if (
-                amountCents !== null
-            ) {
-                effects.push(
-                    makeEffect(
-                        sender,
-                        -amountCents,
-                        senderAfter
-                    )
-                );
+            if (amountCents !== null) {
+                effects.push(makeEffect(sender, -amountCents, senderAfter));
 
-                effects.push(
-                    makeEffect(
-                        recipient,
-                        amountCents,
-                        recipientAfter
-                    )
-                );
+                effects.push(makeEffect(recipient, amountCents, recipientAfter));
             }
 
             break;
@@ -466,57 +297,24 @@ export function parseLilyMoneyEvent(
 
         case "SHOP_BUY":
         case "SHOP_SELL": {
-            const player =
-                person(
-                    0,
-                    1,
-                    knownType ===
-                        "SHOP_BUY"
-                        ? "buyer"
-                        : "seller"
-                );
+            const player = person(0, 1, knownType === "SHOP_BUY" ? "buyer" : "seller");
 
-            itemId =
-                requireString(
-                    2,
-                    "Item ID"
-                );
+            itemId = requireString(2, "Item ID");
 
-            itemName =
-                requireString(
-                    3,
-                    "Item name"
-                );
+            itemName = requireString(3, "Item name");
 
-            quantity =
-                requireInt(
-                    4,
-                    "Quantity"
-                );
+            quantity = requireInt(4, "Quantity");
 
-            amountCents =
-                requireInt(
-                    5,
-                    "Amount"
-                );
+            amountCents = requireInt(5, "Amount");
 
-            const after =
-                requireInt(
-                    6,
-                    "Balance after"
-                );
+            const after = requireInt(6, "Balance after");
 
-            if (
-                amountCents !== null
-            ) {
+            if (amountCents !== null) {
                 effects.push(
                     makeEffect(
                         player,
 
-                        knownType ===
-                            "SHOP_BUY"
-                            ? -amountCents
-                            : amountCents,
+                        knownType === "SHOP_BUY" ? -amountCents : amountCents,
 
                         after
                     )
@@ -527,74 +325,26 @@ export function parseLilyMoneyEvent(
         }
 
         case "AH_BUY": {
-            const buyer =
-                person(
-                    0,
-                    1,
-                    "buyer"
-                );
+            const buyer = person(0, 1, "buyer");
 
-            const seller =
-                person(
-                    2,
-                    3,
-                    "seller"
-                );
+            const seller = person(2, 3, "seller");
 
-            itemId =
-                requireString(
-                    4,
-                    "Item ID"
-                );
+            itemId = requireString(4, "Item ID");
 
-            itemName =
-                requireString(
-                    5,
-                    "Item name"
-                );
+            itemName = requireString(5, "Item name");
 
-            quantity =
-                requireInt(
-                    6,
-                    "Quantity"
-                );
+            quantity = requireInt(6, "Quantity");
 
-            amountCents =
-                requireInt(
-                    7,
-                    "Amount"
-                );
+            amountCents = requireInt(7, "Amount");
 
-            const buyerAfter =
-                requireInt(
-                    8,
-                    "Buyer balance after"
-                );
+            const buyerAfter = requireInt(8, "Buyer balance after");
 
-            const sellerAfter =
-                nullableInt(
-                    9,
-                    "Seller balance after"
-                );
+            const sellerAfter = nullableInt(9, "Seller balance after");
 
-            if (
-                amountCents !== null
-            ) {
-                effects.push(
-                    makeEffect(
-                        buyer,
-                        -amountCents,
-                        buyerAfter
-                    )
-                );
+            if (amountCents !== null) {
+                effects.push(makeEffect(buyer, -amountCents, buyerAfter));
 
-                effects.push(
-                    makeEffect(
-                        seller,
-                        amountCents,
-                        sellerAfter
-                    )
-                );
+                effects.push(makeEffect(seller, amountCents, sellerAfter));
             }
 
             break;
@@ -602,54 +352,24 @@ export function parseLilyMoneyEvent(
 
         case "BUY_COMMAND":
         case "SELL_COMMAND": {
-            person(
-                0,
-                1,
-                "actor"
-            );
+            person(0, 1, "actor");
 
-            const target =
-                person(
-                    2,
-                    3,
-                    "target"
-                );
+            const target = person(2, 3, "target");
 
-            itemId =
-                requireString(
-                    4,
-                    "Item ID"
-                );
+            itemId = requireString(4, "Item ID");
 
-            quantity =
-                requireInt(
-                    5,
-                    "Quantity"
-                );
+            quantity = requireInt(5, "Quantity");
 
-            amountCents =
-                requireInt(
-                    6,
-                    "Amount"
-                );
+            amountCents = requireInt(6, "Amount");
 
-            const after =
-                requireInt(
-                    7,
-                    "Target balance after"
-                );
+            const after = requireInt(7, "Target balance after");
 
-            if (
-                amountCents !== null
-            ) {
+            if (amountCents !== null) {
                 effects.push(
                     makeEffect(
                         target,
 
-                        knownType ===
-                            "BUY_COMMAND"
-                            ? -amountCents
-                            : amountCents,
+                        knownType === "BUY_COMMAND" ? -amountCents : amountCents,
 
                         after
                     )
@@ -662,58 +382,26 @@ export function parseLilyMoneyEvent(
         case "ADD_MONEY":
         case "REMOVE_MONEY":
         case "SET_MONEY": {
-            person(
-                0,
-                1,
-                "actor"
+            person(0, 1, "actor");
+
+            const target = person(2, 3, "target");
+
+            amountCents = requireInt(
+                4,
+
+                knownType === "SET_MONEY" ? "Set amount" : "Amount"
             );
 
-            const target =
-                person(
-                    2,
-                    3,
-                    "target"
-                );
+            const after = requireInt(5, "Target balance after");
 
-            amountCents =
-                requireInt(
-                    4,
-
-                    knownType ===
-                        "SET_MONEY"
-                        ? "Set amount"
-                        : "Amount"
-                );
-
-            const after =
-                requireInt(
-                    5,
-                    "Target balance after"
-                );
-
-            if (
-                knownType ===
-                "SET_MONEY"
-            ) {
-                effects.push(
-                    makeEffect(
-                        target,
-                        null,
-                        after,
-                        true
-                    )
-                );
-            } else if (
-                amountCents !== null
-            ) {
+            if (knownType === "SET_MONEY") {
+                effects.push(makeEffect(target, null, after, true));
+            } else if (amountCents !== null) {
                 effects.push(
                     makeEffect(
                         target,
 
-                        knownType ===
-                            "ADD_MONEY"
-                            ? amountCents
-                            : -amountCents,
+                        knownType === "ADD_MONEY" ? amountCents : -amountCents,
 
                         after
                     )
@@ -724,99 +412,42 @@ export function parseLilyMoneyEvent(
         }
 
         case "JOB_REWARD": {
-            const worker =
-                person(
-                    0,
-                    1,
-                    "worker"
-                );
+            const worker = person(0, 1, "worker");
 
-            jobId =
-                requireString(
-                    2,
-                    "Job ID"
-                );
+            jobId = requireString(2, "Job ID");
 
-            action =
-                requireString(
-                    3,
-                    "Action"
-                );
+            action = requireString(3, "Action");
 
-            sourceId =
-                requireString(
-                    4,
-                    "Source ID"
-                );
+            sourceId = requireString(4, "Source ID");
 
-            quantity =
-                requireInt(
-                    5,
-                    "Quantity"
-                );
+            quantity = requireInt(5, "Quantity");
 
-            amountCents =
-                requireInt(
-                    6,
-                    "Amount"
-                );
+            amountCents = requireInt(6, "Amount");
 
-            const after =
-                requireInt(
-                    7,
-                    "Balance after"
-                );
+            const after = requireInt(7, "Balance after");
 
-            if (
-                amountCents !== null
-            ) {
-                effects.push(
-                    makeEffect(
-                        worker,
-                        amountCents,
-                        after
-                    )
-                );
+            if (amountCents !== null) {
+                effects.push(makeEffect(worker, amountCents, after));
             }
 
             // Newer DB-v1 batched
             // JOB_REWARD metadata.
             if (p.length >= 11) {
-                const startedAt =
-                    requireInt(
-                        8,
-                        "Batch start"
-                    );
+                const startedAt = requireInt(8, "Batch start");
 
-                const endedAt =
-                    requireInt(
-                        9,
-                        "Batch end"
-                    );
+                const endedAt = requireInt(9, "Batch end");
 
-                const batchId =
-                    requireString(
-                        10,
-                        "Batch ID"
-                    );
+                const batchId = requireString(10, "Batch ID");
 
-                if (
-                    startedAt !== null &&
-                    endedAt !== null &&
-                    batchId
-                ) {
+                if (startedAt !== null && endedAt !== null && batchId) {
                     jobBatch = {
                         startedAt,
                         endedAt,
                         batchId,
                     };
                 }
-            } else if (
-                p.length > 8
-            ) {
-                errors.push(
-                    "JOB_REWARD contains a partial batch-metadata suffix; expected fields 8-10 together."
-                );
+            } else if (p.length > 8) {
+                errors.push("JOB_REWARD contains a partial batch-metadata suffix; expected fields 8-10 together.");
             }
 
             break;
@@ -824,180 +455,83 @@ export function parseLilyMoneyEvent(
 
         case "PLAYER_JOIN":
         case "PLAYER_LEAVE": {
-            const playerRef =
-                person(
-                    0,
-                    1,
-                    "session"
-                );
+            const playerRef = person(0, 1, "session");
 
-            const balance =
-                nullableInt(
-                    2,
-                    "Session balance"
-                );
+            const balance = nullableInt(2, "Session balance");
 
-            effects.push(
-                makeEffect(
-                    playerRef,
-                    null,
-                    balance
-                )
-            );
+            effects.push(makeEffect(playerRef, null, balance));
 
             break;
         }
 
         case "BALANCE_CHECKPOINT": {
-            const playerRef =
-                person(
-                    0,
-                    1,
-                    "checkpoint"
-                );
+            const playerRef = person(0, 1, "checkpoint");
 
-            const balance =
-                nullableInt(
-                    2,
-                    "Checkpoint balance"
-                );
+            const balance = nullableInt(2, "Checkpoint balance");
 
-            reason =
-                requireString(
-                    3,
-                    "Checkpoint reason"
-                );
+            reason = requireString(3, "Checkpoint reason");
 
-            effects.push(
-                makeEffect(
-                    playerRef,
-                    null,
-                    balance
-                )
-            );
+            effects.push(makeEffect(playerRef, null, balance));
 
             break;
         }
 
         case "FULL_BALANCE_CHECKPOINT": {
-            reason =
-                requireString(
-                    0,
-                    "Checkpoint reason"
-                );
+            reason = requireString(0, "Checkpoint reason");
 
-            declaredFullCheckpointCount =
-                requireInt(
-                    1,
-                    "Checkpoint row count"
-                );
+            declaredFullCheckpointCount = requireInt(1, "Checkpoint row count");
 
-            const rows: unknown =
-                p[2];
+            const rows: unknown = p[2];
 
-            if (
-                !Array.isArray(rows)
-            ) {
-                errors.push(
-                    "Full checkpoint rows at payload[2] are not an array."
-                );
+            if (!Array.isArray(rows)) {
+                errors.push("Full checkpoint rows at payload[2] are not an array.");
 
                 break;
             }
 
-            if (
-                declaredFullCheckpointCount !==
-                    null &&
-                declaredFullCheckpointCount !==
-                    rows.length
-            ) {
-                errors.push(
-                    `Full checkpoint declares ${declaredFullCheckpointCount} rows but contains ${rows.length}.`
-                );
+            if (declaredFullCheckpointCount !== null && declaredFullCheckpointCount !== rows.length) {
+                errors.push(`Full checkpoint declares ${declaredFullCheckpointCount} rows but contains ${rows.length}.`);
             }
 
-            for (
-                let index: number = 0;
-                index < rows.length;
-                index++
-            ) {
-                const row: unknown =
-                    rows[index];
+            for (let index: number = 0; index < rows.length; index++) {
+                const row: unknown = rows[index];
 
-                if (
-                    !Array.isArray(row) ||
-                    row.length < 2
-                ) {
-                    errors.push(
-                        `Full checkpoint row ${index} is invalid.`
-                    );
+                if (!Array.isArray(row) || row.length < 2) {
+                    errors.push(`Full checkpoint row ${index} is invalid.`);
 
                     continue;
                 }
 
-                const identityId:
-                    string =
-                        safeString(
-                            row[0]
-                        ).trim();
+                const identityId: string = safeString(row[0]).trim();
 
-                const balance:
-                    number | null =
-                        row[1] === null
-                            ? null
-                            : safeInt(
-                                  row[1]
-                              );
+                const balance: number | null = row[1] === null ? null : safeInt(row[1]);
 
                 if (!identityId) {
-                    errors.push(
-                        `Full checkpoint row ${index} has no identity ID.`
-                    );
+                    errors.push(`Full checkpoint row ${index} has no identity ID.`);
                 }
 
-                if (
-                    row[1] !== null &&
-                    balance === null
-                ) {
-                    errors.push(
-                        `Full checkpoint row ${index} balance is not a safe integer or null.`
-                    );
+                if (row[1] !== null && balance === null) {
+                    errors.push(`Full checkpoint row ${index} balance is not a safe integer or null.`);
                 }
 
-                const displayName =
-                    resolveLilyMoneyName(
-                        names,
-                        identityId,
-                        ""
-                    );
+                const displayName = resolveLilyMoneyName(names, identityId, "");
 
                 fullCheckpointRows.push({
                     identityId,
                     displayName,
-                    balanceCents:
-                        balance,
+                    balanceCents: balance,
                 });
 
-                const checkpointPerson:
-                    LilyMoneyPerson = {
-                        identityId,
-                        rawName: "",
-                        displayName,
-                        role:
-                            "checkpoint",
-                    };
+                const checkpointPerson: LilyMoneyPerson = {
+                    identityId,
+                    rawName: "",
+                    displayName,
+                    role: "checkpoint",
+                };
 
-                people.push(
-                    checkpointPerson
-                );
+                people.push(checkpointPerson);
 
-                effects.push(
-                    makeEffect(
-                        checkpointPerson,
-                        null,
-                        balance
-                    )
-                );
+                effects.push(makeEffect(checkpointPerson, null, balance));
             }
 
             break;
@@ -1005,11 +539,7 @@ export function parseLilyMoneyEvent(
 
         case "LOGGING_ENABLED":
         case "LOGGING_DISABLED": {
-            person(
-                0,
-                1,
-                "actor"
-            );
+            person(0, 1, "actor");
 
             break;
         }
@@ -1024,8 +554,7 @@ export function parseLilyMoneyEvent(
         type: record.type,
         knownType,
 
-        valid:
-            errors.length === 0,
+        valid: errors.length === 0,
 
         errors,
 

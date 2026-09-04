@@ -25,6 +25,21 @@
     image-rendering: pixelated;
 }
 
+.lilymoney-workspace .lilymoney-mc-button,
+.lilymoney-workspace .lilymoney-nav-button,
+.lilymoney-workspace .lilymoney-input,
+.lilymoney-workspace .lilymoney-title,
+.lilymoney-workspace .lilymoney-header {
+    -webkit-user-select: none;
+    /* Safari */
+    -ms-user-select: none;
+    -moz-user-select: none;
+    /* IE 10 and IE 11 */
+    user-select: none;
+    /* Standard syntax */
+    -webkit-user-drag: none;
+}
+
 .lilymoney-workspace .lilymoney-mc-button {
     margin: 0;
     padding: 8px 12px;
@@ -81,13 +96,10 @@
     box-shadow: inset -3px 0 0 color-mix(in srgb, #000 24%, transparent);
 }
 
-
-
 .lilymoney-workspace .lilymoney-nav-button.active {
     background: var(--alternating-bg-3);
     color: var(--text-color);
 }
-
 
 .lilymoney-workspace .lilymoney-nav-button {
     min-height: 44px;
@@ -100,9 +112,6 @@
     color: var(--text-color);
 }
 
-
-
-
 .lilymoney-workspace table {
     border-width: 2px;
 }
@@ -114,6 +123,3 @@
 .lilymoney-workspace svg text {
     font-family: "Minecraft-Seven-v4", "Minecraft-Seven", sans-serif;
 }
-
-
-
