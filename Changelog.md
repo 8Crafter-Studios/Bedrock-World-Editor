@@ -3,6 +3,7 @@
 ## Critical Fixes
 
 -   Fixed an issue where pasting in editors that used Monaco Editor did not work ([#1](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/1)).
+-   Fixed many issues where the parser and serializer for the `SubChunkPrefix` content type did not work properly in certain situations.
 
 ## Additions
 
@@ -10,6 +11,24 @@
 -   Added the paths to the world folder locations for the Minecraft Education Edition desktop version to the config.
 -   Added the paths to the world folder locations for Minecraft Education Edition on macOS to the config.
 -   Added paths to the extra world folder locations for Minecraft Education Edition, Minecraft Education Edition Preview, and the desktop version of Minecraft Education Edition, that are inside of mounted Windows volumes, to the config.
+-   The "Create LevelDB Entry" button in sub-tabs now properly reloads the data of the sub-tab after creating the LevelDB entry.
+-   The "Create LevelDB Entry" button in sub-tabs now attemps to use a default value based on the content type for the new LevelDB entry, rather than an empty NBT object or empty data.
+-   When the associated LevelDB key for a `Map` sub-tab does not exist, there is now a "Create LevelDB Entry" button.
+-   Added validation to insure the JSON in the Prismarine-NBT editor is valid Prismarine-NBT, this should fix the issue where after leaving invalid data in the editor and switching tabs or modes, the tab can go blank until you close and reopen it.
+-   The state of the Prismarine-NBT and SNBT editors now persists across tab and mode switches (meaning undo history, scroll position, search, selection, etc. are preserved when you switch tabs or modes and then switch back).
+
+## Changes
+
+-   Pressing `ALT` no longer focuses/unfocuses the menu bar.
+-   When the app recovers from a crash, it now closes and reopens the window, this fixes an issue where after a crash, the menu bar and many keybinds would not work.
+-   The `SubChunkPrefixLayer` NBT schema and the `layers` field of the `SubChunkPrefix` content type no longer include a `storageVersion` field.
+
+## Fixes
+
+-   Fixed a bug where CTRL+S did not work while the Prismarine-NBT, SNBT, or text editor was focused.
+-   Many major NBT schema fixes, see the `mcbe-leveldb` changelog for more details (v1.0.0-beta.34 used v1.20.1 of `mcbe-leveldb`, this version uses v1.22.2).
+-   The NBT schema for entity entries in the `Entity` content type now no longer has an `internalComponents` field.
+-   Fixed an issue where there were many random useless `"name": ""` entries in the Prismarine-NBT editor.
 
 # v1.0.0-beta.34
 

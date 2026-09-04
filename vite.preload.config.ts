@@ -7,7 +7,13 @@ const externals: (string | RegExp)[] = [/^node:.+$/, "@electron/remote", "path",
 // https://vitejs.dev/config
 export default defineConfig((env: ConfigEnv) => ({
     define: {
-        "process.env.NODE_ENV": JSON.stringify(env.mode),
+        ...(env.mode === "development" ?
+            {
+                "process.env.NODE_ENV": JSON.stringify(env.mode),
+            }
+        :   {
+                "process.env": "process.env",
+            }),
     },
     build: {
         minify: false,

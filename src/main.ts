@@ -309,6 +309,7 @@ if (!isSecondInstance && (process.platform === "win32" || process.platform === "
                 cancelId: 2,
             });
             if (result === 2) return;
+            // XXX: This push only saves because the autoUpdateEnabled setter is triggered afterwards.
             config.shownDialogs.push("allow_automatic_updates");
             config.autoUpdateEnabled = result === 0;
             if (config.autoUpdateEnabled) {
@@ -372,6 +373,22 @@ if (!startup) {
     ]);
 }
 
+/**
+ * Checks if a process is alive.
+ *
+ * @param pid The ID of the process.
+ * @returns Whether the process with the given ID is alive.
+ */
+function isProcessAlive(pid: number): boolean {
+    try {
+        process.kill(pid, 0);
+        return true;
+    } catch (err: any) {
+        if (err?.code === "ESRCH") return false;
+        return true;
+    }
+}
+
 let webContentsStartedLoading: boolean = false;
 
 let webContentsLoaded: boolean = false;
@@ -383,7 +400,15 @@ const onWebContentsLoadedCallbacks: (() => void)[] = [];
  *
  * @returns The ID of the created window, or `undefined` if the window was not createReadStream.
  */
-export function createWindow(): number | void {
+export function createWindow(previousWindowData?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    wasMaximized: boolean;
+    wasFullScreen: boolean;
+    wasDevToolsOpen: boolean;
+}): number | void {
     if (isSecondInstance) return;
     if (isDev) process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
     // Create the browser window.
@@ -408,7 +433,14 @@ export function createWindow(): number | void {
         },
         resizable: true,
         darkTheme: nativeTheme.shouldUseDarkColorsForSystemIntegratedUI,
+        ...previousWindowData,
     });
+    if (previousWindowData?.wasMaximized) {
+        mainWindow.maximize();
+    }
+    if (previousWindowData?.wasFullScreen) {
+        mainWindow.setFullScreen(true);
+    }
     mainWindow.webContents.on("will-navigate", (e, url) => {
         if (url.endsWith(".wasm")) {
             console.log(url);
@@ -436,9 +468,22 @@ export function createWindow(): number | void {
                     defaultId: 0,
                     cancelId: 1,
                 })
-                .then((result: MessageBoxReturnValue): void => {
+                .then(async (result: MessageBoxReturnValue): Promise<void> => {
                     if (result.response === 0) {
-                        mainWindow.reload();
+                        const bounds: Electron.Rectangle = mainWindow.getBounds();
+                        const wasMaximized: boolean = mainWindow.isMaximized();
+                        const wasFullScreen: boolean = mainWindow.isFullScreen();
+                        const wasDevToolsOpen: boolean = mainWindow.webContents.isDevToolsOpened();
+                        createWindow({
+                            x: bounds.x,
+                            y: bounds.y,
+                            width: bounds.width,
+                            height: bounds.height,
+                            wasMaximized,
+                            wasFullScreen,
+                            wasDevToolsOpen,
+                        });
+                        mainWindow.destroy();
                     } else {
                         mainWindow.close();
                     }
@@ -757,7 +802,7 @@ export function createWindow(): number | void {
     mainWindowIDs.push(mainWindow.id);
 
     // Open the DevTools.
-    if (isDev) mainWindow.webContents.openDevTools();
+    if (previousWindowData?.wasDevToolsOpen ?? isDev) mainWindow.webContents.openDevTools();
 
     if (!webContentsLoaded && !webContentsStartedLoading) {
         webContentsStartedLoading = true;
@@ -1252,55 +1297,58 @@ if (!startup && !started) {
                 );
             }
         }
-        new Octokit().repos.listReleases({ owner: "8Crafter-Studios", repo: "Bedrock-World-Editor" }).then(
-            (releases): void => {
-                const latestRelease: (typeof releases.data)[number] | null = releases.data
-                    .filter(
-                        (release: (typeof releases.data)[number]): boolean =>
-                            !!semver.valid(release.tag_name) &&
-                            // TODO: Add an option to allow showing draft releases.
-                            !release.draft /* && config.notifyForPrereleaseUpdates ? true : !release.prerelease */
-                    )
-                    .reduce(
-                        (a: (typeof releases.data)[number] | null, b: (typeof releases.data)[number]): (typeof releases.data)[number] | null =>
-                            a ?
-                                semver.compareBuild(a.tag_name, b.tag_name) < 0 ?
-                                    b
-                                :   a
-                            :   (b ?? null),
-                        null
-                    );
-                if (!latestRelease) return;
-                if (semver.compareBuild(app.getVersion(), latestRelease.tag_name) < 0) {
-                    let trimmedChangelog: string | undefined =
-                        latestRelease.body ? latestRelease.body.split("\n").slice(0, 10).join("\n").slice(0, 2000) : undefined;
-                    if (trimmedChangelog) {
-                        if (trimmedChangelog !== latestRelease.body) {
-                            trimmedChangelog += "\n...";
-                        }
-                    }
-                    dialog
-                        .showMessageBox({
-                            type: "info",
-                            title: "Update Available",
-                            message: `A new version of Bedrock World Editor is available.\n\nCurrent Version: ${app.getVersion().replace(/^(?!v)/, "v")}\nLatest Version: ${
-                                latestRelease.tag_name
-                            }`,
-                            detail: trimmedChangelog ? `Release Notes:\n${trimmedChangelog}` : undefined!,
-                            buttons: ["Open", "Cancel"],
-                            noLink: true,
-                            cancelId: 1,
-                            defaultId: 0,
-                        })
-                        .then((result: Electron.MessageBoxReturnValue): void => {
-                            if (result.response === 0) {
-                                shell.openExternal(latestRelease.html_url);
+        if (!config.autoUpdateEnabled) {
+            new Octokit().repos.listReleases({ owner: "8Crafter-Studios", repo: "Bedrock-World-Editor" }).then(
+                (releases): void => {
+                    const latestRelease: (typeof releases.data)[number] | null = releases.data
+                        .filter(
+                            (release: (typeof releases.data)[number]): boolean =>
+                                !!semver.valid(release.tag_name) &&
+                                // TODO: Add an option to allow showing draft releases.
+                                !release.draft /* && config.notifyForPrereleaseUpdates ? true : !release.prerelease */
+                        )
+                        .reduce(
+                            (a: (typeof releases.data)[number] | null, b: (typeof releases.data)[number]): (typeof releases.data)[number] | null =>
+                                a ?
+                                    semver.compareBuild(a.tag_name, b.tag_name) < 0 ?
+                                        b
+                                    :   a
+                                :   (b ?? null),
+                            null
+                        );
+                    if (!latestRelease) return;
+                    if (semver.compareBuild(app.getVersion(), latestRelease.tag_name) < 0) {
+                        let trimmedChangelog: string | undefined =
+                            latestRelease.body ? latestRelease.body.split("\n").slice(0, 10).join("\n").slice(0, 2000) : undefined;
+                        if (trimmedChangelog) {
+                            if (trimmedChangelog !== latestRelease.body) {
+                                trimmedChangelog += "\n...";
                             }
-                        });
-                }
-            },
-            (): void => {}
-        );
+                        }
+                        dialog
+                            .showMessageBox({
+                                type: "info",
+                                title: "Update Available",
+                                message: `A new version of Bedrock World Editor is available.\n\nCurrent Version: ${app.getVersion().replace(/^(?!v)/, "v")}\nLatest Version: ${
+                                    latestRelease.tag_name
+                                }`,
+                                detail: trimmedChangelog ? `Release Notes:\n${trimmedChangelog}` : undefined!,
+                                // IDEA: Add a checkbox for "Don't show again", or maybe for "Skip this version", or options for both.
+                                buttons: ["Open", "Cancel"],
+                                noLink: true,
+                                cancelId: 1,
+                                defaultId: 0,
+                            })
+                            .then((result: Electron.MessageBoxReturnValue): void => {
+                                if (result.response === 0) {
+                                    shell.openExternal(latestRelease.html_url);
+                                }
+                            });
+                    }
+                },
+                (): void => {}
+            );
+        }
     }
 
     // In this file you can include the rest of your app's specific main process

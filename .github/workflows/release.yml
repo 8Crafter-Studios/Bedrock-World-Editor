@@ -18,6 +18,7 @@ jobs:
                 include:
                     - os: ubuntu-latest
                       arch: x64
+                    # TODO: Try this again, and try to fix it.
                     # - os: ubuntu-latest # BUG: This one doesn't work.
                     #   arch: ia32
                     - os: ubuntu-latest
@@ -26,19 +27,21 @@ jobs:
                       arch: armv7l
                     - os: macos-latest
                       arch: x64
-                    # - os: macos-latest # BUG: This one doesn't work.
+                    # - os: macos-latest # UNDONE: No ia32 macOS versions are supported by Electron v40.
                     #   arch: ia32
                     - os: macos-latest
                       arch: arm64
-                    # - os: macos-latest # BUG: This one doesn't work.
+                    # - os: macos-latest # UNDONE: There are no armv7l macOS versions.
                     #   arch: armv7l
                     - os: windows-latest
                       arch: x64
                     - os: windows-latest
                       arch: ia32
                       node-version: 22.x
+                    # REVIEW: Maybe I should add this back, since it running x64 on arm64 may cause performance issues.
                     # - os: windows-11-arm # UNDONE: Disabled because Windows arm64 can run x64 apps.
                     #   arch: arm64
+                    # TODO: Try this again, and try to fix it.
                     # - os: windows-latest # BUG: This one doesn't work.
                     #   arch: armv7l
         runs-on: ${{ matrix.os }}

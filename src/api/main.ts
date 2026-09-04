@@ -762,6 +762,18 @@ ipcMain.handle("get-is-404-response", async (event: IpcMainInvokeEvent, uri: str
     }
 });
 
+// TODO: This should be used to send the temp path of an open world to the main process whenever one is opened, and also notify the main process when it is closed and fully removed, this is so that if the renderer process crashes, it can delete the world that were open in it (assuming that the entire app isn't force quit).
+// IDEA: Maybe also make use of webContents.getOSProcessId(), process.pid, or process.ppid to use the process ID to determine if the main process has crashed or not.
+// IDEA: Also look into process.finalization.
+// ipcMain.handle("note-temp-world-path-for-webcontents", async (event: IpcMainInvokeEvent, uri: string): Promise<boolean> => {
+//     try {
+//         const response = await fetch(uri);
+//         return response.status === 404;
+//     } catch (e) {
+//         return true;
+//     }
+// });
+
 declare global {
     namespace Electron {
         interface IpcRenderer {

@@ -11,7 +11,8 @@
         "fabiospampinato.vscode-highlight",
         "MarkosTh09.color-picker",
         "github.vscode-github-actions",
-        "Codeium.codeium"
+        "miku3920.vscode-render-special-chars",
+        "netcorext.uuid-generator"
     ],
     "unwantedRecommendations": [
         "golang.Go",

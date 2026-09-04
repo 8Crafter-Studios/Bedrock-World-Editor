@@ -11,6 +11,10 @@ import type * as NBT from "prismarine-nbt";
  * Props for the {@link PrismarineNBTEditor} component.
  */
 export interface PrismarineNBTEditorProps {
+    /**
+     * The tab associated with this editor.
+     */
+    tab?: TabManagerSubTab | undefined;
     dataStorageObject: GenericDataStorageObject;
     contentType?: DBEntryContentType;
     /**
@@ -46,6 +50,12 @@ export interface PrismarineNBTEditorProps {
      * For a tab, should be `tab://${tab.parentTab.id}/${tab.id}`.
      */
     path?: string;
+    /**
+     * A callback function that can be used to trigger a save.
+     *
+     * @default undefined
+     */
+    triggerSave?(): void;
 }
 
 /**
@@ -57,9 +67,52 @@ export interface PrismarineNBTEditorProps {
 export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JSX.Element {
     if (props.dataStorageObject?.dataType === "JSON") return <p style="color: red;">JSON is not supported.</p>;
     const editorRef = useRef<typeof Editor>(null);
+    let currentEditor: monaco.editor.IStandaloneCodeEditor | undefined = undefined;
     function handleEditorDidMount(editor: monaco.editor.IStandaloneCodeEditor, monaco: Monaco): void {
+        currentEditor = editor;
         // editor.getid
         monaco.languages.json.jsonDefaults.setDiagnosticsOptions({ ...monaco.languages.json.jsonDefaults.diagnosticsOptions, schemas: [] });
+        if (props.tab) {
+            // OPTIMIZE: This creates a new callback every time the editor is mounted, and the callbacks are not removed until the corresponding tab is closed.
+            const callback = (event: TabManagerTabClosedTabEvent): void => {
+                if (event.tab !== props.tab) return;
+                editor.getModel()?.dispose();
+                editor.dispose();
+                props.tab.parentTab.off("closeTab", callback);
+            };
+            props.tab.parentTab.on("closeTab", callback);
+        }
+        if (props.triggerSave) {
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, (): void => {
+                props.triggerSave?.();
+            });
+        }
+        updateModelValue: if (startingEditorValue) {
+            const model: monaco.editor.ITextModel | null = editor.getModel();
+            if (model) {
+                // console.log(7.1);
+                if (startingEditorValue === model.getValue()) break updateModelValue;
+                // console.log(8.1);
+                const lastObj: object | undefined = props.dataStorageObject.lastSavedDataObjectForModel?.get(model.id)?.deref();
+                if (lastObj && props.dataStorageObject.data === lastObj && props.dataStorageObject.lastEditedInModel === model.id) break updateModelValue;
+                const currentSelections: monaco.Selection[] | null = editor.getSelections();
+                model.pushEditOperations(
+                    currentSelections,
+                    [
+                        {
+                            range: model.getFullModelRange(),
+                            text: startingEditorValue,
+                            forceMoveMarkers: true,
+                        },
+                    ],
+                    (): monaco.Selection[] | null => null /* currentSelections */
+                );
+                if (currentSelections) editor.setSelections(currentSelections);
+            }
+            // TODO: Add a check so this only happens if the data has been changed since the model was last used.
+            // editor.setValue(startingEditorValue);
+            startingEditorValue = undefined;
+        }
     }
     let editorValue: string | undefined;
     let lastChangeTime: number = Date.now() - 1000;
@@ -75,10 +128,21 @@ export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JS
                 if (editorValue !== value) return;
                 lastChangeTime = Date.now();
                 try {
-                    if (props.dataStorageObject.data.type === "compound") {
-                        props.dataStorageObject.data.value = JSON.parse(editorValue);
-                    } else if ("parsed" in props.dataStorageObject.data) {
-                        (props.dataStorageObject.data.parsed as NBT.NBT)!.value = JSON.parse(editorValue);
+                    if (props.dataStorageObject.dataType === "NBTCompound") {
+                        const v = JSON.parse(editorValue);
+                        prismarineToSNBT(v);
+                        props.dataStorageObject.data.value = v;
+                    } else if (props.dataStorageObject.dataType === "NBT") {
+                        const v = JSON.parse(editorValue);
+                        prismarineToSNBT(v);
+                        (props.dataStorageObject.data.parsed as NBT.NBT)!.value = v;
+                    }
+
+                    const model = currentEditor?.getModel();
+                    if (model) {
+                        props.dataStorageObject.lastEditedInModel = model.id;
+                        props.dataStorageObject.lastSavedDataObjectForModel ??= new Map();
+                        props.dataStorageObject.lastSavedDataObjectForModel.set(model.id, new WeakRef(props.dataStorageObject.data));
                     }
                     props.onValueChange?.(props.dataStorageObject, { newValue: value, type: "changeContents" });
                 } catch (e) {
@@ -89,10 +153,21 @@ export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JS
             lastChangeStartTime = currentChangeTime;
             lastChangeTime = currentChangeTime;
             try {
-                if (props.dataStorageObject.data.type === "compound") {
-                    props.dataStorageObject.data.value = JSON.parse(editorValue);
-                } else if ("parsed" in props.dataStorageObject.data) {
-                    (props.dataStorageObject.data.parsed as NBT.NBT)!.value = JSON.parse(editorValue);
+                if (props.dataStorageObject.dataType === "NBTCompound") {
+                    const v = JSON.parse(editorValue);
+                    prismarineToSNBT(v);
+                    props.dataStorageObject.data.value = v;
+                } else if (props.dataStorageObject.dataType === "NBT") {
+                    const v = JSON.parse(editorValue);
+                    prismarineToSNBT(v);
+                    (props.dataStorageObject.data.parsed as NBT.NBT)!.value = v;
+                }
+
+                const model = currentEditor?.getModel();
+                if (model) {
+                    props.dataStorageObject.lastEditedInModel = model.id;
+                    props.dataStorageObject.lastSavedDataObjectForModel ??= new Map();
+                    props.dataStorageObject.lastSavedDataObjectForModel.set(model.id, new WeakRef(props.dataStorageObject.data));
                 }
                 props.onValueChange?.(props.dataStorageObject, { newValue: value, type: "changeContents" });
             } catch (e) {
@@ -102,6 +177,14 @@ export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JS
     }
     let dataLoaded: boolean = props.dataStorageObject?.data !== undefined;
     const editorParams = new URLSearchParams({ contentType: props.contentType ?? "Unknown" });
+    let startingEditorValue: string | undefined =
+        dataLoaded ?
+            JSON.stringify(
+                props.dataStorageObject.data.type === "compound" ? props.dataStorageObject.data.value : props.dataStorageObject.data.parsed.value,
+                null,
+                4
+            )
+        :   "Data is not loaded.";
     return (
         <Editor
             theme="tomorrow-night-blue"
@@ -112,15 +195,7 @@ export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JS
             }
             onChange={handleEditorValueChanged}
             language="json"
-            value={
-                dataLoaded ?
-                    JSON.stringify(
-                        props.dataStorageObject.data.type === "compound" ? props.dataStorageObject.data.value : props.dataStorageObject.data.parsed.value,
-                        null,
-                        4
-                    )
-                :   "Data is not loaded."
-            }
+            value={startingEditorValue}
             // overrideServices={{
             //     productService: IProductService,
             // }}
@@ -139,6 +214,7 @@ export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JS
                 fixedOverflowWidgets: true,
                 allowOverflow: true,
             }}
+            keepCurrentModel={!!props.tab}
             path={
                 props.path ?
                     (props.path.includes("/ContentType:") ? props.path

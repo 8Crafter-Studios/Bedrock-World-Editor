@@ -509,6 +509,11 @@ if (process.platform === "darwin") {
     currentWindow.on("focus", (): void => {
         Menu.setApplicationMenu(menu);
     });
+} else {
+    // Prevents ALT from focusing/unfocusing the menu bar.
+    window.addEventListener("keydown", (e: KeyboardEvent): void => {
+        if (e.altKey) e.preventDefault();
+    });
 }
 
 globalThis.currentMenu = menu;

@@ -717,7 +717,7 @@ async function main(language: LanguageId): Promise<void> {
                                     title: "Entities",
                                     description: "The list of entities associated with this chunk.",
                                     type: "list",
-                                    items: { $ref: "ActorPrefix" },
+                                    items: { $ref: "Entity_Entity" },
                                 },
                             },
                         },
