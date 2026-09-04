@@ -3725,6 +3725,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 for (const currentKey of key) {
                                     props.tab.db.delete(currentKey).then((success: boolean): void => {
                                         if (!success) return;
+                                        props.tab.setLevelDBIsModified();
                                         if (contentType === "Data3D" && data3dKeyCount) {
                                             data3dKeySet.delete(currentKey.toString("hex"));
                                             data3dKeyCount = data3dKeySet.size;
@@ -3756,6 +3757,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             }
                             props.tab.db.delete(key).then((success: boolean): void => {
                                 if (!success) return;
+                                props.tab.setLevelDBIsModified();
                                 if (contentType === "Data3D" && data3dKeyCount) {
                                     data3dKeySet.delete(key.toString("hex"));
                                     data3dKeyCount = data3dKeySet.size;
