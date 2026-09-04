@@ -3,6 +3,7 @@
     font-family: inherit;
 }
 
+/* section:has(> div > div.monaco-editor) > div > div.monaco-editor > div.overflow-guard > *:not(.overlayWidgets) * */
 section:has(> div > div.monaco-editor) * {
     line-height: unset;
 }

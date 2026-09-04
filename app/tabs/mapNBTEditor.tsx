@@ -1,7 +1,7 @@
 import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useRef } from "preact/compat";
 import TreeEditor from "../components/TreeEditor";
-import { entryContentTypeToFormatMap, type EntryContentTypeFormatData } from "mcbe-leveldb";
+import { entryContentTypeToFormatMap, getContentTypeFromDBKey, type EntryContentTypeFormatData } from "mcbe-leveldb";
 import { LoadingScreenContents } from "../app";
 import SNBTEditor from "../components/SNBTEditor";
 import PrismarineNBTEditor from "../components/PrismarineNBTEditor";
@@ -29,57 +29,57 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
     props.tab.currentState.options.viewMode ??= "map";
     let dataLoadFailureNoticeReasonExists: boolean = false;
     let dataLoadFailureNoticeReason: any = null;
-        let levelDBOpenFailure: boolean = false;
-        function LevelDBOpenFailureNotice(): JSX.Element {
-            if (props.tab.parentTab.errorDueToEncryptedLevelDB)
-                return (
-                    <Notice
-                        title="Encrypted LevelDB"
-                        subtitle="The LevelDB is encrypted. The app cannot open encrypted LevelDBs."
-                        detail="If this world is from a marketplace template, that would cause the LevelDB to be encrypted."
-                        image="access_denied"
-                    />
-                );
+    let levelDBOpenFailure: boolean = false;
+    function LevelDBOpenFailureNotice(): JSX.Element {
+        if (props.tab.parentTab.errorDueToEncryptedLevelDB)
             return (
-                <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
-                    <Notice
-                        title="LevelDB Error"
-                        subtitle="An error has occurred while opening the LevelDB."
-                        detail={null}
-                        image="generic_error"
-                        style={{ height: "auto" }}
-                    />
-                    <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
-                        {props.tab.parentTab.errorOnDBOpen instanceof Error ?
-                            `${props.tab.parentTab.errorOnDBOpen.stack !== undefined ? props.tab.parentTab.errorOnDBOpen.stack : props.tab.parentTab.errorOnDBOpen.toString()}${
-                                props.tab.parentTab.errorOnDBOpen.cause !== undefined ?
-                                    `\nCaused by: ${((): unknown => {
-                                        try {
-                                            return typeof props.tab.parentTab.errorOnDBOpen.cause === "object" ?
-                                                    JSON.stringify(props.tab.parentTab.errorOnDBOpen.cause)
-                                                :   props.tab.parentTab.errorOnDBOpen.cause;
-                                        } catch {
-                                            return props.tab.parentTab.errorOnDBOpen.cause;
-                                        }
-                                    })()}`
-                                :   ""
-                            }`
-                        :   String(
-                                (function (): unknown {
-                                    try {
-                                        return typeof props.tab.parentTab.errorOnDBOpen === "object" ?
-                                                JSON.stringify(props.tab.parentTab.errorOnDBOpen)
-                                            :   props.tab.parentTab.errorOnDBOpen;
-                                    } catch {
-                                        return props.tab.parentTab.errorOnDBOpen;
-                                    }
-                                })()
-                            )
-                        }
-                    </div>
-                </div>
+                <Notice
+                    title="Encrypted LevelDB"
+                    subtitle="The LevelDB is encrypted. The app cannot open encrypted LevelDBs."
+                    detail="If this world is from a marketplace template, that would cause the LevelDB to be encrypted."
+                    image="access_denied"
+                />
             );
-        }
+        return (
+            <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
+                <Notice
+                    title="LevelDB Error"
+                    subtitle="An error has occurred while opening the LevelDB."
+                    detail={null}
+                    image="generic_error"
+                    style={{ height: "auto" }}
+                />
+                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
+                    {props.tab.parentTab.errorOnDBOpen instanceof Error ?
+                        `${props.tab.parentTab.errorOnDBOpen.stack !== undefined ? props.tab.parentTab.errorOnDBOpen.stack : props.tab.parentTab.errorOnDBOpen.toString()}${
+                            props.tab.parentTab.errorOnDBOpen.cause !== undefined ?
+                                `\nCaused by: ${((): unknown => {
+                                    try {
+                                        return typeof props.tab.parentTab.errorOnDBOpen.cause === "object" ?
+                                                JSON.stringify(props.tab.parentTab.errorOnDBOpen.cause)
+                                            :   props.tab.parentTab.errorOnDBOpen.cause;
+                                    } catch {
+                                        return props.tab.parentTab.errorOnDBOpen.cause;
+                                    }
+                                })()}`
+                            :   ""
+                        }`
+                    :   String(
+                            (function (): unknown {
+                                try {
+                                    return typeof props.tab.parentTab.errorOnDBOpen === "object" ?
+                                            JSON.stringify(props.tab.parentTab.errorOnDBOpen)
+                                        :   props.tab.parentTab.errorOnDBOpen;
+                                } catch {
+                                    return props.tab.parentTab.errorOnDBOpen;
+                                }
+                            })()
+                        )
+                    }
+                </div>
+            </div>
+        );
+    }
     function DataLoadFailureNotice({ reason }: { reason: any }): JSX.SpecificElement<"div"> {
         return (
             <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: center;">
@@ -161,87 +161,75 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
                     throw new TypeError(`The content type "${props.tab.contentType}" is not supported in the map editor. (format type: ${format.type})`);
             }
         }
-        loadData().then(
-            (): void => {
-                reloadContents();
-            },
-            (reason: any): void => {
-                if (containerRef.current) {
-                    if (reason instanceof Error && reason.message === "LevelDB open failure.") {
+        function triggerLoadData(): void {
+            loadData().then(
+                (): void => {
+                    reloadContents();
+                },
+                (reason: any): void => {
+                    if (containerRef.current) {
+                        if (reason instanceof Error && reason.message === "LevelDB open failure.") {
+                            render(null, containerRef.current);
+                            render(<LevelDBOpenFailureNotice />, containerRef.current);
+                            levelDBOpenFailure = true;
+                            return;
+                        }
+                        if (reason instanceof Error && reason.message === "The LevelDB key associated with this sub-tab does not exist.") {
+                            render(null, containerRef.current);
+                            render(
+                                <div>
+                                    <h2>The LevelDB key associated with this sub-tab does not exist.</h2>
+                                    {((): boolean => {
+                                        if (props.tab.target.type === "File") return false;
+                                        const contentType =
+                                            props.tab.contentType === "Unknown" ? getContentTypeFromDBKey(props.tab.target.key) : props.tab.contentType;
+                                        const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[contentType];
+                                        if (!((format.type === "NBT") /*  || (format.type === "custom" && format.resultType === "JSONNBT") */)) return false;
+                                        return true;
+                                    })() && (
+                                        <button
+                                            type="button"
+                                            onClick={async (): Promise<void> => {
+                                                if (props.tab.target.type === "File") return;
+                                                const contentType =
+                                                    props.tab.contentType === "Unknown" ? getContentTypeFromDBKey(props.tab.target.key) : props.tab.contentType;
+                                                const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[contentType];
+                                                if (!((format.type === "NBT") /*  || (format.type === "custom" && format.resultType === "JSONNBT") */)) return;
+                                                if (!format.defaultValue) return; // TEMP: Remove this when a manual default value is added.
+                                                // TODO: Make this determine the default values dynamically (it needs to get the map ID from the LevelDB key and use that for the map ID in the default value) so as not to insert invalid data.
+                                                await props.tab.parentTab.db!.put(props.tab.target.key, format.defaultValue);
+                                                triggerLoadData();
+                                            }}
+                                        >
+                                            Create LevelDB Entry
+                                        </button>
+                                    )}
+                                </div>,
+                                containerRef.current
+                            );
+                            return;
+                        }
                         render(null, containerRef.current);
-                        render(<LevelDBOpenFailureNotice />, containerRef.current);
-                        levelDBOpenFailure = true;
-                        return;
+                        render(<DataLoadFailureNotice reason={reason} />, containerRef.current);
+                        dataLoadFailureNoticeReasonExists = true;
+                        dataLoadFailureNoticeReason = reason;
+                        // const errorElement: HTMLDivElement = document.createElement("div");
+                        // errorElement.style.color = "red";
+                        // errorElement.style.fontFamily = "monospace";
+                        // errorElement.style.whiteSpace = "pre";
+                        // errorElement.textContent =
+                        //     reason instanceof Error ?
+                        //         reason.stack?.startsWith(reason.toString()) ?
+                        //             reason.stack
+                        //         :   reason.toString() + reason.stack
+                        //     :   reason;
+                        // containerRef.current.replaceChildren("Failed to load data:", errorElement);
                     }
-                    if (reason instanceof Error && reason.message === "The LevelDB key associated with this sub-tab does not exist.") {
-                        render(null, containerRef.current);
-                        render(
-                            <div>
-                                <h2>The LevelDB key associated with this sub-tab does not exist.</h2>
-                            </div>,
-                            containerRef.current
-                        );
-                        // TODO: Add the Create LevelDB Entry button once there is a default value for map data.
-                        // render(
-                        //     <div>
-                        //         <h2>The LevelDB key associated with this sub-tab does not exist.</h2>
-                        //         {((): boolean => {
-                        //             if (props.tab.target.type === "File") return false;
-                        //             const contentType = getContentTypeFromDBKey(props.tab.target.key);
-                        //             const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[contentType];
-                        //             if (format.type === "NBT" /*  || (format.type === "custom" && format.resultType === "JSONNBT") */) return true;
-                        //             return false;
-                        //         })() && (
-                        //             <button
-                        //                 type="button"
-                        //                 onClick={(): void => {
-                        //                     if (props.tab.target.type === "File") return;
-                        //                     const contentType = getContentTypeFromDBKey(props.tab.target.key);
-                        //                     const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[contentType];
-                        //                     if (!((format.type === "NBT") /*  || (format.type === "custom" && format.resultType === "JSONNBT") */)) return;
-                        //                     // TODO: Make this determine the default values dynamically so as not to insert invalid data.
-                        //                     props.tab.parentTab.db!.put(
-                        //                         props.tab.target.key,
-                        //                         NBT.writeUncompressed(
-                        //                             {
-                        //                                 name: "",
-                        //                                 type: "compound",
-                        //                                 value: {},
-                        //                             },
-                        //                             format.type === "NBT" ?
-                        //                                 ({ BE: "big", LE: "little", LEV: "littleVarint" } as const)[format.format ?? "LE"]
-                        //                             :   "little"
-                        //                         )
-                        //                     );
-                        //                 }}
-                        //             >
-                        //                 Create LevelDB Entry
-                        //             </button>
-                        //         )}
-                        //     </div>,
-                        //     containerRef.current
-                        // );
-                        return;
-                    }
-                    render(null, containerRef.current);
-                    render(<DataLoadFailureNotice reason={reason} />, containerRef.current);
-                    dataLoadFailureNoticeReasonExists = true;
-                    dataLoadFailureNoticeReason = reason;
-                    // const errorElement: HTMLDivElement = document.createElement("div");
-                    // errorElement.style.color = "red";
-                    // errorElement.style.fontFamily = "monospace";
-                    // errorElement.style.whiteSpace = "pre";
-                    // errorElement.textContent =
-                    //     reason instanceof Error ?
-                    //         reason.stack?.startsWith(reason.toString()) ?
-                    //             reason.stack
-                    //         :   reason.toString() + reason.stack
-                    //     :   reason;
-                    // containerRef.current.replaceChildren("Failed to load data:", errorElement);
+                    console.error(reason);
                 }
-                console.error(reason);
-            }
-        );
+            );
+        }
+        triggerLoadData();
     }
     function reloadContents(): void {
         if (!containerRef.current) return;
@@ -304,6 +292,10 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
                         readonly={props.props.tab.readonly}
                         path={`tab://${props.props.tab.parentTab.id}/${props.props.tab.id}/jsonnbt`}
                         contentType={props.options.type}
+                        triggerSave={(): void => {
+                            props.props.tab.parentTab.save();
+                        }}
+                        tab={props.props.tab}
                     />
                 );
             case "snbt":
@@ -321,6 +313,10 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
                         readonly={props.props.tab.readonly}
                         path={`tab://${props.props.tab.parentTab.id}/${props.props.tab.id}/snbt`}
                         contentType={props.options.type}
+                        triggerSave={(): void => {
+                            props.props.tab.parentTab.save();
+                        }}
+                        tab={props.props.tab}
                     />
                 );
             case "raw":

@@ -1145,6 +1145,7 @@ namespace exports {
                 }...`;
                 if (this.type === "world" || this.type === "leveldb") {
                     console.log(`Copying modified files from ${this.tempPath} to ${this.path}...`);
+                    // await this.db?.close();
                     if (!unsafeMode && existsSync(this.path)) await rm(this.path, { recursive: true, force: true });
                     let fileNumber: number = 0;
                     const tempPath: string = this.tempPath;
@@ -1184,6 +1185,29 @@ namespace exports {
                 throw e;
             } finally {
                 this.isSaving = false;
+                // if (this.db) {
+                //     this.awaitDBOpen = this.db.open().then(
+                //         (): true => {
+                //             this.refreshCachedDBKeys();
+                //             return true;
+                //         },
+                //         (err: unknown): false => {
+                //             console.error(err);
+                //             this.errorOnDBOpen = err;
+                //             if (err instanceof Error && err.message === "Error: Corruption: CURRENT file does not end with newline") {
+                //                 if (
+                //                     existsSync(path.join(this.tempPath ?? this.path, "db", "CURRENT")) &&
+                //                     readFileSync(path.join(this.tempPath ?? this.path, "db", "CURRENT"))
+                //                         .subarray(0, 17)
+                //                         .equals(Buffer.from("00000000fcb9cf9b000000000000000024", "hex"))
+                //                 ) {
+                //                     this.errorDueToEncryptedLevelDB = true;
+                //                 }
+                //             }
+                //             return false;
+                //         }
+                //     );
+                // }
                 if (successful) this.emit("stoppedSaving", { tab: this, successful, error });
             }
         }
@@ -1363,61 +1387,72 @@ namespace exports {
         options: DBEntryContentTypeToTabManagerSubTabCurrentStateOptions[ContentType];
     };
 
-    export interface GenericDataStorageObjectNBTCompound {
+    export interface GenericDataStorageObjectBase {
+        /**
+         * The model ID of the model that was last used to edit this data object, or undefined if the last thing to edit it was not a model.
+         */
+        lastEditedInModel?: string | undefined;
+        /**
+         * A map of model IDs to WeakRefs of the data object they they last wrote, this is for if the data object is set to a different value, then it can be detected sometimes, this only is useful when the whole object is replaced.
+         */
+        lastSavedDataObjectForModel?: Map<string, WeakRef<object>> | undefined;
+    }
+
+    export interface GenericDataStorageObjectNBTCompound extends GenericDataStorageObjectBase {
         data: NBT.Compound;
         dataType: "NBTCompound";
         sourceType: EntryContentTypeFormatData;
     }
 
-    export interface GenericDataStorageObjectNBT {
+    export interface GenericDataStorageObjectNBT extends GenericDataStorageObjectBase {
         data: Awaited<ReturnTypeWithArgs<(typeof NBT)["parse"], [data: Buffer, nbtType?: NBT.NBTFormat | undefined]>>;
         dataType: "NBT";
         sourceType: EntryContentTypeFormatData;
     }
 
-    export interface GenericDataStorageObjectJSON {
+    export interface GenericDataStorageObjectJSON extends GenericDataStorageObjectBase {
         data: Record<string | number, GenericDataStorageObjectJSON_JSONNodeValue>;
         dataType: "JSON";
         sourceType: EntryContentTypeFormatData;
     }
 
-    export interface GenericDataStorageObjectASCII {
+    export interface GenericDataStorageObjectASCII extends GenericDataStorageObjectBase {
         data: string;
         dataType: "ASCII";
         sourceType: EntryContentTypeFormatData;
     }
 
-    export interface GenericDataStorageObjectUTF8 {
+    export interface GenericDataStorageObjectUTF8 extends GenericDataStorageObjectBase {
         data: string;
         dataType: "UTF-8";
         sourceType: EntryContentTypeFormatData;
     }
 
-    export interface GenericDataStorageObjectHex {
+    export interface GenericDataStorageObjectHex extends GenericDataStorageObjectBase {
         data: string;
         dataType: "hex";
         sourceType: EntryContentTypeFormatData;
     }
 
-    export interface GenericDataStorageObjectBinaryPlainText {
+    export interface GenericDataStorageObjectBinaryPlainText extends GenericDataStorageObjectBase {
         data: string;
         dataType: "binaryPlainText";
         sourceType: EntryContentTypeFormatData;
     }
 
-    export interface GenericDataStorageObjectInt {
+    export interface GenericDataStorageObjectInt extends GenericDataStorageObjectBase {
         data: bigint;
         dataType: "int";
         sourceType: EntryContentTypeFormatData;
     }
 
-    export interface GenericDataStorageObjectBinary {
+    export interface GenericDataStorageObjectBinary extends GenericDataStorageObjectBase {
         data: Buffer;
         dataType: "binary";
         sourceType: EntryContentTypeFormatData;
     }
 
-    export interface GenericDataStorageObjectUnknown {
+    export interface GenericDataStorageObjectUnknown extends GenericDataStorageObjectBase {
         data: any;
         dataType: "unknown";
         sourceType: EntryContentTypeFormatData;
@@ -3432,6 +3467,7 @@ declare global {
     export import TabManagerTabEventMap = exports.TabManagerTabEventMap;
     export import TabManagerSwitchTabEvent = exports.TabManagerSwitchTabEvent;
     export import TabManagerTabSwitchTabEvent = exports.TabManagerTabSwitchTabEvent;
+    export import TabManagerTabClosedTabEvent = exports.TabManagerTabClosedTabEvent;
     export import TabManagerTabModificationStatusChangedEvent = exports.TabManagerTabModificationStatusChangedEvent;
     export import TabManagerTabStartedSavingEvent = exports.TabManagerTabStartedSavingEvent;
     export import TabManagerTabStoppedSavingEvent = exports.TabManagerTabStoppedSavingEvent;

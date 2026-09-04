@@ -103,6 +103,9 @@ export default function TextEditorTab(props: TextEditorTabProps): JSX.SpecificEl
                 readonly={props.props.tab.readonly}
                 path={`tab://${props.props.tab.parentTab.id}/${props.props.tab.id}/text`}
                 contentType={props.options.type}
+                triggerSave={(): void => {
+                    props.props.tab.parentTab.save();
+                }}
             />
         );
     }

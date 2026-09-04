@@ -122,6 +122,32 @@
     -   For editing:
         -   The `SchedulerWT` category
 
+# Sub-tabs
+
+-   Chunk
+    -   This is for managing a chunk, it should be able to be opened through the world tab. It should merge all the LevelDB data for the chunk into one page, with ways to edit it (some data would be via opening LevelDB keys in other tabs).
+    -   Sections:
+        -   Entities
+            -   Should allow editing associated ActorPrefix entries listed in the Digest entry, as well as the Entity entry associated with the chunk if it exists.
+        -   Sub-chunks
+            -   Should have an expandable section with a list of sub-chunks. Clicking one of those sub-chunks should open a sub-tab for managing that sub-chunk, the sub-tab type is Sub-chunk.
+        -   Meta
+            -   Should allow editing associated chunk metadata, like Version, LegacyVersion, and FinalizedState entries. Including options for adding those entries if they don't exist, and options for removing those entries.
+-   Sub-chunk
+    -   Sections:
+        -   Blocks
+            -   Should have one of the following:
+                -   An expandable section with a list of blocks (with both the sub-chunk offset and the block coordinates). Clicking one of those blocks should open a sub-tab for managing that block, the sub-tab type is Block.
+-   Block
+    -   Should be an NBT view, with the following data:
+        -   `block`
+            -   The list of block data at that location, each item is another layer of the data, normally there are two layers, the normal layer and the waterlog layer.
+        -   `blockEntities`
+            -   A list of block entities at that location.
+
+<!-- TEST: See what happens when you add a third block layer to a SubChunkPrefix. -->
+<!-- TEST: See what happens when you add a third block layer to a StructureTemplate. -->
+
 # Misc.
 
 -   All NBT editor pages should use Monaco Editor, with autocomplete based on the content type, and static error detection, and hover descriptions.

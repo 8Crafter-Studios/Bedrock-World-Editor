@@ -376,6 +376,7 @@ function DebugOverlay_Basic(): JSX.Element {
     const rightContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     // await app.getGPUInfo("complete");
     // const currentWindow: Electron.BrowserWindow = getCurrentWindow();
+    // IDEA: Add a Window ID line, and maybe lines for other currentWindow details too.
     function LeftContents(): JSX.Element {
         return (
             <>

@@ -205,69 +205,76 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                     throw new TypeError(`The content type "${props.tab.contentType}" is not supported in the NBT editor. (format type: ${format.type})`);
             }
         }
-        loadData().then(
-            (): void => {
-                reloadContents();
-            },
-            (reason: any): void => {
-                if (containerRef.current) {
-                    if (reason instanceof Error && reason.message === "LevelDB open failure.") {
+        function triggerLoadData(): void {
+            loadData().then(
+                (): void => {
+                    reloadContents();
+                },
+                (reason: any): void => {
+                    if (containerRef.current) {
+                        if (reason instanceof Error && reason.message === "LevelDB open failure.") {
+                            render(null, containerRef.current);
+                            render(<LevelDBOpenFailureNotice />, containerRef.current);
+                            levelDBOpenFailure = true;
+                            return;
+                        }
+                        if (reason instanceof Error && reason.message === "The LevelDB key associated with this sub-tab does not exist.") {
+                            render(null, containerRef.current);
+                            render(
+                                <div>
+                                    <h2>The LevelDB key associated with this sub-tab does not exist.</h2>
+                                    {((): boolean => {
+                                        if (props.tab.target.type === "File") return false;
+                                        const contentType =
+                                            props.tab.contentType === "Unknown" ? getContentTypeFromDBKey(props.tab.target.key) : props.tab.contentType;
+                                        const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[contentType];
+                                        if (!((format.type === "NBT") /*  || (format.type === "custom" && format.resultType === "JSONNBT") */)) return false;
+                                        return true;
+                                    })() && (
+                                        <button
+                                            type="button"
+                                            onClick={async (): Promise<void> => {
+                                                if (props.tab.target.type === "File") return;
+                                                const contentType =
+                                                    props.tab.contentType === "Unknown" ? getContentTypeFromDBKey(props.tab.target.key) : props.tab.contentType;
+                                                const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[contentType];
+                                                if (!((format.type === "NBT") /*  || (format.type === "custom" && format.resultType === "JSONNBT") */)) return;
+                                                // TODO: Make this determine the default values dynamically (if possible for the current content type) so as not to insert invalid data.
+                                                await props.tab.parentTab.db!.put(
+                                                    props.tab.target.key,
+                                                    format.defaultValue ??
+                                                        NBT.writeUncompressed(
+                                                            {
+                                                                name: "",
+                                                                type: "compound",
+                                                                value: {},
+                                                            },
+                                                            format.type === "NBT" ?
+                                                                ({ BE: "big", LE: "little", LEV: "littleVarint" } as const)[format.format ?? "LE"]
+                                                            :   "little"
+                                                        )
+                                                );
+                                                triggerLoadData();
+                                            }}
+                                        >
+                                            Create LevelDB Entry
+                                        </button>
+                                    )}
+                                </div>,
+                                containerRef.current
+                            );
+                            return;
+                        }
                         render(null, containerRef.current);
-                        render(<LevelDBOpenFailureNotice />, containerRef.current);
-                        levelDBOpenFailure = true;
-                        return;
+                        render(<DataLoadFailureNotice reason={reason} />, containerRef.current);
+                        dataLoadFailureNoticeReasonExists = true;
+                        dataLoadFailureNoticeReason = reason;
                     }
-                    if (reason instanceof Error && reason.message === "The LevelDB key associated with this sub-tab does not exist.") {
-                        render(null, containerRef.current);
-                        render(
-                            <div>
-                                <h2>The LevelDB key associated with this sub-tab does not exist.</h2>
-                                {((): boolean => {
-                                    if (props.tab.target.type === "File") return false;
-                                    const contentType = getContentTypeFromDBKey(props.tab.target.key);
-                                    const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[contentType];
-                                    if (format.type === "NBT" /*  || (format.type === "custom" && format.resultType === "JSONNBT") */) return true;
-                                    return false;
-                                })() && (
-                                    <button
-                                        type="button"
-                                        onClick={(): void => {
-                                            if (props.tab.target.type === "File") return;
-                                            const contentType = getContentTypeFromDBKey(props.tab.target.key);
-                                            const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[contentType];
-                                            if (!((format.type === "NBT") /*  || (format.type === "custom" && format.resultType === "JSONNBT") */)) return;
-                                            // TODO: Make this determine the default values dynamically so as not to insert invalid data.
-                                            props.tab.parentTab.db!.put(
-                                                props.tab.target.key,
-                                                NBT.writeUncompressed(
-                                                    {
-                                                        name: "",
-                                                        type: "compound",
-                                                        value: {},
-                                                    },
-                                                    format.type === "NBT" ?
-                                                        ({ BE: "big", LE: "little", LEV: "littleVarint" } as const)[format.format ?? "LE"]
-                                                    :   "little"
-                                                )
-                                            );
-                                        }}
-                                    >
-                                        Create LevelDB Entry
-                                    </button>
-                                )}
-                            </div>,
-                            containerRef.current
-                        );
-                        return;
-                    }
-                    render(null, containerRef.current);
-                    render(<DataLoadFailureNotice reason={reason} />, containerRef.current);
-                    dataLoadFailureNoticeReasonExists = true;
-                    dataLoadFailureNoticeReason = reason;
+                    console.error(reason);
                 }
-                console.error(reason);
-            }
-        );
+            );
+        }
+        triggerLoadData();
     }
     function reloadContents(): void {
         if (!containerRef.current) return;
@@ -302,6 +309,7 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                             } else {
                                 props.props.tab.parentTab.setFileAsModified(props.props.tab.target.path);
                             }
+                            delete props.props.tab.currentState.options.dataStorageObject?.lastEditedInModel;
                         }}
                         readonly={props.props.tab.readonly}
                         overlayBarRegistry={widgetRegistryRef.current ?? undefined}
@@ -322,6 +330,10 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                         readonly={props.props.tab.readonly}
                         path={`tab://${props.props.tab.parentTab.id}/${props.props.tab.id}/jsonnbt`}
                         contentType={props.options.type}
+                        triggerSave={(): void => {
+                            props.props.tab.parentTab.save();
+                        }}
+                        tab={props.props.tab}
                     />
                 );
             case "snbt":
@@ -339,6 +351,10 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                         readonly={props.props.tab.readonly}
                         path={`tab://${props.props.tab.parentTab.id}/${props.props.tab.id}/snbt`}
                         contentType={props.options.type}
+                        triggerSave={(): void => {
+                            props.props.tab.parentTab.save();
+                        }}
+                        tab={props.props.tab}
                     />
                 );
             case "raw":
@@ -353,6 +369,7 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                             } else {
                                 props.props.tab.parentTab.setFileAsModified(props.props.tab.target.path);
                             }
+                            delete props.props.tab.currentState.options.dataStorageObject?.lastEditedInModel;
                         }}
                         readonly={props.props.tab.readonly}
                         contentType={props.options.type}

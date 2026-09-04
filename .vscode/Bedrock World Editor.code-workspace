@@ -8,24 +8,33 @@
         "files.exclude": {
             "out/**/*.asar": true
         },
+        /**
+         * Defined labels:
+         * - TODO
+         * - FIXME
+         * - BUG
+         * - HACK
+         * - XXX
+         * - NOTE
+         * - DEBUG
+         * - OPTIMIZE
+         * - REVIEW
+         * - DEPRECATED
+         * - UNDONE
+         * - WARNING
+         * - CAUTION
+         * - IDEA
+         * - TEMP
+         * - REMOVE
+         * - TSC
+         * - INFO
+         * - TEST
+         */
         "highlight.regexes": {
-            "((?:<!-- *)?(?:#|// @|//|./\\*+|<!--|--|\\* @|{!|{{!--|{{!) *TO-?DO(?:\\s*\\([^)]+\\))?:?)((?!\\w)(?: *-->| *\\*/| *!}| *--}}| *}}|(?= *(?:[^:]//|/\\*+|<!--|@|--|{!|{{!--|{{!))|(?: +[^\\n@]*?)(?= *(?:[^:]//|/\\*+|<!--|@|--(?!>)|{!|{{!--|{{!))|(?: +[^@\\n]+)?))": {
-                "filterFileRegex": ".*(?<!CHANGELOG.md)$",
-                "decorations": [
-                    {
-                        "overviewRulerColor": "#ffcc00",
-                        "backgroundColor": "#ffcc00",
-                        "color": "#1f1f1f",
-                        "fontWeight": "bold"
-                    },
-                    {
-                        "backgroundColor": "#ffcc00",
-                        "color": "#1f1f1f"
-                    }
-                ]
-            },
+            //#region Code Label Highlights
+            // Non-Markdown
             "((?:<!-- *)?(?:#|// @|//|./\\*+|<!--|--|\\* @|{!|{{!--|{{!) *(?:FIXME|FIX|BUG|UGLY|DEBUG|HACK)(?:\\s*\\([^)]+\\))?:?)((?!\\w)(?: *-->| *\\*/| *!}| *--}}| *}}|(?= *(?:[^:]//|/\\*+|<!--|@|--|{!|{{!--|{{!))|(?: +[^\\n@]*?)(?= *(?:[^:]//|/\\*+|<!--|@|--(?!>)|{!|{{!--|{{!))|(?: +[^@\\n]+)?))": {
-                "filterFileRegex": ".*(?<!CHANGELOG.md)$",
+                "filterFileRegex": ".*(?<!\\.md)$",
                 "decorations": [
                     {
                         "overviewRulerColor": "#cc0000",
@@ -39,8 +48,57 @@
                     }
                 ]
             },
+            // Markdown
+            "((?:<!-- *)?(?:<!--|--) *(?:FIXME|FIX|BUG|UGLY|DEBUG|HACK)(?:\\s*\\([^)]+\\))?:?)((?!\\w)(?: *-->|(?= *(?:<!--|--))|(?: +[^\\n@]*?)(?= *(?:<!--|@|--(?!>)))|(?: +[^\\n]+)?))": {
+                "filterFileRegex": ".*(?<!CHANGELOG)\\.md$",
+                "decorations": [
+                    {
+                        "overviewRulerColor": "#cc0000",
+                        "backgroundColor": "#cc0000",
+                        "color": "#e0e0e0",
+                        "fontWeight": "bold"
+                    },
+                    {
+                        "backgroundColor": "#cc0000",
+                        "color": "#e0e0e0"
+                    }
+                ]
+            },
+            // Non-Markdown
+            "((?:<!-- *)?(?:#|// @|//|./\\*+|<!--|--|\\* @|{!|{{!--|{{!) *TO-?DO(?:\\s*\\([^)]+\\))?:?)((?!\\w)(?: *-->| *\\*/| *!}| *--}}| *}}|(?= *(?:[^:]//|/\\*+|<!--|@|--|{!|{{!--|{{!))|(?: +[^\\n@]*?)(?= *(?:[^:]//|/\\*+|<!--|@|--(?!>)|{!|{{!--|{{!))|(?: +[^@\\n]+)?))": {
+                "filterFileRegex": ".*(?<!\\.md)$",
+                "decorations": [
+                    {
+                        "overviewRulerColor": "#ffcc00",
+                        "backgroundColor": "#ffcc00",
+                        "color": "#1f1f1f",
+                        "fontWeight": "bold"
+                    },
+                    {
+                        "backgroundColor": "#ffcc00",
+                        "color": "#1f1f1f"
+                    }
+                ]
+            },
+            // Markdown
+            "((?:<!-- *)?(?:<!--|--) *TO-?DO(?:\\s*\\([^)]+\\))?:?)((?!\\w)(?: *-->|(?= *(?:<!--|--))|(?: +[^\\n@]*?)(?= *(?:<!--|@|--(?!>)))|(?: +[^\\n]+)?))": {
+                "filterFileRegex": ".*(?<!CHANGELOG)\\.md$",
+                "decorations": [
+                    {
+                        "overviewRulerColor": "#ffcc00",
+                        "backgroundColor": "#ffcc00",
+                        "color": "#1f1f1f",
+                        "fontWeight": "bold"
+                    },
+                    {
+                        "backgroundColor": "#ffcc00",
+                        "color": "#1f1f1f"
+                    }
+                ]
+            },
+            // Non-Markdown
             "((?:<!-- *)?(?:#|// @|//|./\\*+|<!--|--|\\* @|{!|{{!--|{{!) *(?:REVIEW|OPTIMIZE|TSC)(?:\\s*\\([^)]+\\))?:?)((?!\\w)(?: *-->| *\\*/| *!}| *--}}| *}}|(?= *(?:[^:]//|/\\*+|<!--|@|--|{!|{{!--|{{!))|(?: +[^\\n@]*?)(?= *(?:[^:]//|/\\*+|<!--|@|--(?!>)|{!|{{!--|{{!))|(?: +[^@\\n]+)?))": {
-                "filterFileRegex": ".*(?<!CHANGELOG.md)$",
+                "filterFileRegex": ".*(?<!\\.md)$",
                 "decorations": [
                     {
                         "overviewRulerColor": "#00ccff",
@@ -54,8 +112,89 @@
                     }
                 ]
             },
+            // Markdown
+            "((?:<!-- *)?(?:<!--|--) *(?:REVIEW|OPTIMIZE|TSC)(?:\\s*\\([^)]+\\))?:?)((?!\\w)(?: *-->|(?= *(?:<!--|--))|(?: +[^\\n]*?)(?= *(?:<!--|@|--(?!>)))|(?: +[^\\n]+)?))": {
+                "filterFileRegex": ".*(?<!CHANGELOG)\\.md$",
+                "decorations": [
+                    {
+                        "overviewRulerColor": "#00ccff",
+                        "backgroundColor": "#00ccff",
+                        "color": "#1f1f1f",
+                        "fontWeight": "bold"
+                    },
+                    {
+                        "backgroundColor": "#00ccff",
+                        "color": "#1f1f1f"
+                    }
+                ]
+            },
+            // Non-Markdown
+            "((?:<!-- *)?(?:#|// @|//|./\\*+|<!--|--|\\* @|{!|{{!--|{{!) *(?:TEMP)(?:\\s*\\([^)]+\\))?:?)((?!\\w)(?: *-->| *\\*/| *!}| *--}}| *}}|(?= *(?:[^:]//|/\\*+|<!--|@|--|{!|{{!--|{{!))|(?: +[^\\n@]*?)(?= *(?:[^:]//|/\\*+|<!--|@|--(?!>)|{!|{{!--|{{!))|(?: +[^@\\n]+)?))": {
+                "filterFileRegex": ".*(?<!\\.md)$",
+                "decorations": [
+                    {
+                        "overviewRulerColor": "#ff9966",
+                        "backgroundColor": "#ff9966",
+                        "color": "#1f1f1f",
+                        "fontWeight": "bold"
+                    },
+                    {
+                        "backgroundColor": "#ff9966",
+                        "color": "#1f1f1f"
+                    }
+                ]
+            },
+            // Markdown
+            "((?:<!-- *)?(?:<!--|--) *(?:TEMP)(?:\\s*\\([^)]+\\))?:?)((?!\\w)(?: *-->|(?= *(?:<!--|--))|(?: +[^\\n]*?)(?= *(?:<!--|--(?!>)))|(?: +[^\\n]+)?))": {
+                "filterFileRegex": ".*(?<!CHANGELOG)\\.md$",
+                "decorations": [
+                    {
+                        "overviewRulerColor": "#ff9966",
+                        "backgroundColor": "#ff9966",
+                        "color": "#1f1f1f",
+                        "fontWeight": "bold"
+                    },
+                    {
+                        "backgroundColor": "#ff9966",
+                        "color": "#1f1f1f"
+                    }
+                ]
+            },
+            // Non-Markdown
+            "((?:<!-- *)?(?:#|// @|//|./\\*+|<!--|--|\\* @|{!|{{!--|{{!) *(?:TEST)(?:\\s*\\([^)]+\\))?:?)((?!\\w)(?: *-->| *\\*/| *!}| *--}}| *}}|(?= *(?:[^:]//|/\\*+|<!--|@|--|{!|{{!--|{{!))|(?: +[^\\n@]*?)(?= *(?:[^:]//|/\\*+|<!--|@|--(?!>)|{!|{{!--|{{!))|(?: +[^@\\n]+)?))": {
+                "filterFileRegex": ".*(?<!\\.md)$",
+                "decorations": [
+                    {
+                        "overviewRulerColor": "#88cc00",
+                        "backgroundColor": "#88cc00",
+                        "color": "#1f1f1f",
+                        "fontWeight": "bold"
+                    },
+                    {
+                        "backgroundColor": "#88cc00",
+                        "color": "#1f1f1f"
+                    }
+                ]
+            },
+            // Markdown
+            "((?:<!-- *)?(?:<!--|--) *(?:TEST)(?:\\s*\\([^)]+\\))?:?)((?!\\w)(?: *-->|(?= *(?:<!--|--))|(?: +[^\\n]*?)(?= *(?:<!--|--(?!>)))|(?: +[^\\n]+)?))": {
+                "filterFileRegex": ".*(?<!CHANGELOG)\\.md$",
+                "decorations": [
+                    {
+                        "overviewRulerColor": "#88cc00",
+                        "backgroundColor": "#88cc00",
+                        "color": "#1f1f1f",
+                        "fontWeight": "bold"
+                    },
+                    {
+                        "backgroundColor": "#88cc00",
+                        "color": "#1f1f1f"
+                    }
+                ]
+            },
+            // Non-Markdown
             "((?:<!-- *)?(?:#|// @|//|./\\*+|<!--|--|\\* @|{!|{{!--|{{!) *(?:IDEA)(?:\\s*\\([^)]+\\))?:?)((?!\\w)(?: *-->| *\\*/| *!}| *--}}| *}}|(?= *(?:[^:]//|/\\*+|<!--|@|--|{!|{{!--|{{!))|(?: +[^\\n@]*?)(?= *(?:[^:]//|/\\*+|<!--|@|--(?!>)|{!|{{!--|{{!))|(?: +[^@\\n]+)?))": {
-                "filterFileRegex": ".*(?<!CHANGELOG.md)$",
+                "filterFileRegex": ".*(?<!\\.md)$",
                 "decorations": [
                     {
                         "overviewRulerColor": "#cc00cc",
@@ -69,18 +208,168 @@
                     }
                 ]
             },
-            "((?:<!-- *)?(?:#|// @|//|./\\*+|<!--|--|\\* @|{!|{{!--|{{!) *(?:TEST)(?:\\s*\\([^)]+\\))?:?)((?!\\w)(?: *-->| *\\*/| *!}| *--}}| *}}|(?= *(?:[^:]//|/\\*+|<!--|@|--|{!|{{!--|{{!))|(?: +[^\\n@]*?)(?= *(?:[^:]//|/\\*+|<!--|@|--(?!>)|{!|{{!--|{{!))|(?: +[^@\\n]+)?))": {
-                "filterFileRegex": ".*(?<!CHANGELOG.md)$",
+            // Markdown
+            "((?:<!-- *)?(?:<!--|--) *(?:IDEA)(?:\\s*\\([^)]+\\))?:?)((?!\\w)(?: *-->|(?= *(?:<!--|--))|(?: +[^\\n]*?)(?= *(?:<!--|--(?!>)))|(?: +[^\\n]+)?))": {
+                "filterFileRegex": ".*(?<!CHANGELOG)\\.md$",
                 "decorations": [
                     {
-                        "overviewRulerColor": "#88cc00",
-                        "backgroundColor": "#88cc00",
+                        "overviewRulerColor": "#cc00cc",
+                        "backgroundColor": "#cc00cc",
                         "color": "#1f1f1f",
                         "fontWeight": "bold"
                     },
                     {
-                        "backgroundColor": "#88cc00",
+                        "backgroundColor": "#cc00cc",
                         "color": "#1f1f1f"
+                    }
+                ]
+            },
+            // Non-Markdown
+            "((?:<!-- *)?(?:#|// @|//|./\\*+|<!--|--|\\* @|{!|{{!--|{{!) *(?:DEPRECATED|REMOVE|OLD)(?:\\s*\\([^)]+\\))?:?)((?!\\w)(?: *-->| *\\*/| *!}| *--}}| *}}|(?= *(?:[^:]//|/\\*+|<!--|@|--|{!|{{!--|{{!))|(?: +[^\\n@]*?)(?= *(?:[^:]//|/\\*+|<!--|@|--(?!>)|{!|{{!--|{{!))|(?: +[^@\\n]+)?))": {
+                "filterFileRegex": ".*(?<!\\.md)$",
+                "decorations": [
+                    {
+                        "overviewRulerColor": "#999999",
+                        "backgroundColor": "#999999",
+                        "color": "#1f1f1f",
+                        "fontWeight": "bold"
+                    },
+                    {
+                        "backgroundColor": "#999999",
+                        "color": "#1f1f1f"
+                    }
+                ]
+            },
+            // Markdown
+            "((?:<!-- *)?(?:<!--|--) *(?:DEPRECATED|REMOVE|OLD)(?:\\s*\\([^)]+\\))?:?)((?!\\w)(?: *-->|(?= *(?:<!--|--))|(?: +[^\\n]*?)(?= *(?:<!--|--(?!>)))|(?: +[^\\n]+)?))": {
+                "filterFileRegex": ".*(?<!CHANGELOG)\\.md$",
+                "decorations": [
+                    {
+                        "overviewRulerColor": "#999999",
+                        "backgroundColor": "#999999",
+                        "color": "#1f1f1f",
+                        "fontWeight": "bold"
+                    },
+                    {
+                        "backgroundColor": "#999999",
+                        "color": "#1f1f1f"
+                    }
+                ]
+            },
+            // Non-Markdown
+            "((?:<!-- *)?(?:#|// @|//|./\\*+|<!--|--|\\* @|{!|{{!--|{{!) *(?:WARNING|CAUTION|XXX)(?:\\s*\\([^)]+\\))?:?)((?!\\w)(?: *-->| *\\*/| *!}| *--}}| *}}|(?= *(?:[^:]//|/\\*+|<!--|@|--|{!|{{!--|{{!))|(?: +[^\\n@]*?)(?= *(?:[^:]//|/\\*+|<!--|@|--(?!>)|{!|{{!--|{{!))|(?: +[^@\\n]+)?))": {
+                "filterFileRegex": ".*(?<!\\.md)$",
+                "decorations": [
+                    {
+                        "overviewRulerColor": "#ff6600",
+                        "backgroundColor": "#ff6600",
+                        "color": "#1f1f1f",
+                        "fontWeight": "bold"
+                    },
+                    {
+                        "backgroundColor": "#ff6600",
+                        "color": "#1f1f1f"
+                    }
+                ]
+            },
+            // Markdown
+            "((?:<!-- *)?(?:<!--|--) *(?:WARNING|CAUTION|XXX)(?:\\s*\\([^)]+\\))?:?)((?!\\w)(?: *-->|(?= *(?:<!--|--))|(?: +[^\\n]*?)(?= *(?:<!--|--(?!>)))|(?: +[^\\n]+)?))": {
+                "filterFileRegex": ".*(?<!CHANGELOG)\\.md$",
+                "decorations": [
+                    {
+                        "overviewRulerColor": "#ff6600",
+                        "backgroundColor": "#ff6600",
+                        "color": "#1f1f1f",
+                        "fontWeight": "bold"
+                    },
+                    {
+                        "backgroundColor": "#ff6600",
+                        "color": "#1f1f1f"
+                    }
+                ]
+            },
+            // Non-Markdown
+            "((?:<!-- *)?(?:#|// @|//|./\\*+|<!--|--|\\* @|{!|{{!--|{{!) *(?:UNDONE|ROLLBACK)(?:\\s*\\([^)]+\\))?:?)((?!\\w)(?: *-->| *\\*/| *!}| *--}}| *}}|(?= *(?:[^:]//|/\\*+|<!--|@|--|{!|{{!--|{{!))|(?: +[^\\n@]*?)(?= *(?:[^:]//|/\\*+|<!--|@|--(?!>)|{!|{{!--|{{!))|(?: +[^@\\n]+)?))": {
+                "filterFileRegex": ".*(?<!\\.md)$",
+                "decorations": [
+                    {
+                        "overviewRulerColor": "#996633",
+                        "backgroundColor": "#996633",
+                        "color": "#1f1f1f",
+                        "fontWeight": "bold"
+                    },
+                    {
+                        "backgroundColor": "#996633",
+                        "color": "#1f1f1f"
+                    }
+                ]
+            },
+            // Markdown
+            "((?:<!-- *)?(?:<!--|--) *(?:UNDONE|ROLLBACK)(?:\\s*\\([^)]+\\))?:?)((?!\\w)(?: *-->|(?= *(?:<!--|--))|(?: +[^\\n]*?)(?= *(?:<!--|--(?!>)))|(?: +[^\\n]+)?))": {
+                "filterFileRegex": ".*(?<!CHANGELOG)\\.md$",
+                "decorations": [
+                    {
+                        "overviewRulerColor": "#996633",
+                        "backgroundColor": "#996633",
+                        "color": "#1f1f1f",
+                        "fontWeight": "bold"
+                    },
+                    {
+                        "backgroundColor": "#996633",
+                        "color": "#1f1f1f"
+                    }
+                ]
+            },
+            // Non-Markdown
+            "((?:<!-- *)?(?:#|// @|//|./\\*+|<!--|--|\\* @|{!|{{!--|{{!) *(?:NOTE|INFO|EXPLAIN)(?:\\s*\\([^)]+\\))?:?)((?!\\w)(?: *-->| *\\*/| *!}| *--}}| *}}|(?= *(?:[^:]//|/\\*+|<!--|@|--|{!|{{!--|{{!))|(?: +[^\\n@]*?)(?= *(?:[^:]//|/\\*+|<!--|@|--(?!>)|{!|{{!--|{{!))|(?: +[^@\\n]+)?))": {
+                "filterFileRegex": ".*(?<!\\.md)$",
+                "decorations": [
+                    {
+                        "overviewRulerColor": "#66ccff",
+                        "backgroundColor": "#66ccff",
+                        "color": "#1f1f1f",
+                        "fontWeight": "bold"
+                    },
+                    {
+                        "backgroundColor": "#66ccff",
+                        "color": "#1f1f1f"
+                    }
+                ]
+            },
+            // Markdown
+            "((?:<!-- *)?(?:<!--|--) *(?:NOTE|INFO|EXPLAIN)(?:\\s*\\([^)]+\\))?:?)((?!\\w)(?: *-->|(?= *(?:<!--|--))|(?: +[^\\n]*?)(?= *(?:<!--|--(?!>)))|(?: +[^\\n]+)?))": {
+                "filterFileRegex": ".*(?<!CHANGELOG)\\.md$",
+                "decorations": [
+                    {
+                        "overviewRulerColor": "#66ccff",
+                        "backgroundColor": "#66ccff",
+                        "color": "#1f1f1f",
+                        "fontWeight": "bold"
+                    },
+                    {
+                        "backgroundColor": "#66ccff",
+                        "color": "#1f1f1f"
+                    }
+                ]
+            },
+            //#endregion
+            "(//\\s?#vignore(?<id>\\s[^\\s]+(?:\\s+(?:[^\\s\\n\\r/]|(?<!/)/(?!/))+)*)?\\s*[\\n\\r][\\0-\\uFFFF]*?//\\s?#endvignore\\k<id>)(?=\\s*(?:[\\n\\r]|$))": {
+                "regexFlags": "gim",
+                "decorations": [
+                    {
+                        "opacity": "0.25",
+                        "textDecoration": "line-through #AA8866"
+                    }
+                ]
+            },
+            // Tab Highlights
+            "(\t+)": {
+                "decorations": [
+                    {
+                        "borderWidth": "1px",
+                        "borderStyle": "solid",
+                        "borderColor": "#666666",
+                        "rangeBehavior": 1
                     }
                 ]
             }
@@ -93,6 +382,7 @@
             "tsconfig*.json": "jsonc",
             ".*rc": "jsonc"
         },
-        "eslint.useFlatConfig": false
+        "eslint.useFlatConfig": false,
+        "render-special-chars.except": ["§", "0009", "000A", "000D", "0020-007E", "3105-3129", "4E00-9FFF", "：；，、。？！〜（）〈〉《》【】「」『』"]
     }
 }

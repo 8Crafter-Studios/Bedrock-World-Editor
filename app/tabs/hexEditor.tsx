@@ -4,6 +4,7 @@ import { LoadingScreenContents } from "../app";
 import EditorWidgetOverlayBar, { type EditorWidgetOverlayBarWidgetRegistry } from "../components/EditorWidgetOverlayBar";
 import BinaryHexEditor, { initHexEditorDataStorageObjectProps, type HexEditorDataStorageObject } from "../components/BinaryHexEditor";
 import Notice from "../components/Notice";
+import { entryContentTypeToFormatMap, type EntryContentTypeFormatData } from "mcbe-leveldb";
 
 export interface HexEditorTabProps {
     tab: TabManagerSubTab;
@@ -83,58 +84,63 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
                 initHexEditorDataStorageObjectProps(props.tab.currentState.options.dataStorageObject);
             }
         }
-        loadData().then(
-            (): void => {
-                reloadContents();
-            },
-            (reason: any): void => {
-                if (containerRef.current) {
-                    if (reason instanceof Error && reason.message === "LevelDB open failure.") {
+        function triggerLoadData(): void {
+            loadData().then(
+                (): void => {
+                    reloadContents();
+                },
+                (reason: any): void => {
+                    if (containerRef.current) {
+                        if (reason instanceof Error && reason.message === "LevelDB open failure.") {
+                            render(null, containerRef.current);
+                            render(<LevelDBOpenFailureNotice />, containerRef.current);
+                            levelDBOpenFailure = true;
+                            return;
+                        }
+                        if (reason instanceof Error && reason.message === "The LevelDB key associated with this sub-tab does not exist.") {
+                            render(null, containerRef.current);
+                            render(
+                                <div>
+                                    <h2>The LevelDB key associated with this sub-tab does not exist.</h2>
+                                    {((): boolean => {
+                                        if (props.tab.target.type === "File") return false;
+                                        return true;
+                                    })() && (
+                                        <button
+                                            type="button"
+                                            onClick={async (): Promise<void> => {
+                                                if (props.tab.target.type === "File") return;
+                                                const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[props.tab.contentType];
+                                                await props.tab.parentTab.db!.put(props.tab.target.key, format.defaultValue ?? Buffer.alloc(0));
+                                                triggerLoadData();
+                                            }}
+                                        >
+                                            Create LevelDB Entry
+                                        </button>
+                                    )}
+                                </div>,
+                                containerRef.current
+                            );
+                            return;
+                        }
+                        const errorElement: HTMLDivElement = document.createElement("div");
+                        errorElement.style.color = "red";
+                        errorElement.style.fontFamily = "monospace";
+                        errorElement.style.whiteSpace = "pre";
+                        errorElement.textContent =
+                            reason instanceof Error ?
+                                reason.stack?.startsWith(reason.toString()) ?
+                                    reason.stack
+                                :   reason.toString() + reason.stack
+                            :   reason;
                         render(null, containerRef.current);
-                        render(<LevelDBOpenFailureNotice />, containerRef.current);
-                        levelDBOpenFailure = true;
-                        return;
+                        containerRef.current.replaceChildren("Failed to load data:", errorElement);
                     }
-                    if (reason instanceof Error && reason.message === "The LevelDB key associated with this sub-tab does not exist.") {
-                        render(null, containerRef.current);
-                        render(
-                            <div>
-                                <h2>The LevelDB key associated with this sub-tab does not exist.</h2>
-                                {((): boolean => {
-                                    if (props.tab.target.type === "File") return false;
-                                    return false;
-                                })() && (
-                                    <button
-                                        type="button"
-                                        onClick={(): void => {
-                                            if (props.tab.target.type === "File") return;
-                                            props.tab.parentTab.db!.put(props.tab.target.key, Buffer.alloc(0));
-                                        }}
-                                    >
-                                        Create LevelDB Entry
-                                    </button>
-                                )}
-                            </div>,
-                            containerRef.current
-                        );
-                        return;
-                    }
-                    const errorElement: HTMLDivElement = document.createElement("div");
-                    errorElement.style.color = "red";
-                    errorElement.style.fontFamily = "monospace";
-                    errorElement.style.whiteSpace = "pre";
-                    errorElement.textContent =
-                        reason instanceof Error ?
-                            reason.stack?.startsWith(reason.toString()) ?
-                                reason.stack
-                            :   reason.toString() + reason.stack
-                        :   reason;
-                    render(null, containerRef.current);
-                    containerRef.current.replaceChildren("Failed to load data:", errorElement);
+                    console.error(reason);
                 }
-                console.error(reason);
-            }
-        );
+            );
+        }
+        triggerLoadData();
     } else {
         if (!props.tab.currentState.options.dataStorageObject.hexEditor) {
             initHexEditorDataStorageObjectProps(props.tab.currentState.options.dataStorageObject);

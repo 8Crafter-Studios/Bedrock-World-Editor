@@ -1312,10 +1312,11 @@ namespace exports {
         public set noLookupEntityDimensionDigestKeyThreshold(value: number | undefined) {
             this.saveChanges({ noLookupEntityDimensionDigestKeyThreshold: value ?? Config.defaults.noLookupEntityDimensionDigestKeyThreshold });
         }
+        // TODO: Add a way to disable this after it is enabled.
         /**
          * Whether or not to try to automatically update the app when a new version is available.
          *
-         * @platform linux,win32
+         * @platform darwin,win32
          *
          * @default true
          */

@@ -4,6 +4,10 @@ import * as monaco from "monaco-editor";
 import type { JSX } from "preact";
 import { LoadingScreenContents } from "../app";
 import { useRef } from "preact/compat";
+
+/**
+ * Props for the {@link TextEditor} component.
+ */
 export interface TextEditorProps {
     dataStorageObject: GenericDataStorageObject;
     contentType?: DBEntryContentType;
@@ -41,8 +45,20 @@ export interface TextEditorProps {
      * For a tab, should be `tab://${tab.parentTab.id}/${tab.id}`.
      */
     path?: string;
+    /**
+     * A callback function that can be used to trigger a save.
+     *
+     * @default undefined
+     */
+    triggerSave?(): void;
 }
 
+/**
+ * The text editor.
+ *
+ * @param props The props for the component.
+ * @returns The JSX element.
+ */
 export default function TextEditor(props: TextEditorProps): JSX.Element {
     type PossibleDataType = GenericDataStorageObject["dataType"];
     const supportedDataTypes = ["ASCII", "UTF-8", "binaryPlainText"] as const satisfies readonly PossibleDataType[];
@@ -55,6 +71,11 @@ export default function TextEditor(props: TextEditorProps): JSX.Element {
     const editorRef = useRef<typeof Editor>(null);
     function handleEditorDidMount(editor: monaco.editor.IStandaloneCodeEditor, monaco: Monaco): void {
         // editor.getid
+        if (props.triggerSave) {
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, (): void => {
+                props.triggerSave?.();
+            });
+        }
     }
     let editorValue: string | undefined;
     let lastChangeTime: number = Date.now() - 1000;
