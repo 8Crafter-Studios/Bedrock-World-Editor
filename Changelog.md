@@ -16,7 +16,8 @@
 -   When the associated LevelDB key for a `Map` sub-tab does not exist, there is now a "Create LevelDB Entry" button.
 -   Added validation to insure the JSON in the Prismarine-NBT editor is valid Prismarine-NBT, this should fix the issue where after leaving invalid data in the editor and switching tabs or modes, the tab can go blank until you close and reopen it.
 -   The state of the Prismarine-NBT and SNBT editors now persists across tab and mode switches (meaning undo history, scroll position, search, selection, etc. are preserved when you switch tabs or modes and then switch back).
--   The start screen is now more responsive for mobile and small window sizes.
+-   The start screen is now mobile/small window friendly.
+-   The app's left sidebar now can be hidden on smaller screens to make the app mobile/small window friendly.
 
 ## Changes
 

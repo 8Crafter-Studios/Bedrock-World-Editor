@@ -707,6 +707,7 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
         );
     }
     function RenderTabs(): JSX.Element {
+        // TODO: On smaller screen sizes there should instead be a "Show Sub-Tabs" button that will open a full screen list of tabs.
         return <>{...tab.openTabs.map((tab: TabManagerSubTab): JSX.SpecificElement<"li"> => <Tab tab={tab} />)}</>;
     }
     return (
