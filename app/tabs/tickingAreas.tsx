@@ -244,7 +244,7 @@ interface KeyData {
 
 async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSignal): Promise<JSX.Element> {
     if (!tab.db) return <div>The tickingAreas sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
-    if (!tab.db.isOpen() && !(await tab.awaitDBOpen ?? true)) {
+    if (!tab.db.isOpen() && !((await tab.awaitDBOpen) ?? true)) {
         if (tab.errorDueToEncryptedLevelDB)
             return (
                 <Notice
@@ -426,17 +426,18 @@ async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSigna
             searchTargets: {
                 key: Buffer<ArrayBufferLike>;
                 displayKey: string;
-                value: {
-                    parsed: NBT.NBT;
-                    type: NBT.NBTFormat;
-                    metadata: NBT.Metadata;
-                }
+                value:
+                    | {
+                          parsed: NBT.NBT;
+                          type: NBT.NBTFormat;
+                          metadata: NBT.Metadata;
+                      }
                     | null
                     | undefined;
                 valueType: {
                     readonly type: "NBT";
                 };
-                contentType: "ActorPrefix";
+                contentType: "TickingArea";
                 data: KeyData;
                 searchableContents: string[];
             }[];
@@ -447,8 +448,8 @@ async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSigna
                         key: key.rawKey,
                         displayKey: key.displayKey,
                         value: key.data,
-                        valueType: entryContentTypeToFormatMap.ActorPrefix,
-                        contentType: "ActorPrefix",
+                        valueType: entryContentTypeToFormatMap.TickingArea,
+                        contentType: "TickingArea",
                         data: key,
                         searchableContents: [
                             key.displayKey,

@@ -1573,3 +1573,27 @@ select.search-mode-dropdown:open::picker-icon {
 .add-tab-popup-menu {
     z-index: 100;
 }
+
+/* TODO: Use this for hiding the main left sidebar nav of the app, when I go to implement that. */
+@media (max-width: 762px) {
+    /* #left-sidebar-nav:not(.active-nav) {
+        display: none;
+    } */
+    #main-menu-app-info-sidebar {
+        display: none !important;
+    }
+    #world-selector-container {
+        margin-top: 50px;
+    }
+}
+@media not (max-width: 762px) {
+    /* #left-sidebar-nav:not(.active-nav) {
+        display: none;
+    } */
+    #app-show-left-sidebar-button {
+        display: none !important;
+    }
+    #main-menu-app-info-navbar {
+        display: none !important;
+    }
+}

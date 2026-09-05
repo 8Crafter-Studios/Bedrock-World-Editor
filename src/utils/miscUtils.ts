@@ -83,3 +83,19 @@ export function createObservable<T>(initialValue: T): Observable<T> {
         },
     } satisfies Observable<T>;
 }
+
+let measureTextWidth_canvas: HTMLCanvasElement | null = null;
+
+/**
+ * Measures the width of a text using the given font.
+ *
+ * @param text The text to measure.
+ * @param font The font to use.
+ * @returns The width of the text in pixels.
+ */
+export function measureTextWidth(text: string, font: string): number {
+    const canvas: HTMLCanvasElement = measureTextWidth_canvas ?? (measureTextWidth_canvas = document.createElement("canvas"));
+    const context: CanvasRenderingContext2D = canvas.getContext("2d")!;
+    context.font = font;
+    return context.measureText(text).width;
+}

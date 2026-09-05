@@ -1104,9 +1104,9 @@ function DebugOverlay_Config_Views(): JSX.Element {
                                                                 .sections
                                                         ) as [
                                                             KeysOfUnion<Extract<(typeof modeSettings)[typeof modeSetting], { sections: any }>["sections"]>,
-                                                            Extract<(typeof modeSettings)[typeof modeSetting], { sections: any }>["sections"][KeysOfUnion<
+                                                            UnionToIntersection<
                                                                 Extract<(typeof modeSettings)[typeof modeSetting], { sections: any }>["sections"]
-                                                            >],
+                                                            >[KeysOfUnion<Extract<(typeof modeSettings)[typeof modeSetting], { sections: any }>["sections"]>],
                                                         ][]
                                                     ).map(([key, value]): JSX.Element => {
                                                         return (
