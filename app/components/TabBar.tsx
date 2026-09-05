@@ -10,6 +10,7 @@ import type { MessageBoxReturnValue, OpenDialogReturnValue } from "electron";
 import { ControlledMenu, MenuDivider, MenuItem, type ClickEvent } from "@szhsin/react-menu";
 import path from "node:path";
 import * as NBT from "prismarine-nbt";
+import { setMobileLeftSidebarVisibility } from "./LeftSidebar";
 
 export default function TabBar(): JSX.Element {
     const tabContainerRef: RefObject<HTMLUListElement> = useRef(null);
@@ -694,6 +695,17 @@ export default function TabBar(): JSX.Element {
     function RenderTabs(): JSX.Element {
         return (
             <>
+                <li id="app-show-left-sidebar-button" style="float: left;" data-immovable>
+                    <a
+                        style="padding: 8px;"
+                        onClick={(): void => {
+                            setMobileLeftSidebarVisibility();
+                        }}
+                    >
+                        <img aria-hidden="true" class="piximg" style="width: 28px;" src="resource://images/ui/glyphs/menu_threebars.png" />
+                    </a>
+                </li>
+                {/* TODO: On smaller screen sizes there should instead be a "Show Tabs" button that will open a full screen list of tabs. */}
                 {...tabManager.openTabs.map((tab: TabManagerTab): JSX.SpecificElement<"li"> => <Tab tab={tab} />)}
                 <li style="float: right;" data-immovable>
                     <a

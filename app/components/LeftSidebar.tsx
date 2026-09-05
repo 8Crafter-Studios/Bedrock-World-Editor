@@ -8,6 +8,19 @@ export interface LeftSidebarProps {
     tab: TabManagerTab;
 }
 
+let leftSidebarVisible: boolean = true;
+
+/**
+ * Set the visibility of the left sidebar.
+ *
+ * @param value The new visibility of the left sidebar. If not specified, it will be toggled.
+ */
+export function setMobileLeftSidebarVisibility(value?: boolean): void {
+    leftSidebarVisible = value ?? !leftSidebarVisible;
+    if (leftSidebarVisible) $("#left_sidebar").addClass("active-nav");
+    else $("#left_sidebar").removeClass("active-nav");
+}
+
 /**
  * The left sidebar.
  *
@@ -60,7 +73,9 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.Element {
         function onSubTabSwitch({ previousTab, newTab }: TabManagerTabSwitchTabEvent): void {
             $(`#left_sidebar .sidebar_button[data-path-id=${tabManagerSubTabToSubTabID(previousTab)}]`).removeClass("active");
             $(`#left_sidebar .sidebar_button[data-path-id=${tabManagerSubTabToSubTabID(newTab)}]`).addClass("active");
-            const repairForcedWorldCorruptionButton: HTMLElement | null = document.querySelector('.sidebar_button[data-path-id="repair-forced-world-corruption"]');
+            const repairForcedWorldCorruptionButton: HTMLElement | null = document.querySelector(
+                '.sidebar_button[data-path-id="repair-forced-world-corruption"]'
+            );
             if (repairForcedWorldCorruptionButton) repairForcedWorldCorruptionButton.hidden = !props.tab.cachedDBKeys?.ForcedWorldCorruption?.length;
         }
         props.tab.on("switchTab", onSubTabSwitch);
@@ -72,7 +87,9 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.Element {
                 if (!((props.tab.cachedDBKeys?.ForcedWorldCorruption?.length ?? 0) > 0) || tabManager.selectedTab !== props.tab) return;
                 const leftSidebarElement: HTMLDivElement | null = document.getElementById("left_sidebar") as HTMLDivElement | null;
                 if (!leftSidebarElement) return;
-                const repairForcedWorldCorruptionButton: HTMLElement | null = document.querySelector('.sidebar_button[data-path-id="repair-forced-world-corruption"]');
+                const repairForcedWorldCorruptionButton: HTMLElement | null = document.querySelector(
+                    '.sidebar_button[data-path-id="repair-forced-world-corruption"]'
+                );
                 if (!repairForcedWorldCorruptionButton) return;
                 repairForcedWorldCorruptionButton.hidden = false;
                 // const tab = {
@@ -163,7 +180,11 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.Element {
         ] as const satisfies (Tab | false | undefined)[]
     ).filter((tab: Tab | false | undefined): tab is Tab => !!tab) as Tab[];
     return (
-        <div style="display: flex; flex-direction: column; height: 100%; width: 200px; overflow: hidden auto;" id="left_sidebar">
+        <div
+            class={leftSidebarVisible ? "active-nav" : ""}
+            style="display: flex; flex-direction: column; height: 100%; width: 200px; overflow: hidden auto;"
+            id="left_sidebar"
+        >
             {tabs.map(
                 (tab: Tab): JSX.SpecificElement<"div"> => (
                     <div
