@@ -1,4 +1,4 @@
-import { type JSX, type RefObject } from "preact";
+import type { JSX, RefObject } from "preact";
 import { hydrate, render } from "preact/compat";
 import LeftSidebar from "./components/LeftSidebar";
 import DebugOverlay from "./components/DebugOverlay";
@@ -622,6 +622,7 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                     world.singleUseWorld ? "\nSingle Use World" : ""
                 }${world.editorOnly ? "\nEditor Only" : ""}${world.createdInEditor ? "\nCreated In Editor" : ""}${world.isolated ? "\nIsolated" : ""}`;
                 return (
+                    // TODO: When you press and hold on a world, it should show the world details, like when you hover with a mouse. This is so that mobile players can also see it.
                     <div
                         title={hoverInfo + " "}
                         class="nsel ndrg"
@@ -989,6 +990,26 @@ export function StartScreenContents(): JSX.Element {
     return (
         <>
             <div
+                id="main-menu-app-info-navbar"
+                class="nsel ndrg"
+                style="position: fixed; height: 50px; width: 100vw; display: flex; flex-direction: row; background-color: #87CEEB22; overflow: hidden; overflow-x: scroll; overflow: auto; align-items: center; gap: 1em; text-align: center; flex-shrink: 0;"
+            >
+                <img
+                    aria-hidden="true"
+                    src="resource://icon.png"
+                    style="margin-left: 9px; width: 32px; cursor: pointer;"
+                    title="Reload world list"
+                    onClick={(): void => {
+                        // forceTriggerUpdateRef.current?.();
+                    }}
+                />
+                <div style="flex: 1; overflow: auto; line-height: 1.25em;">
+                    Bedrock World Editor v{VERSION_DISP_SHORT}
+                    {process.env.NODE_ENV === "development" ? "*" : ""}
+                </div>
+            </div>
+            <div
+                id="main-menu-app-info-sidebar"
                 class="nsel ndrg"
                 style="width: 200px; height: -webkit-fill-available; display: flex; flex-direction: column; background-color: #87CEEB22; overflow: hidden; overflow-y: scroll; overflow: auto; align-items: center; gap: 1em; text-align: center; flex-shrink: 0;"
             >
@@ -1007,7 +1028,7 @@ export function StartScreenContents(): JSX.Element {
                     {process.env.NODE_ENV === "development" ? "*" : ""}
                 </div>
             </div>
-            <div style="flex: 1; overflow: auto; min-width: 300px;">
+            <div id="world-selector-container" style="flex: 1; overflow: auto; min-width: 300px; min-height: 300px;">
                 <WorldSelector forceTriggerUpdateRef={forceTriggerUpdateRef} />
             </div>
         </>
