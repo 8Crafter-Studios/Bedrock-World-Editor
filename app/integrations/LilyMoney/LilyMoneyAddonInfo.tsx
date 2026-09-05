@@ -186,12 +186,12 @@ const LILY_LINKS: ExternalLink[] = [
 ];
 
 const CRAFTER_LINKS: ExternalLink[] = [
-    { label: "8crafter YouTube", url: "https://www.youtube.com/@8crafter" },
-    { label: "8crafter ModBay", url: "https://modbay.org/user/8Crafter/" },
-    { label: "8crafter Website", url: "https://www.8crafter.com/" },
-    { label: "8crafter Wiki", url: "https://wiki.8crafter.com/main/" },
-    { label: "8crafter GitHub", url: "https://github.com/8Crafter" },
-    { label: "8crafter Discord", url: "https://discord.gg/jrCTeHGuhx" },
+    { label: "8Crafter YouTube", url: "https://www.youtube.com/@8crafter" },
+    { label: "8Crafter ModBay", url: "https://modbay.org/user/8Crafter/" },
+    { label: "8Crafter Website", url: "https://www.8crafter.com/" },
+    { label: "8Crafter Wiki", url: "https://wiki.8crafter.com/main/" },
+    { label: "8Crafter GitHub", url: "https://github.com/8Crafter" },
+    { label: "8Crafter Discord", url: "https://discord.8crafter.com" },
 ];
 
 function commandColor(type: CommandType): string {
@@ -304,7 +304,7 @@ export default function LilyMoneyAddonInfo(): JSX.Element {
                 <div style={{ marginTop: "14px" }}>
                     <h4 style={{ margin: "0 0 8px" }}>UI Credits</h4>
                     <div style={{ marginBottom: "8px", opacity: 0.82 }}>
-                        Custom UI powered by 8crafter's UI system. Special thank you to 8crafter for allowing its use.
+                        Custom UI powered by 8Crafter's UI system. Special thank you to 8Crafter for allowing its use.
                     </div>
                     <LinkButtons links={CRAFTER_LINKS} />
                 </div>
