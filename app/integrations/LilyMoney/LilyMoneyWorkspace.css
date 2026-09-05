@@ -120,6 +120,43 @@
     font-family: Consolas, monospace;
 }
 
-.lilymoney-workspace svg text {
+/* .lilymoney-workspace svg text {
     font-family: "Minecraft-Seven-v4", "Minecraft-Seven", sans-serif;
+} */
+
+.rankings-and-activity-grid-container {
+    container-type: inline-size;
+}
+
+.rankings-and-activity-grid {
+    display: grid;
+    gap: 16px;
+}
+
+/* 780px+16px (add the right padding) */
+@container (min-width: 796px) {
+    .rankings-and-activity-grid {
+        grid-template-columns: minmax(360px, 0.95fr) minmax(420px, 1.35fr);
+    }
+}
+
+@container (max-width: 795px) {
+    .rankings-and-activity-grid {
+        grid-template-columns: max(300px, 100%);
+    }
+}
+
+@media (max-width: 1200px) {
+    .lilymoney-nav:not(.active-nav) {
+        display: none !important;
+    }
+    .lilymoney-main > div {
+        margin-top: 46px !important;
+    }
+}
+
+@media not (max-width: 1200px) {
+    #lilymoney-show-sidebar-button {
+        display: none !important;
+    }
 }

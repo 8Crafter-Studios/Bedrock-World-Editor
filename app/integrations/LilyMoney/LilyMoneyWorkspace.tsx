@@ -1,5 +1,6 @@
-import type { JSX } from "preact";
-import _React, { useEffect, useMemo, useState } from "preact/compat";
+import type { JSX, RefObject } from "preact";
+import _React, { useEffect, useMemo, useRef, useState } from "preact/compat";
+import { useDebounce } from "use-debounce";
 
 import { analyzeLilyMoneyDatabase, formatLilyMoneyCents, type LilyMoneyAnalysis, type LilyMoneyPlayerAnalysis } from "./LilyMoneyAnalysis";
 import { assembleLilyMoneyDatabase, type LilyMoneyDatabase } from "./LilyMoneyDatabase";
@@ -8,6 +9,8 @@ import type { LilyMoneyEventEffect, ParsedLilyMoneyEvent } from "./LilyMoneyEven
 import type { LilyMoneyRecord } from "./LilyMoneyRecords";
 import LilyMoneyAddonInfo from "./LilyMoneyAddonInfo";
 import "./LilyMoneyWorkspace.css";
+import { useElementSize } from "../../reactUtilFuncs";
+import { measureTextWidth } from "../../../src/utils/miscUtils";
 
 export type LilyMoneyWorkspacePage = "overview" | "transactions" | "jobs" | "graphs" | "raw" | "database" | "addonInfo";
 
@@ -718,17 +721,38 @@ function TimeSeriesChart(props: {
         );
     }
 
-    const width = 1000;
-    const height = 330;
-    const left = 104;
-    const right = 26;
-    const top = 26;
-    const bottom = 58;
+    const elementRef: RefObject<SVGSVGElement> = useRef<SVGSVGElement>(null);
+    const [currentElementWidth, _currentElementHeight] = useElementSize(elementRef);
 
     const values: number[] = sampled.map((point: BalancePoint): number => point.balanceCents);
     const axis = niceMoneyAxis(Math.min(...values), Math.max(...values));
-    const minimum = axis.minimum;
-    const maximum = axis.maximum;
+    const yTicks: number[] = [...axis.ticks].reverse();
+
+    const yLabelFont = "13px sans-serif";
+    const widestYLabel: number = Math.max(...yTicks.map((t: number): number => measureTextWidth(formatLilyMoneyCents(Math.round(t)), yLabelFont)));
+
+    const minWidth: number = 105 + widestYLabel + 18 + 10;
+    const width: number = Math.max(currentElementWidth, minWidth); /* 500 */ /* 1000 */
+    const remainingWidthForRightMargin: number = width - 105 - widestYLabel - 10;
+    const height = 315;
+    const right: number =
+        remainingWidthForRightMargin < 380 ? 18
+        : remainingWidthForRightMargin < 450 ? 22
+        : 26;
+    const left: number = Math.min(
+        Math.max(
+            width < 380 ? 64
+            : width < 450 ? 84
+            : 104,
+            widestYLabel + 12
+        ),
+        Math.max(width - 105 - right, widestYLabel)
+    );
+    const top = 26;
+    const bottom = 58;
+
+    const minimum: number = axis.minimum;
+    const maximum: number = axis.maximum;
     const range: number = maximum - minimum;
     const xSpan: number = width - left - right;
     const ySpan: number = height - top - bottom;
@@ -764,11 +788,17 @@ function TimeSeriesChart(props: {
     const first = sampled[0]!;
     const last = sampled[sampled.length - 1]!;
     const zeroY = minimum < 0 && maximum > 0 ? top + ((maximum - 0) / range) * ySpan : null;
-    const yTicks = [...axis.ticks].reverse();
-    const xTicks = Array.from({ length: 5 }, (_: unknown, index: number): number => index / 4);
+    // const xTicks = Array.from({ length: 5 }, (_: unknown, index: number): number => index / 4);
+    const remainingGraphWidth: number = width - left - right;
+    const tickCount: number =
+        remainingGraphWidth < 330 ? 2
+        : remainingGraphWidth < 450 ? 3
+        : remainingGraphWidth < 600 ? 4
+        : 5;
+    const xTicks: number[] = Array.from({ length: tickCount }, (_: unknown, i: number): number => i / (tickCount - 1));
 
     return (
-        <div style={{ ...panelStyle(theme), padding: "16px", minHeight: "360px" }}>
+        <div style={{ ...panelStyle(theme), padding: "16px", minHeight: "360px", minWidth: "min-content" }}>
             <div
                 style={{
                     display: "flex",
@@ -820,8 +850,9 @@ function TimeSeriesChart(props: {
             <svg
                 viewBox={`0 0 ${width} ${height}`}
                 preserveAspectRatio="xMidYMid meet"
-                style={{ width: "100%", height: "315px", overflow: "visible", marginTop: "4px" }}
+                style={{ width: "100%", height: `${height}px`, minWidth: `${minWidth}px`, overflow: "visible", marginTop: "4px" }}
                 aria-label={props.title}
+                ref={elementRef}
             >
                 {yTicks.map((tick: number, index: number): JSX.Element => {
                     const y = top + (index / (yTicks.length - 1)) * ySpan;
@@ -1956,7 +1987,8 @@ function PlayerDetails(props: { theme: WorkspaceTheme; metrics: PlayerProfileMet
             <div
                 style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(3, minmax(180px, 1fr))",
+                    // gridTemplateColumns: "repeat(3, minmax(180px, 1fr))",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
                     gap: "10px 22px",
                     marginTop: "14px",
                     lineHeight: 1.5,
@@ -2132,7 +2164,8 @@ function OverviewPage(props: { theme: WorkspaceTheme; analysis: LilyMoneyAnalysi
             <div
                 style={{
                     display: "grid",
-                    gridTemplateColumns: "minmax(240px, 1.35fr) repeat(3, minmax(170px, 1fr))",
+                    // gridTemplateColumns: "minmax(240px, 1.35fr) repeat(3, minmax(170px, 1fr))",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
                     gap: "12px",
                 }}
             >
@@ -2183,7 +2216,8 @@ function OverviewPage(props: { theme: WorkspaceTheme; analysis: LilyMoneyAnalysi
                     <div
                         style={{
                             display: "grid",
-                            gridTemplateColumns: "repeat(3, minmax(180px, 1fr))",
+                            // gridTemplateColumns: "repeat(3, minmax(180px, 1fr))",
+                            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
                             gap: "12px",
                         }}
                     >
@@ -2209,15 +2243,18 @@ function OverviewPage(props: { theme: WorkspaceTheme; analysis: LilyMoneyAnalysi
                             accent={exactServerChange !== null && exactServerChange < 0 ? theme.negative : theme.positive}
                         />
                     </div>
-                    <div
-                        style={{
-                            display: "grid",
-                            gridTemplateColumns: "minmax(360px, 0.95fr) minmax(420px, 1.35fr)",
-                            gap: "16px",
-                        }}
-                    >
-                        <RankingPanel theme={theme} analysis={props.analysis} metricsById={allMetrics} />
-                        <RecentActivity theme={theme} events={props.analysis.events} selectedIdentityId={props.selectedIdentityId} />
+                    <div class="rankings-and-activity-grid-container">
+                        <div
+                            class="rankings-and-activity-grid"
+                            // style={{
+                            //     display: "grid",
+                            //     gridTemplateColumns: "minmax(360px, 0.95fr) minmax(420px, 1.35fr)",
+                            //     gap: "16px",
+                            // }}
+                        >
+                            <RankingPanel theme={theme} analysis={props.analysis} metricsById={allMetrics} />
+                            <RecentActivity theme={theme} events={props.analysis.events} selectedIdentityId={props.selectedIdentityId} />
+                        </div>
                     </div>
                     <ServerCheckpointHistory theme={theme} analysis={props.analysis} />
                 </>
@@ -2226,7 +2263,9 @@ function OverviewPage(props: { theme: WorkspaceTheme; analysis: LilyMoneyAnalysi
                     <div
                         style={{
                             display: "grid",
-                            gridTemplateColumns: "minmax(360px, 1fr) minmax(420px, 1fr)",
+                            // gridTemplateColumns: "minmax(360px, 1fr) minmax(420px, 1fr)",
+                            // gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))",
+                            gridTemplateColumns: "repeat(auto-fit, minmax(min(420px, 100%), 1fr))",
                             gap: "16px",
                         }}
                     >
@@ -2739,7 +2778,8 @@ function JobsPage(props: { theme: WorkspaceTheme; analysis: LilyMoneyAnalysis; s
             <div
                 style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(4, minmax(170px, 1fr))",
+                    // gridTemplateColumns: "repeat(4, minmax(170px, 1fr))",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
                     gap: "12px",
                 }}
             >
@@ -2764,7 +2804,8 @@ function JobsPage(props: { theme: WorkspaceTheme; analysis: LilyMoneyAnalysis; s
             <div
                 style={{
                     display: "grid",
-                    gridTemplateColumns: "minmax(350px, 1fr) minmax(350px, 1fr)",
+                    // gridTemplateColumns: "minmax(350px, 1fr) minmax(350px, 1fr)",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(min(350px, 100%), 1fr))",
                     gap: "16px",
                 }}
             >
@@ -4501,6 +4542,21 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
                         background: theme.bg,
                     }}
                 >
+                    <button
+                        id="lilymoney-show-sidebar-button"
+                        type="button"
+                        class="lilymoney-mc-button"
+                        style="aspect-ratio: 1/1; width: 36px; position: fixed; padding: 8px;"
+                        onClick={(event: JSX.TargetedMouseEvent<HTMLButtonElement>): void => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            event.currentTarget.blur();
+
+                            document.querySelector(".lilymoney-nav")?.classList.toggle("active-nav");
+                        }}
+                    >
+                        <img src="resource://images/ui/glyphs/menu_threebars.png" style={{ width: "14px", imageRendering: "pixelated" }} aria-hidden="true" />
+                    </button>
                     <div style={{ width: "100%", maxWidth: "1500px", margin: "0 auto" }}>{content}</div>
                 </main>
             </div>
