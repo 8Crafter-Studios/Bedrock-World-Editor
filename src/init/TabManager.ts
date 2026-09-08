@@ -698,6 +698,8 @@ namespace exports {
         worldTab?: WorldEditorDataStorageObject;
     }
 
+    // FIXME: Saving the level.dat tab marks the whole world as saved if that was the only thing that was modified.
+
     /**
      * Represents a tab in the tab manager.
      */

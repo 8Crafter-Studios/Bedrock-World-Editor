@@ -32,16 +32,16 @@
     align-items: center;
 }
 
-.treeEditorTreeNodeHeader:hover:not(:has(input:hover)):not(:has(.treeEditorTreeNodeHeaderName:hover)):not(:has(.treeEditorTreeNodeHeaderValue:hover)):not(
-        :has(.treeEditorTreeNodeHeaderNameTextBox.visible)
-    ):not(:has(.treeEditorTreeNodeHeaderValueTextBox.visible)),
+.treeEditorTreeNodeHeader:hover:not(:has(input:hover)):not(:has(.treeEditorTreeNodeHeaderName:not(.readonlyTreeEditorTreeNodeHeaderName):hover)):not(
+        :has(.treeEditorTreeNodeHeaderValue:not(.readonlyTreeEditorTreeNodeHeaderValue):hover)
+    ):not(:has(.treeEditorTreeNodeHeaderNameTextBox.visible)):not(:has(.treeEditorTreeNodeHeaderValueTextBox.visible)),
 .treeEditorOuterContainer.treeEditorReadonly .treeEditorTreeNodeHeader {
     background-color: var(--alternating-bg-hover-color);
 }
 
-.treeEditorTreeNodeHeader.selected:hover:not(:has(input:hover)):not(:has(.treeEditorTreeNodeHeaderName:hover)):not(:has(.treeEditorTreeNodeHeaderValue:hover)):not(
-        :has(.treeEditorTreeNodeHeaderNameTextBox.visible)
-    ):not(:has(.treeEditorTreeNodeHeaderValueTextBox.visible)),
+.treeEditorTreeNodeHeader.selected:hover:not(:has(input:hover)):not(:has(.treeEditorTreeNodeHeaderName:not(.readonlyTreeEditorTreeNodeHeaderName):hover)):not(
+        :has(.treeEditorTreeNodeHeaderValue:not(.readonlyTreeEditorTreeNodeHeaderValue):hover)
+    ):not(:has(.treeEditorTreeNodeHeaderNameTextBox.visible)):not(:has(.treeEditorTreeNodeHeaderValueTextBox.visible)),
 .treeEditorOuterContainer.treeEditorReadonly .treeEditorTreeNodeHeader.selected {
     background-color: var(--alternating-bg-selected-hover-color);
 }
@@ -103,14 +103,18 @@
     -webkit-user-drag: none;
 }
 
-.treeEditorOuterContainer:not(.treeEditorReadonly) .treeEditorTreeNodeHeaderName:hover,
-.treeEditorOuterContainer:not(.treeEditorReadonly) .treeEditorTreeNodeHeaderValue:hover {
+.treeEditorOuterContainer:not(.treeEditorReadonly) .treeEditorTreeNodeHeaderName:hover:not(.readonlyTreeEditorTreeNodeHeaderName),
+.treeEditorOuterContainer:not(.treeEditorReadonly) .treeEditorTreeNodeHeaderValue:hover:not(.readonlyTreeEditorTreeNodeHeaderValue) {
     background-color: #8882;
 }
 
-.treeEditorOuterContainer:not(.treeEditorReadonly) .treeEditorTreeNodeHeader.selected .treeEditorTreeNodeHeaderName:hover,
-.treeEditorOuterContainer:not(.treeEditorReadonly) .treeEditorTreeNodeHeader.selected .treeEditorTreeNodeHeaderValue:hover {
-    background-color: #FFF2;
+.treeEditorOuterContainer:not(.treeEditorReadonly)
+    .treeEditorTreeNodeHeader.selected
+    .treeEditorTreeNodeHeaderName:hover:not(.readonlyTreeEditorTreeNodeHeaderName),
+.treeEditorOuterContainer:not(.treeEditorReadonly)
+    .treeEditorTreeNodeHeader.selected
+    .treeEditorTreeNodeHeaderValue:hover:not(.readonlyTreeEditorTreeNodeHeaderValue) {
+    background-color: #fff2;
 }
 
 .treeEditorTreeNodeHeaderNameTextBoxSizeGetter,
@@ -145,4 +149,114 @@
 
 .treeEditorTreeNodeHeader {
     min-width: fit-content;
+}
+
+.treeEditorTreeNodeHeaderName,
+.treeEditorTreeNodeHeaderValue {
+    min-width: 10px;
+    height: 16px;
+}
+
+@keyframes flash-tree-editor-text-box-warning-outline-v1 {
+    0% {
+        outline: 2px solid transparent;
+    }
+    50% {
+        outline: 2px solid #ff0;
+    }
+    100% {
+        outline: 2px solid transparent;
+    }
+}
+
+.treeEditorTextBoxWarning {
+    animation: flash-tree-editor-text-box-warning-outline-v1 0.2s linear 2;
+}
+
+@keyframes flash-tree-editor-text-box-duplicate-property-name-outline-v1 {
+    0%,
+    50%,
+    100% {
+        outline: 2px solid transparent;
+    }
+    25% {
+        outline: 2px solid #f00;
+    }
+    75% {
+        outline: 2px solid #f0f;
+    }
+}
+
+.treeEditorTextBoxError_duplicatePropertyName {
+    animation: flash-tree-editor-text-box-duplicate-property-name-outline-v1 0.4s linear;
+}
+
+@keyframes flash-tree-editor-text-box-error-outline-v1 {
+    0% {
+        outline: 2px solid transparent;
+    }
+    50% {
+        outline: 2px solid #f00;
+    }
+    100% {
+        outline: 2px solid transparent;
+    }
+}
+
+@keyframes flash-tree-editor-text-box-error-outline-v2 {
+    0% {
+        outline: 0px solid #f00;
+    }
+    15% {
+        outline: 0px solid #f00;
+    }
+    35% {
+        outline: 2px solid #f00;
+    }
+    65% {
+        outline: 2px solid #f00;
+    }
+    85% {
+        outline: 0px solid #f00;
+    }
+    100% {
+        outline: 0px solid #f00;
+    }
+}
+
+.treeEditorTextBoxError {
+    /* animation: flash-tree-editor-text-box-error-outline-v1 0.8s linear infinite; */
+    /* animation: flash-tree-editor-text-box-error-outline-v1 0.4s linear infinite; */
+    animation: flash-tree-editor-text-box-error-outline-v1 0.2s linear 2;
+}
+
+@keyframes flash-tree-editor-text-box-critical-internal-error-outline-v1 {
+    0% {
+        outline: 2px solid transparent;
+    }
+    15% {
+        outline: 2px solid transparent;
+    }
+    25% {
+        outline: 2px solid #f00;
+    }
+    45% {
+        outline: 2px solid #ff0;
+    }
+    55% {
+        outline: 2px solid #ff0;
+    }
+    75% {
+        outline: 2px solid #f00;
+    }
+    85% {
+        outline: 2px solid transparent;
+    }
+    100% {
+        outline: 2px solid transparent;
+    }
+}
+
+.treeEditorTextBoxCriticalInternalError {
+    animation: flash-tree-editor-text-box-critical-internal-error-outline-v1 0.4s linear 8;
 }

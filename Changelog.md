@@ -4,10 +4,12 @@
 
 -   Fixed an issue where pasting in editors that used Monaco Editor did not work ([#1](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/1)).
 -   Fixed many issues where the parser and serializer for the `SubChunkPrefix` content type did not work properly in certain situations.
+-   Fixed a bug where nested arrays could crash the Node editor.
 
 ## Additions
 
 -   Windows builds are now code signed.
+-   The add tag buttons in the Node editor are now functional ([#2](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/2)).
 -   Added the paths to the world folder locations for the Minecraft Education Edition desktop version to the config.
 -   Added the paths to the world folder locations for Minecraft Education Edition on macOS to the config.
 -   Added paths to the extra world folder locations for Minecraft Education Edition, Minecraft Education Edition Preview, and the desktop version of Minecraft Education Edition, that are inside of mounted Windows volumes, to the config.
@@ -18,20 +20,36 @@
 -   The state of the Prismarine-NBT and SNBT editors now persists across tab and mode switches (meaning undo history, scroll position, search, selection, etc. are preserved when you switch tabs or modes and then switch back).
 -   The start screen is now mobile/small window friendly.
 -   The app's left sidebar now can be hidden on smaller screens to make the app mobile/small window friendly.
+-   Added outline animations to the Node editor for key and value validation errors:
+    -   When there is invalid input in the Node editor, there is now a short red fading outline animation around the displayed value.
+    -   When renaming a property in the Node editor fails due to a property already existing with the name, there is now a unique red then purple fading outline animation around the displayed value.
+    -   When an internal error occurs in the Node editor, there is now a 3.2 second red and yellow fading outline animation around the displayed value.
+    -   When there is a warning in the Node editor, there is now a short yellow fading outline animation around the displayed value.
 
 ## Changes
 
 -   Pressing `ALT` no longer focuses/unfocuses the menu bar.
 -   When the app recovers from a crash, it now closes and reopens the window, this fixes an issue where after a crash, the menu bar and many keybinds would not work.
 -   The `SubChunkPrefixLayer` NBT schema and the `layers` field of the `SubChunkPrefix` content type no longer include a `storageVersion` field.
+-   Special characters in the Node editor are now escaped, both in the text boxes and when displayed.
+-   Improved input validation in the Node editor.
 
 ## Fixes
 
 -   Fixed a bug where CTRL+S did not work while the Prismarine-NBT, SNBT, or text editor was focused.
--   Fixed an issue where deleting chunks in the 2D world map did not work ([#52](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/52)).
+-   Fixed an issue where deleting chunks in the 2D world map did not mark the tab as unsaved ([#52](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/52)).
 -   Many major NBT schema fixes, see the `mcbe-leveldb` changelog for more details (v1.0.0-beta.34 used v1.20.1 of `mcbe-leveldb`, this version uses v1.22.2).
 -   The NBT schema for entity entries in the `Entity` content type now no longer has an `internalComponents` field.
 -   Fixed an issue where there were many random useless `"name": ""` entries in the Prismarine-NBT editor.
+-   The Node editor now renders entries of lists of type `"end"` correctly.
+-   When deleting list entries in the Node editor, it now correctly splices the entries out of the array, instead of replacing them with empty entries.
+-   When hitting the `Enter` key while editing a key or value in the Node editor when the key or value has not been changed, it now correctly exits editing the key or value.
+-   Property keys that are an empty string `""` in the Node editor are no longer unable to be rendered or edited.
+-   The propery key text box in the Node editor now correctly always uses the `"text"` input mode.
+-   Values of type `"end"` in the Node editor are now unable to be edited.
+-   Keys and values in the Node editor now have a minimum amount of space that they take up, so that it is possible to select them if their value is an empty string `""`.
+-   When double-clicking a key or value in the Node editor to start editing it, the text box is now automatically focused.
+-   When double-clicking elsewhere to stop editing a key or value in the Node editor, the text box is now automatically updated to the correct width once its value is reset.
 
 # v1.0.0-beta.34
 
