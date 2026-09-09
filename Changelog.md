@@ -25,6 +25,8 @@
     -   When renaming a property in the Node editor fails due to a property already existing with the name, there is now a unique red then purple fading outline animation around the displayed value.
     -   When an internal error occurs in the Node editor, there is now a 3.2 second red and yellow fading outline animation around the displayed value.
     -   When there is a warning in the Node editor, there is now a short yellow fading outline animation around the displayed value.
+-   Added the newer polished error screen for data loading/parsing errors to hex editor sub-tabs. Unlike with the other editors, the open in raw mode button is replaced with a report bug button.
+-   The "World" tab now has an error screen for when the LevelDB was unable to be opened, instead of just showing error textures for every chunk.
 
 ## Changes
 
@@ -50,6 +52,8 @@
 -   Keys and values in the Node editor now have a minimum amount of space that they take up, so that it is possible to select them if their value is an empty string `""`.
 -   When double-clicking a key or value in the Node editor to start editing it, the text box is now automatically focused.
 -   When double-clicking elsewhere to stop editing a key or value in the Node editor, the text box is now automatically updated to the correct width once its value is reset.
+-   Switching modes on sub-tabs where the associated LevelDB key is missing no longer causes errors ([#53](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/53)).
+-   The open in raw mode buttons no longer fail to work if an error occurs while trying to load the data as binary.
 
 # v1.0.0-beta.34
 
@@ -164,7 +168,7 @@
 -   Added a Clear Entries button to the "View Files" tab. This button deletes ALL entries from the LevelDB. When there is a search query, then the button only deletes the search results from the LevelDB rather than everything.
 -   Added a placeholder New Entry button to the "View Files" tab. The button is disabled and does not work as it is a placeholder.
 -   Added a `Reload Tab` context menu option to sub-tabs that do not have unsaved changes. This option behaves the same as the `Reset Tab` option (which appears when there are unsaved changes).
--   Added a new polished error screen for data loading/parsing error in sub-tabs, which includes a button to reopen the editor in raw mode, which should allow for bypassing the error.
+-   Added a new polished error screen for data loading/parsing errors in sub-tabs, which includes a button to reopen the editor in raw mode, which should allow for bypassing the error.
 -   Added an icon for sub-tabs of content type `AABBVolumes`.
 -   Added an icon for sub-tabs of content type `BorderBlocks`.
 -   Added an icon for sub-tabs of content type `DynamicProperties`.

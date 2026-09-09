@@ -1930,8 +1930,12 @@ export default class TreeEditor extends React.Component<
             let type: KeysOfUnion<(typeof treeEditorIcons)[Exclude<keyof typeof treeEditorIcons, "generic">]>;
             let listType: keyof (typeof treeEditorIcons)["NBT"] | undefined;
             let isDirectType: boolean = false;
-            function fakeAssertIsNBTNodeTreeNodeValue(value: any): asserts value is NBTTreeNodeValue {}
-            function fakeAssertIsJSONNodeTreeNodeValue(value: any): asserts value is Exclude<JSONTreeNodeValue, NBT.Tags[NBT.TagType]> {}
+            function fakeAssertIsNBTNodeTreeNodeValue(value: any): asserts value is NBTTreeNodeValue {
+                void value;
+            }
+            function fakeAssertIsJSONNodeTreeNodeValue(value: any): asserts value is Exclude<JSONTreeNodeValue, NBT.Tags[NBT.TagType]> {
+                void value;
+            }
             if (!props.typeToCreate) {
                 switch (this.props.dataStorageObject.dataType) {
                     case "NBTCompound":
@@ -2243,6 +2247,7 @@ export default class TreeEditor extends React.Component<
                                         .get(-1)!;
                                     // TODO: Implement this to save the selection.
                                     const selectionData = this.props.dataStorageObject.treeEditor.selectionData ?? {};
+                                    void selectionData; // TEMP
                                     if (firstSelection !== event.currentTarget || lastSelection !== event.currentTarget) {
                                         const elements: HTMLDivElement[] = $(outerContainerElementRef.current)
                                             .find<HTMLDivElement>(".treeEditorTreeNodeHeader")

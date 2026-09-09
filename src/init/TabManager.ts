@@ -1775,9 +1775,13 @@ namespace exports {
                     if (!this.parentTab.db) throw new Error("The parent tab has no associated LevelDB.");
                     if (!this.parentTab.db.isOpen()) throw new Error("LevelDB is not open.");
                     if (binary) {
+                        const rawData: Buffer | null = await this.parentTab.db.get(this.target.key);
+                        if (rawData === null) {
+                            throw new Error("The LevelDB key associated with this sub-tab does not exist.");
+                        }
                         this.currentState.options.dataStorageObject ??= {} as DataStorageObject;
                         this.currentState.options.dataStorageObject.dataType = "binary";
-                        this.currentState.options.dataStorageObject.data = (await this.parentTab.db.get(this.target.key)) ?? Buffer.from([]);
+                        this.currentState.options.dataStorageObject.data = rawData /* ?? Buffer.from([]) */;
                         break;
                     }
                     const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[this.currentState.options.type] as EntryContentTypeFormatData;

@@ -8,6 +8,7 @@
         "files.exclude": {
             "out/**/*.asar": true
         },
+        // FIXME: This does not work for /\**/ comments that are at the beginning of a line.
         /**
          * Defined labels:
          * - TODO

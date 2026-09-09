@@ -16,6 +16,7 @@ export interface TextEditorTabProps {
 }
 
 // TODO: Add an option to edit the data in raw mode.
+// TODO: Add the update data loading failure notices.
 
 export default function TextEditorTab(props: TextEditorTabProps): JSX.SpecificElement<"div"> {
     const containerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
@@ -26,7 +27,9 @@ export default function TextEditorTab(props: TextEditorTabProps): JSX.SpecificEl
     const widgetRegistryRef: RefObject<EditorWidgetOverlayBarWidgetRegistry> = useRef<EditorWidgetOverlayBarWidgetRegistry>(null);
     function fakeAssertIsValidOptionsType(
         options: typeof props.tab.currentState.options
-    ): asserts options is Extract<typeof props.tab.currentState.options, { viewMode?: any }> {}
+    ): asserts options is Extract<typeof props.tab.currentState.options, { viewMode?: any }> {
+        void options;
+    }
     const asyncMode: boolean = !props.tab.currentState.options.dataStorageObject;
     fakeAssertIsValidOptionsType(props.tab.currentState.options);
     props.tab.currentState.options.viewMode ??= "map";

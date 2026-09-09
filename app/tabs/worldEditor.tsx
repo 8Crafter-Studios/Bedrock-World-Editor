@@ -42,6 +42,7 @@ export default function WorldEditorTab(props: WorldEditorTabProps): JSX.Specific
             />
         );
     }
+    const asyncMode: boolean = !props.tab.db?.isOpen();
     props.tab.currentState.worldTab ??= initWorldEditor2DDataStorageObjectProps({
         viewMode: "2D",
     });
@@ -51,9 +52,12 @@ export default function WorldEditorTab(props: WorldEditorTabProps): JSX.Specific
         viewOptionsTabbedSelector: useRef<HTMLDivElement>(null),
     };
     const widgetRegistryRef: RefObject<EditorWidgetOverlayBarWidgetRegistry> = useRef<EditorWidgetOverlayBarWidgetRegistry>(null);
-    let dataLoadFailureNoticeReasonExists: boolean = false;
-    let dataLoadFailureNoticeReason: any = null;
     let levelDBOpenFailure: boolean = false;
+    async function checkForLevelDBOpenFailure(): Promise<void> {
+        levelDBOpenFailure = !props.tab.db?.isOpen() && !((await props.tab.awaitDBOpen) ?? true);
+        reloadContents();
+    }
+    void checkForLevelDBOpenFailure();
     function LevelDBOpenFailureNotice(): JSX.Element {
         if (props.tab.errorDueToEncryptedLevelDB)
             return (
@@ -102,50 +106,6 @@ export default function WorldEditorTab(props: WorldEditorTabProps): JSX.Specific
             </div>
         );
     }
-    // function DataLoadFailureNotice({ reason }: { reason: any }): JSX.SpecificElement<"div"> {
-    //     return (
-    //         <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: center;">
-    //             <Notice
-    //                 title="Failed to Load Data"
-    //                 subtitle={null}
-    //                 detail="An error occured while loading the data, it may be corrupted or invalid. Try loading the data in raw mode instead by using the button below."
-    //                 image="generic_error"
-    //                 style={{ height: "auto" }}
-    //             />
-    //             <button
-    //                 type="button"
-    //                 title="Reopens the editor in raw mode, allowing you to edit unparseable data as binary data in the hex editor."
-    //                 class="genericRoundButton"
-    //                 onClick={async (event: TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
-    //                     if (!props.tab) throw new ReferenceError("props.tab is undefined.");
-    //                     event.preventDefault();
-    //                     if (event.currentTarget.disabled) return;
-    //                     event.currentTarget.blur();
-    //                     event.currentTarget.disabled = true;
-    //                     try {
-    //                         await props.tab.loadData(true);
-    //                         props.tab.rawMode = true;
-    //                         fakeAssertIsValidOptionsType(props.tab.currentState.worldTab);
-    //                         props.tab.currentState.worldTab.viewMode = "raw";
-    //                         if (props.tab.selectedTab !== props.tab) return;
-    //                         props.tab.emit("reloadCurrentSubTab");
-    //                     } finally {
-    //                         event.currentTarget.disabled = false;
-    //                     }
-    //                 }}
-    //             >
-    //                 Load Data in Raw Mode
-    //             </button>
-    //             <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
-    //                 {reason instanceof Error ?
-    //                     reason.stack?.startsWith(reason.toString()) ?
-    //                         reason.stack
-    //                     :   reason.toString() + reason.stack
-    //                 :   reason}
-    //             </div>
-    //         </div>
-    //     );
-    // }
     function reloadContents(): void {
         if (!props.tab.currentState.worldTab) return;
         if (!containerRef.current) return;
@@ -247,7 +207,7 @@ export default function WorldEditorTab(props: WorldEditorTabProps): JSX.Specific
                 </div>
             </EditorWidgetOverlayBar>
             <div style="flex: 1; overflow: auto;" ref={containerRef}>
-                {!props.tab.currentState.worldTab ?
+                {asyncMode || !props.tab.currentState.worldTab ?
                     <LoadingScreenContents />
                 :   <Contents props={props} options={props.tab.currentState.worldTab} />}
             </div>
