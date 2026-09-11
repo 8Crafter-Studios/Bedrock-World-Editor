@@ -35,6 +35,7 @@
 -   The `SubChunkPrefixLayer` NBT schema and the `layers` field of the `SubChunkPrefix` content type no longer include a `storageVersion` field.
 -   Special characters in the Node editor are now escaped, both in the text boxes and when displayed.
 -   Improved input validation in the Node editor.
+-   Minor table footer redesign.
 
 ## Fixes
 

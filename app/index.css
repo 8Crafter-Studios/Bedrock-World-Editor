@@ -202,7 +202,9 @@ img {
     --tabbed-selector-option-button-selected-pressed-text-color: hsl(0, 0%, 100%);
     --table-bg-color: hsl(0, 0%, 20%);
     --table-header-bg-color: hsl(0, 0%, 30%);
-    --table-header-text-color: var(--text-color);
+    --table-header-text-color: var(--text-color); /* TODO: Not yet used. */
+    --table-footer-bg-color: hsl(0, 0%, 20%);
+    --table-footer-text-color: var(--text-color); /* TODO: Not yet used. */
     --table-outline-color: hsl(0, 0%, 40%);
     --generic-button-bg-color: hsl(0, 0%, 30%);
     --generic-button-text-color: hsl(0, 0%, 100%);
@@ -252,7 +254,9 @@ img {
     --tabbed-selector-option-button-selected-pressed-text-color: hsl(0, 0%, 0%);
     --table-bg-color: hsl(0, 0%, 80%);
     --table-header-bg-color: hsl(0, 0%, 70%);
-    --table-header-text-color: var(--text-color);
+    --table-header-text-color: var(--text-color); /* TODO: Not yet used. */
+    --table-footer-bg-color: hsl(0, 0%, 80%);
+    --table-footer-text-color: var(--text-color); /* TODO: Not yet used. */
     --table-outline-color: hsl(0, 0%, 60%);
     --generic-button-bg-color: hsl(0, 0%, 70%);
     --generic-button-text-color: hsl(0, 0%, 0%);
@@ -364,6 +368,31 @@ td {
 
 thead {
     background-color: var(--table-header-bg-color);
+}
+
+tfoot {
+    background-color: var(--table-footer-bg-color);
+    position: relative;
+    border-top: 3px solid var(--table-outline-color);
+}
+
+tfoot::before {
+    content: "";
+    position: absolute;
+    top: -5px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(
+        to bottom,
+        var(--table-outline-color) 0,
+        var(--table-outline-color) 1px,
+        var(--table-bg-color) 1px,
+        var(--table-bg-color) 2px,
+        var(--table-outline-color) 2px,
+        var(--table-outline-color) 3px
+    );
+    pointer-events: none;
 }
 
 tr:not(:last-of-type) {
@@ -1572,6 +1601,30 @@ select.search-mode-dropdown:open::picker-icon {
 
 .add-tab-popup-menu {
     z-index: 100;
+}
+
+/**/ /* TODO: This is a work in progress. */
+/**/ /* TODO: Add proper light/dark theme support. */
+/**/ /* TODO: Add hover/active/hover+active/disabled states. */
+.page-navigation#TEMP#TEMPORARILY_DISABLED > button {
+    /* REVIEW: Figure out whether it is better with 10% or 20%. 20% seems to look better for the 3D border, and 10% seems to look better for the 2D border. */
+    background-color: hsl(0, 0%, 10%);
+    /* border: 1px solid hsl(0, 0%, 50%); */ /* REVIEW: Figure out whether it is better with or without this. */
+    border-radius: 5px; /* REVIEW: Figure out whether it is better with or without this. */
+    color: white;
+    border-color: hsl(0, 0%, 40%);
+}
+
+/**/ /* TODO: This is a work in progress. */
+/**/ /* TODO: Add proper light/dark theme support. */
+/**/ /* TODO: Add hover/active/hover+active/disabled states. */
+.page-navigation#TEMP#TEMPORARILY_DISABLED > div > input {
+    /* REVIEW: Figure out whether it is better with 10% or 20%. 20% seems to look better for the 3D border, and 10% seems to look better for the 2D border. */
+    background-color: hsl(0, 0%, 10%);
+    /* border: 1px solid hsl(0, 0%, 50%); */ /* REVIEW: Figure out whether it is better with or without this. */
+    border-radius: 5px; /* REVIEW: Figure out whether it is better with or without this. */
+    color: white;
+    border-color: hsl(0, 0%, 40%);
 }
 
 /* TODO: Use this for hiding the main left sidebar nav of the app, when I go to implement that. */
