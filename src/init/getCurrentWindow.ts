@@ -1,6 +1,6 @@
 import { BrowserWindow } from "@electron/remote";
 
-globalThis.electron = require("electron");
+globalThis.electron = require("electron") as typeof import("electron");
 globalThis.ipcRenderer = globalThis.electron.ipcRenderer;
 globalThis.getCurrentWindow = function getCurrentWindow(): Electron.BrowserWindow {
     return BrowserWindow.fromId(ipcRenderer.sendSync("get-window-id"))!;

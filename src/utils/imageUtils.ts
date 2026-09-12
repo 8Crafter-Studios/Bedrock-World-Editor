@@ -1,3 +1,11 @@
+/**
+ * src/utils/imageUtils.ts.ts
+ *
+ * @module
+ * @description A file containing URLs and file paths used by the app.
+ * @supports Preload, Renderer
+ */
+/** */
 import { nativeImage } from "@electron/remote";
 import type { NativeImage } from "electron";
 
@@ -12,7 +20,7 @@ export async function padNativeImageToSquare(nativeImg: NativeImage): Promise<El
     const base64: string = png.toString("base64");
 
     const img = new Image();
-    img.src = "data:image/png;base64," + base64;
+    img.src = `data:image/png;base64,${base64}`;
 
     await img.decode();
 

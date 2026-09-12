@@ -1,5 +1,6 @@
 /**
  * src/utils/version.ts
+ *
  * @module
  * @description A file that defines the global VERSION variable.
  * @supports Preload
@@ -16,8 +17,7 @@ const isDev: boolean = process.env.NODE_ENV === "development";
  *
  * It is in valid semver format.
  */
-const VERSION: string = require(path.join(__dirname, "../".repeat(/* +!isDev +  */ 2) + "package.json"))
-    .version as (typeof import("../../package.json"))["version"];
+const VERSION: string = (require(path.join(__dirname, `${"../".repeat(/* +!isDev +  */ 2)}package.json`)) as typeof import("../../package.json")).version;
 
 /**
  * The build of the app, sourced from `package.json`.
@@ -25,7 +25,7 @@ const VERSION: string = require(path.join(__dirname, "../".repeat(/* +!isDev +  
  * It is in valid semver build format (the part after the +).
  */
 const VERSION_BUILD: string | null =
-    (require(path.join(__dirname, "../".repeat(/* +!isDev +  */ 2) + "package.json")).build as (typeof import("../../package.json"))["build"]) ?? null;
+    (require(path.join(__dirname, `${"../".repeat(/* +!isDev +  */ 2)}package.json`)) as typeof import("../../package.json")).build ?? null;
 
 /**
  * The full version of the app, source from the combination of {@link VERSION} and {@link VERSION_BUILD}.
@@ -47,12 +47,12 @@ const VERSION_DISP_SHORT: string = isDev ? VERSION + (VERSION_BUILD !== null ? `
 /**
  * The version of the `mcbe-leveldb` node module.
  */
-const VERSION_MCBE_LEVELDB: string = require("mcbe-leveldb/package.json").version;
+const VERSION_MCBE_LEVELDB: string = (require("mcbe-leveldb/package.json") as typeof import("mcbe-leveldb/package.json")).version;
 
 /**
  * The version of the `@8crafter/leveldb-zlib` node module.
  */
-const VERSION_LEVELDB_ZLIB: string = require("@8crafter/leveldb-zlib/package.json").version;
+const VERSION_LEVELDB_ZLIB: string = (require("@8crafter/leveldb-zlib/package.json") as typeof import("@8crafter/leveldb-zlib/package.json")).version;
 
 globalThis.VERSION = VERSION;
 globalThis.VERSION_BUILD = VERSION_BUILD;

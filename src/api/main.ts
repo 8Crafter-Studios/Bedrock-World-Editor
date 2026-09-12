@@ -858,6 +858,7 @@ declare global {
             sendSync<_T extends 1>(channel: "set-window-is-full-screen", flag: boolean): void;
             sendSync<_T extends 1>(channel: "create-window"): void;
             sendSync<_T extends 1>(channel: "open-about-window", parentWindowID?: number): number;
+            sendSync<_T extends 1>(channel: "get-window-id"): number;
             sendSync<_T extends 1>(channel: "get-is-404-response", uri: string): boolean;
             invoke<_T extends 1>(channel: "get-is-404-response", uri: string): Promise<boolean>;
         }

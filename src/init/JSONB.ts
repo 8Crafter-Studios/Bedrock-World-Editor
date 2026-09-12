@@ -1,9 +1,11 @@
+/* eslint-disable */
 /**
  * JSONB.ts
  * An improved version of {@link JSON}
  * @module
  * @description This file contains the `JSONB` class.
  * @author 8Crafter
+ * @version v1.1.0 (11/11/2024 7:29 PM)
  */
 /**
  * An intrinsic object that provides functions to convert JavaScript values to and from the JavaScript Object Notation (JSON) format.

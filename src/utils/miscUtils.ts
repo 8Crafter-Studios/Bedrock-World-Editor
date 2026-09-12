@@ -1,4 +1,12 @@
 /**
+ * src/utils/miscUtils.ts
+ *
+ * @module
+ * @description A file containing miscellaneous utility functions.
+ * @supports Main, Preload, Renderer
+ */
+/** */
+/**
  * Tests whether all properties and their values in the `base` object
  * are present in the `objectToTest` object.
  *
@@ -92,6 +100,8 @@ let measureTextWidth_canvas: HTMLCanvasElement | null = null;
  * @param text The text to measure.
  * @param font The font to use.
  * @returns The width of the text in pixels.
+ *
+ * @supports Renderer
  */
 export function measureTextWidth(text: string, font: string): number {
     const canvas: HTMLCanvasElement = (measureTextWidth_canvas ??= document.createElement("canvas"));
