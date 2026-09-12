@@ -124,5 +124,12 @@
     "optionalDependencies": {
         "electron-installer-debian": "^3.2.0",
         "electron-installer-redhat": "^3.2.0"
+    },
+    "allowScripts": {
+        "@8crafter/leveldb-zlib": true,
+        "electron": true,
+        "electron-winstaller": true,
+        "esbuild": true,
+        "styled-components": true
     }
 }
