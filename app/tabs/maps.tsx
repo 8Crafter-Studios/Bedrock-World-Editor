@@ -445,6 +445,7 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
                 ConfigConstants.views.Maps.mapsTabModeToSectionIDs[mode][sectionIndex]!;
             return await getMapsTabContentsRows({
                 tab,
+                // REVIEW // TEST: Make sure this won't crash the tab if an entry with invalid data is present.
                 keys: await Promise.all(
                     targetKeys
                         .slice(start, end)
@@ -502,9 +503,10 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
                                 const bodyRef: RefObject<HTMLTableSectionElement> = useRef<HTMLTableSectionElement>(null);
                                 localTablesContents.observe((tablesContents: JSX.Element[][]): void => {
                                     if (!asyncMode || !bodyRef.current) return;
-                                    const tempElement: HTMLDivElement = document.createElement("div");
-                                    render(<>{...tablesContents[index]!}</>, tempElement);
-                                    bodyRef.current.replaceChildren(...tempElement.children);
+                                    // const tempElement: HTMLDivElement = document.createElement("div");
+                                    render(null, bodyRef.current);
+                                    render(<>{...tablesContents[index]!}</>, bodyRef.current /* tempElement */);
+                                    // bodyRef.current.replaceChildren(...tempElement.children);
                                 });
                                 // const [columnHeadersContextMenu_isOpen, columnHeadersContextMenu_setOpen] = useState(false);
                                 // const [columnHeadersContextMenu_anchorPoint, columnHeadersContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
@@ -626,7 +628,7 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
                                 async (): Promise<NonNullable<KeyData["data"]>> =>
                                     (await NBT.parse((await tab.db!.get(key.rawKey))!)) as NonNullable<KeyData["data"]>
                             :   key.data!,
-                        valueType: entryContentTypeToFormatMap.ActorPrefix,
+                        valueType: entryContentTypeToFormatMap.Map,
                         contentType: "Map",
                         data: key,
                         searchableContents: [
@@ -719,9 +721,10 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
                     tablesContents = emptyTablesContents;
                 }
             }
-            const tempElement: HTMLDivElement = document.createElement("div");
-            render(<TablesContents />, tempElement);
-            tablesContainerRef.current.replaceChildren(...tempElement.children);
+            // const tempElement: HTMLDivElement = document.createElement("div");
+            render(null, tablesContainerRef.current);
+            render(<TablesContents />, tablesContainerRef.current /* tempElement */);
+            // tablesContainerRef.current.replaceChildren(...tempElement.children);
         }
         currentUpdateTablesContentsFunction = updateTablesContents;
         useEffect((): (() => void) => {

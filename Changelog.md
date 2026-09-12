@@ -37,6 +37,7 @@
     -   `hex`
     -   `custom/SNBT`
 -   An error message now appears below the search bar on the "View Files" tab when an invalid NBT query is provided, like it does on other tabs.
+-   Added Async Mode to the "Ticks" tab.
 
 ## Changes
 
@@ -116,6 +117,7 @@
 -   Minor optimizations to the loading times of the "Players" tab.
 -   Minor performance improvements.
 -   Major load time improvements to the "View Files" tab, as it no longer unnecessarily reads and parses the data of all entries with a data type of `ascii` or `int` during the initial load.
+-   Improved the loading times of the "Ticks" tab by removing an unnecessary sort operation on the list of pending tick keys.
 
 # v1.0.0-beta.34
 

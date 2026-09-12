@@ -2841,7 +2841,7 @@ namespace exports {
         /**
          * The orginal object.
          *
-         * Only present of {@link TabManagerTab_LevelDBSearchQuery.searchTargets} was provided in the search query.
+         * Only present if {@link TabManagerTab_LevelDBSearchQuery.searchTargets} was provided in the search query.
          */
         readonly originalObject: OriginalObject;
     }

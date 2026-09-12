@@ -8,6 +8,8 @@ import {
     prettyPrintSNBT,
     prismarineToSNBT,
     type Dimension,
+    type EntryContentTypeFormatData,
+    type NBTSchemas,
 } from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
 import { ControlledMenu, MenuItem } from "@szhsin/react-menu";
@@ -21,8 +23,7 @@ import EditorWidgetOverlayBar from "../components/EditorWidgetOverlayBar";
 import { dialog } from "@electron/remote";
 import showDBKeyCreationDialog from "../components/DBKeyCreationDialog";
 import Notice from "../components/Notice";
-
-// TODO: Implement Async Mode for this tab.
+import { createObservable, type Observable } from "../../src/utils/miscUtils";
 
 /**
  * Props for the {@link TicksTab} component.
@@ -179,23 +180,27 @@ export default function TicksTab(props: TicksTabProps): JSX.SpecificElement<"div
 interface RandomTickKeyData {
     rawKey: Buffer;
     displayKey: string;
-    // UNDONE: Uncomment the `?` and ` | undefined` when async mode is implemented.
-    data /* ? */: {
-        parsed: NBT.NBT;
-        type: NBT.NBTFormat;
-        metadata: NBT.Metadata;
-    } | null /* | undefined */;
+    data?:
+        | {
+              parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.RandomTicks;
+              type: NBT.NBTFormat;
+              metadata: NBT.Metadata;
+          }
+        | null
+        | undefined;
 }
 
 interface PendingTickKeyData {
     rawKey: Buffer;
     displayKey: string;
-    // UNDONE: Uncomment the `?` and ` | undefined` when async mode is implemented.
-    data /* ? */: {
-        parsed: NBT.NBT;
-        type: NBT.NBTFormat;
-        metadata: NBT.Metadata;
-    } | null /* | undefined */;
+    data?:
+        | {
+              parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.PendingTicks;
+              type: NBT.NBTFormat;
+              metadata: NBT.Metadata;
+          }
+        | null
+        | undefined;
 }
 
 enum UpdateTablesContentsMode {
@@ -260,6 +265,12 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
     }
     if (!tab.cachedDBKeys) await tab.awaitCachedDBKeys!;
     signal.throwIfAborted();
+    const asyncMode: boolean =
+        "__FORCE_ASYNC_KEY_MODE__" in window ? !!window.__FORCE_ASYNC_KEY_MODE__
+        : config.useAsyncModeInEntryViews === "auto" ?
+            tab.cachedDBKeys!.RandomTicks.length + tab.cachedDBKeys!.PendingTicks.length >= config.asyncModeEntryThreshold ||
+            Object.values(tab.cachedDBKeys!).reduce((a: number, b: Buffer[]): number => a + b.length, 0) >= config.asyncModeTotalKeyCountThreshold
+        :   config.useAsyncModeInEntryViews;
     const keys = {
         randomTicks: [] as Buffer[],
         pendingTicks: [] as Buffer[],
@@ -268,16 +279,14 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
     let pendingTickKeys: PendingTickKeyData[] = [];
     async function reloadKeys(): Promise<void> {
         keys.randomTicks = tab.cachedDBKeys!.RandomTicks;
-        keys.pendingTicks = tab.cachedDBKeys!.PendingTicks.toSorted((a: Buffer, _b: Buffer): number =>
-            a.equals(Buffer.from("~local_tick", "utf-8")) ? -1 : 0
-        );
+        keys.pendingTicks = tab.cachedDBKeys!.PendingTicks;
         await Promise.all([
             Promise.all(
                 keys.randomTicks.map(
                     async (key: Buffer): Promise<RandomTickKeyData> => ({
                         rawKey: key,
                         displayKey: getKeyDisplayName(key),
-                        data: await NBT.parse((await tab.db!.get(key))!).catch((): null => null),
+                        data: asyncMode ? undefined : ((await NBT.parse((await tab.db!.get(key))!).catch((): null => null)) as RandomTickKeyData["data"]),
                     })
                 )
             ).then((data: RandomTickKeyData[]): void => void (randomTickKeys = data)),
@@ -286,29 +295,37 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                     async (key: Buffer): Promise<PendingTickKeyData> => ({
                         rawKey: key,
                         displayKey: getKeyDisplayName(key),
-                        data: await NBT.parse((await tab.db!.get(key))!).catch((): null => null),
+                        data: asyncMode ? undefined : ((await NBT.parse((await tab.db!.get(key))!).catch((): null => null)) as PendingTickKeyData["data"]),
                     })
                 )
             ).then((data: PendingTickKeyData[]): void => void (pendingTickKeys = data)),
         ]);
     }
     await reloadKeys();
+    const targetKeys = {
+        randomTicks: randomTickKeys,
+        pendingTicks: pendingTickKeys,
+    };
     let currentUpdateTablesContentsFunction: ((mode: UpdateTablesContentsMode) => Promise<void>) | null = null;
     let mode: ConfigConstants.views.Ticks.TicksTabMode = config.views.ticks.mode;
-    let tablesContents: JSX.Element[][] = await Promise.all(
-        ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode].map(
-            async (sectionID: (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[typeof mode][number]): Promise<JSX.Element[]> =>
-                await getTicksTabContentsRows({
-                    tab,
-                    randomTickKeys,
-                    pendingTickKeys,
-                    mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Ticks.TicksTabSectionMode,
-                    get updateTablesContents(): ((mode: UpdateTablesContentsMode) => Promise<void>) | null {
-                        return currentUpdateTablesContentsFunction;
-                    },
-                })
-        )
-    );
+    let emptyTablesContents: JSX.Element[][] =
+        asyncMode ?
+            [[]]
+        :   await Promise.all(
+                ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode].map(
+                    async (sectionID: (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[typeof mode][number]): Promise<JSX.Element[]> =>
+                        await getTicksTabContentsRows({
+                            tab,
+                            randomTickKeys,
+                            pendingTickKeys,
+                            mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Ticks.TicksTabSectionMode,
+                            get updateTablesContents(): ((mode: UpdateTablesContentsMode) => Promise<void>) | null {
+                                return currentUpdateTablesContentsFunction;
+                            },
+                        })
+                )
+            );
+    let tablesContents: JSX.Element[][] = emptyTablesContents;
     function Contents(): JSX.Element {
         const tablesContainerRef: RefObject<HTMLTableElement> = useRef<HTMLTableElement>(null);
         const loadingScreenMessageContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
@@ -332,13 +349,84 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
         //     pendingTickKeys,
         //     mode,
         // });
+        async function getTablesContentsInRange(sectionIndex: number, start: number, end: number): Promise<JSX.Element[]> {
+            const sectionID: (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[typeof mode][number] =
+                ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode][sectionIndex]!;
+            return await getTicksTabContentsRows({
+                tab,
+                // REVIEW // TEST: Make sure this won't crash the tab if an entry with invalid data is present.
+                randomTickKeys: await Promise.all(
+                    targetKeys.randomTicks.slice(start, end).map(
+                        async (key: RandomTickKeyData): Promise<RandomTickKeyData> => ({
+                            ...key,
+                            data: (await NBT.parse((await tab.db!.get(key.rawKey))!)) as RandomTickKeyData["data"],
+                        })
+                    )
+                ),
+                // REVIEW // TEST: Make sure this won't crash the tab if an entry with invalid data is present.
+                pendingTickKeys: await Promise.all(
+                    targetKeys.pendingTicks.slice(start, end).map(
+                        async (key: PendingTickKeyData): Promise<PendingTickKeyData> => ({
+                            ...key,
+                            data: (await NBT.parse((await tab.db!.get(key.rawKey))!)) as PendingTickKeyData["data"],
+                        })
+                    )
+                ),
+                mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Ticks.TicksTabSectionMode,
+                get updateTablesContents(): ((mode: UpdateTablesContentsMode) => Promise<void>) | null {
+                    return currentUpdateTablesContentsFunction;
+                },
+            });
+        }
+        async function _loadTablesContentsInRange(sectionIndex: number, start: number, end: number): Promise<void> {
+            if (!asyncMode) return;
+            // const sectionID: (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[typeof mode][number] =
+            //     ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode][sectionIndex]!;
+            tablesContents = [...tablesContents];
+            tablesContents[sectionIndex] = [...emptyTablesContents[sectionIndex]!];
+            tablesContents[sectionIndex].splice(start, end - start, ...(await getTablesContentsInRange(sectionIndex, start, end)));
+        }
+        function getSectionEntryCounts(): number[] {
+            return ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode].map(
+                (sectionID: (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[typeof mode][number]): number => {
+                    switch (sectionID) {
+                        case "randomTicks":
+                        case "pendingTicks":
+                            return targetKeys[sectionID].length;
+                        default:
+                            return NaN;
+                    }
+                }
+            );
+        }
         function TablesContents(): JSX.Element {
+            const localTablesContents: Observable<JSX.Element[][]> = createObservable([[]]);
+            if (asyncMode) {
+                // TODO: Add an error handler to this.
+                void Promise.all(
+                    ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode].map(
+                        async (
+                            _sectionID: (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[typeof mode][number],
+                            index: number
+                        ): Promise<JSX.Element[]> => await getTablesContentsInRange(index, 0, 20)
+                    )
+                ).then((tablesContents: JSX.Element[][]): void => {
+                    localTablesContents.set(tablesContents);
+                });
+            }
             return (
                 <>
                     {...ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode].map(
                         (sectionID: (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[typeof mode][number], index: number): JSX.Element => {
                             function Test1(): JSX.Element {
                                 const bodyRef: RefObject<HTMLTableSectionElement> = useRef<HTMLTableSectionElement>(null);
+                                localTablesContents.observe((tablesContents: JSX.Element[][]): void => {
+                                    if (!asyncMode || !bodyRef.current) return;
+                                    // const tempElement: HTMLDivElement = document.createElement("div");
+                                    render(null, bodyRef.current);
+                                    render(<>{...tablesContents[index]!}</>, bodyRef.current /* tempElement */);
+                                    // bodyRef.current.replaceChildren(...tempElement.children);
+                                });
                                 // const [columnHeadersContextMenu_isOpen, columnHeadersContextMenu_setOpen] = useState(false);
                                 // const [columnHeadersContextMenu_anchorPoint, columnHeadersContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
                                 const headerName = ConfigConstants.views.Ticks.ticksTabModeSectionHeaderNames[mode][index];
@@ -392,18 +480,31 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                                     )}
                                                 </tr>
                                             </thead>
-                                            <tbody ref={bodyRef}>{...tablesContents[index]!.slice(0, 20)}</tbody>
+                                            <tbody ref={bodyRef}>
+                                                {...asyncMode ? localTablesContents.get()[index]! : tablesContents[index]!.slice(0, 20)}
+                                            </tbody>
                                             <tfoot>
                                                 <tr class="table-footer-row-page-navigation">
                                                     <td colSpan={ConfigConstants.views.Ticks.ticksTabModeToColumnIDs[sectionMode].length}>
                                                         <PageNavigation
-                                                            totalPages={Math.ceil(tablesContents[index]!.length / 20)}
-                                                            onPageChange={(page: number): void => {
+                                                            totalPages={Math.ceil(getSectionEntryCounts()[index]! / 20)}
+                                                            onPageChange={async (page: number): Promise<void> => {
                                                                 if (!bodyRef.current) return;
+                                                                if (asyncMode) {
+                                                                    localTablesContents.get()[index] = await getTablesContentsInRange(
+                                                                        index,
+                                                                        (page - 1) * 20,
+                                                                        page * 20
+                                                                    );
+                                                                }
                                                                 // let tempElement: HTMLDivElement = document.createElement("div");
                                                                 render(null, bodyRef.current);
                                                                 render(
-                                                                    <>{...tablesContents[index]!.slice((page - 1) * 20, page * 20)}</>,
+                                                                    <>
+                                                                        {...asyncMode ?
+                                                                            localTablesContents.get()[index]!
+                                                                        :   tablesContents[index]!.slice((page - 1) * 20, page * 20)}
+                                                                    </>,
                                                                     bodyRef.current /* tempElement */
                                                                 );
                                                                 // bodyRef.current.replaceChildren(...tempElement.children);
@@ -433,32 +534,71 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
             }
             if (updateMode >= 1) {
                 mode = config.views.ticks.mode;
-                tablesContents = await Promise.all(
-                    ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode].map(
-                        async (sectionID: (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[typeof mode][number]): Promise<JSX.Element[]> =>
-                            await getTicksTabContentsRows({
-                                tab,
-                                randomTickKeys:
-                                    Object.keys(randomTickQuery).length > 1 ?
-                                        tab
-                                            .dbSearch!.search(randomTickQuery)
-                                            .toArray()
-                                            .map((key): RandomTickKeyData => key.originalObject.data)
-                                    :   randomTickKeys,
-                                pendingTickKeys:
-                                    Object.keys(pendingTickQuery).length > 1 ?
-                                        tab
-                                            .dbSearch!.search(pendingTickQuery)
-                                            .toArray()
-                                            .map((key): PendingTickKeyData => key.originalObject.data)
-                                    :   pendingTickKeys,
-                                mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Ticks.TicksTabSectionMode,
-                                get updateTablesContents(): ((mode: UpdateTablesContentsMode) => Promise<void>) | null {
-                                    return currentUpdateTablesContentsFunction;
-                                },
-                            })
-                    )
-                );
+                if (asyncMode) {
+                    const sectionIDToQueryMap = {
+                        randomTicks: randomTickQuery,
+                        pendingTicks: pendingTickQuery,
+                    } as const satisfies Record<(typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[typeof mode][number], unknown>;
+                    const sectionIDToKeysMap = {
+                        randomTicks: randomTickKeys,
+                        pendingTicks: pendingTickKeys,
+                    } as const satisfies Record<(typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[typeof mode][number], unknown>;
+                    for (const sectionID of ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode]) {
+                        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- This is necessary.
+                        (targetKeys[sectionID] as (typeof sectionIDToKeysMap)[typeof sectionID]) =
+                            Object.keys(sectionIDToQueryMap[sectionID]).length > 1 ?
+                                await (async (): Promise<(typeof sectionIDToKeysMap)[typeof sectionID]> => {
+                                    const iterator = tab.dbSearch!.searchAsync(sectionIDToQueryMap[sectionID], true);
+                                    let i: number = 0;
+                                    let t: number = Date.now();
+                                    const results: (typeof sectionIDToKeysMap)[typeof sectionID][number][] = [];
+                                    const formatter = new Intl.NumberFormat();
+                                    for await (const value of iterator) {
+                                        i++;
+                                        if (t + 15 < Date.now()) {
+                                            if (loadingScreenMessageContainerRef.current) {
+                                                loadingScreenMessageContainerRef.current.textContent = `Searching LevelDB: ${formatter.format(i)}/${formatter.format(sectionIDToKeysMap[sectionID].length)} (${formatter.format(results.length)} results)...`;
+                                            }
+                                            signal.throwIfAborted();
+                                            await sleep(5);
+                                            t = Date.now();
+                                        }
+                                        if (!value) continue;
+                                        results.push(value.originalObject.data);
+                                    }
+                                    return results;
+                                })()
+                            :   sectionIDToKeysMap[sectionID];
+                    }
+                } else {
+                    emptyTablesContents = await Promise.all(
+                        ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode].map(
+                            async (sectionID: (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[typeof mode][number]): Promise<JSX.Element[]> =>
+                                await getTicksTabContentsRows({
+                                    tab,
+                                    randomTickKeys:
+                                        Object.keys(randomTickQuery).length > 1 ?
+                                            tab
+                                                .dbSearch!.search(randomTickQuery)
+                                                .toArray()
+                                                .map((key): RandomTickKeyData => key.originalObject.data)
+                                        :   randomTickKeys,
+                                    pendingTickKeys:
+                                        Object.keys(pendingTickQuery).length > 1 ?
+                                            tab
+                                                .dbSearch!.search(pendingTickQuery)
+                                                .toArray()
+                                                .map((key): PendingTickKeyData => key.originalObject.data)
+                                        :   pendingTickKeys,
+                                    mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Ticks.TicksTabSectionMode,
+                                    get updateTablesContents(): ((mode: UpdateTablesContentsMode) => Promise<void>) | null {
+                                        return currentUpdateTablesContentsFunction;
+                                    },
+                                })
+                        )
+                    );
+                    tablesContents = emptyTablesContents;
+                }
             }
             // const tempElement: HTMLDivElement = document.createElement("div");
             render(null, tablesContainerRef.current);
@@ -466,21 +606,28 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
             // tablesContainerRef.current.replaceChildren(...tempElement.children);
         }
         currentUpdateTablesContentsFunction = updateTablesContents;
-        let randomTickQuery: Omit<TabManagerTab_LevelDBSearchQuery, "searchTargets"> & {
+        let randomTickQuery: Omit<TabManagerTab_LevelDBSearchQuery<true>, "searchTargets"> & {
             searchTargets: {
                 key: Buffer<ArrayBufferLike>;
                 displayKey: string;
                 value:
                     | {
-                          parsed: NBT.NBT;
+                          parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.RandomTicks;
                           type: NBT.NBTFormat;
                           metadata: NBT.Metadata;
                       }
+                    | (() => Promise<
+                          | { parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.RandomTicks; type: NBT.NBTFormat; metadata: NBT.Metadata }
+                          | null
+                          | undefined
+                      >)
                     | null
                     | undefined;
-                valueType: {
-                    readonly type: "NBT";
-                };
+                valueType:
+                    | {
+                          readonly type: "NBT";
+                      }
+                    | Extract<EntryContentTypeFormatData, { type: "custom"; resultType: "JSONNBT" }>;
                 contentType: "RandomTicks";
                 data: RandomTickKeyData;
                 searchableContents: string[];
@@ -491,7 +638,11 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                     ({
                         key: key.rawKey,
                         displayKey: key.displayKey,
-                        value: key.data,
+                        value:
+                            asyncMode ?
+                                async (): Promise<NonNullable<RandomTickKeyData["data"]>> =>
+                                    (await NBT.parse((await tab.db!.get(key.rawKey))!)) as NonNullable<RandomTickKeyData["data"]>
+                            :   key.data!,
                         valueType: entryContentTypeToFormatMap.RandomTicks,
                         contentType: "RandomTicks",
                         data: key,
@@ -510,33 +661,49 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                         customDataFields: {
                             // TODO: Uncomment the below line and implement a search query for checking for entries with invalid data.
                             // hasInvalidData: key.data === null,
-                            contents: ((): string => {
-                                if (key.data === null) return "";
-                                try {
-                                    return prettyPrintSNBT(prismarineToSNBT(key.data.parsed), { indent: 0 });
-                                } catch {
-                                    return "";
-                                }
-                            })(),
+                            contents:
+                                asyncMode ?
+                                    async (): Promise<string> => {
+                                        try {
+                                            return prettyPrintSNBT(prismarineToSNBT((await NBT.parse((await tab.db!.get(key.rawKey))!)).parsed), { indent: 0 });
+                                        } catch {
+                                            return "";
+                                        }
+                                    }
+                                :   ((): string => {
+                                        if (key.data === null) return "";
+                                        try {
+                                            return prettyPrintSNBT(prismarineToSNBT(key.data!.parsed), { indent: 0 });
+                                        } catch {
+                                            return "";
+                                        }
+                                    })(),
                         },
-                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
+                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery<true>["searchTargets"]>[number]
             ),
         };
-        let pendingTickQuery: Omit<TabManagerTab_LevelDBSearchQuery, "searchTargets"> & {
+        let pendingTickQuery: Omit<TabManagerTab_LevelDBSearchQuery<true>, "searchTargets"> & {
             searchTargets: {
                 key: Buffer<ArrayBufferLike>;
                 displayKey: string;
                 value:
                     | {
-                          parsed: NBT.NBT;
+                          parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.PendingTicks;
                           type: NBT.NBTFormat;
                           metadata: NBT.Metadata;
                       }
+                    | (() => Promise<
+                          | { parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.PendingTicks; type: NBT.NBTFormat; metadata: NBT.Metadata }
+                          | null
+                          | undefined
+                      >)
                     | null
                     | undefined;
-                valueType: {
-                    readonly type: "NBT";
-                };
+                valueType:
+                    | {
+                          readonly type: "NBT";
+                      }
+                    | Extract<EntryContentTypeFormatData, { type: "custom"; resultType: "JSONNBT" }>;
                 contentType: "PendingTicks";
                 data: PendingTickKeyData;
                 searchableContents: string[];
@@ -547,7 +714,11 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                     ({
                         key: key.rawKey,
                         displayKey: key.displayKey,
-                        value: key.data,
+                        value:
+                            asyncMode ?
+                                async (): Promise<NonNullable<PendingTickKeyData["data"]>> =>
+                                    (await NBT.parse((await tab.db!.get(key.rawKey))!)) as NonNullable<PendingTickKeyData["data"]>
+                            :   key.data,
                         valueType: entryContentTypeToFormatMap.PendingTicks,
                         contentType: "PendingTicks",
                         data: key,
@@ -566,16 +737,25 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                         customDataFields: {
                             // TODO: Uncomment the below line and implement a search query for checking for entries with invalid data.
                             // hasInvalidData: key.data === null,
-                            contents: ((): string => {
-                                if (key.data === null) return "";
-                                try {
-                                    return prettyPrintSNBT(prismarineToSNBT(key.data.parsed), { indent: 0 });
-                                } catch {
-                                    return "";
-                                }
-                            })(),
+                            contents:
+                                asyncMode ?
+                                    async (): Promise<string> => {
+                                        try {
+                                            return prettyPrintSNBT(prismarineToSNBT((await NBT.parse((await tab.db!.get(key.rawKey))!)).parsed), { indent: 0 });
+                                        } catch {
+                                            return "";
+                                        }
+                                    }
+                                :   ((): string => {
+                                        if (key.data === null) return "";
+                                        try {
+                                            return prettyPrintSNBT(prismarineToSNBT(key.data!.parsed), { indent: 0 });
+                                        } catch {
+                                            return "";
+                                        }
+                                    })(),
                         },
-                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
+                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery<true>["searchTargets"]>[number]
             ),
         };
         useEffect((): (() => void) => {
@@ -1345,7 +1525,7 @@ async function getTicksTabContentsRows(data: {
                             >
                                 {columns.map((column: (typeof columns)[number]): JSX.Element => {
                                     switch (column) {
-                                        // TODO: Add more columns here.
+                                        // TODO: Add more columns here. #65
                                         case "DBKey":
                                             return <td>{randomTickKey.displayKey}</td>;
                                         default:
@@ -1448,7 +1628,7 @@ async function getTicksTabContentsRows(data: {
                             >
                                 {columns.map((column: (typeof columns)[number]): JSX.Element => {
                                     switch (column) {
-                                        // TODO: Add more columns here.
+                                        // TODO: Add more columns here. #65
                                         case "DBKey":
                                             return <td>{pendingTickKey.displayKey}</td>;
                                         default:
