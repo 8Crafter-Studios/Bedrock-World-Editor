@@ -1,7 +1,6 @@
-import { BrowserWindow } from "@electron/remote";
-import { dimensions, type Dimension, type SubChunkIndexDimensionVectorXZ } from "mcbe-leveldb";
+import { dimensions, type Dimension } from "mcbe-leveldb";
 import type { JSX, RefObject, TargetedEvent } from "preact";
-import { render, useEffect, useRef } from "preact/compat";
+import { render, useRef } from "preact/compat";
 
 /**
  * Options for the {@link showLocationInputDialog} function.
@@ -75,8 +74,8 @@ export type ShowLocationInputDialogResult<O extends LocationInputPromptOptionIte
  * Props for the {@link LocationInputDialog} component.
  */
 export interface LocationInputDialogProps<O extends LocationInputPromptOptionItem> extends ShowLocationInputDialogOptions<O> {
-    onSubmit(data: LocationInputPromptOptionItemsToDataObject<O>): void;
-    onCancel(): void;
+    onSubmit(this: void, data: LocationInputPromptOptionItemsToDataObject<O>): void;
+    onCancel(this: void): void;
 }
 
 /**
@@ -271,6 +270,8 @@ export function LocationInputDialog<O extends LocationInputPromptOptionItem>(pro
                                     </select>
                                 </div>
                             );
+                        default:
+                            throw new Error(`Unknown option ID: ${optionId as string}.`);
                     }
                 })}
             </div>
@@ -295,6 +296,8 @@ export function LocationInputDialog<O extends LocationInputPromptOptionItem>(pro
                                         return [option, optionElement.dataset.optionvalue];
                                     case "number":
                                         return [option, Number(optionElement.dataset.optionvalue)];
+                                    default:
+                                        throw new Error(`Unknown option value type ${optionValueType as string}.`);
                                 }
                             })
                         ) as LocationInputPromptOptionItemsToDataObject<O>;
@@ -317,7 +320,7 @@ export function LocationInputDialog<O extends LocationInputPromptOptionItem>(pro
 export default async function showLocationInputDialog<O extends LocationInputPromptOptionItem>(
     options: ShowLocationInputDialogOptions<O>
 ): Promise<ShowLocationInputDialogResult<O>> {
-    return new Promise((resolve: (value: ShowLocationInputDialogResult<O>) => void): void => {
+    return await new Promise((resolve: (value: ShowLocationInputDialogResult<O>) => void): void => {
         const container: HTMLDivElement = document.createElement("div");
         container.style.position = "fixed";
         container.style.zIndex = "1200000";

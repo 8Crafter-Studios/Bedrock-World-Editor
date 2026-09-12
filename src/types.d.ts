@@ -89,7 +89,8 @@ export type ReturnTypeWithArgs<T extends (...args: any[]) => any, ARGS_T> = Extr
         [A1, R1] | [A2, R2] | [A3, R3] | [A4, R4]
     : T extends { (...args: infer A1): infer R1; (...args: infer A2): infer R2; (...args: infer A3): infer R3 } ? [A1, R1] | [A2, R2] | [A3, R3]
     : T extends { (...args: infer A1): infer R1; (...args: infer A2): infer R2 } ? [A1, R1] | [A2, R2]
-    : T extends { (...args: infer A1): infer R1 } ? [A1, R1]
+    : // eslint-disable-next-line @typescript-eslint/prefer-function-type
+    T extends { (...args: infer A1): infer R1 } ? [A1, R1]
     : never,
     [ARGS_T, any]
 >[1];
@@ -512,7 +513,7 @@ declare global {
             {
                 [K in string & keyof T]: T[K] extends Date | undefined ?
                     K // Stop recursion on Date
-                : T[K] extends Array<infer A> | undefined ?
+                : T[K] extends (infer A)[] | undefined ?
                     K | `${K & string}.${PropertyNamesWithPath<A>}` // On arrays, continue with the parameterized type
                 :   K | `${K & string}.${PropertyNamesWithPath<T[K]>}`;
             }[string & keyof T]
@@ -526,7 +527,7 @@ declare global {
             {
                 [K in U & keyof T]: T[K] extends Date | undefined ?
                     K // Stop recursion on Date
-                : T[K] extends Array<infer A> | undefined ?
+                : T[K] extends (infer A)[] | undefined ?
                     K | PropertyNamesInner<A> // On arrays, continue with the parameterized type
                 :   K | PropertyNamesInner<T[K]>;
             }[U & keyof T]
@@ -545,7 +546,7 @@ declare global {
             {
                 [K in string & keyof T]: T[K] extends Date | undefined ?
                     K // Stop recursion on Date
-                : T[K] extends Array<infer A> | undefined ?
+                : T[K] extends (infer A)[] | undefined ?
                     K | `${K & string}.${PropertyNamesWithPathWithoutOuterContainingProperties<A>}` // On arrays, continue with the parameterized type
                 :   (T[K] extends object ? never : K) | `${K & string}.${PropertyNamesWithPathWithoutOuterContainingProperties<T[K]>}`;
             }[string & keyof T]
@@ -559,7 +560,7 @@ declare global {
             {
                 [K in U & keyof T]: T[K] extends Date | undefined ?
                     K // Stop recursion on Date
-                : T[K] extends Array<infer A> | undefined ?
+                : T[K] extends (infer A)[] | undefined ?
                     K | PropertyNamesInnerWithoutOuterContainingProperties<A> // On arrays, continue with the parameterized type
                 :   (T[K] extends object ? never : K) | PropertyNamesInnerWithoutOuterContainingProperties<T[K]>;
             }[U & keyof T]
@@ -578,7 +579,7 @@ declare global {
             {
                 [K in (string | number) & keyof T]: T[K] extends Date | undefined ?
                     [K] // Stop recursion on Date
-                : T[K] extends Array<infer A> | undefined ? [K] | [K, ...PropertyPaths<A>]
+                : T[K] extends (infer A)[] | undefined ? [K] | [K, ...PropertyPaths<A>]
                 : [K] | [K, ...PropertyPaths<T[K]>];
             }[(string | number) & keyof T]
         :   never;
@@ -592,7 +593,7 @@ declare global {
                 [K in (string | number) & keyof T]: T[K] extends undefined ? never
                 : T[K] extends Date | undefined ?
                     K // Stop recursion on Date
-                : T[K] extends Array<infer A> | undefined ? [K] | [K, ...PropertyPathsWithoutOuterContainingProperties<A>]
+                : T[K] extends (infer A)[] | undefined ? [K] | [K, ...PropertyPathsWithoutOuterContainingProperties<A>]
                 : (T[K] extends object ? never : [K]) | [K, ...PropertyPathsWithoutOuterContainingProperties<T[K]>];
             }[(string | number) & keyof T]
         :   never;
@@ -624,7 +625,8 @@ declare global {
             [A1, R1] | [A2, R2] | [A3, R3] | [A4, R4]
         : T extends { (...args: infer A1): infer R1; (...args: infer A2): infer R2; (...args: infer A3): infer R3 } ? [A1, R1] | [A2, R2] | [A3, R3]
         : T extends { (...args: infer A1): infer R1; (...args: infer A2): infer R2 } ? [A1, R1] | [A2, R2]
-        : T extends { (...args: infer A1): infer R1 } ? [A1, R1]
+        : // eslint-disable-next-line @typescript-eslint/prefer-function-type
+        T extends { (...args: infer A1): infer R1 } ? [A1, R1]
         : never,
         [ARGS_T, any]
     >[1];

@@ -1,5 +1,9 @@
+// DEPRECATED
+//#vignore
+/* eslint-disable */
+// @ts-nocheck
 import mergeRefs from "merge-refs";
-import type { JSX, RefObject } from "preact";
+import type { CSSProperties, JSX, RefObject } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 
 export interface TextBoxProps extends JSX.HTMLAttributes<HTMLDivElement> {
@@ -9,7 +13,7 @@ export interface TextBoxProps extends JSX.HTMLAttributes<HTMLDivElement> {
     label: string;
     description?: JSX.Element | JSX.Element[] | string;
     inputProperties?: JSX.InputHTMLAttributes<HTMLInputElement> & { [key: PropertyKey]: unknown };
-    inputStyle?: JSX.CSSProperties;
+    inputStyle?: CSSProperties;
     inputRef?: RefObject<HTMLInputElement>;
     inputTitleText?: string;
     placeholder?: string;
@@ -102,14 +106,13 @@ export default function TextBox(props: TextBoxProps): JSX.SpecificElement<"div">
                 aria-autocomplete="none"
                 {...props.inputProperties}
             />
-            {props.description && typeof props.description === "string" ? (
+            {props.description && typeof props.description === "string" ?
                 <div>{props.description}</div>
-            ) : props.description instanceof Array ? (
+            : props.description instanceof Array ?
                 props.description
-            ) : (
-                props.description
-            )}
+            :   props.description}
             <div class="text-box-error-message" style={{ display: "none", color: "red", fontFamily: "Monocraft" }}></div>
         </label>
     );
 }
+//#endvignore

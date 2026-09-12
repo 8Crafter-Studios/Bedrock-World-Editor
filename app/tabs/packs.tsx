@@ -9,9 +9,9 @@ import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef, useState } from "preact/compat";
 import semver from "semver";
 import type { ManifestJSONSchema } from "../../src/schemaTypes/manifest.json.schema";
-import { createObservable, testForObjectExtension, type Observable } from "../../src/utils/miscUtils";
+import { createObservable, type Observable } from "../../src/utils/miscUtils";
 import { LoadingScreenContents } from "../app";
-import Notice from "../components/Notice";
+// import Notice from "../components/Notice";
 import { PageNavigation } from "../components/PageNavigation";
 import json5 from "json5";
 const mime = require("mime-types") as typeof import("mime-types");
@@ -26,6 +26,8 @@ export interface PacksTabProps {
 /**
  * The packs tab.
  *
+ * This tab is used to view and manage resource and behavior packs that are on the world.
+ *
  * @param props The props for the component.
  * @returns The JSX element.
  */
@@ -39,14 +41,15 @@ export default function PacksTab(props: PacksTabProps): JSX.SpecificElement<"div
         };
     });
     getPacksTabContents(props.tab, abortController.signal).then(
-        async (element: JSX.Element): Promise<void> => {
+        (element: JSX.Element): void => {
             if (!containerRef.current) return;
             render(null, containerRef.current);
             render(element, containerRef.current);
         },
-        (reason: any): void => {
+        (reason: unknown): void => {
             if (reason instanceof DOMException && reason.name === "AbortError" && reason.message === "Tab switched.") return;
             if (containerRef.current) {
+                // TODO: Replace this with a better error screen.
                 const errorElement: HTMLDivElement = document.createElement("div");
                 errorElement.style.color = "red";
                 errorElement.style.fontFamily = "monospace";
@@ -56,7 +59,7 @@ export default function PacksTab(props: PacksTabProps): JSX.SpecificElement<"div
                         reason.stack?.startsWith(reason.toString()) ?
                             reason.stack
                         :   reason.toString() + reason.stack
-                    :   reason;
+                    :   String(reason);
                 render(null, containerRef.current);
                 containerRef.current.replaceChildren("Failed to load data:", errorElement);
             }
@@ -95,7 +98,7 @@ type WorldXPacksJSONSchema = {
 /**
  * The schema for the `world_resource_pack_history.json` and `world_behavior_pack_history.json` files.
  */
-type WorldXPackHistoryJSONSchema = {
+interface WorldXPackHistoryJSONSchema {
     /**
      * The list of packs in the history.
      */
@@ -128,7 +131,7 @@ type WorldXPackHistoryJSONSchema = {
         version?: string | [major: number, minor: number, patch: number];
         [k: string]: unknown;
     }[];
-};
+}
 
 interface XPacksFolderPack {
     folderPath: string;
@@ -159,8 +162,8 @@ async function getPacksData(
         const worldResourcePacksPath: string = path.join(tab.tempPath ?? tab.path, "world_resource_packs.json");
         if (!existsSync(worldResourcePacksPath)) break loadWorldResourcePacks;
         worldResourcePacks = await readFile(worldResourcePacksPath, "utf8")
-            .then((data: string): WorldXPacksJSONSchema | undefined => json5.parse(data) as WorldXPacksJSONSchema)
-            .catch((e: any): undefined => (console.error("Error loading world_resource_packs.json:", e, "filePath:", worldResourcePacksPath), undefined));
+            .then((data: string): WorldXPacksJSONSchema | undefined => json5.parse(data))
+            .catch((e: unknown): undefined => (console.error("Error loading world_resource_packs.json:", e, "filePath:", worldResourcePacksPath), undefined));
     }
     signal.throwIfAborted();
     let worldBehaviorPacks: WorldXPacksJSONSchema | undefined;
@@ -168,8 +171,8 @@ async function getPacksData(
         const worldBehaviorPacksPath: string = path.join(tab.tempPath ?? tab.path, "world_behavior_packs.json");
         if (!existsSync(worldBehaviorPacksPath)) break loadWorldBehaviorPacks;
         worldBehaviorPacks = await readFile(worldBehaviorPacksPath, "utf8")
-            .then((data: string): WorldXPacksJSONSchema | undefined => json5.parse(data) as WorldXPacksJSONSchema)
-            .catch((e: any): undefined => (console.error("Error loading world_behavior_packs.json:", e, "filePath:", worldBehaviorPacksPath), undefined));
+            .then((data: string): WorldXPacksJSONSchema | undefined => json5.parse(data))
+            .catch((e: unknown): undefined => (console.error("Error loading world_behavior_packs.json:", e, "filePath:", worldBehaviorPacksPath), undefined));
     }
     signal.throwIfAborted();
     let worldResourcePackHistory: WorldXPackHistoryJSONSchema | undefined;
@@ -177,9 +180,9 @@ async function getPacksData(
         const worldResourcePackHistoryPath: string = path.join(tab.tempPath ?? tab.path, "world_resource_pack_history.json");
         if (!existsSync(worldResourcePackHistoryPath)) break loadWorldResourcePackHistory;
         worldResourcePackHistory = await readFile(worldResourcePackHistoryPath, "utf8")
-            .then((data: string): WorldXPackHistoryJSONSchema | undefined => json5.parse(data) as WorldXPackHistoryJSONSchema)
+            .then((data: string): WorldXPackHistoryJSONSchema | undefined => json5.parse(data))
             .catch(
-                (e: any): undefined => (
+                (e: unknown): undefined => (
                     console.error("Error loading world_resource_pack_history.json:", e, "filePath:", worldResourcePackHistoryPath),
                     undefined
                 )
@@ -191,9 +194,9 @@ async function getPacksData(
         const worldBehaviorPackHistoryPath: string = path.join(tab.tempPath ?? tab.path, "world_behavior_pack_history.json");
         if (!existsSync(worldBehaviorPackHistoryPath)) break loadWorldBehaviorPackHistory;
         worldBehaviorPackHistory = await readFile(worldBehaviorPackHistoryPath, "utf8")
-            .then((data: string): WorldXPackHistoryJSONSchema | undefined => json5.parse(data) as WorldXPackHistoryJSONSchema)
+            .then((data: string): WorldXPackHistoryJSONSchema | undefined => json5.parse(data))
             .catch(
-                (e: any): undefined => (
+                (e: unknown): undefined => (
                     console.error("Error loading world_behavior_pack_history.json:", e, "filePath:", worldBehaviorPackHistoryPath),
                     undefined
                 )
@@ -201,7 +204,7 @@ async function getPacksData(
     }
     signal.throwIfAborted();
 
-    let worldResourcePacksFolderPacks: {
+    const worldResourcePacksFolderPacks: {
         folderPath: string;
         manifest: ManifestJSONSchema;
         hasPackIcon: boolean;
@@ -241,12 +244,12 @@ async function getPacksData(
                                     const value: string = entryParts.slice(1).join("=");
                                     if (nameLocales && key === "pack.name") {
                                         packNameFound = true;
-                                        nameLocales![langFile.slice(0, -5)] = value;
+                                        nameLocales[langFile.slice(0, -5)] = value;
                                         continue;
                                     }
                                     if (descriptionLocales && key === "pack.description") {
                                         packDescriptionFound = true;
-                                        descriptionLocales![langFile.slice(0, -5)] = value;
+                                        descriptionLocales[langFile.slice(0, -5)] = value;
                                         continue;
                                     }
                                 }
@@ -266,7 +269,7 @@ async function getPacksData(
         }
     }
     signal.throwIfAborted();
-    let worldBehaviorPacksFolderPacks: {
+    const worldBehaviorPacksFolderPacks: {
         folderPath: string;
         manifest: ManifestJSONSchema;
         hasPackIcon: boolean;
@@ -306,12 +309,12 @@ async function getPacksData(
                                     const value: string = entryParts.slice(1).join("=");
                                     if (nameLocales && key === "pack.name") {
                                         packNameFound = true;
-                                        nameLocales![langFile.slice(0, -5)] = value;
+                                        nameLocales[langFile.slice(0, -5)] = value;
                                         continue;
                                     }
                                     if (descriptionLocales && key === "pack.description") {
                                         packDescriptionFound = true;
-                                        descriptionLocales![langFile.slice(0, -5)] = value;
+                                        descriptionLocales[langFile.slice(0, -5)] = value;
                                         continue;
                                     }
                                 }
@@ -332,7 +335,7 @@ async function getPacksData(
     }
     signal.throwIfAborted();
 
-    let localResourcePacksFolderPacks: {
+    const localResourcePacksFolderPacks: {
         folderPath: string;
         manifest: ManifestJSONSchema;
         hasPackIcon: boolean;
@@ -388,12 +391,12 @@ async function getPacksData(
                                     const value: string = entryParts.slice(1).join("=");
                                     if (nameLocales && key === "pack.name") {
                                         packNameFound = true;
-                                        nameLocales![langFile.slice(0, -5)] = value;
+                                        nameLocales[langFile.slice(0, -5)] = value;
                                         continue;
                                     }
                                     if (descriptionLocales && key === "pack.description") {
                                         packDescriptionFound = true;
-                                        descriptionLocales![langFile.slice(0, -5)] = value;
+                                        descriptionLocales[langFile.slice(0, -5)] = value;
                                         continue;
                                     }
                                 }
@@ -413,7 +416,7 @@ async function getPacksData(
         }
     }
     signal.throwIfAborted();
-    let localBehaviorPacksFolderPacks: {
+    const localBehaviorPacksFolderPacks: {
         folderPath: string;
         manifest: ManifestJSONSchema;
         hasPackIcon: boolean;
@@ -469,12 +472,12 @@ async function getPacksData(
                                     const value: string = entryParts.slice(1).join("=");
                                     if (nameLocales && key === "pack.name") {
                                         packNameFound = true;
-                                        nameLocales![langFile.slice(0, -5)] = value;
+                                        nameLocales[langFile.slice(0, -5)] = value;
                                         continue;
                                     }
                                     if (descriptionLocales && key === "pack.description") {
                                         packDescriptionFound = true;
-                                        descriptionLocales![langFile.slice(0, -5)] = value;
+                                        descriptionLocales[langFile.slice(0, -5)] = value;
                                         continue;
                                     }
                                 }
@@ -495,7 +498,7 @@ async function getPacksData(
     }
     signal.throwIfAborted();
 
-    let developmentResourcePacksFolderPacks: {
+    const developmentResourcePacksFolderPacks: {
         folderPath: string;
         manifest: ManifestJSONSchema;
         hasPackIcon: boolean;
@@ -556,12 +559,12 @@ async function getPacksData(
                                     const value: string = entryParts.slice(1).join("=");
                                     if (nameLocales && key === "pack.name") {
                                         packNameFound = true;
-                                        nameLocales![langFile.slice(0, -5)] = value;
+                                        nameLocales[langFile.slice(0, -5)] = value;
                                         continue;
                                     }
                                     if (descriptionLocales && key === "pack.description") {
                                         packDescriptionFound = true;
-                                        descriptionLocales![langFile.slice(0, -5)] = value;
+                                        descriptionLocales[langFile.slice(0, -5)] = value;
                                         continue;
                                     }
                                 }
@@ -581,7 +584,7 @@ async function getPacksData(
         }
     }
     signal.throwIfAborted();
-    let developmentBehaviorPacksFolderPacks: {
+    const developmentBehaviorPacksFolderPacks: {
         folderPath: string;
         manifest: ManifestJSONSchema;
         hasPackIcon: boolean;
@@ -642,12 +645,12 @@ async function getPacksData(
                                     const value: string = entryParts.slice(1).join("=");
                                     if (nameLocales && key === "pack.name") {
                                         packNameFound = true;
-                                        nameLocales![langFile.slice(0, -5)] = value;
+                                        nameLocales[langFile.slice(0, -5)] = value;
                                         continue;
                                     }
                                     if (descriptionLocales && key === "pack.description") {
                                         packDescriptionFound = true;
-                                        descriptionLocales![langFile.slice(0, -5)] = value;
+                                        descriptionLocales[langFile.slice(0, -5)] = value;
                                         continue;
                                     }
                                 }
@@ -702,7 +705,7 @@ function getPacksDataEntries({
     entries_inactive_behaviorPacks: PackEntry[];
 } {
     // Pack priority is: world > development > local
-    let entries_active_resourcePacks: PackEntry[] =
+    const entries_active_resourcePacks: PackEntry[] =
         worldResourcePacks?.map((pack: WorldXPacksJSONSchema[number]): PackEntry => {
             const historyEntry: WorldXPackHistoryJSONSchema["packs"][number] | null =
                 !pack.pack_id || !pack.version ?
@@ -803,7 +806,7 @@ function getPacksDataEntries({
             };
         }) ?? [];
 
-    let entries_active_behaviorPacks: PackEntry[] =
+    const entries_active_behaviorPacks: PackEntry[] =
         worldBehaviorPacks?.map((pack: WorldXPacksJSONSchema[number]): PackEntry => {
             const historyEntry: WorldXPackHistoryJSONSchema["packs"][number] | null =
                 !pack.pack_id || !pack.version ?
@@ -904,7 +907,7 @@ function getPacksDataEntries({
             };
         }) ?? [];
 
-    let entries_inactive_resourcePacks: PackEntry[] = [
+    const entries_inactive_resourcePacks: PackEntry[] = [
         ...(worldResourcePackHistory?.packs
             .filter(
                 (v) =>
@@ -1043,7 +1046,7 @@ function getPacksDataEntries({
             }),
     ];
 
-    let entries_inactive_behaviorPacks: PackEntry[] = [
+    const entries_inactive_behaviorPacks: PackEntry[] = [
         ...(worldBehaviorPackHistory?.packs
             .filter(
                 (v) =>
@@ -1206,8 +1209,8 @@ async function getPacksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
     } = await getPacksData(tab, signal);
 
     // REVIEW: Maybe this tab doesn't need to have async mode.
-    let asyncMode: boolean =
-        "__FORCE_ASYNC_KEY_MODE__" in window ? !!window["__FORCE_ASYNC_KEY_MODE__"]
+    const asyncMode: boolean =
+        "__FORCE_ASYNC_KEY_MODE__" in window ? !!window.__FORCE_ASYNC_KEY_MODE__
         : config.useAsyncModeInEntryViews === "auto" ?
             (worldResourcePacks?.length ?? 0) +
                 (worldBehaviorPacks?.length ?? 0) +
@@ -1260,14 +1263,14 @@ async function getPacksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
     let tablesContents: JSX.Element[][] = emptyTablesContents;
     function Contents(): JSX.Element {
         const tablesContainerRef: RefObject<HTMLTableElement> = useRef<HTMLTableElement>(null);
-        const loadingScreenMessageContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
-        const searchRefs = {
-            searchAreaContainer: useRef<HTMLDivElement>(null),
-            searchTextBox: useRef<HTMLInputElement>(null),
-            searchTextBoxErrorPopup: useRef<HTMLDivElement>(null),
-            searchButton: useRef<HTMLButtonElement>(null),
-            helpButton: useRef<HTMLButtonElement>(null),
-        };
+        // const loadingScreenMessageContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
+        // const searchRefs = {
+        //     searchAreaContainer: useRef<HTMLDivElement>(null),
+        //     searchTextBox: useRef<HTMLInputElement>(null),
+        //     searchTextBoxErrorPopup: useRef<HTMLDivElement>(null),
+        //     searchButton: useRef<HTMLButtonElement>(null),
+        //     helpButton: useRef<HTMLButtonElement>(null),
+        // };
         const viewOptionsRefs = {
             viewOptionsContainer: useRef<HTMLDivElement>(null),
             viewOptionsTabbedSelector: useRef<HTMLDivElement>(null),
@@ -1295,7 +1298,7 @@ async function getPacksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                 },
             });
         }
-        async function loadTablesContentsInRange(sectionIndex: number, start: number, end: number): Promise<void> {
+        async function _loadTablesContentsInRange(sectionIndex: number, start: number, end: number): Promise<void> {
             if (!asyncMode) return;
             // const sectionID: (typeof ConfigConstants.views.Packs.packsTabModeToSectionIDs)[typeof mode][number] =
             //     ConfigConstants.views.Packs.packsTabModeToSectionIDs[mode][sectionIndex]!;
@@ -1333,21 +1336,24 @@ async function getPacksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                                     :   rp.version?.every((vv, i) => vv === v.version?.[i]))
                                             )
                                     ).length ?? 0);
+                        default:
+                            return NaN;
                     }
                 }
             );
         }
         function TablesContents(): JSX.Element {
-            let localTablesContents: Observable<JSX.Element[][]> = createObservable(
+            const localTablesContents: Observable<JSX.Element[][]> = createObservable(
                 ConfigConstants.views.Packs.packsTabModeToSectionIDs[mode].map((): [] => [])
             );
             if (asyncMode) {
-                Promise.all(
+                // TODO: Add an error handler here.
+                void Promise.all(
                     ConfigConstants.views.Packs.packsTabModeToSectionIDs[mode].map(
                         async (
                             _sectionID: (typeof ConfigConstants.views.Packs.packsTabModeToSectionIDs)[typeof mode][number],
                             index: number
-                        ): Promise<JSX.Element[]> => getTablesContentsInRange(index, 0, 20)
+                        ): Promise<JSX.Element[]> => await getTablesContentsInRange(index, 0, 20)
                     )
                 ).then((tablesContents: JSX.Element[][]): void => {
                     localTablesContents.set(tablesContents);
@@ -1361,7 +1367,7 @@ async function getPacksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                 const bodyRef: RefObject<HTMLTableSectionElement> = useRef<HTMLTableSectionElement>(null);
                                 localTablesContents.observe((tablesContents: JSX.Element[][]): void => {
                                     if (!asyncMode || !bodyRef.current) return;
-                                    let tempElement: HTMLDivElement = document.createElement("div");
+                                    const tempElement: HTMLDivElement = document.createElement("div");
                                     render(<>{...tablesContents[index]!}</>, tempElement);
                                     bodyRef.current.replaceChildren(...tempElement.children);
                                 });
@@ -1459,6 +1465,7 @@ async function getPacksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
             );
         }
         async function updateTablesContents(reloadData: boolean): Promise<void> {
+            // TODO: Add an error handler to this function.
             if (!tablesContainerRef.current) return;
             if (reloadData) {
                 mode = config.views.packs.mode;
@@ -1536,15 +1543,15 @@ async function getPacksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
         currentUpdateTablesContentsFunction = updateTablesContents;
         useEffect((): (() => void) => {
             function onModeChanged(): void {
-                updateTablesContents(true);
+                void updateTablesContents(true);
             }
             function onActiveModeColumnsChanged(): void {
                 if (mode !== "active") return;
-                updateTablesContents(false);
+                void updateTablesContents(false);
             }
             function onInactiveModeColumnsChanged(): void {
                 if (mode !== "inactive") return;
-                updateTablesContents(false);
+                void updateTablesContents(false);
             }
             config.on("settingChanged:views.packs.mode", onModeChanged);
             config.on("settingChanged:views.packs.modeSettings.active.sections.resourcePacks.columns", onActiveModeColumnsChanged);
@@ -1689,6 +1696,7 @@ async function getPacksTabContentsRows(data: {
         case "active_resourcePacks": {
             const columns = config.views.packs.modeSettings.active.sections.resourcePacks.columns;
             return await Promise.all(
+                // eslint-disable-next-line @typescript-eslint/require-await
                 data.entries?.map(async (pack: PackEntry): Promise<JSX.Element> => {
                     // REMOVE: This should be removed once the logic to get it outside of this function is fully tested. Once this is removed, the "Loading..." messages in the table cells should be reimplemented.
                     // const historyEntry: WorldXPackHistoryJSONSchema["packs"][number] | null =
@@ -1746,10 +1754,10 @@ async function getPacksTabContentsRows(data: {
                         function onEntryRightClick(event: TargetedMouseEvent<HTMLTableRowElement>): void {
                             event.preventDefault();
                             event.stopPropagation();
-                            const clickPosition: { x: number; y: number } = {
-                                x: event.clientX,
-                                y: event.clientY,
-                            };
+                            // const clickPosition: { x: number; y: number } = {
+                            //     x: event.clientX,
+                            //     y: event.clientY,
+                            // };
                             // console.log(clickPosition);
 
                             copyContextMenuItemValue = null;
@@ -1781,7 +1789,7 @@ async function getPacksTabContentsRows(data: {
                                                 try {
                                                     const worldResourcePacksJSON: WorldXPacksJSONSchema = json5.parse(
                                                         await readFile(path.join(data.tab.tempPath ?? data.tab.path, "world_resource_packs.json"), "utf-8")
-                                                    ) as WorldXPacksJSONSchema;
+                                                    );
                                                     const packIndex: number = worldResourcePacksJSON.findIndex(
                                                         (entry) =>
                                                             entry.pack_id === pack.pack_id &&
@@ -1791,7 +1799,7 @@ async function getPacksTabContentsRows(data: {
                                                                 ?.compareMain(typeof entry.version === "string" ? entry.version : entry.version.join(".")) === 0
                                                     );
                                                     if (packIndex === -1) {
-                                                        data.updateTablesContents?.(true);
+                                                        void data.updateTablesContents?.(true);
                                                         return;
                                                     }
                                                     worldResourcePacksJSON.splice(packIndex, 1);
@@ -1801,13 +1809,13 @@ async function getPacksTabContentsRows(data: {
                                                         "utf-8"
                                                     );
                                                     data.tab.setFileAsModified("world_resource_packs.json");
-                                                    data.updateTablesContents?.(true);
+                                                    void data.updateTablesContents?.(true);
                                                 } catch (e) {
                                                     console.error("Error while deactivating pack:", e, "pack:", pack);
-                                                    dialog.showMessageBox({
+                                                    void dialog.showMessageBox({
                                                         type: "error",
                                                         title: "Error",
-                                                        message: `An error occured while deactivating the pack. (UUID: ${pack.pack_id}, Version: ${pack.version})`,
+                                                        message: `An error occured while deactivating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                         detail: String(e),
                                                         buttons: ["OK"],
                                                         noLink: true,
@@ -1826,14 +1834,14 @@ async function getPacksTabContentsRows(data: {
                                                                 path.join(data.tab.tempPath ?? data.tab.path, "world_resource_pack_history.json"),
                                                                 "utf-8"
                                                             )
-                                                        ) as WorldXPackHistoryJSONSchema;
+                                                        );
                                                         const packIndex: number = worldResourcePackHistoryJSON.packs.findIndex((entry) =>
                                                             typeof pack.version === "string" ?
                                                                 pack.version === entry.version
                                                             :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
                                                         );
                                                         if (packIndex === -1) {
-                                                            data.updateTablesContents?.(true);
+                                                            void data.updateTablesContents?.(true);
                                                             return;
                                                         }
                                                         worldResourcePackHistoryJSON.packs.splice(packIndex, 1);
@@ -1843,13 +1851,13 @@ async function getPacksTabContentsRows(data: {
                                                             "utf-8"
                                                         );
                                                         data.tab.setFileAsModified("world_resource_pack_history.json");
-                                                        data.updateTablesContents?.(true);
+                                                        void data.updateTablesContents?.(true);
                                                     } catch (e) {
                                                         console.error("Error while deleting pack from history:", e, "pack:", pack);
-                                                        dialog.showMessageBox({
+                                                        void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${pack.version})`,
+                                                            message: `An error occured while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -1874,7 +1882,7 @@ async function getPacksTabContentsRows(data: {
                                                             :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
                                                         );
                                                         if (packIndex === -1) {
-                                                            data.updateTablesContents?.(true);
+                                                            void data.updateTablesContents?.(true);
                                                             return;
                                                         }
                                                         worldResourcePackHistoryJSON.packs.splice(packIndex, 1);
@@ -1884,13 +1892,13 @@ async function getPacksTabContentsRows(data: {
                                                             "utf-8"
                                                         );
                                                         data.tab.setFileAsModified("world_resource_pack_history.json");
-                                                        data.updateTablesContents?.(true);
+                                                        void data.updateTablesContents?.(true);
                                                     } catch (e) {
                                                         console.error("Error while deleting pack from world files:", e, "pack:", pack);
-                                                        dialog.showMessageBox({
+                                                        void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${pack.version})`,
+                                                            message: `An error occured while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -1903,15 +1911,15 @@ async function getPacksTabContentsRows(data: {
                                         )} */}
                                         {!copyContextMenuItemValue || copyContextMenuItemValue.value !== undefined || !copyContextMenuItemValue.formatOptions ?
                                             <MenuItem
-                                                onClick={async (_event: ContextMenu_ClickEvent): Promise<void> => {
+                                                onClick={(_event: ContextMenu_ClickEvent): void => {
                                                     // if (!(event.syntheticEvent.currentTarget instanceof HTMLLIElement)) return;
                                                     // event.syntheticEvent.currentTarget.ariaDisabled = "true";
                                                     // event.syntheticEvent.currentTarget.classList.add("szh-menu__item--disabled");
-                                                    if (!copyContextMenuItemValue || copyContextMenuItemValue.value === undefined) return;
+                                                    if (copyContextMenuItemValue?.value === undefined) return;
                                                     clipboard.writeText(copyContextMenuItemValue.value);
                                                     // copyContextMenuItemValue = null;
                                                 }}
-                                                disabled={!copyContextMenuItemValue || copyContextMenuItemValue.value === undefined}
+                                                disabled={copyContextMenuItemValue?.value === undefined}
                                             >
                                                 Copy Cell Value
                                             </MenuItem>
@@ -1934,7 +1942,7 @@ async function getPacksTabContentsRows(data: {
                                         )}
                                     </ControlledMenu>
                                     <tr
-                                        data-key={`${pack.pack_id}@${pack.version}`}
+                                        data-key={`${pack.pack_id}@${typeof pack.version === "string" ? pack.version : pack.version?.join(".")}`}
                                         onDblClick={onEntryRightClick}
                                         onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                                             // Treat Alt+Click as a middle click.
@@ -2152,10 +2160,10 @@ async function getPacksTabContentsRows(data: {
                                                         function onPackIconRightClick(event: JSX.TargetedMouseEvent<HTMLImageElement>): void {
                                                             event.preventDefault();
                                                             event.stopPropagation();
-                                                            const clickPosition: { x: number; y: number } = {
-                                                                x: event.clientX,
-                                                                y: event.clientY,
-                                                            };
+                                                            // const clickPosition: { x: number; y: number } = {
+                                                            //     x: event.clientX,
+                                                            //     y: event.clientY,
+                                                            // };
                                                             // console.log(clickPosition);
 
                                                             packIconContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
@@ -2200,22 +2208,25 @@ async function getPacksTabContentsRows(data: {
                                                                                             });
                                                                                             if (result.canceled) return;
                                                                                             const mimeType: string | false = mime.lookup(result.filePath);
-                                                                                            if (!mimeType)
+                                                                                            if (!mimeType) {
                                                                                                 return void dialog.showErrorBox(
                                                                                                     "Unsupported Image Type",
                                                                                                     `Unsupported image type: ${mimeType || path.extname(result.filePath)}`
                                                                                                 );
+                                                                                            }
                                                                                             const image: Buffer | null = await readFile(pack.pack_icon!);
-                                                                                            if (!image)
+                                                                                            if (!image) {
                                                                                                 return void dialog.showErrorBox(
                                                                                                     "Failed to Save Image",
                                                                                                     "An error occurred while saving the image."
                                                                                                 );
-                                                                                            if ("image/png" !== mimeType)
+                                                                                            }
+                                                                                            if (mimeType !== "image/png") {
                                                                                                 return void dialog.showErrorBox(
                                                                                                     "Unsupported Image Type",
                                                                                                     `Unsupported image type: ${mimeType}`
                                                                                                 );
+                                                                                            }
                                                                                             await writeFile(result.filePath, image);
                                                                                         }}
                                                                                     >
@@ -2282,6 +2293,12 @@ async function getPacksTabContentsRows(data: {
                                                     }
                                                     return <PackIconElement />;
                                                 }
+                                                default:
+                                                    return (
+                                                        <td>
+                                                            <span style="color: red;">ERROR: MISSING COLUMN HANDLER</span>
+                                                        </td>
+                                                    );
                                             }
                                         })}
                                     </tr>
@@ -2302,7 +2319,7 @@ async function getPacksTabContentsRows(data: {
                                                 try {
                                                     const worldResourcePacksJSON: WorldXPacksJSONSchema = json5.parse(
                                                         await readFile(path.join(data.tab.tempPath ?? data.tab.path, "world_resource_packs.json"), "utf-8")
-                                                    ) as WorldXPacksJSONSchema;
+                                                    );
                                                     const packIndex: number = worldResourcePacksJSON.findIndex(
                                                         (entry) =>
                                                             entry.pack_id === pack.pack_id &&
@@ -2312,7 +2329,7 @@ async function getPacksTabContentsRows(data: {
                                                                 ?.compareMain(typeof entry.version === "string" ? entry.version : entry.version.join(".")) === 0
                                                     );
                                                     if (packIndex === -1) {
-                                                        data.updateTablesContents?.(true);
+                                                        void data.updateTablesContents?.(true);
                                                         return;
                                                     }
                                                     worldResourcePacksJSON.splice(packIndex, 1);
@@ -2322,13 +2339,13 @@ async function getPacksTabContentsRows(data: {
                                                         "utf-8"
                                                     );
                                                     data.tab.setFileAsModified("world_resource_packs.json");
-                                                    data.updateTablesContents?.(true);
+                                                    void data.updateTablesContents?.(true);
                                                 } catch (e) {
                                                     console.error("Error while deactivating pack:", e, "pack:", pack);
-                                                    dialog.showMessageBox({
+                                                    void dialog.showMessageBox({
                                                         type: "error",
                                                         title: "Error",
-                                                        message: `An error occured while deactivating the pack. (UUID: ${pack.pack_id}, Version: ${pack.version})`,
+                                                        message: `An error occured while deactivating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                         detail: String(e),
                                                         buttons: ["OK"],
                                                         noLink: true,
@@ -2347,14 +2364,14 @@ async function getPacksTabContentsRows(data: {
                                                                 path.join(data.tab.tempPath ?? data.tab.path, "world_resource_pack_history.json"),
                                                                 "utf-8"
                                                             )
-                                                        ) as WorldXPackHistoryJSONSchema;
+                                                        );
                                                         const packIndex: number = worldResourcePackHistoryJSON.packs.findIndex((entry) =>
                                                             typeof pack.version === "string" ?
                                                                 pack.version === entry.version
                                                             :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
                                                         );
                                                         if (packIndex === -1) {
-                                                            data.updateTablesContents?.(true);
+                                                            void data.updateTablesContents?.(true);
                                                             return;
                                                         }
                                                         worldResourcePackHistoryJSON.packs.splice(packIndex, 1);
@@ -2364,13 +2381,13 @@ async function getPacksTabContentsRows(data: {
                                                             "utf-8"
                                                         );
                                                         data.tab.setFileAsModified("world_resource_pack_history.json");
-                                                        data.updateTablesContents?.(true);
+                                                        void data.updateTablesContents?.(true);
                                                     } catch (e) {
                                                         console.error("Error while deleting pack from history:", e, "pack:", pack);
-                                                        dialog.showMessageBox({
+                                                        void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${pack.version})`,
+                                                            message: `An error occured while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -2395,7 +2412,7 @@ async function getPacksTabContentsRows(data: {
                                                             :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
                                                         );
                                                         if (packIndex === -1) {
-                                                            data.updateTablesContents?.(true);
+                                                            void data.updateTablesContents?.(true);
                                                             return;
                                                         }
                                                         worldResourcePackHistoryJSON.packs.splice(packIndex, 1);
@@ -2405,13 +2422,13 @@ async function getPacksTabContentsRows(data: {
                                                             "utf-8"
                                                         );
                                                         data.tab.setFileAsModified("world_resource_pack_history.json");
-                                                        data.updateTablesContents?.(true);
+                                                        void data.updateTablesContents?.(true);
                                                     } catch (e) {
                                                         console.error("Error while deleting pack from world files:", e, "pack:", pack);
-                                                        dialog.showMessageBox({
+                                                        void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${pack.version})`,
+                                                            message: `An error occured while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -2425,7 +2442,7 @@ async function getPacksTabContentsRows(data: {
                                         <MenuItem disabled>Copy Cell Value</MenuItem>
                                     </ControlledMenu>
                                     <tr
-                                        data-key={`${pack.pack_id}@${pack.version}`}
+                                        data-key={`${pack.pack_id}@${typeof pack.version === "string" ? pack.version : pack.version?.join(".")}`}
                                         onDblClick={onEntryRightClick}
                                         onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                                             // Treat Alt+Click as a middle click.
@@ -2450,6 +2467,7 @@ async function getPacksTabContentsRows(data: {
         case "active_behaviorPacks": {
             const columns = config.views.packs.modeSettings.active.sections.behaviorPacks.columns;
             return await Promise.all(
+                // eslint-disable-next-line @typescript-eslint/require-await
                 data.entries?.map(async (pack: PackEntry): Promise<JSX.Element> => {
                     // REMOVE: This should be removed once the logic to get it outside of this function is fully tested. Once this is removed, the "Loading..." messages in the table cells should be reimplemented.
                     // const historyEntry: WorldXPackHistoryJSONSchema["packs"][number] | null =
@@ -2507,10 +2525,10 @@ async function getPacksTabContentsRows(data: {
                         function onEntryRightClick(event: TargetedMouseEvent<HTMLTableRowElement>): void {
                             event.preventDefault();
                             event.stopPropagation();
-                            const clickPosition: { x: number; y: number } = {
-                                x: event.clientX,
-                                y: event.clientY,
-                            };
+                            // const clickPosition: { x: number; y: number } = {
+                            //     x: event.clientX,
+                            //     y: event.clientY,
+                            // };
                             // console.log(clickPosition);
 
                             copyContextMenuItemValue = null;
@@ -2542,7 +2560,7 @@ async function getPacksTabContentsRows(data: {
                                                 try {
                                                     const worldBehaviorPacksJSON: WorldXPacksJSONSchema = json5.parse(
                                                         await readFile(path.join(data.tab.tempPath ?? data.tab.path, "world_behavior_packs.json"), "utf-8")
-                                                    ) as WorldXPacksJSONSchema;
+                                                    );
                                                     const packIndex: number = worldBehaviorPacksJSON.findIndex(
                                                         (entry) =>
                                                             entry.pack_id === pack.pack_id &&
@@ -2552,7 +2570,7 @@ async function getPacksTabContentsRows(data: {
                                                                 ?.compareMain(typeof entry.version === "string" ? entry.version : entry.version.join(".")) === 0
                                                     );
                                                     if (packIndex === -1) {
-                                                        data.updateTablesContents?.(true);
+                                                        void data.updateTablesContents?.(true);
                                                         return;
                                                     }
                                                     worldBehaviorPacksJSON.splice(packIndex, 1);
@@ -2562,13 +2580,13 @@ async function getPacksTabContentsRows(data: {
                                                         "utf-8"
                                                     );
                                                     data.tab.setFileAsModified("world_behavior_packs.json");
-                                                    data.updateTablesContents?.(true);
+                                                    void data.updateTablesContents?.(true);
                                                 } catch (e) {
                                                     console.error("Error while deactivating pack:", e, "pack:", pack);
-                                                    dialog.showMessageBox({
+                                                    void dialog.showMessageBox({
                                                         type: "error",
                                                         title: "Error",
-                                                        message: `An error occured while deactivating the pack. (UUID: ${pack.pack_id}, Version: ${pack.version})`,
+                                                        message: `An error occured while deactivating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                         detail: String(e),
                                                         buttons: ["OK"],
                                                         noLink: true,
@@ -2587,14 +2605,14 @@ async function getPacksTabContentsRows(data: {
                                                                 path.join(data.tab.tempPath ?? data.tab.path, "world_behavior_pack_history.json"),
                                                                 "utf-8"
                                                             )
-                                                        ) as WorldXPackHistoryJSONSchema;
+                                                        );
                                                         const packIndex: number = worldBehaviorPackHistoryJSON.packs.findIndex((entry) =>
                                                             typeof pack.version === "string" ?
                                                                 pack.version === entry.version
                                                             :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
                                                         );
                                                         if (packIndex === -1) {
-                                                            data.updateTablesContents?.(true);
+                                                            void data.updateTablesContents?.(true);
                                                             return;
                                                         }
                                                         worldBehaviorPackHistoryJSON.packs.splice(packIndex, 1);
@@ -2604,13 +2622,13 @@ async function getPacksTabContentsRows(data: {
                                                             "utf-8"
                                                         );
                                                         data.tab.setFileAsModified("world_behavior_pack_history.json");
-                                                        data.updateTablesContents?.(true);
+                                                        void data.updateTablesContents?.(true);
                                                     } catch (e) {
                                                         console.error("Error while deleting pack from history:", e, "pack:", pack);
-                                                        dialog.showMessageBox({
+                                                        void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${pack.version})`,
+                                                            message: `An error occured while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -2635,7 +2653,7 @@ async function getPacksTabContentsRows(data: {
                                                             :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
                                                         );
                                                         if (packIndex === -1) {
-                                                            data.updateTablesContents?.(true);
+                                                            void data.updateTablesContents?.(true);
                                                             return;
                                                         }
                                                         worldBehaviorPackHistoryJSON.packs.splice(packIndex, 1);
@@ -2645,13 +2663,13 @@ async function getPacksTabContentsRows(data: {
                                                             "utf-8"
                                                         );
                                                         data.tab.setFileAsModified("world_behavior_pack_history.json");
-                                                        data.updateTablesContents?.(true);
+                                                        void data.updateTablesContents?.(true);
                                                     } catch (e) {
                                                         console.error("Error while deleting pack from world files:", e, "pack:", pack);
-                                                        dialog.showMessageBox({
+                                                        void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${pack.version})`,
+                                                            message: `An error occured while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -2664,15 +2682,15 @@ async function getPacksTabContentsRows(data: {
                                         )} */}
                                         {!copyContextMenuItemValue || copyContextMenuItemValue.value !== undefined || !copyContextMenuItemValue.formatOptions ?
                                             <MenuItem
-                                                onClick={async (_event: ContextMenu_ClickEvent): Promise<void> => {
+                                                onClick={(_event: ContextMenu_ClickEvent): void => {
                                                     // if (!(event.syntheticEvent.currentTarget instanceof HTMLLIElement)) return;
                                                     // event.syntheticEvent.currentTarget.ariaDisabled = "true";
                                                     // event.syntheticEvent.currentTarget.classList.add("szh-menu__item--disabled");
-                                                    if (!copyContextMenuItemValue || copyContextMenuItemValue.value === undefined) return;
+                                                    if (copyContextMenuItemValue?.value === undefined) return;
                                                     clipboard.writeText(copyContextMenuItemValue.value);
                                                     // copyContextMenuItemValue = null;
                                                 }}
-                                                disabled={!copyContextMenuItemValue || copyContextMenuItemValue.value === undefined}
+                                                disabled={copyContextMenuItemValue?.value === undefined}
                                             >
                                                 Copy Cell Value
                                             </MenuItem>
@@ -2695,7 +2713,7 @@ async function getPacksTabContentsRows(data: {
                                         )}
                                     </ControlledMenu>
                                     <tr
-                                        data-key={`${pack.pack_id}@${pack.version}`}
+                                        data-key={`${pack.pack_id}@${typeof pack.version === "string" ? pack.version : pack.version?.join(".")}`}
                                         onDblClick={onEntryRightClick}
                                         onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                                             // Treat Alt+Click as a middle click.
@@ -2913,10 +2931,10 @@ async function getPacksTabContentsRows(data: {
                                                         function onPackIconRightClick(event: JSX.TargetedMouseEvent<HTMLImageElement>): void {
                                                             event.preventDefault();
                                                             event.stopPropagation();
-                                                            const clickPosition: { x: number; y: number } = {
-                                                                x: event.clientX,
-                                                                y: event.clientY,
-                                                            };
+                                                            // const clickPosition: { x: number; y: number } = {
+                                                            //     x: event.clientX,
+                                                            //     y: event.clientY,
+                                                            // };
                                                             // console.log(clickPosition);
 
                                                             packIconContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
@@ -2961,22 +2979,25 @@ async function getPacksTabContentsRows(data: {
                                                                                             });
                                                                                             if (result.canceled) return;
                                                                                             const mimeType: string | false = mime.lookup(result.filePath);
-                                                                                            if (!mimeType)
+                                                                                            if (!mimeType) {
                                                                                                 return void dialog.showErrorBox(
                                                                                                     "Unsupported Image Type",
                                                                                                     `Unsupported image type: ${mimeType || path.extname(result.filePath)}`
                                                                                                 );
+                                                                                            }
                                                                                             const image: Buffer | null = await readFile(pack.pack_icon!);
-                                                                                            if (!image)
+                                                                                            if (!image) {
                                                                                                 return void dialog.showErrorBox(
                                                                                                     "Failed to Save Image",
                                                                                                     "An error occurred while saving the image."
                                                                                                 );
-                                                                                            if ("image/png" !== mimeType)
+                                                                                            }
+                                                                                            if (mimeType !== "image/png") {
                                                                                                 return void dialog.showErrorBox(
                                                                                                     "Unsupported Image Type",
                                                                                                     `Unsupported image type: ${mimeType}`
                                                                                                 );
+                                                                                            }
                                                                                             await writeFile(result.filePath, image);
                                                                                         }}
                                                                                     >
@@ -3043,6 +3064,12 @@ async function getPacksTabContentsRows(data: {
                                                     }
                                                     return <PackIconElement />;
                                                 }
+                                                default:
+                                                    return (
+                                                        <td>
+                                                            <span style="color: red;">ERROR: MISSING COLUMN HANDLER</span>
+                                                        </td>
+                                                    );
                                             }
                                         })}
                                     </tr>
@@ -3063,7 +3090,7 @@ async function getPacksTabContentsRows(data: {
                                                 try {
                                                     const worldBehaviorPacksJSON: WorldXPacksJSONSchema = json5.parse(
                                                         await readFile(path.join(data.tab.tempPath ?? data.tab.path, "world_behavior_packs.json"), "utf-8")
-                                                    ) as WorldXPacksJSONSchema;
+                                                    );
                                                     const packIndex: number = worldBehaviorPacksJSON.findIndex(
                                                         (entry) =>
                                                             entry.pack_id === pack.pack_id &&
@@ -3073,7 +3100,7 @@ async function getPacksTabContentsRows(data: {
                                                                 ?.compareMain(typeof entry.version === "string" ? entry.version : entry.version.join(".")) === 0
                                                     );
                                                     if (packIndex === -1) {
-                                                        data.updateTablesContents?.(true);
+                                                        void data.updateTablesContents?.(true);
                                                         return;
                                                     }
                                                     worldBehaviorPacksJSON.splice(packIndex, 1);
@@ -3083,13 +3110,13 @@ async function getPacksTabContentsRows(data: {
                                                         "utf-8"
                                                     );
                                                     data.tab.setFileAsModified("world_behavior_packs.json");
-                                                    data.updateTablesContents?.(true);
+                                                    void data.updateTablesContents?.(true);
                                                 } catch (e) {
                                                     console.error("Error while deactivating pack:", e, "pack:", pack);
-                                                    dialog.showMessageBox({
+                                                    void dialog.showMessageBox({
                                                         type: "error",
                                                         title: "Error",
-                                                        message: `An error occured while deactivating the pack. (UUID: ${pack.pack_id}, Version: ${pack.version})`,
+                                                        message: `An error occured while deactivating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                         detail: String(e),
                                                         buttons: ["OK"],
                                                         noLink: true,
@@ -3108,14 +3135,14 @@ async function getPacksTabContentsRows(data: {
                                                                 path.join(data.tab.tempPath ?? data.tab.path, "world_behavior_pack_history.json"),
                                                                 "utf-8"
                                                             )
-                                                        ) as WorldXPackHistoryJSONSchema;
+                                                        );
                                                         const packIndex: number = worldBehaviorPackHistoryJSON.packs.findIndex((entry) =>
                                                             typeof pack.version === "string" ?
                                                                 pack.version === entry.version
                                                             :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
                                                         );
                                                         if (packIndex === -1) {
-                                                            data.updateTablesContents?.(true);
+                                                            void data.updateTablesContents?.(true);
                                                             return;
                                                         }
                                                         worldBehaviorPackHistoryJSON.packs.splice(packIndex, 1);
@@ -3125,13 +3152,13 @@ async function getPacksTabContentsRows(data: {
                                                             "utf-8"
                                                         );
                                                         data.tab.setFileAsModified("world_behavior_pack_history.json");
-                                                        data.updateTablesContents?.(true);
+                                                        void data.updateTablesContents?.(true);
                                                     } catch (e) {
                                                         console.error("Error while deleting pack from history:", e, "pack:", pack);
-                                                        dialog.showMessageBox({
+                                                        void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${pack.version})`,
+                                                            message: `An error occured while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -3156,7 +3183,7 @@ async function getPacksTabContentsRows(data: {
                                                             :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
                                                         );
                                                         if (packIndex === -1) {
-                                                            data.updateTablesContents?.(true);
+                                                            void data.updateTablesContents?.(true);
                                                             return;
                                                         }
                                                         worldBehaviorPackHistoryJSON.packs.splice(packIndex, 1);
@@ -3166,13 +3193,13 @@ async function getPacksTabContentsRows(data: {
                                                             "utf-8"
                                                         );
                                                         data.tab.setFileAsModified("world_behavior_pack_history.json");
-                                                        data.updateTablesContents?.(true);
+                                                        void data.updateTablesContents?.(true);
                                                     } catch (e) {
                                                         console.error("Error while deleting pack from world files:", e, "pack:", pack);
-                                                        dialog.showMessageBox({
+                                                        void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${pack.version})`,
+                                                            message: `An error occured while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -3186,7 +3213,7 @@ async function getPacksTabContentsRows(data: {
                                         <MenuItem disabled>Copy Cell Value</MenuItem>
                                     </ControlledMenu>
                                     <tr
-                                        data-key={`${pack.pack_id}@${pack.version}`}
+                                        data-key={`${pack.pack_id}@${typeof pack.version === "string" ? pack.version : pack.version?.join(".")}`}
                                         onDblClick={onEntryRightClick}
                                         onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                                             // Treat Alt+Click as a middle click.
@@ -3211,6 +3238,7 @@ async function getPacksTabContentsRows(data: {
         case "inactive_resourcePacks": {
             const columns = config.views.packs.modeSettings.inactive.sections.resourcePacks.columns;
             return await Promise.all(
+                // eslint-disable-next-line @typescript-eslint/require-await
                 data.entries?.map(async (pack: PackEntry): Promise<JSX.Element> => {
                     // REMOVE: This should be removed once the logic to get it outside of this function is fully tested. Once this is removed, the "Loading..." messages in the table cells should be reimplemented.
                     // const historyEntry: WorldXPackHistoryJSONSchema["packs"][number] | null =
@@ -3268,10 +3296,10 @@ async function getPacksTabContentsRows(data: {
                         function onEntryRightClick(event: TargetedMouseEvent<HTMLTableRowElement>): void {
                             event.preventDefault();
                             event.stopPropagation();
-                            const clickPosition: { x: number; y: number } = {
-                                x: event.clientX,
-                                y: event.clientY,
-                            };
+                            // const clickPosition: { x: number; y: number } = {
+                            //     x: event.clientX,
+                            //     y: event.clientY,
+                            // };
                             // console.log(clickPosition);
 
                             copyContextMenuItemValue = null;
@@ -3305,7 +3333,7 @@ async function getPacksTabContentsRows(data: {
                                                 try {
                                                     const worldResourcePacksJSON: WorldXPacksJSONSchema = json5.parse(
                                                         await readFile(path.join(data.tab.tempPath ?? data.tab.path, "world_resource_packs.json"), "utf-8")
-                                                    ) as WorldXPacksJSONSchema;
+                                                    );
                                                     const packIndex: number = worldResourcePacksJSON.findIndex(
                                                         (entry) =>
                                                             entry.pack_id === pack.pack_id &&
@@ -3315,7 +3343,7 @@ async function getPacksTabContentsRows(data: {
                                                                 ?.compareMain(typeof entry.version === "string" ? entry.version : entry.version.join(".")) === 0
                                                     );
                                                     if (packIndex !== -1) {
-                                                        data.updateTablesContents?.(true);
+                                                        void data.updateTablesContents?.(true);
                                                         return;
                                                     }
                                                     worldResourcePacksJSON.push({
@@ -3328,13 +3356,13 @@ async function getPacksTabContentsRows(data: {
                                                         "utf-8"
                                                     );
                                                     data.tab.setFileAsModified("world_resource_packs.json");
-                                                    data.updateTablesContents?.(true);
+                                                    void data.updateTablesContents?.(true);
                                                 } catch (e) {
                                                     console.error("Error while activating pack:", e, "pack:", pack);
-                                                    dialog.showMessageBox({
+                                                    void dialog.showMessageBox({
                                                         type: "error",
                                                         title: "Error",
-                                                        message: `An error occured while activating the pack. (UUID: ${pack.pack_id}, Version: ${pack.version})`,
+                                                        message: `An error occured while activating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                         detail: String(e),
                                                         buttons: ["OK"],
                                                         noLink: true,
@@ -3353,14 +3381,14 @@ async function getPacksTabContentsRows(data: {
                                                                 path.join(data.tab.tempPath ?? data.tab.path, "world_resource_pack_history.json"),
                                                                 "utf-8"
                                                             )
-                                                        ) as WorldXPackHistoryJSONSchema;
+                                                        );
                                                         const packIndex: number = worldResourcePackHistoryJSON.packs.findIndex((entry) =>
                                                             typeof pack.version === "string" ?
                                                                 pack.version === entry.version
                                                             :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
                                                         );
                                                         if (packIndex === -1) {
-                                                            data.updateTablesContents?.(true);
+                                                            void data.updateTablesContents?.(true);
                                                             return;
                                                         }
                                                         worldResourcePackHistoryJSON.packs.splice(packIndex, 1);
@@ -3370,13 +3398,13 @@ async function getPacksTabContentsRows(data: {
                                                             "utf-8"
                                                         );
                                                         data.tab.setFileAsModified("world_resource_pack_history.json");
-                                                        data.updateTablesContents?.(true);
+                                                        void data.updateTablesContents?.(true);
                                                     } catch (e) {
                                                         console.error("Error while deleting pack from history:", e, "pack:", pack);
-                                                        dialog.showMessageBox({
+                                                        void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${pack.version})`,
+                                                            message: `An error occured while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -3401,7 +3429,7 @@ async function getPacksTabContentsRows(data: {
                                                             :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
                                                         );
                                                         if (packIndex === -1) {
-                                                            data.updateTablesContents?.(true);
+                                                            void data.updateTablesContents?.(true);
                                                             return;
                                                         }
                                                         worldResourcePackHistoryJSON.packs.splice(packIndex, 1);
@@ -3411,13 +3439,13 @@ async function getPacksTabContentsRows(data: {
                                                             "utf-8"
                                                         );
                                                         data.tab.setFileAsModified("world_resource_pack_history.json");
-                                                        data.updateTablesContents?.(true);
+                                                        void data.updateTablesContents?.(true);
                                                     } catch (e) {
                                                         console.error("Error while deleting pack from world files:", e, "pack:", pack);
-                                                        dialog.showMessageBox({
+                                                        void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${pack.version})`,
+                                                            message: `An error occured while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -3430,15 +3458,15 @@ async function getPacksTabContentsRows(data: {
                                         )} */}
                                         {!copyContextMenuItemValue || copyContextMenuItemValue.value !== undefined || !copyContextMenuItemValue.formatOptions ?
                                             <MenuItem
-                                                onClick={async (_event: ContextMenu_ClickEvent): Promise<void> => {
+                                                onClick={(_event: ContextMenu_ClickEvent): void => {
                                                     // if (!(event.syntheticEvent.currentTarget instanceof HTMLLIElement)) return;
                                                     // event.syntheticEvent.currentTarget.ariaDisabled = "true";
                                                     // event.syntheticEvent.currentTarget.classList.add("szh-menu__item--disabled");
-                                                    if (!copyContextMenuItemValue || copyContextMenuItemValue.value === undefined) return;
+                                                    if (copyContextMenuItemValue?.value === undefined) return;
                                                     clipboard.writeText(copyContextMenuItemValue.value);
                                                     // copyContextMenuItemValue = null;
                                                 }}
-                                                disabled={!copyContextMenuItemValue || copyContextMenuItemValue.value === undefined}
+                                                disabled={copyContextMenuItemValue?.value === undefined}
                                             >
                                                 Copy Cell Value
                                             </MenuItem>
@@ -3461,7 +3489,7 @@ async function getPacksTabContentsRows(data: {
                                         )}
                                     </ControlledMenu>
                                     <tr
-                                        data-key={`${pack.pack_id}@${pack.version}`}
+                                        data-key={`${pack.pack_id}@${typeof pack.version === "string" ? pack.version : pack.version?.join(".")}`}
                                         onDblClick={onEntryRightClick}
                                         onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                                             // Treat Alt+Click as a middle click.
@@ -3684,10 +3712,10 @@ async function getPacksTabContentsRows(data: {
                                                         function onPackIconRightClick(event: JSX.TargetedMouseEvent<HTMLImageElement>): void {
                                                             event.preventDefault();
                                                             event.stopPropagation();
-                                                            const clickPosition: { x: number; y: number } = {
-                                                                x: event.clientX,
-                                                                y: event.clientY,
-                                                            };
+                                                            // const clickPosition: { x: number; y: number } = {
+                                                            //     x: event.clientX,
+                                                            //     y: event.clientY,
+                                                            // };
                                                             // console.log(clickPosition);
 
                                                             packIconContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
@@ -3732,22 +3760,25 @@ async function getPacksTabContentsRows(data: {
                                                                                             });
                                                                                             if (result.canceled) return;
                                                                                             const mimeType: string | false = mime.lookup(result.filePath);
-                                                                                            if (!mimeType)
+                                                                                            if (!mimeType) {
                                                                                                 return void dialog.showErrorBox(
                                                                                                     "Unsupported Image Type",
                                                                                                     `Unsupported image type: ${mimeType || path.extname(result.filePath)}`
                                                                                                 );
+                                                                                            }
                                                                                             const image: Buffer | null = await readFile(pack.pack_icon!);
-                                                                                            if (!image)
+                                                                                            if (!image) {
                                                                                                 return void dialog.showErrorBox(
                                                                                                     "Failed to Save Image",
                                                                                                     "An error occurred while saving the image."
                                                                                                 );
-                                                                                            if ("image/png" !== mimeType)
+                                                                                            }
+                                                                                            if (mimeType !== "image/png") {
                                                                                                 return void dialog.showErrorBox(
                                                                                                     "Unsupported Image Type",
                                                                                                     `Unsupported image type: ${mimeType}`
                                                                                                 );
+                                                                                            }
                                                                                             await writeFile(result.filePath, image);
                                                                                         }}
                                                                                     >
@@ -3814,6 +3845,12 @@ async function getPacksTabContentsRows(data: {
                                                     }
                                                     return <PackIconElement />;
                                                 }
+                                                default:
+                                                    return (
+                                                        <td>
+                                                            <span style="color: red;">ERROR: MISSING COLUMN HANDLER</span>
+                                                        </td>
+                                                    );
                                             }
                                         })}
                                     </tr>
@@ -3836,7 +3873,7 @@ async function getPacksTabContentsRows(data: {
                                                 try {
                                                     const worldResourcePacksJSON: WorldXPacksJSONSchema = json5.parse(
                                                         await readFile(path.join(data.tab.tempPath ?? data.tab.path, "world_resource_packs.json"), "utf-8")
-                                                    ) as WorldXPacksJSONSchema;
+                                                    );
                                                     const packIndex: number = worldResourcePacksJSON.findIndex(
                                                         (entry) =>
                                                             entry.pack_id === pack.pack_id &&
@@ -3846,7 +3883,7 @@ async function getPacksTabContentsRows(data: {
                                                                 ?.compareMain(typeof entry.version === "string" ? entry.version : entry.version.join(".")) === 0
                                                     );
                                                     if (packIndex !== -1) {
-                                                        data.updateTablesContents?.(true);
+                                                        void data.updateTablesContents?.(true);
                                                         return;
                                                     }
                                                     worldResourcePacksJSON.push({
@@ -3859,13 +3896,13 @@ async function getPacksTabContentsRows(data: {
                                                         "utf-8"
                                                     );
                                                     data.tab.setFileAsModified("world_resource_packs.json");
-                                                    data.updateTablesContents?.(true);
+                                                    void data.updateTablesContents?.(true);
                                                 } catch (e) {
                                                     console.error("Error while activating pack:", e, "pack:", pack);
-                                                    dialog.showMessageBox({
+                                                    void dialog.showMessageBox({
                                                         type: "error",
                                                         title: "Error",
-                                                        message: `An error occured while activating the pack. (UUID: ${pack.pack_id}, Version: ${pack.version})`,
+                                                        message: `An error occured while activating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                         detail: String(e),
                                                         buttons: ["OK"],
                                                         noLink: true,
@@ -3884,14 +3921,14 @@ async function getPacksTabContentsRows(data: {
                                                                 path.join(data.tab.tempPath ?? data.tab.path, "world_resource_pack_history.json"),
                                                                 "utf-8"
                                                             )
-                                                        ) as WorldXPackHistoryJSONSchema;
+                                                        );
                                                         const packIndex: number = worldResourcePackHistoryJSON.packs.findIndex((entry) =>
                                                             typeof pack.version === "string" ?
                                                                 pack.version === entry.version
                                                             :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
                                                         );
                                                         if (packIndex === -1) {
-                                                            data.updateTablesContents?.(true);
+                                                            void data.updateTablesContents?.(true);
                                                             return;
                                                         }
                                                         worldResourcePackHistoryJSON.packs.splice(packIndex, 1);
@@ -3901,13 +3938,13 @@ async function getPacksTabContentsRows(data: {
                                                             "utf-8"
                                                         );
                                                         data.tab.setFileAsModified("world_resource_pack_history.json");
-                                                        data.updateTablesContents?.(true);
+                                                        void data.updateTablesContents?.(true);
                                                     } catch (e) {
                                                         console.error("Error while deleting pack from history:", e, "pack:", pack);
-                                                        dialog.showMessageBox({
+                                                        void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${pack.version})`,
+                                                            message: `An error occured while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -3932,7 +3969,7 @@ async function getPacksTabContentsRows(data: {
                                                             :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
                                                         );
                                                         if (packIndex === -1) {
-                                                            data.updateTablesContents?.(true);
+                                                            void data.updateTablesContents?.(true);
                                                             return;
                                                         }
                                                         worldResourcePackHistoryJSON.packs.splice(packIndex, 1);
@@ -3942,13 +3979,13 @@ async function getPacksTabContentsRows(data: {
                                                             "utf-8"
                                                         );
                                                         data.tab.setFileAsModified("world_resource_pack_history.json");
-                                                        data.updateTablesContents?.(true);
+                                                        void data.updateTablesContents?.(true);
                                                     } catch (e) {
                                                         console.error("Error while deleting pack from world files:", e, "pack:", pack);
-                                                        dialog.showMessageBox({
+                                                        void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${pack.version})`,
+                                                            message: `An error occured while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -3962,7 +3999,7 @@ async function getPacksTabContentsRows(data: {
                                         <MenuItem disabled>Copy Cell Value</MenuItem>
                                     </ControlledMenu>
                                     <tr
-                                        data-key={`${pack.pack_id}@${pack.version}`}
+                                        data-key={`${pack.pack_id}@${typeof pack.version === "string" ? pack.version : pack.version?.join(".")}`}
                                         onDblClick={onEntryRightClick}
                                         onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                                             // Treat Alt+Click as a middle click.
@@ -3987,6 +4024,7 @@ async function getPacksTabContentsRows(data: {
         case "inactive_behaviorPacks": {
             const columns = config.views.packs.modeSettings.inactive.sections.behaviorPacks.columns;
             return await Promise.all(
+                // eslint-disable-next-line @typescript-eslint/require-await
                 data.entries?.map(async (pack: PackEntry): Promise<JSX.Element> => {
                     // REMOVE: This should be removed once the logic to get it outside of this function is fully tested. Once this is removed, the "Loading..." messages in the table cells should be reimplemented.
                     // const historyEntry: WorldXPackHistoryJSONSchema["packs"][number] | null =
@@ -4044,10 +4082,10 @@ async function getPacksTabContentsRows(data: {
                         function onEntryRightClick(event: TargetedMouseEvent<HTMLTableRowElement>): void {
                             event.preventDefault();
                             event.stopPropagation();
-                            const clickPosition: { x: number; y: number } = {
-                                x: event.clientX,
-                                y: event.clientY,
-                            };
+                            // const clickPosition: { x: number; y: number } = {
+                            //     x: event.clientX,
+                            //     y: event.clientY,
+                            // };
                             // console.log(clickPosition);
 
                             copyContextMenuItemValue = null;
@@ -4081,7 +4119,7 @@ async function getPacksTabContentsRows(data: {
                                                 try {
                                                     const worldBehaviorPacksJSON: WorldXPacksJSONSchema = json5.parse(
                                                         await readFile(path.join(data.tab.tempPath ?? data.tab.path, "world_behavior_packs.json"), "utf-8")
-                                                    ) as WorldXPacksJSONSchema;
+                                                    );
                                                     const packIndex: number = worldBehaviorPacksJSON.findIndex(
                                                         (entry) =>
                                                             entry.pack_id === pack.pack_id &&
@@ -4091,7 +4129,7 @@ async function getPacksTabContentsRows(data: {
                                                                 ?.compareMain(typeof entry.version === "string" ? entry.version : entry.version.join(".")) === 0
                                                     );
                                                     if (packIndex !== -1) {
-                                                        data.updateTablesContents?.(true);
+                                                        void data.updateTablesContents?.(true);
                                                         return;
                                                     }
                                                     worldBehaviorPacksJSON.push({
@@ -4104,13 +4142,13 @@ async function getPacksTabContentsRows(data: {
                                                         "utf-8"
                                                     );
                                                     data.tab.setFileAsModified("world_behavior_packs.json");
-                                                    data.updateTablesContents?.(true);
+                                                    void data.updateTablesContents?.(true);
                                                 } catch (e) {
                                                     console.error("Error while activating pack:", e, "pack:", pack);
-                                                    dialog.showMessageBox({
+                                                    void dialog.showMessageBox({
                                                         type: "error",
                                                         title: "Error",
-                                                        message: `An error occured while activating the pack. (UUID: ${pack.pack_id}, Version: ${pack.version})`,
+                                                        message: `An error occured while activating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                         detail: String(e),
                                                         buttons: ["OK"],
                                                         noLink: true,
@@ -4129,14 +4167,14 @@ async function getPacksTabContentsRows(data: {
                                                                 path.join(data.tab.tempPath ?? data.tab.path, "world_behavior_pack_history.json"),
                                                                 "utf-8"
                                                             )
-                                                        ) as WorldXPackHistoryJSONSchema;
+                                                        );
                                                         const packIndex: number = worldBehaviorPackHistoryJSON.packs.findIndex((entry) =>
                                                             typeof pack.version === "string" ?
                                                                 pack.version === entry.version
                                                             :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
                                                         );
                                                         if (packIndex === -1) {
-                                                            data.updateTablesContents?.(true);
+                                                            void data.updateTablesContents?.(true);
                                                             return;
                                                         }
                                                         worldBehaviorPackHistoryJSON.packs.splice(packIndex, 1);
@@ -4146,13 +4184,13 @@ async function getPacksTabContentsRows(data: {
                                                             "utf-8"
                                                         );
                                                         data.tab.setFileAsModified("world_behavior_pack_history.json");
-                                                        data.updateTablesContents?.(true);
+                                                        void data.updateTablesContents?.(true);
                                                     } catch (e) {
                                                         console.error("Error while deleting pack from history:", e, "pack:", pack);
-                                                        dialog.showMessageBox({
+                                                        void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${pack.version})`,
+                                                            message: `An error occured while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -4177,7 +4215,7 @@ async function getPacksTabContentsRows(data: {
                                                             :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
                                                         );
                                                         if (packIndex === -1) {
-                                                            data.updateTablesContents?.(true);
+                                                            void data.updateTablesContents?.(true);
                                                             return;
                                                         }
                                                         worldBehaviorPackHistoryJSON.packs.splice(packIndex, 1);
@@ -4187,13 +4225,13 @@ async function getPacksTabContentsRows(data: {
                                                             "utf-8"
                                                         );
                                                         data.tab.setFileAsModified("world_behavior_pack_history.json");
-                                                        data.updateTablesContents?.(true);
+                                                        void data.updateTablesContents?.(true);
                                                     } catch (e) {
                                                         console.error("Error while deleting pack from world files:", e, "pack:", pack);
-                                                        dialog.showMessageBox({
+                                                        void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${pack.version})`,
+                                                            message: `An error occured while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -4206,15 +4244,15 @@ async function getPacksTabContentsRows(data: {
                                         )} */}
                                         {!copyContextMenuItemValue || copyContextMenuItemValue.value !== undefined || !copyContextMenuItemValue.formatOptions ?
                                             <MenuItem
-                                                onClick={async (_event: ContextMenu_ClickEvent): Promise<void> => {
+                                                onClick={(_event: ContextMenu_ClickEvent): void => {
                                                     // if (!(event.syntheticEvent.currentTarget instanceof HTMLLIElement)) return;
                                                     // event.syntheticEvent.currentTarget.ariaDisabled = "true";
                                                     // event.syntheticEvent.currentTarget.classList.add("szh-menu__item--disabled");
-                                                    if (!copyContextMenuItemValue || copyContextMenuItemValue.value === undefined) return;
+                                                    if (copyContextMenuItemValue?.value === undefined) return;
                                                     clipboard.writeText(copyContextMenuItemValue.value);
                                                     // copyContextMenuItemValue = null;
                                                 }}
-                                                disabled={!copyContextMenuItemValue || copyContextMenuItemValue.value === undefined}
+                                                disabled={copyContextMenuItemValue?.value === undefined}
                                             >
                                                 Copy Cell Value
                                             </MenuItem>
@@ -4237,7 +4275,7 @@ async function getPacksTabContentsRows(data: {
                                         )}
                                     </ControlledMenu>
                                     <tr
-                                        data-key={`${pack.pack_id}@${pack.version}`}
+                                        data-key={`${pack.pack_id}@${typeof pack.version === "string" ? pack.version : pack.version?.join(".")}`}
                                         onDblClick={onEntryRightClick}
                                         onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                                             // Treat Alt+Click as a middle click.
@@ -4460,10 +4498,10 @@ async function getPacksTabContentsRows(data: {
                                                         function onPackIconRightClick(event: JSX.TargetedMouseEvent<HTMLImageElement>): void {
                                                             event.preventDefault();
                                                             event.stopPropagation();
-                                                            const clickPosition: { x: number; y: number } = {
-                                                                x: event.clientX,
-                                                                y: event.clientY,
-                                                            };
+                                                            // const clickPosition: { x: number; y: number } = {
+                                                            //     x: event.clientX,
+                                                            //     y: event.clientY,
+                                                            // };
                                                             // console.log(clickPosition);
 
                                                             packIconContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
@@ -4508,22 +4546,25 @@ async function getPacksTabContentsRows(data: {
                                                                                             });
                                                                                             if (result.canceled) return;
                                                                                             const mimeType: string | false = mime.lookup(result.filePath);
-                                                                                            if (!mimeType)
+                                                                                            if (!mimeType) {
                                                                                                 return void dialog.showErrorBox(
                                                                                                     "Unsupported Image Type",
                                                                                                     `Unsupported image type: ${mimeType || path.extname(result.filePath)}`
                                                                                                 );
+                                                                                            }
                                                                                             const image: Buffer | null = await readFile(pack.pack_icon!);
-                                                                                            if (!image)
+                                                                                            if (!image) {
                                                                                                 return void dialog.showErrorBox(
                                                                                                     "Failed to Save Image",
                                                                                                     "An error occurred while saving the image."
                                                                                                 );
-                                                                                            if ("image/png" !== mimeType)
+                                                                                            }
+                                                                                            if (mimeType !== "image/png") {
                                                                                                 return void dialog.showErrorBox(
                                                                                                     "Unsupported Image Type",
                                                                                                     `Unsupported image type: ${mimeType}`
                                                                                                 );
+                                                                                            }
                                                                                             await writeFile(result.filePath, image);
                                                                                         }}
                                                                                     >
@@ -4590,6 +4631,12 @@ async function getPacksTabContentsRows(data: {
                                                     }
                                                     return <PackIconElement />;
                                                 }
+                                                default:
+                                                    return (
+                                                        <td>
+                                                            <span style="color: red;">ERROR: MISSING COLUMN HANDLER</span>
+                                                        </td>
+                                                    );
                                             }
                                         })}
                                     </tr>
@@ -4612,7 +4659,7 @@ async function getPacksTabContentsRows(data: {
                                                 try {
                                                     const worldBehaviorPacksJSON: WorldXPacksJSONSchema = json5.parse(
                                                         await readFile(path.join(data.tab.tempPath ?? data.tab.path, "world_behavior_packs.json"), "utf-8")
-                                                    ) as WorldXPacksJSONSchema;
+                                                    );
                                                     const packIndex: number = worldBehaviorPacksJSON.findIndex(
                                                         (entry) =>
                                                             entry.pack_id === pack.pack_id &&
@@ -4622,7 +4669,7 @@ async function getPacksTabContentsRows(data: {
                                                                 ?.compareMain(typeof entry.version === "string" ? entry.version : entry.version.join(".")) === 0
                                                     );
                                                     if (packIndex !== -1) {
-                                                        data.updateTablesContents?.(true);
+                                                        void data.updateTablesContents?.(true);
                                                         return;
                                                     }
                                                     worldBehaviorPacksJSON.push({
@@ -4635,13 +4682,13 @@ async function getPacksTabContentsRows(data: {
                                                         "utf-8"
                                                     );
                                                     data.tab.setFileAsModified("world_behavior_packs.json");
-                                                    data.updateTablesContents?.(true);
+                                                    void data.updateTablesContents?.(true);
                                                 } catch (e) {
                                                     console.error("Error while activating pack:", e, "pack:", pack);
-                                                    dialog.showMessageBox({
+                                                    void dialog.showMessageBox({
                                                         type: "error",
                                                         title: "Error",
-                                                        message: `An error occured while activating the pack. (UUID: ${pack.pack_id}, Version: ${pack.version})`,
+                                                        message: `An error occured while activating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                         detail: String(e),
                                                         buttons: ["OK"],
                                                         noLink: true,
@@ -4660,14 +4707,14 @@ async function getPacksTabContentsRows(data: {
                                                                 path.join(data.tab.tempPath ?? data.tab.path, "world_behavior_pack_history.json"),
                                                                 "utf-8"
                                                             )
-                                                        ) as WorldXPackHistoryJSONSchema;
+                                                        );
                                                         const packIndex: number = worldBehaviorPackHistoryJSON.packs.findIndex((entry) =>
                                                             typeof pack.version === "string" ?
                                                                 pack.version === entry.version
                                                             :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
                                                         );
                                                         if (packIndex === -1) {
-                                                            data.updateTablesContents?.(true);
+                                                            void data.updateTablesContents?.(true);
                                                             return;
                                                         }
                                                         worldBehaviorPackHistoryJSON.packs.splice(packIndex, 1);
@@ -4677,13 +4724,13 @@ async function getPacksTabContentsRows(data: {
                                                             "utf-8"
                                                         );
                                                         data.tab.setFileAsModified("world_behavior_pack_history.json");
-                                                        data.updateTablesContents?.(true);
+                                                        void data.updateTablesContents?.(true);
                                                     } catch (e) {
                                                         console.error("Error while deleting pack from history:", e, "pack:", pack);
-                                                        dialog.showMessageBox({
+                                                        void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${pack.version})`,
+                                                            message: `An error occured while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -4708,7 +4755,7 @@ async function getPacksTabContentsRows(data: {
                                                             :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
                                                         );
                                                         if (packIndex === -1) {
-                                                            data.updateTablesContents?.(true);
+                                                            void data.updateTablesContents?.(true);
                                                             return;
                                                         }
                                                         worldBehaviorPackHistoryJSON.packs.splice(packIndex, 1);
@@ -4718,13 +4765,13 @@ async function getPacksTabContentsRows(data: {
                                                             "utf-8"
                                                         );
                                                         data.tab.setFileAsModified("world_behavior_pack_history.json");
-                                                        data.updateTablesContents?.(true);
+                                                        void data.updateTablesContents?.(true);
                                                     } catch (e) {
                                                         console.error("Error while deleting pack from world files:", e, "pack:", pack);
-                                                        dialog.showMessageBox({
+                                                        void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${pack.version})`,
+                                                            message: `An error occured while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -4738,7 +4785,7 @@ async function getPacksTabContentsRows(data: {
                                         <MenuItem disabled>Copy Cell Value</MenuItem>
                                     </ControlledMenu>
                                     <tr
-                                        data-key={`${pack.pack_id}@${pack.version}`}
+                                        data-key={`${pack.pack_id}@${typeof pack.version === "string" ? pack.version : pack.version?.join(".")}`}
                                         onDblClick={onEntryRightClick}
                                         onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                                             // Treat Alt+Click as a middle click.
@@ -4760,5 +4807,7 @@ async function getPacksTabContentsRows(data: {
                 }) ?? []
             );
         }
+        // TODO: Maybe add an error message here?
+        // no default
     }
 }

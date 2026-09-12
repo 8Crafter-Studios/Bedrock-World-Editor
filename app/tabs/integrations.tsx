@@ -2,10 +2,21 @@ import type { JSX, RefObject } from "preact";
 import _React, { render, useRef } from "preact/compat";
 import { integrations, type Integration } from "../integrations";
 
+/**
+ * Props for the {@link IntegrationsTab} component.
+ */
 export interface IntegrationsTabProps {
     tab: TabManagerTab;
 }
 
+/**
+ * The integrations tab.
+ *
+ * This tab is used for integerations with other tools, add-ons, etc.
+ *
+ * @param props The props for the component.
+ * @returns The JSX element.
+ */
 export default function IntegrationsTab(props: IntegrationsTabProps): JSX.Element {
     const mainIntegrationsScreenRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     const currentIntegrationMenuRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
@@ -14,7 +25,8 @@ export default function IntegrationsTab(props: IntegrationsTabProps): JSX.Elemen
         viewOptionsContainer: useRef<HTMLDivElement>(null),
         viewOptionsTabbedSelector: useRef<HTMLDivElement>(null),
     };
-    type IntegrationsTabMode = "detected" | "undetected" | "loading";
+    type IntegrationsTabMode = "detected" | "undetected" | "loading"; // TODO: Add "errored" mode. #61
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     let mode: IntegrationsTabMode = "detected" as IntegrationsTabMode; // TEMP: This `as` statement is just temporary to prevent the errors about no overlap.
     const detectedAndUndetectedIntegrations: Record<"detected" | "undetected" | "loading", Integration[]> = {
         detected: [],
@@ -43,8 +55,9 @@ export default function IntegrationsTab(props: IntegrationsTabProps): JSX.Elemen
                             detectedAndUndetectedIntegrations.loading.length === 0 &&
                             index !== -1 &&
                             detectedAndUndetectedIntegrations[mode].length === 0)
-                    )
+                    ) {
                         updateTablesContents();
+                    }
                 },
                 (e: unknown): void => {
                     console.error(e);

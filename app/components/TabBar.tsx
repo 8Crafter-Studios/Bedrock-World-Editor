@@ -1,11 +1,10 @@
-import { type JSX, type RefObject, type TargetedMouseEvent } from "preact";
+import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef, useState } from "preact/compat";
 import { checkIsURIOrPath } from "../../src/utils/pathUtils";
 const mime = require("mime-types") as typeof import("mime-types");
 import { existsSync, globSync, readFileSync } from "node:fs";
 import type { NBTSchemas, Vector2 } from "mcbe-leveldb";
 import { dialog, shell } from "@electron/remote";
-import { get } from "jquery";
 import type { MessageBoxReturnValue, OpenDialogReturnValue } from "electron";
 import { ControlledMenu, MenuDivider, MenuItem, type ClickEvent } from "@szhsin/react-menu";
 import path from "node:path";
@@ -40,11 +39,14 @@ export default function TabBar(): JSX.Element {
             window.removeEventListener("mousedown", hideAddTabPopup);
         };
     }, []);
+    /**
+     * Represents an option that shows in the list when you click the "+" button on the right of the tab bar.
+     */
     interface PopupTab {
         icon: string;
         name: string;
         resolution: number;
-        onClick?(event: JSX.TargetedMouseEvent<HTMLDivElement>): Promise<void> | void;
+        onClick?(this: void, event: JSX.TargetedMouseEvent<HTMLDivElement>): Promise<void> | void;
     }
     const popupTabs: PopupTab[] = (
         [
@@ -52,7 +54,7 @@ export default function TabBar(): JSX.Element {
                 icon: "resource://images/ui/glyphs/world_glyph_color.png",
                 name: "World",
                 resolution: 17,
-                onClick(_event) {
+                onClick(_event: TargetedMouseEvent<HTMLDivElement>): void {
                     $("#add-tab-popup-menu").hide();
                     tabManager.switchTab(null);
                 },
@@ -61,7 +63,7 @@ export default function TabBar(): JSX.Element {
                 icon: "resource://images/ui/glyphs/Folder-Closed.png",
                 name: "World Folder",
                 resolution: 12,
-                async onClick(event) {
+                async onClick(_event: TargetedMouseEvent<HTMLDivElement>): Promise<void> {
                     $("#add-tab-popup-menu").hide();
                     // IDEA: If the user holds ALT while clicking the button, have it prompt them to select what mode to open the world folders in.
                     const openFolderResult: OpenDialogReturnValue = await dialog.showOpenDialog(getCurrentWindow(), {
@@ -112,7 +114,7 @@ export default function TabBar(): JSX.Element {
                         });
                     });
                     if (invalidFilePaths.length) {
-                        dialog.showMessageBox(getCurrentWindow(), {
+                        void dialog.showMessageBox(getCurrentWindow(), {
                             type: "error",
                             title: `Invalid World Folder${invalidFilePaths.length === 1 ? "" : "s"}`,
                             message: `The following ${invalidFilePaths.length} world folder${invalidFilePaths.length === 1 ? "" : "s"} could not be opened as ${invalidFilePaths.length === 1 ? "it is" : "they are"} missing a level.dat file:`,
@@ -127,7 +129,7 @@ export default function TabBar(): JSX.Element {
                 icon: "resource://images/ui/glyphs/icon_bookshelf.png",
                 name: "LevelDB Folder",
                 resolution: 18,
-                async onClick(event) {
+                async onClick(_event: TargetedMouseEvent<HTMLDivElement>): Promise<void> {
                     $("#add-tab-popup-menu").hide();
                     // IDEA: If the user holds ALT while clicking the button, have it prompt them to select what mode to open the LevelDB folders in.
                     const openFolderResult: OpenDialogReturnValue = await dialog.showOpenDialog(getCurrentWindow(), {
@@ -145,7 +147,7 @@ export default function TabBar(): JSX.Element {
                         /* if (existsSync(path.join(filePath, "level.dat"))) */ validFilePaths.push(filePath);
                         // else invalidFilePaths.push(filePath);
                     });
-                    validFilePaths.forEach(async (folderPath: string): Promise<void> => {
+                    validFilePaths.forEach((folderPath: string): void => {
                         tabManager.openTab({
                             icon: "resource://images/ui/glyphs/icon_bookshelf.png", // TODO: Add supports for using the custom icon set for the folder if it exists.
                             name: path.basename(folderPath), // TODO: Implement something to get a better name for the tab (as it will often times just be `db`).
@@ -154,7 +156,7 @@ export default function TabBar(): JSX.Element {
                         });
                     });
                     // if (invalidFilePaths.length) {
-                    //     dialog.showMessageBox(getCurrentWindow(), {
+                    //     void dialog.showMessageBox(getCurrentWindow(), {
                     //         type: "error",
                     //         title: `Invalid World Folder${invalidFilePaths.length === 1 ? "" : "s"}`,
                     //         message: `The following ${invalidFilePaths.length} world folder${invalidFilePaths.length === 1 ? "" : "s"} could not be opened as ${invalidFilePaths.length === 1 ? "it is" : "they are"} missing a level.dat file:`,
@@ -170,7 +172,7 @@ export default function TabBar(): JSX.Element {
                 icon: "resource://images/ui/glyphs/Data-Empty.png",
                 name: "NBT File",
                 resolution: 12,
-                async onClick(event) {
+                async onClick(_event: TargetedMouseEvent<HTMLDivElement>): Promise<void> {
                     $("#add-tab-popup-menu").hide();
                     // IDEA: If the user holds ALT while clicking the button, have it prompt them to select what mode to open the NBT files in.
                     const openFileResult: OpenDialogReturnValue = await dialog.showOpenDialog(getCurrentWindow(), {
@@ -185,7 +187,7 @@ export default function TabBar(): JSX.Element {
                         title: "Open NBT Files",
                     });
                     if (openFileResult.canceled) return;
-                    openFileResult.filePaths.forEach(async (filePath: string): Promise<void> => {
+                    openFileResult.filePaths.forEach((filePath: string): void => {
                         tabManager.openTab({
                             icon: undefined, // TODO: Add an icon for NBT tabs, and add support for using the custom icon set for the file if it exists.
                             name: path.basename(filePath),
@@ -199,7 +201,7 @@ export default function TabBar(): JSX.Element {
                 icon: "resource://images/ui/glyphs/Data-Empty.png",
                 name: "JSON File",
                 resolution: 12,
-                async onClick(event) {
+                async onClick(_event: TargetedMouseEvent<HTMLDivElement>): Promise<void> {
                     $("#add-tab-popup-menu").hide();
                     // IDEA: If the user holds ALT while clicking the button, have it prompt them to select what mode to open the JSON files in.
                     const openFileResult: OpenDialogReturnValue = await dialog.showOpenDialog(getCurrentWindow(), {
@@ -214,7 +216,7 @@ export default function TabBar(): JSX.Element {
                         title: "Open NBT Files",
                     });
                     if (openFileResult.canceled) return;
-                    openFileResult.filePaths.forEach(async (filePath: string): Promise<void> => {
+                    openFileResult.filePaths.forEach((filePath: string): void => {
                         tabManager.openTab({
                             icon: undefined, // TODO: Add an icon for JSON tabs, and add support for using the custom icon set for the file if it exists.
                             name: path.basename(filePath),
@@ -228,7 +230,7 @@ export default function TabBar(): JSX.Element {
                 icon: "resource://images/ui/glyphs/Data-Empty.png",
                 name: "Raw File",
                 resolution: 12,
-                async onClick(event) {
+                async onClick(_event: TargetedMouseEvent<HTMLDivElement>): Promise<void> {
                     $("#add-tab-popup-menu").hide();
                     // IDEA: If the user holds ALT while clicking the button, have it prompt them to select what mode to open the binary files in.
                     const openFileResult: OpenDialogReturnValue = await dialog.showOpenDialog(getCurrentWindow(), {
@@ -240,7 +242,7 @@ export default function TabBar(): JSX.Element {
                         title: "Open NBT Files",
                     });
                     if (openFileResult.canceled) return;
-                    openFileResult.filePaths.forEach(async (filePath: string): Promise<void> => {
+                    openFileResult.filePaths.forEach((filePath: string): void => {
                         tabManager.openTab({
                             icon: undefined, // TODO: Add an icon for binary tabs, and add support for using the custom icon set for the file if it exists.
                             name: path.basename(filePath),
@@ -251,7 +253,10 @@ export default function TabBar(): JSX.Element {
                 },
             },
         ] as const satisfies (PopupTab | false | undefined)[]
-    ).filter((tab: PopupTab | false | undefined): tab is PopupTab => !!tab) as PopupTab[];
+    ).filter((tab: PopupTab | false | undefined): tab is PopupTab => !!tab);
+    /**
+     * Props for the {@link Tab} component.
+     */
     interface TabProps {
         tab: TabManagerTab;
     }
@@ -268,10 +273,10 @@ export default function TabBar(): JSX.Element {
             let index: number = 0;
             const elementRect: DOMRect = clonedElement?.getBoundingClientRect();
             const lastTabY: number =
-                Array.from(containerRef.current!.parentElement!.children)
+                Array.from(containerRef.current.parentElement!.children)
                     .findLast((tab: Element): boolean => !tab.hasAttribute("data-immovable"))
                     ?.getBoundingClientRect().top ?? 0;
-            for (const tab of containerRef.current!.parentElement!.children) {
+            for (const tab of containerRef.current.parentElement!.children) {
                 if (tab.hasAttribute("data-immovable")) continue;
                 const rect: DOMRect = tab.getBoundingClientRect();
                 if (rect.left + rect.width / 2 < elementRect.left) index++;
@@ -390,10 +395,10 @@ export default function TabBar(): JSX.Element {
         function onTabRightClick(event: JSX.TargetedMouseEvent<HTMLLIElement>): void {
             event.preventDefault();
             event.stopPropagation();
-            const clickPosition: { x: number; y: number } = {
-                x: event.clientX,
-                y: event.clientY,
-            };
+            // const clickPosition: { x: number; y: number } = {
+            //     x: event.clientX,
+            //     y: event.clientY,
+            // };
             // console.log(clickPosition);
 
             tabContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
@@ -426,9 +431,10 @@ export default function TabBar(): JSX.Element {
                         break;
                     case 2:
                         break;
+                    // no default
                 }
             } else {
-                props.tab.close();
+                await props.tab.close();
             }
         }
         return (
@@ -437,11 +443,11 @@ export default function TabBar(): JSX.Element {
                 onClick={(event: TargetedMouseEvent<HTMLLIElement>): void => {
                     // Treat Alt+Click as a middle click.
                     if (!event.altKey) return;
-                    onTabMiddleClick(event);
+                    void onTabMiddleClick(event);
                 }}
                 onAuxClick={(event: TargetedMouseEvent<HTMLLIElement>): void => {
                     if (event.button !== 1) return;
-                    onTabMiddleClick(event);
+                    void onTabMiddleClick(event);
                 }}
                 onContextMenu={(event: TargetedMouseEvent<HTMLLIElement>): void => void onTabRightClick(event)}
                 ref={containerRef}
@@ -499,22 +505,22 @@ export default function TabBar(): JSX.Element {
                                 title="Save & Close Tab (Alt to save in unsafe mode)"
                                 onClick={async (event: ClickEvent): Promise<void> => {
                                     await props.tab.save(false, event.syntheticEvent.altKey);
-                                    props.tab.close();
+                                    await props.tab.close();
                                 }}
                             >
                                 Save & Close Tab
                             </MenuItem>
                             <MenuItem
-                                onClick={(): void => {
-                                    props.tab.close();
+                                onClick={async (): Promise<void> => {
+                                    await props.tab.close();
                                 }}
                             >
                                 Close Tab Without Saving
                             </MenuItem>
                         </>
                     :   <MenuItem
-                            onClick={(): void => {
-                                props.tab.close();
+                            onClick={async (): Promise<void> => {
+                                await props.tab.close();
                             }}
                         >
                             Close Tab
@@ -523,10 +529,10 @@ export default function TabBar(): JSX.Element {
                     <MenuItem
                         title="Save & Close Others (Alt to save in unsafe mode)"
                         onClick={(event: ClickEvent): void => {
-                            tabManager.openTabs.forEach(async (tab: TabManagerTab): Promise<void> => {
+                            [...tabManager.openTabs].forEach(async (tab: TabManagerTab): Promise<void> => {
                                 if (tab !== props.tab) {
                                     await tab.save(false, event.syntheticEvent.altKey);
-                                    tab.close();
+                                    await tab.close();
                                 }
                             });
                         }}
@@ -536,8 +542,8 @@ export default function TabBar(): JSX.Element {
                     </MenuItem>
                     <MenuItem
                         onClick={(): void => {
-                            tabManager.openTabs.forEach((tab: TabManagerTab): void => {
-                                if (tab !== props.tab) tab.close();
+                            [...tabManager.openTabs].forEach(async (tab: TabManagerTab): Promise<void> => {
+                                if (tab !== props.tab) await tab.close();
                             });
                         }}
                         disabled={tabManager.openTabs.length < 2}
@@ -548,7 +554,7 @@ export default function TabBar(): JSX.Element {
                     {props.tab.type === "world" || props.tab.type === "leveldb" ?
                         <MenuItem
                             onClick={(): void => {
-                                shell.openPath(props.tab.path);
+                                void shell.openPath(props.tab.path);
                             }}
                         >
                             Open Folder in{" "}
@@ -625,9 +631,9 @@ export default function TabBar(): JSX.Element {
                         />
                     </div>
                     {props.tab.name.length > 40 ?
-                        props.tab.name.slice(0, 30 - Math.min(10, Math.max(0, props.tab.name.length - 45))) +
-                        "..." +
-                        props.tab.name.slice(30 + Math.max(0, props.tab.name.length - 40))
+                        `${props.tab.name.slice(0, 30 - Math.min(10, Math.max(0, props.tab.name.length - 45)))}...${props.tab.name.slice(
+                            30 + Math.max(0, props.tab.name.length - 40)
+                        )}`
                     :   props.tab.name}
                     {props.tab.readonly && (
                         <img
@@ -682,9 +688,10 @@ export default function TabBar(): JSX.Element {
                                         break;
                                     case 2:
                                         break;
+                                    // no default
                                 }
                             } else {
-                                props.tab.close();
+                                await props.tab.close();
                             }
                         }}
                     />

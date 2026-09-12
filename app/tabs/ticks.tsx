@@ -4,7 +4,6 @@ import {
     entryContentTypeToFormatMap,
     generateChunkKeyFromIndices,
     getDimensionTypes,
-    getDimensionTypesSync,
     getKeyDisplayName,
     prettyPrintSNBT,
     prismarineToSNBT,
@@ -25,6 +24,9 @@ import Notice from "../components/Notice";
 
 // TODO: Implement Async Mode for this tab.
 
+/**
+ * Props for the {@link TicksTab} component.
+ */
 export interface TicksTabProps {
     tab: TabManagerTab;
 }
@@ -76,6 +78,14 @@ const ticksTabSearchSyntax: SearchSyntaxHelpInfo = {
     },
 };
 
+/**
+ * The ticks tab.
+ *
+ * This tab is used to manage random ticks and pending ticks.
+ *
+ * @param props The props for the component.
+ * @returns The JSX element.
+ */
 export default function TicksTab(props: TicksTabProps): JSX.SpecificElement<"div"> {
     if (!props.tab.db) return <div>The ticks sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
     const containerRef: RefObject<HTMLTableElement> = useRef<HTMLTableElement>(null);
@@ -86,16 +96,17 @@ export default function TicksTab(props: TicksTabProps): JSX.SpecificElement<"div
         };
     });
     getTicksTabContents(props.tab, abortController.signal).then(
-        async (element: JSX.Element): Promise<void> => {
+        (element: JSX.Element): void => {
             if (!containerRef.current) return;
             // const tempElement: HTMLDivElement = document.createElement("div");
             render(null, containerRef.current);
             render(element, containerRef.current /* tempElement */);
             // containerRef.current?.replaceChildren(...tempElement.children);
         },
-        (reason: any): void => {
+        (reason: unknown): void => {
             if (reason instanceof DOMException && reason.name === "AbortError" && reason.message === "Tab switched.") return;
             if (containerRef.current) {
+                // TODO: Replace this with a better error screen.
                 const errorElement: HTMLDivElement = document.createElement("div");
                 errorElement.style.color = "red";
                 errorElement.style.fontFamily = "monospace";
@@ -105,7 +116,7 @@ export default function TicksTab(props: TicksTabProps): JSX.SpecificElement<"div
                         reason.stack?.startsWith(reason.toString()) ?
                             reason.stack
                         :   reason.toString() + reason.stack
-                    :   reason;
+                    :   String(reason);
                 render(null, containerRef.current);
                 containerRef.current.replaceChildren("Failed to load data:", errorElement);
             }
@@ -114,7 +125,7 @@ export default function TicksTab(props: TicksTabProps): JSX.SpecificElement<"div
     );
     const loadingScreenMessageContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     if (!props.tab.db.isOpen()) {
-        props.tab.awaitDBOpen!.then(async (): Promise<void> => {
+        void props.tab.awaitDBOpen!.then(async (): Promise<void> => {
             if (loadingScreenMessageContainerRef.current && !props.tab.cachedDBKeys) {
                 const formatter = new Intl.NumberFormat();
                 loadingScreenMessageContainerRef.current.textContent = `Reading LevelDB keys${props.tab.loadedCachedDBKeysProgress !== undefined ? `: ${formatter.format(props.tab.loadedCachedDBKeysProgress)}` : ""}...`;
@@ -146,7 +157,7 @@ export default function TicksTab(props: TicksTabProps): JSX.SpecificElement<"div
                 await sleep(20);
             }
         });
-        props.tab.awaitCachedDBKeys!.then((): void => {
+        void props.tab.awaitCachedDBKeys!.then((): void => {
             if (loadingScreenMessageContainerRef.current) loadingScreenMessageContainerRef.current.textContent = "";
         });
         return (
@@ -197,7 +208,7 @@ enum UpdateTablesContentsMode {
 async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Promise<JSX.Element> {
     if (!tab.db) return <div>The ticks sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
     if (!tab.db.isOpen() && !((await tab.awaitDBOpen) ?? true)) {
-        if (tab.errorDueToEncryptedLevelDB)
+        if (tab.errorDueToEncryptedLevelDB) {
             return (
                 <Notice
                     title="Encrypted LevelDB"
@@ -206,6 +217,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                     image="access_denied"
                 />
             );
+        }
         return (
             <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
                 <Notice
@@ -217,19 +229,23 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                 />
                 <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
                     {tab.errorOnDBOpen instanceof Error ?
-                        `${tab.errorOnDBOpen.stack !== undefined ? tab.errorOnDBOpen.stack : tab.errorOnDBOpen.toString()}${
+                        `${tab.errorOnDBOpen.stack ?? tab.errorOnDBOpen.toString()}${
                             tab.errorOnDBOpen.cause !== undefined ?
-                                `\nCaused by: ${((): unknown => {
-                                    try {
-                                        return typeof tab.errorOnDBOpen.cause === "object" ? JSON.stringify(tab.errorOnDBOpen.cause) : tab.errorOnDBOpen.cause;
-                                    } catch {
-                                        return tab.errorOnDBOpen.cause;
-                                    }
-                                })()}`
+                                `\nCaused by: ${String(
+                                    ((): unknown => {
+                                        try {
+                                            return typeof tab.errorOnDBOpen.cause === "object" ?
+                                                    JSON.stringify(tab.errorOnDBOpen.cause)
+                                                :   tab.errorOnDBOpen.cause;
+                                        } catch {
+                                            return tab.errorOnDBOpen.cause;
+                                        }
+                                    })()
+                                )}`
                             :   ""
                         }`
                     :   String(
-                            (function (): unknown {
+                            (function formatUnknownErrorValue(): unknown {
                                 try {
                                     return typeof tab.errorOnDBOpen === "object" ? JSON.stringify(tab.errorOnDBOpen) : tab.errorOnDBOpen;
                                 } catch {
@@ -303,10 +319,10 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
             searchButton: useRef<HTMLButtonElement>(null),
             helpButton: useRef<HTMLButtonElement>(null),
         };
-        const viewOptionsRefs = {
-            viewOptionsContainer: useRef<HTMLDivElement>(null),
-            viewOptionsTabbedSelector: useRef<HTMLDivElement>(null),
-        };
+        // const viewOptionsRefs = {
+        //     viewOptionsContainer: useRef<HTMLDivElement>(null),
+        //     viewOptionsTabbedSelector: useRef<HTMLDivElement>(null),
+        // };
         // const [data, setData] = useState<{
         //     randomTickKeys: RandomTickKeyData[];
         //     pendingTickKeys: PendingTickKeyData[];
@@ -326,8 +342,8 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                 // const [columnHeadersContextMenu_isOpen, columnHeadersContextMenu_setOpen] = useState(false);
                                 // const [columnHeadersContextMenu_anchorPoint, columnHeadersContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
                                 const headerName = ConfigConstants.views.Ticks.ticksTabModeSectionHeaderNames[mode][index];
-                                const sectionMode: ConfigConstants.views.Ticks.TicksTabSectionMode = (
-                                    sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Ticks.TicksTabSectionMode;
+                                const sectionMode: ConfigConstants.views.Ticks.TicksTabSectionMode =
+                                    sectionID === null ? (mode as null extends typeof sectionID ? typeof mode : never) : `${mode}_${sectionID}`;
                                 return (
                                     <>
                                         {/* TO-DO: Add in this context menu once the bug with it is fixed. https://github.com/szhsin/react-menu/issues/1591 */}
@@ -365,7 +381,13 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                                             columnID: (typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs)[typeof sectionMode][number]
                                                         ): JSX.SpecificElement<"th"> => {
                                                             const displayName = ConfigConstants.views.Ticks.columnIDToDisplayName[columnID];
-                                                            return <th>{typeof displayName === "string" ? displayName : (displayName as any).headerLabel}</th>;
+                                                            return (
+                                                                <th>
+                                                                    {typeof displayName === "string" ?
+                                                                        displayName
+                                                                    :   (displayName as { optionLabel: string; headerLabel: string }).headerLabel}
+                                                                </th>
+                                                            );
                                                         }
                                                     )}
                                                 </tr>
@@ -401,6 +423,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
             );
         }
         async function updateTablesContents(updateMode: UpdateTablesContentsMode): Promise<void> {
+            // TODO: Add an error handler to this function.
             if (!tablesContainerRef.current) return;
             if (updateMode >= 3) {
                 await tab.refreshCachedDBKeys();
@@ -557,11 +580,11 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
         };
         useEffect((): (() => void) => {
             function onModeChanged(): void {
-                updateTablesContents(UpdateTablesContentsMode.ReloadTablesContents);
+                void updateTablesContents(UpdateTablesContentsMode.ReloadTablesContents);
             }
             function onSimpleModeColumnsChanged(): void {
                 if (mode !== "simple") return;
-                updateTablesContents(UpdateTablesContentsMode.None);
+                void updateTablesContents(UpdateTablesContentsMode.None);
             }
             config.on("settingChanged:views.ticks.mode", onModeChanged);
             config.on("settingChanged:views.ticks.modeSettings.simple.sections.randomTicks.columns", onSimpleModeColumnsChanged);
@@ -572,7 +595,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                 config.off("settingChanged:views.ticks.modeSettings.simple.sections.pendingTicks.columns", onSimpleModeColumnsChanged);
             };
         });
-        let lastHideErrorPopupFunction: (() => void) | undefined = undefined;
+        let lastHideErrorPopupFunction: (() => void) | undefined;
         return (
             <>
                 {/* <div
@@ -604,8 +627,8 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                 if (!tab.cachedDBKeys) return;
                                 await Promise.all(
                                     tab.cachedDBKeys.RandomTicks.map(
-                                        (key: Buffer): Promise<void> =>
-                                            tab.db!.delete(key).then((success: boolean): void => {
+                                        async (key: Buffer): Promise<void> =>
+                                            void (await tab.db!.delete(key).then((success: boolean): void => {
                                                 if (!success) return;
                                                 tab.setLevelDBIsModified();
                                                 if (tab.cachedDBKeys?.RandomTicks?.includes(key)) {
@@ -617,10 +640,10 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                                         1
                                                     );
                                                 }
-                                            })
+                                            }))
                                     )
                                 );
-                                updateTablesContents(UpdateTablesContentsMode.ReloadTablesContents);
+                                void updateTablesContents(UpdateTablesContentsMode.ReloadTablesContents);
                             }}
                         >
                             <img
@@ -640,8 +663,8 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                 if (!tab.cachedDBKeys) return;
                                 await Promise.all(
                                     tab.cachedDBKeys.PendingTicks.map(
-                                        (key: Buffer): Promise<void> =>
-                                            tab.db!.delete(key).then((success: boolean): void => {
+                                        async (key: Buffer): Promise<void> =>
+                                            void (await tab.db!.delete(key).then((success: boolean): void => {
                                                 if (!success) return;
                                                 tab.setLevelDBIsModified();
                                                 if (tab.cachedDBKeys?.PendingTicks?.includes(key)) {
@@ -653,10 +676,10 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                                         1
                                                     );
                                                 }
-                                            })
+                                            }))
                                     )
                                 );
-                                updateTablesContents(UpdateTablesContentsMode.ReloadTablesContents);
+                                void updateTablesContents(UpdateTablesContentsMode.ReloadTablesContents);
                             }}
                         >
                             <img
@@ -676,8 +699,8 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                 if (!tab.cachedDBKeys) return;
                                 await Promise.all([
                                     ...tab.cachedDBKeys.RandomTicks.map(
-                                        (key: Buffer): Promise<void> =>
-                                            tab.db!.delete(key).then((success: boolean): void => {
+                                        async (key: Buffer): Promise<void> =>
+                                            void (await tab.db!.delete(key).then((success: boolean): void => {
                                                 if (!success) return;
                                                 tab.setLevelDBIsModified();
                                                 if (tab.cachedDBKeys?.RandomTicks?.includes(key)) {
@@ -689,11 +712,11 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                                         1
                                                     );
                                                 }
-                                            })
+                                            }))
                                     ),
                                     ...tab.cachedDBKeys.PendingTicks.map(
-                                        (key: Buffer): Promise<void> =>
-                                            tab.db!.delete(key).then((success: boolean): void => {
+                                        async (key: Buffer): Promise<void> =>
+                                            void (await tab.db!.delete(key).then((success: boolean): void => {
                                                 if (!success) return;
                                                 tab.setLevelDBIsModified();
                                                 if (tab.cachedDBKeys?.PendingTicks?.includes(key)) {
@@ -705,10 +728,10 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                                         1
                                                     );
                                                 }
-                                            })
+                                            }))
                                     ),
                                 ]);
-                                updateTablesContents(UpdateTablesContentsMode.ReloadTablesContents);
+                                void updateTablesContents(UpdateTablesContentsMode.ReloadTablesContents);
                             }}
                         >
                             <img
@@ -746,7 +769,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                         "RandomTicks"
                                     );
                                     if (await tab.db.get(key)) {
-                                        dialog.showMessageBox({
+                                        void dialog.showMessageBox({
                                             type: "error",
                                             title: "Duplicate Key",
                                             message: `Unable to create a new RandomTicks entry at chunk ${creationOptions.data.chunkX} ${creationOptions.data.chunkZ} in dimension ${creationOptions.data.dimension}.`,
@@ -770,7 +793,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                         },
                                     });
                                 } catch (e) {
-                                    dialog.showMessageBox({
+                                    void dialog.showMessageBox({
                                         type: "error",
                                         title: "Error",
                                         message: `An error occurred while creating the RandomTicks entry.`,
@@ -816,7 +839,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                         "PendingTicks"
                                     );
                                     if (await tab.db.get(key)) {
-                                        dialog.showMessageBox({
+                                        void dialog.showMessageBox({
                                             type: "error",
                                             title: "Duplicate Key",
                                             message: `Unable to create a new PendingTicks entry at chunk ${creationOptions.data.chunkX} ${creationOptions.data.chunkZ} in dimension ${creationOptions.data.dimension}.`,
@@ -840,7 +863,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                         },
                                     });
                                 } catch (e) {
-                                    dialog.showMessageBox({
+                                    void dialog.showMessageBox({
                                         type: "error",
                                         title: "Error",
                                         message: `An error occurred while creating the PendingTicks entry.`,
@@ -952,16 +975,17 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                     });
                                 }
                                 for (const key in queryData) {
-                                    if ([...getKeywordedOperators(["nbt", "contents"])].includes(key as any)) continue;
+                                    if (!Object.hasOwn(queryData, key)) continue;
+                                    if ([...getKeywordedOperators(["nbt", "contents"])].includes(key as never)) continue;
                                     if (
-                                        !keywordPrefixOperators.includes(key.slice(0, 1) as any) &&
-                                        keywords.includes(key.slice(1) as any) &&
+                                        !keywordPrefixOperators.includes(key.slice(0, 1) as never) &&
+                                        keywords.includes(key.slice(1) as never) &&
                                         /^[^a-z0-9]$/i.test(key.slice(0, 1))
                                     ) {
                                         showError({ message: `Unknown operator: ${key.slice(0, 1)}` });
-                                    } else if (!keywordedOperators.includes(key as any)) {
+                                    } else if (!keywordedOperators.includes(key as never)) {
                                         showError({
-                                            message: `Unknown filter: ${keywordPrefixOperators.includes(key.slice(0, 1) as any) ? key.slice(1) : key}`,
+                                            message: `Unknown filter: ${keywordPrefixOperators.includes(key.slice(0, 1) as never) ? key.slice(1) : key}`,
                                         });
                                     } else {
                                         showError({ message: `Operator ${key.slice(0, 1)} is not supported for filter: ${key.slice(1)}` });
@@ -972,17 +996,19 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                     function parseNBTQueries(queries: string[]): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery[] {
                                         return queries
                                             .map((v: string): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery | undefined => {
-                                                let data: TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery | undefined = undefined;
+                                                let data: TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery | undefined;
                                                 try {
-                                                    const val: any = JSON.parse(v);
+                                                    const val: unknown = JSON.parse(v);
                                                     if (typeof val !== "object") {
+                                                        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
                                                         switch (typeof val) {
                                                             // case "string":
                                                             //     if ()
                                                             default:
-                                                                throw new Error();
+                                                                throw new SyntaxError(`Expected a JSON object for NBT query, but got ${typeof val} instead.`);
                                                         }
                                                     } else {
+                                                        if (val === null) throw new SyntaxError("Expected a JSON object for NBT query, but got null instead.");
                                                         if (
                                                             [
                                                                 "path",
@@ -996,13 +1022,13 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                                         ) {
                                                             data = val;
                                                         } else {
-                                                            throw new Error();
+                                                            throw new SyntaxError("Missing known fields for NBT query.");
                                                         }
                                                     }
-                                                } catch {
+                                                } catch (e) {
                                                     if (v.split("=").length === 2) {
                                                         let [key, value] = v.split("=");
-                                                        let tagType: NBT.TagType | undefined = undefined;
+                                                        let tagType: NBT.TagType | undefined;
                                                         if (key?.includes(":")) {
                                                             let preKey: string;
                                                             [preKey, key] = key.split(":") as [preKey: string, key: string, ...string[]];
@@ -1012,15 +1038,17 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                                                 }
                                                             }
                                                         }
-                                                        let path: string[] | undefined = key?.split("/");
+                                                        const path: string[] | undefined = key?.split("/");
                                                         data = {};
                                                         data.key = key;
                                                         data.value = value;
                                                         data.path = path;
                                                         data.tagType = tagType;
                                                     } else {
+                                                        // TODO: The actual error should be displayed in the error message. #54
+                                                        reportError(e); // TEMP: Remove this once the actual error is included in the error message.
                                                         showError({ message: `Invalid NBT query: ${v}` });
-                                                        throw new Error("Error to return but already handled.");
+                                                        throw new Error("Error to return but already handled.", { cause: e });
                                                     }
                                                 }
                                                 return data;
@@ -1160,7 +1188,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                     );
                                     // tablesContainerRef.current.replaceChildren(...tempElement.children);
                                 }
-                                updateTablesContents(UpdateTablesContentsMode.ReloadTablesContents);
+                                void updateTablesContents(UpdateTablesContentsMode.ReloadTablesContents);
                             } catch (e) {
                                 if (e instanceof Error && e.message === "Error to return but already handled.") return;
                                 throw e;
@@ -1175,7 +1203,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                         class="search-help-button piximg invert_on_light_theme"
                         title="Help"
                         onClick={(): void => {
-                            let containerElement: HTMLDivElement = document.createElement("div");
+                            const containerElement: HTMLDivElement = document.createElement("div");
                             containerElement.style.display = "contents";
                             function OverlaySearchSyntaxHelpMenu(): JSX.SpecificElement<"div"> {
                                 const overlayElementRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
@@ -1210,6 +1238,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
     return <Contents />;
 }
 
+// eslint-disable-next-line @typescript-eslint/require-await -- TEMP
 async function getTicksTabContentsRows(data: {
     /**
      * The tab manager tab.
@@ -1241,10 +1270,10 @@ async function getTicksTabContentsRows(data: {
                     function onEntryRightClick(event: JSX.TargetedMouseEvent<HTMLTableRowElement>): void {
                         event.preventDefault();
                         event.stopPropagation();
-                        const clickPosition: { x: number; y: number } = {
-                            x: event.clientX,
-                            y: event.clientY,
-                        };
+                        // const clickPosition: { x: number; y: number } = {
+                        //     x: event.clientX,
+                        //     y: event.clientY,
+                        // };
                         // console.log(clickPosition);
 
                         entryContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
@@ -1319,6 +1348,12 @@ async function getTicksTabContentsRows(data: {
                                         // TODO: Add more columns here.
                                         case "DBKey":
                                             return <td>{randomTickKey.displayKey}</td>;
+                                        default:
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">ERROR: MISSING COLUMN HANDLER</span>
+                                                </td>
+                                            );
                                     }
                                 })}
                             </tr>
@@ -1337,10 +1372,10 @@ async function getTicksTabContentsRows(data: {
                     function onEntryRightClick(event: JSX.TargetedMouseEvent<HTMLTableRowElement>): void {
                         event.preventDefault();
                         event.stopPropagation();
-                        const clickPosition: { x: number; y: number } = {
-                            x: event.clientX,
-                            y: event.clientY,
-                        };
+                        // const clickPosition: { x: number; y: number } = {
+                        //     x: event.clientX,
+                        //     y: event.clientY,
+                        // };
                         // console.log(clickPosition);
 
                         entryContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
@@ -1416,6 +1451,12 @@ async function getTicksTabContentsRows(data: {
                                         // TODO: Add more columns here.
                                         case "DBKey":
                                             return <td>{pendingTickKey.displayKey}</td>;
+                                        default:
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">ERROR: MISSING COLUMN HANDLER</span>
+                                                </td>
+                                            );
                                     }
                                 })}
                             </tr>
@@ -1425,5 +1466,7 @@ async function getTicksTabContentsRows(data: {
                 return <Row />;
             });
         }
+        // TODO: Maybe add an error message here?
+        // no default
     }
 }

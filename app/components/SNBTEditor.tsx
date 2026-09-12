@@ -4,7 +4,6 @@ import * as monaco from "monaco-editor";
 import type { JSX } from "preact";
 import { LoadingScreenContents } from "../app";
 import { useRef } from "preact/compat";
-import * as NBT from "prismarine-nbt";
 
 /**
  * Props for the {@link SNBTEditor} component.
@@ -66,7 +65,7 @@ export interface SNBTEditorProps {
 export default function SNBTEditor(props: SNBTEditorProps): JSX.Element {
     if (props.dataStorageObject?.dataType === "JSON") return <p style="color: red;">JSON is not supported.</p>;
     const editorRef = useRef<typeof Editor>(null);
-    let currentEditor: monaco.editor.IStandaloneCodeEditor | undefined = undefined;
+    let currentEditor: monaco.editor.IStandaloneCodeEditor | undefined;
     function handleEditorDidMount(editor: monaco.editor.IStandaloneCodeEditor, monaco: Monaco): void {
         currentEditor = editor;
         // editor.getid
@@ -115,7 +114,7 @@ export default function SNBTEditor(props: SNBTEditorProps): JSX.Element {
     let editorValue: string | undefined;
     let lastChangeTime: number = Date.now() - 1000;
     let lastChangeStartTime: number = Date.now() - 1000;
-    function handleEditorValueChanged(value: string | undefined, ev: monaco.editor.IModelContentChangedEvent): void {
+    function handleEditorValueChanged(value: string | undefined, _ev: monaco.editor.IModelContentChangedEvent): void {
         if (value === undefined || !dataLoaded) return;
         const currentChangeTime: number = Date.now();
         editorValue = value;
@@ -132,17 +131,17 @@ export default function SNBTEditor(props: SNBTEditorProps): JSX.Element {
                         props.dataStorageObject.data = v;
                     } else if (props.dataStorageObject.dataType === "NBT") {
                         const v = {
-                            name: (props.dataStorageObject.data.parsed as NBT.NBT)?.name,
+                            name: props.dataStorageObject.data.parsed?.name,
                             ...parseSNBTCompoundString(editorValue, { keepGoingAfterError: true }).value,
                         };
                         prismarineToSNBT(v);
-                        (props.dataStorageObject.data.parsed as NBT.NBT) = v;
+                        props.dataStorageObject.data.parsed = v;
                     }
                     const model = currentEditor?.getModel();
                     if (model) {
                         props.dataStorageObject.lastEditedInModel = model.id;
                         props.dataStorageObject.lastSavedDataObjectForModel ??= new Map();
-                        props.dataStorageObject.lastSavedDataObjectForModel.set(model.id, new WeakRef(props.dataStorageObject.data));
+                        props.dataStorageObject.lastSavedDataObjectForModel.set(model.id, new WeakRef(props.dataStorageObject.data as object));
                     }
                     props.onValueChange?.(props.dataStorageObject, { newValue: value, type: "changeContents" });
                 } catch (e) {
@@ -159,18 +158,18 @@ export default function SNBTEditor(props: SNBTEditorProps): JSX.Element {
                     props.dataStorageObject.data = v;
                 } else if (props.dataStorageObject.dataType === "NBT") {
                     const v = {
-                        name: (props.dataStorageObject.data.parsed as NBT.NBT)?.name,
+                        name: props.dataStorageObject.data.parsed?.name,
                         ...parseSNBTCompoundString(editorValue, { keepGoingAfterError: true }).value,
                     };
                     prismarineToSNBT(v);
-                    (props.dataStorageObject.data.parsed as NBT.NBT) = v;
+                    props.dataStorageObject.data.parsed = v;
                 }
 
                 const model = currentEditor?.getModel();
                 if (model) {
                     props.dataStorageObject.lastEditedInModel = model.id;
                     props.dataStorageObject.lastSavedDataObjectForModel ??= new Map();
-                    props.dataStorageObject.lastSavedDataObjectForModel.set(model.id, new WeakRef(props.dataStorageObject.data));
+                    props.dataStorageObject.lastSavedDataObjectForModel.set(model.id, new WeakRef(props.dataStorageObject.data as object));
                 }
                 props.onValueChange?.(props.dataStorageObject, { newValue: value, type: "changeContents" });
             } catch (e) {
@@ -183,7 +182,11 @@ export default function SNBTEditor(props: SNBTEditorProps): JSX.Element {
     let startingEditorValue: string | undefined =
         dataLoaded ?
             prettyPrintSNBT(
-                prismarineToSNBT(props.dataStorageObject.data.type === "compound" ? props.dataStorageObject.data : props.dataStorageObject.data.parsed),
+                prismarineToSNBT(
+                    props.dataStorageObject.dataType === "NBTCompound" ? props.dataStorageObject.data
+                    : props.dataStorageObject.dataType === "NBT" ? props.dataStorageObject.data.parsed
+                    : props.dataStorageObject.data
+                ),
                 {
                     indent: 4,
                     inlineArrays: true,
@@ -204,7 +207,7 @@ export default function SNBTEditor(props: SNBTEditorProps): JSX.Element {
             value={startingEditorValue}
             onMount={handleEditorDidMount}
             options={{
-                readOnly: props.readonly || !dataLoaded,
+                readOnly: !!props.readonly || !dataLoaded,
                 readOnlyMessage:
                     props.readonly ? props.readonlyMessage!
                     : !dataLoaded ? { value: "Data is not loaded." }

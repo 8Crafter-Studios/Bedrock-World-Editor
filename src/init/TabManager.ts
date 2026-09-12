@@ -31,17 +31,20 @@ import type { HexEditorDataStorageObject } from "../../app/components/BinaryHexE
 import type { WorldEditorDataStorageObject } from "../../app/tabs/worldEditor";
 
 namespace exports {
-    type DefaultEventMap = [never];
-    type Listener<K, T, F> =
-        T extends DefaultEventMap ? F
-        : K extends keyof T ?
-            T[K] extends unknown[] ?
-                (...args: T[K]) => void
-            :   never
-        :   never;
-    type Listener1<K extends keyof T, T> = Listener<K, T, (...args: any[]) => void>;
-    type EventMap<T> = Record<keyof T, any[]> | DefaultEventMap;
-    type Key<K, T> = T extends DefaultEventMap ? string | symbol : K | keyof T;
+    // type DefaultEventMap = [never];
+    // type Listener<K, T, F> =
+    //     T extends DefaultEventMap ? F
+    //     : K extends keyof T ?
+    //         T[K] extends unknown[] ?
+    //             (...args: T[K]) => void
+    //         :   never
+    //     :   never;
+    // type Listener1<K extends keyof T, T> = Listener<K, T, (...args: any[]) => void>;
+    // type EventMap<T> = Record<keyof T, any[]> | DefaultEventMap;
+    // type Key<K, T> = T extends DefaultEventMap ? string | symbol : K | keyof T;
+    /**
+     * Events emitted by the {@link TabManager} class.
+     */
     export interface TabManagerEventMap {
         /**
          * Emitted when the selected world or nbt tab changes (the top tab bar).
@@ -60,6 +63,9 @@ namespace exports {
          */
         reorderTabs: [TabManagerReorderTabsEvent];
     }
+    /**
+     * Events emitted by the {@link TabManagerTab} class.
+     */
     export interface TabManagerTabEventMap {
         /**
          * Emitted when the selected LevelDB entry changes (the bottom tab bar).
@@ -102,6 +108,9 @@ namespace exports {
          */
         reloadCurrentSubTab: [];
     }
+    /**
+     * Emitted when the selected world or nbt tab changes (the top tab bar).
+     */
     export interface TabManagerSwitchTabEvent {
         /**
          * The previous tab.
@@ -112,24 +121,36 @@ namespace exports {
          */
         newTab: TabManagerTab | TabManagerGenericTabID | null;
     }
+    /**
+     * Emitted when a tab is closed.
+     */
     export interface TabManagerClosedTabEvent {
         /**
          * The closed tab.
          */
         tab: TabManagerTab;
     }
+    /**
+     * Emitted when a tab is opened.
+     */
     export interface TabManagerOpenTabEvent {
         /**
          * The opened tab.
          */
         tab: TabManagerTab;
     }
+    /**
+     * Emitted when tabs are reordered.
+     */
     export interface TabManagerReorderTabsEvent {
         /**
          * The new order of tabs.
          */
         tabs: TabManagerTab[];
     }
+    /**
+     * Emitted when the selected LevelDB entry changes (the bottom tab bar).
+     */
     export interface TabManagerTabSwitchTabEvent {
         /**
          * The previous sub-tab.
@@ -140,24 +161,36 @@ namespace exports {
          */
         newTab: TabManagerSubTab | TabManagerTabGenericSubTabID | null;
     }
+    /**
+     * Emitted when one of the tab's sub-tabs are closed.
+     */
     export interface TabManagerTabClosedTabEvent {
         /**
          * The closed sub-tab.
          */
         tab: TabManagerSubTab;
     }
+    /**
+     * Emitted when one of the tab's sub-tabs are opened.
+     */
     export interface TabManagerTabOpenTabEvent {
         /**
          * The opened sub-tab.
          */
         tab: TabManagerSubTab;
     }
+    /**
+     * Emitted when the tab's sub-tabs are reordered.
+     */
     export interface TabManagerTabReorderTabsEvent {
         /**
          * The new order of sub-tabs.
          */
         tabs: TabManagerSubTab[];
     }
+    /**
+     * Emitted when the modification status of the tab changes.
+     */
     export interface TabManagerTabModificationStatusChangedEvent {
         /**
          * The tab that had its modification status changed.
@@ -168,12 +201,18 @@ namespace exports {
          */
         isModified: boolean;
     }
+    /**
+     * Emitted when a tab starts saving.
+     */
     export interface TabManagerTabStartedSavingEvent {
         /**
          * The tab that started saving.
          */
         tab: TabManagerTab;
     }
+    /**
+     * Emitted when a tab stops saving.
+     */
     export interface TabManagerTabStoppedSavingEvent {
         /**
          * The tab that was saved.
@@ -188,6 +227,9 @@ namespace exports {
          */
         error?: unknown;
     }
+    /**
+     * Emitted when the modification status of one of the tab's sub-tabs changes.
+     */
     export interface TabManagerSubTabModificationStatusChangedEvent {
         /**
          * The sug-tab that had its modification status changed.
@@ -269,7 +311,7 @@ namespace exports {
             let recentsData: RecentsData = { worlds: [], folders: [], files: [] };
             recentsReader: if (existsSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"))) {
                 try {
-                    const data: RecentsData = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), "utf-8"));
+                    const data = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), "utf-8")) as RecentsData;
                     // IDEA: Add something to validate the recents data.
                     recentsData = data;
                 } catch (e) {
@@ -308,7 +350,7 @@ namespace exports {
             let recentsData: RecentsData = { worlds: [], folders: [], files: [] };
             if (existsSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"))) {
                 try {
-                    const data: RecentsData = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), "utf-8"));
+                    const data = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), "utf-8")) as RecentsData;
                     // IDEA: Add something to validate the recents data.
                     recentsData = data;
                 } catch (e) {
@@ -320,7 +362,7 @@ namespace exports {
             removedItems.forEach((item: Electron.JumpListItem): void => {
                 if (item.type === "task") {
                     if (item.args?.startsWith("--allow-file-access-from-files --file-tab-type=world")) {
-                        const itemPath: string | undefined = item.args.match(/(?<=\s").*(?=")/)?.[0];
+                        const itemPath: string | undefined = /(?<=\s").*(?=")/.exec(item.args)?.[0];
                         if (!itemPath) {
                             console.warn("Unable to find world path in removedItems:", item);
                             return;
@@ -332,7 +374,7 @@ namespace exports {
                         if (worldsIndex !== -1) recentsData.worlds.splice(worldsIndex, 1);
                         else console.warn("Unable to find world task in removedItems:", item);
                     } else if (item.args?.startsWith("--allow-file-access-from-files --file-tab-type=leveldb")) {
-                        const itemPath: string | undefined = item.args.match(/(?<=\s").*(?=")/)?.[0];
+                        const itemPath: string | undefined = /(?<=\s").*(?=")/.exec(item.args)?.[0];
                         if (!itemPath) {
                             console.warn("Unable to find world path in removedItems:", item);
                             return;
@@ -350,10 +392,6 @@ namespace exports {
                         console.warn("Unable to find world path in removedItems:", item);
                         return;
                     }
-                    const worldsIndex: number = recentsData.worlds.findIndex(
-                        (world: RecentsItem): boolean =>
-                            !!world.path && path.normalize(world.path).replace(/[\\/]$/, "") === path.normalize(itemPath).replace(/[\\/]$/, "")
-                    );
                     const filesIndex: number = recentsData.files.findIndex(
                         (file: RecentsItem_File): boolean =>
                             !!file.path && path.normalize(file.path).replace(/[\\/]$/, "") === path.normalize(itemPath).replace(/[\\/]$/, "")
@@ -365,7 +403,7 @@ namespace exports {
             if (removedItems.length) writeFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), JSON.stringify(recentsData));
             if (!existsSync(path.join(APP_DATA_FOLDER_PATH, "taskbar_user_tasks.json"))) return;
             try {
-                var userTasksData: Electron.Task[] = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "taskbar_user_tasks.json"), "utf-8"));
+                var userTasksData = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "taskbar_user_tasks.json"), "utf-8")) as Electron.Task[];
             } catch (e) {
                 console.error("Error reading taskbar_user_tasks.json:", e);
                 return;
@@ -466,7 +504,7 @@ namespace exports {
             let recentsData: RecentsData = { worlds: [], folders: [], files: [] };
             if (existsSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"))) {
                 try {
-                    const data: RecentsData = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), "utf-8"));
+                    const data = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), "utf-8")) as RecentsData;
                     // IDEA: Add something to validate the recents data.
                     recentsData = data;
                 } catch (e) {
@@ -475,7 +513,7 @@ namespace exports {
                 }
             }
             const recentWorlds: MenuItemConstructorOptions[] = recentsData.worlds.map((world: RecentsItem): MenuItemConstructorOptions => {
-                if (!world.iconPath && !defaultWorldIconDataURI)
+                if (!world.iconPath && !defaultWorldIconDataURI) {
                     return {
                         label: world.title!,
                         sublabel: world.path!,
@@ -484,6 +522,7 @@ namespace exports {
                             this.openTab({ path: world.path!, type: "world", icon: undefined, name: world.title! });
                         },
                     };
+                }
                 const img: NativeImage = world.iconPath ? nativeImage.createFromPath(world.iconPath) : nativeImage.createFromDataURL(defaultWorldIconDataURI!);
                 return {
                     label: world.title!,
@@ -522,7 +561,7 @@ namespace exports {
                                 click: (): void => {
                                     if (existsSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"))) {
                                         try {
-                                            const data: RecentsData = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), "utf-8"));
+                                            const data = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), "utf-8")) as RecentsData;
                                             data.worlds.length = 0;
                                             writeFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), JSON.stringify(data));
                                         } catch (e) {
@@ -877,6 +916,11 @@ namespace exports {
                 case TabManagerTabMode.Copy:
                     this.saveEnabled = false;
                     break;
+                case TabManagerTabMode.Direct:
+                case TabManagerTabMode.CopyUntilSave:
+                case undefined:
+                default:
+                    break;
             }
             this.initAccess(props.mode ?? TabManagerTabMode.CopyUntilSave);
             this.getPinnedTabs().forEach((tab, i, a) =>
@@ -898,7 +942,7 @@ namespace exports {
             return existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json")) ?
                     ((): boolean => {
                         try {
-                            const favoritedWorldsData: string[] = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8"));
+                            const favoritedWorldsData = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8")) as string[];
                             if (favoritedWorldsData.includes(this.path)) {
                                 return true;
                             }
@@ -912,15 +956,16 @@ namespace exports {
         public set isFavorited(value: boolean) {
             if (value) {
                 let favoritedWorldsData: string[] = [];
-                if (existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json")))
-                    favoritedWorldsData = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8"));
+                if (existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"))) {
+                    favoritedWorldsData = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8")) as string[];
+                }
                 if (!favoritedWorldsData.includes(this.path)) {
                     favoritedWorldsData.push(this.path);
                     writeFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), JSON.stringify(favoritedWorldsData));
                 }
             } else {
                 if (!existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"))) return;
-                const favoritedWorldsData: string[] = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8"));
+                const favoritedWorldsData = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8")) as string[];
                 if (favoritedWorldsData.includes(this.path)) {
                     favoritedWorldsData.splice(favoritedWorldsData.indexOf(this.path), 1);
                     writeFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), JSON.stringify(favoritedWorldsData));
@@ -959,14 +1004,19 @@ namespace exports {
                         this.tempFilePath = path.join(this.tempPath, path.basename(this.path));
                         copyFileSync(this.path, this.tempFilePath);
                     }
+                    break;
                 }
+                case TabManagerTabMode.ReadonlyDirect:
+                case TabManagerTabMode.Direct:
+                default:
+                    break;
             }
             if (this.type === "world") {
                 this.db = new LevelDB(path.join(this.tempPath ?? this.path, "db"));
                 this.dbSearch = new TabManagerTab_LevelDBSearch(this);
                 this.awaitDBOpen = this.db.open().then(
                     (): true => {
-                        this.refreshCachedDBKeys();
+                        void this.refreshCachedDBKeys();
                         return true;
                     },
                     (err: unknown): false => {
@@ -990,7 +1040,7 @@ namespace exports {
                 this.dbSearch = new TabManagerTab_LevelDBSearch(this);
                 this.awaitDBOpen = this.db.open().then(
                     (): true => {
-                        this.refreshCachedDBKeys();
+                        void this.refreshCachedDBKeys();
                         return true;
                     },
                     (err: unknown): false => {
@@ -1027,10 +1077,10 @@ namespace exports {
 
             return result;
         }
-        public async refreshCachedDBKeys(): Promise<boolean | void> {
+        public async refreshCachedDBKeys(): Promise<boolean | undefined> {
             if (!this.db) return;
             this.cachedDBKeys = undefined;
-            return (this.awaitCachedDBKeys = this.getCachedDBKeys().then(
+            return await (this.awaitCachedDBKeys = this.getCachedDBKeys().then(
                 (keys: Record<DBEntryContentType, Buffer[]>): true => {
                     this.cachedDBKeys = keys;
                     return true;
@@ -1049,15 +1099,15 @@ namespace exports {
             if (this.type !== "world" && this.type !== "leveldb") return [];
             if (!existsSync(path.join(APP_DATA_FOLDER_PATH, "pinned_subtabs.json"))) return [];
             try {
-                const pinnedTabsData: PinnedSubTabsJSONData = JSON.parse(
+                const pinnedTabsData = JSON.parse(
                     readFileSync(path.join(APP_DATA_FOLDER_PATH, "pinned_subtabs.json"), "utf-8"),
-                    (_key: string, value: any): any => {
-                        if (typeof value === "object" && "type" in value && value.type === "Buffer" && "data" in value && Array.isArray(value.data)) {
+                    (_key: string, value: unknown): any => {
+                        if (typeof value === "object" && value && "type" in value && value.type === "Buffer" && "data" in value && Array.isArray(value.data)) {
                             return Buffer.from(value.data);
                         }
                         return value;
                     }
-                );
+                ) as PinnedSubTabsJSONData;
                 return pinnedTabsData[this.type]?.[this.path] ? pinnedTabsData[this.type]![this.path]! : [];
             } catch (e) {
                 console.error(e);
@@ -1067,8 +1117,9 @@ namespace exports {
         public savePinnedTabsList(): void {
             if (this.type !== "world" && this.type !== "leveldb") return;
             let pinnedTabsData: PinnedSubTabsJSONData = {};
-            if (existsSync(path.join(APP_DATA_FOLDER_PATH, "pinned_subtabs.json")))
-                pinnedTabsData = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "pinned_subtabs.json"), "utf-8"));
+            if (existsSync(path.join(APP_DATA_FOLDER_PATH, "pinned_subtabs.json"))) {
+                pinnedTabsData = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "pinned_subtabs.json"), "utf-8")) as PinnedSubTabsJSONData;
+            }
             pinnedTabsData[this.type] ??= {};
             pinnedTabsData[this.type]![this.path] = this.openTabs
                 .filter((tab): boolean => tab.isPinned)
@@ -1128,7 +1179,7 @@ namespace exports {
             });
             await new Promise<void>((resolve: () => void): void => void progressBar.on("ready", resolve));
             let successful: boolean = true;
-            let error: unknown = undefined;
+            let error: unknown;
             try {
                 for (const tab of this.openTabs) {
                     try {
@@ -1239,7 +1290,7 @@ namespace exports {
             return tab;
         }
         public switchTab(tab: TabManagerSubTab | TabManagerTabGenericSubTabID | null): void {
-            if (typeof tab === "string")
+            if (typeof tab === "string") {
                 switch (tab) {
                     case "world-settings":
                         tab =
@@ -1300,14 +1351,33 @@ namespace exports {
                                 specialTabID: "scoreboards",
                                 target: { type: "LevelDBEntry", key: Buffer.from("scoreboard") },
                             });
+                        break;
+
+                    case "packs":
+                    case "players":
+                    case "entities":
+                    case "block-entities":
+                    case "structures":
+                    case "world":
+                    case "maps":
+                    case "villages":
+                    case "ticking-areas":
+                    case "ticks":
+                    case "view-files":
+                    case "fun":
+                    case "integrations":
+                    case "repair-forced-world-corruption":
+                    default:
+                        break;
                 }
+            }
             if (tab === this.selectedTab) return;
             const previousTab: TabManagerSubTab | TabManagerTabGenericSubTabID | null = this.selectedTab;
             this.selectedTab = tab;
             this.emit("switchTab", { previousTab, newTab: tab });
         }
         public async close(): Promise<void> {
-            this.db?.close();
+            // this.db?.close();
             this.isValid = false;
             const index: number = this.tabManager.openTabs.indexOf(this);
             if (this.tabManager.openTabs.includes(this)) {
@@ -1322,7 +1392,7 @@ namespace exports {
             this.tabManager.emit("closeTab", { tab: this });
             this.emit("closed");
             if (this.tempPath) {
-                if (this.db && this.db.isOpen()) await this.db.close();
+                if (this.db?.isOpen()) await this.db.close();
                 await rm(this.tempPath, { recursive: true, force: true });
             }
         }
@@ -1344,11 +1414,11 @@ namespace exports {
     /**
      * @todo
      */
-    export type TabManagerSubTabChange = {
+    export interface TabManagerSubTabChange {
         type: "AddNBTKey";
         keyPath: string[];
         value: NBT.TagType[];
-    };
+    }
 
     interface DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsOptionBase {
         dataStorageObject?: DataStorageObject | undefined;
@@ -1384,10 +1454,10 @@ namespace exports {
     export interface DBEntryContentTypeToTabManagerSubTabCurrentStateOptions
         extends DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase, DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase2 {}
 
-    export type TabManagerSubTabCurrentState<ContentType extends DBEntryContentType = DBEntryContentType> = {
+    export interface TabManagerSubTabCurrentState<ContentType extends DBEntryContentType = DBEntryContentType> {
         scrollTop: number;
         options: DBEntryContentTypeToTabManagerSubTabCurrentStateOptions[ContentType];
-    };
+    }
 
     export interface GenericDataStorageObjectBase {
         /**
@@ -1667,11 +1737,12 @@ namespace exports {
                         data: parseSNBTCompoundString(rawData.toString("binary")),
                     } as const satisfies Pick<GenericDataStorageObjectNBTCompound & DataStorageObject, "sourceType" | "dataType" | "data">;
                 }
+                // REVIEW: Make sure this actually works with other JSON data that doesn't have an object as the root.
                 case "JSON": {
                     return {
                         sourceType: format,
                         dataType: "JSON",
-                        data: JSON.parse(rawData.toString("binary")),
+                        data: JSON.parse(rawData.toString("binary")) as GenericDataStorageObjectJSON["data"],
                     } as const satisfies Pick<GenericDataStorageObjectJSON & DataStorageObject, "sourceType" | "dataType" | "data">;
                 }
                 case "ASCII": {
@@ -1744,14 +1815,16 @@ namespace exports {
                             return {
                                 sourceType: format,
                                 dataType: "unknown",
-                                data: await format.parse(rawData),
+                                data: (await format.parse(rawData)) as unknown,
                             } as const satisfies Pick<GenericDataStorageObjectUnknown & DataStorageObject, "sourceType" | "dataType" | "data">;
                         }
                         default:
+                            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/dot-notation
                             throw new Error(`Unknown format type: ${format?.["type"]}.${format?.["resultType"]}`);
                     }
                 }
                 default:
+                    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/dot-notation
                     throw new Error(`Unknown format type: ${format?.["type"]}`);
             }
         }
@@ -1798,8 +1871,9 @@ namespace exports {
                     break;
                 }
                 case "File": {
-                    if (!existsSync(path.join(this.parentTab.tempPath ?? this.parentTab.path, this.target.path)))
+                    if (!existsSync(path.join(this.parentTab.tempPath ?? this.parentTab.path, this.target.path))) {
                         throw new ReferenceError(`The file associated with this sub-tab does not exist: ${this.target.path}`);
+                    }
                     if (binary) {
                         this.currentState.options.dataStorageObject ??= {} as DataStorageObject;
                         this.currentState.options.dataStorageObject.dataType = "binary";
@@ -1818,6 +1892,8 @@ namespace exports {
                     } as const satisfies DataStorageObject;
                     break;
                 }
+                default:
+                    throw new Error(`Unknown target type: ${(this.target as this["target"])?.type}`);
             }
         }
         /**
@@ -1964,11 +2040,13 @@ namespace exports {
                                         }
                                         default:
                                             throw new Error(
+                                                // eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/dot-notation
                                                 `Unsupported conversion from data type ${this.currentState.options.dataStorageObject.dataType} to ${format?.["type"]}.${format?.["resultType"]}.`
                                             );
                                     }
                                 }
                                 case "int":
+                                case "unknown":
                                 default:
                                     throw new Error(
                                         `Unsupported conversion from data type ${this.currentState.options.dataStorageObject.dataType} to ${format.type}.`
@@ -1981,7 +2059,7 @@ namespace exports {
                             let rawData: Buffer;
                             formatTypeSwitcher: switch (format.type) {
                                 case "NBT": {
-                                    if (format.format && data.type !== ({ LE: "little", BE: "big", LEV: "littleVarint" }[format.format] ?? format.format))
+                                    if (format.format && data.type !== ({ LE: "little", BE: "big", LEV: "littleVarint" }[format.format] ?? format.format)) {
                                         console.warn(
                                             `NBT endianness mismatch. Data endianness is ${
                                                 this.currentState.options.dataStorageObject.data.type
@@ -1991,6 +2069,7 @@ namespace exports {
                                             this.currentState.options.dataStorageObject,
                                             this
                                         );
+                                    }
                                     rawData = NBT.writeUncompressed(data.parsed, data.type);
                                     break;
                                 }
@@ -2093,11 +2172,13 @@ namespace exports {
                                         }
                                         default:
                                             throw new Error(
+                                                // eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/dot-notation
                                                 `Unsupported conversion from data type ${this.currentState.options.dataStorageObject.dataType} to ${format?.["type"]}.${format?.["resultType"]}.`
                                             );
                                     }
                                 }
                                 case "int":
+                                case "unknown":
                                 default:
                                     throw new Error(
                                         `Unsupported conversion from data type ${this.currentState.options.dataStorageObject.dataType} to ${format.type}.`
@@ -2126,12 +2207,13 @@ namespace exports {
                             return Buffer.from(data, "binary");
                         }
                         case "int": {
-                            if (format.type !== "int")
+                            if (format.type !== "int") {
                                 throw new Error(
                                     `Unsupported conversion from data type ${this.currentState.options.dataStorageObject.dataType} to ${
-                                        format.type + (format.type === "custom" ? "." + format.resultType : "")
+                                        format.type + (format.type === "custom" ? `.${format.resultType}` : "")
                                     }.`
                                 );
+                            }
                             const data = this.currentState.options.dataStorageObject.data;
                             return writeSpecificIntType(Buffer.alloc(format.bytes), data, format.bytes, format.format, format.signed, 0, { wrap: true });
                         }
@@ -2141,12 +2223,12 @@ namespace exports {
                         }
                         case "unknown": {
                             if (format.type === "custom" && format.resultType === "unknown") {
-                                const data = this.currentState.options.dataStorageObject.data;
+                                const data: unknown = this.currentState.options.dataStorageObject.data;
                                 return await format.serialize(data);
                             }
                             throw new Error(
                                 `Unsupported conversion from data type ${this.currentState.options.dataStorageObject.dataType} to ${
-                                    format.type + (format.type === "custom" ? "." + format.resultType : "")
+                                    format.type + (format.type === "custom" ? `.${format.resultType}` : "")
                                 }.`
                             );
                         }
@@ -2271,11 +2353,13 @@ namespace exports {
                                         }
                                         default:
                                             throw new Error(
+                                                // eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/dot-notation
                                                 `Unsupported conversion from data type ${this.currentState.options.dataStorageObject.dataType} to ${format?.["type"]}.${format?.["resultType"]}.`
                                             );
                                     }
                                 }
                                 case "int":
+                                case "unknown":
                                 default:
                                     throw new Error(
                                         `Unsupported conversion from data type ${this.currentState.options.dataStorageObject.dataType} to ${format.type}.`
@@ -2288,7 +2372,7 @@ namespace exports {
                             let rawData: Buffer;
                             formatTypeSwitcher: switch (format.type) {
                                 case "NBT": {
-                                    if (format.format && data.type !== ({ LE: "little", BE: "big", LEV: "littleVarint" }[format.format] ?? format.format))
+                                    if (format.format && data.type !== ({ LE: "little", BE: "big", LEV: "littleVarint" }[format.format] ?? format.format)) {
                                         console.warn(
                                             `NBT endianness mismatch. Data endianness is ${
                                                 this.currentState.options.dataStorageObject.data.type
@@ -2298,6 +2382,7 @@ namespace exports {
                                             this.currentState.options.dataStorageObject,
                                             this
                                         );
+                                    }
                                     rawData = NBT.writeUncompressed(data.parsed, data.type);
                                     break;
                                 }
@@ -2400,11 +2485,13 @@ namespace exports {
                                         }
                                         default:
                                             throw new Error(
+                                                // eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/dot-notation
                                                 `Unsupported conversion from data type ${this.currentState.options.dataStorageObject.dataType} to ${format?.["type"]}.${format?.["resultType"]}.`
                                             );
                                     }
                                 }
                                 case "int":
+                                case "unknown":
                                 default:
                                     throw new Error(
                                         `Unsupported conversion from data type ${this.currentState.options.dataStorageObject.dataType} to ${format.type}.`
@@ -2433,12 +2520,13 @@ namespace exports {
                             return Buffer.from(data, "binary");
                         }
                         case "int": {
-                            if (format.type !== "int")
+                            if (format.type !== "int") {
                                 throw new Error(
                                     `Unsupported conversion from data type ${this.currentState.options.dataStorageObject.dataType} to ${
-                                        format.type + (format.type === "custom" ? "." + format.resultType : "")
+                                        format.type + (format.type === "custom" ? `.${format.resultType}` : "")
                                     }.`
                                 );
+                            }
                             const data = this.currentState.options.dataStorageObject.data;
                             return writeSpecificIntType(Buffer.alloc(format.bytes), data, format.bytes, format.format, format.signed, 0, { wrap: true });
                         }
@@ -2448,12 +2536,12 @@ namespace exports {
                         }
                         case "unknown": {
                             if (format.type === "custom" && format.resultType === "unknown") {
-                                const data = this.currentState.options.dataStorageObject.data;
+                                const data: unknown = this.currentState.options.dataStorageObject.data;
                                 return await format.serialize(data);
                             }
                             throw new Error(
                                 `Unsupported conversion from data type ${this.currentState.options.dataStorageObject.dataType} to ${
-                                    format.type + (format.type === "custom" ? "." + format.resultType : "")
+                                    format.type + (format.type === "custom" ? `.${format.resultType}` : "")
                                 }.`
                             );
                         }
@@ -2462,6 +2550,7 @@ namespace exports {
                     }
                 }
                 default:
+                    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/dot-notation
                     throw new Error(`Unsupported target type: ${this.target["type"]}`);
             }
         }
@@ -2498,6 +2587,7 @@ namespace exports {
                     break;
                 }
                 default:
+                    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/dot-notation
                     throw new Error(`Unsupported target type: ${this.target["type"]}`);
             }
             this.hasUnsavedChanges = false;
@@ -2699,8 +2789,9 @@ namespace exports {
                         key: Buffer;
                         contentType?: DBEntryContentType;
                         displayKey?: string;
-                        valueType: (typeof entryContentTypeToFormatMap)[DBEntryContentType];
-                        value: any | (AsyncMode extends true ? () => any | Promise<any> : never);
+                        valueType: EntryContentTypeFormatData;
+                        // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- This is for documentation purposes.
+                        value: unknown | (AsyncMode extends true ? () => unknown | Promise<unknown> : never);
                         data?: unknown;
                         searchableContents?: string[];
                         customDataFields?: Record<
@@ -2777,8 +2868,9 @@ namespace exports {
                     typeof b === "symbol" ||
                     typeof a === "function" ||
                     typeof b === "function"
-                )
+                ) {
                     return false;
+                }
                 return cmpStrCS(String(a), String(b), caseSensitive);
             }
             function cmpStrCS(a: string, b: string, caseSensitive: boolean): boolean {
@@ -2792,15 +2884,17 @@ namespace exports {
                         (v: string, i: number): boolean =>
                             v === "*?" || (i in path && (v === "*" || cmpStrCS(v, path[i]!.replaceAll(/\\\*\??/g, "*?"), query.caseSensitivePath ?? true)))
                     )
-                )
+                ) {
                     return false;
+                }
                 if (
                     query.key !== undefined &&
                     (key !== undefined ?
                         !cmpStrCS(key, query.key, query.caseSensitiveKey ?? true)
                     :   "name" in nbt && !cmpStrCS(query.key, nbt.name, query.caseSensitiveKey ?? true))
-                )
+                ) {
                     return false;
+                }
                 if (query.tagType && !cmpStrCS(query.tagType, nbt.type, false)) return false;
                 if (
                     query.value !== undefined &&
@@ -2809,17 +2903,18 @@ namespace exports {
                         nbt.type === "long" && typeof nbt.value === "object" ? toLong(nbt.value) : nbt.value,
                         query.caseSensitiveValue ?? true
                     )
-                )
+                ) {
                     return false;
+                }
                 return true;
             }
             if (doesThisMatch()) return true;
             switch (nbt.type) {
-                case NBT.TagType.Compound:
+                case NBT.TagType.Compound as `${NBT.TagType.Compound}`:
                     return Object.entries(nbt.value).some((v): boolean =>
                         v[1] === undefined ? false : this.findMatchingNBTTag(v[1], query, [...path, v[0]], v[0])
                     );
-                case NBT.TagType.List:
+                case NBT.TagType.List as `${NBT.TagType.List}`:
                     return nbt.value.value.some((v, i): boolean => {
                         if (v === undefined) return false;
                         return this.findMatchingNBTTag(
@@ -2832,10 +2927,10 @@ namespace exports {
                             String(i)
                         );
                     });
-                case NBT.TagType.ByteArray:
-                case NBT.TagType.ShortArray:
-                case NBT.TagType.IntArray:
-                case NBT.TagType.LongArray:
+                case NBT.TagType.ByteArray as `${NBT.TagType.ByteArray}`:
+                case NBT.TagType.ShortArray as `${NBT.TagType.ShortArray}`:
+                case NBT.TagType.IntArray as `${NBT.TagType.IntArray}`:
+                case NBT.TagType.LongArray as `${NBT.TagType.LongArray}`:
                     if (query.tagType) {
                         if (nbt.type === NBT.TagType.ByteArray && query.tagType !== NBT.TagType.Byte) return false;
                         if (nbt.type === NBT.TagType.ShortArray && query.tagType !== NBT.TagType.Short) return false;
@@ -2853,13 +2948,22 @@ namespace exports {
                                         (v === "*" || cmpStrCS(v, currentPath[i]!.replaceAll(/\\\*\??/g, "*?"), query.caseSensitivePath ?? true)))
                             ) ||
                                 query.path.length !== currentPath.length)
-                        )
+                        ) {
                             return false;
+                        }
                         if (query.key && cmpStrCS(query.key, i.toString(), query.caseSensitiveKey ?? true)) return false;
-                        if (query.value && !compareNBTTagValues(query.value, typeof v === "number" ? v : toLong(v), query.caseSensitiveValue ?? true))
+                        if (query.value && !compareNBTTagValues(query.value, typeof v === "number" ? v : toLong(v), query.caseSensitiveValue ?? true)) {
                             return false;
+                        }
                         return true;
                     });
+                case NBT.TagType.String as `${NBT.TagType.String}`:
+                case NBT.TagType.Byte as `${NBT.TagType.Byte}`:
+                case NBT.TagType.Short as `${NBT.TagType.Short}`:
+                case NBT.TagType.Int as `${NBT.TagType.Int}`:
+                case NBT.TagType.Long as `${NBT.TagType.Long}`:
+                case NBT.TagType.Float as `${NBT.TagType.Float}`:
+                case NBT.TagType.Double as `${NBT.TagType.Double}`:
                 default:
                     return false;
             }
@@ -2971,7 +3075,12 @@ namespace exports {
                         query.nbtTags.allOf &&
                         query.nbtTags.allOf.length > 0 &&
                         !query.nbtTags.allOf.every((v: TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery): boolean =>
-                            this.findMatchingNBTTag("parsed" in searchTarget.value ? searchTarget.value.parsed : searchTarget.value, v)
+                            this.findMatchingNBTTag(
+                                (typeof searchTarget.value === "object" && searchTarget.value && "parsed" in searchTarget.value ?
+                                    searchTarget.value.parsed
+                                :   searchTarget.value) as NBT.Tags[NBT.TagType] | NBT.NBT,
+                                v
+                            )
                         )
                     ) {
                         if (yieldUndefined) yield undefined!;
@@ -2981,7 +3090,12 @@ namespace exports {
                         query.nbtTags.anyOf &&
                         query.nbtTags.anyOf.length > 0 &&
                         !query.nbtTags.anyOf.some((v: TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery): boolean =>
-                            this.findMatchingNBTTag("parsed" in searchTarget.value ? searchTarget.value.parsed : searchTarget.value, v)
+                            this.findMatchingNBTTag(
+                                (typeof searchTarget.value === "object" && searchTarget.value && "parsed" in searchTarget.value ?
+                                    searchTarget.value.parsed
+                                :   searchTarget.value) as NBT.Tags[NBT.TagType] | NBT.NBT,
+                                v
+                            )
                         )
                     ) {
                         if (yieldUndefined) yield undefined!;
@@ -2990,7 +3104,14 @@ namespace exports {
                     if (query.nbtTags.oneOf && query.nbtTags.oneOf.length > 0) {
                         let foundMatchingOneOf: boolean = false;
                         for (const v of query.nbtTags.oneOf) {
-                            if (this.findMatchingNBTTag("parsed" in searchTarget.value ? searchTarget.value.parsed : searchTarget.value, v)) {
+                            if (
+                                this.findMatchingNBTTag(
+                                    (typeof searchTarget.value === "object" && searchTarget.value && "parsed" in searchTarget.value ?
+                                        searchTarget.value.parsed
+                                    :   searchTarget.value) as NBT.Tags[NBT.TagType] | NBT.NBT,
+                                    v
+                                )
+                            ) {
                                 if (foundMatchingOneOf) {
                                     if (yieldUndefined) yield undefined!;
                                     continue searchLoop;
@@ -3007,7 +3128,12 @@ namespace exports {
                         query.nbtTags.noneOf &&
                         query.nbtTags.noneOf.length > 0 &&
                         query.nbtTags.noneOf.some((v: TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery): boolean =>
-                            this.findMatchingNBTTag("parsed" in searchTarget.value ? searchTarget.value.parsed : searchTarget.value, v)
+                            this.findMatchingNBTTag(
+                                (typeof searchTarget.value === "object" && searchTarget.value && "parsed" in searchTarget.value ?
+                                    searchTarget.value.parsed
+                                :   searchTarget.value) as NBT.Tags[NBT.TagType] | NBT.NBT,
+                                v
+                            )
                         )
                     ) {
                         if (yieldUndefined) yield undefined!;
@@ -3063,6 +3189,7 @@ namespace exports {
                 // TODO: Implement advanced query entry support (as in entries that are an object).
                 if (query.customDataFields) {
                     for (const customDataField in query.customDataFields) {
+                        if (!Object.hasOwn(query.customDataFields, customDataField)) continue;
                         if (query.customDataFields[customDataField] === undefined) {
                             if (yieldUndefined) yield undefined!;
                             continue;
@@ -3246,9 +3373,11 @@ namespace exports {
                         if (yieldUndefined) yield undefined!;
                         continue;
                     }
-                    const rawTargetValue = searchTarget.value instanceof Function ? await searchTarget.value() : searchTarget.value;
+                    const rawTargetValue: unknown = searchTarget.value instanceof Function ? await (searchTarget.value as () => unknown)() : searchTarget.value;
                     const targetValue: NBT.NBT | NBT.Compound =
-                        "parsed" in rawTargetValue ? (rawTargetValue.parsed as NBT.NBT) : (rawTargetValue as NBT.NBT | NBT.Compound);
+                        typeof rawTargetValue === "object" && rawTargetValue && "parsed" in rawTargetValue ?
+                            (rawTargetValue.parsed as NBT.NBT)
+                        :   (rawTargetValue as NBT.NBT | NBT.Compound);
                     if (
                         query.nbtTags.allOf &&
                         query.nbtTags.allOf.length > 0 &&
@@ -3339,6 +3468,7 @@ namespace exports {
                 // TODO: Implement advanced query entry support (as in entries that are an object).
                 if (query.customDataFields) {
                     for (const customDataField in query.customDataFields) {
+                        if (!Object.hasOwn(query.customDataFields, customDataField)) continue;
                         if (query.customDataFields[customDataField] === undefined) {
                             if (yieldUndefined) yield undefined!;
                             continue;

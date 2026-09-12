@@ -1,11 +1,12 @@
+/* eslint-disable jsdoc/no-types */
 /**
  * Converts a readable stream to a blob.
  *
  * @param {ReadableStream} readableStream The readable stream to convert to a blob.
  * @returns {Promise<Blob>} A promise that resolves with the blob.
  */
-async function readableStreamToBlob(readableStream: ReadableStream): Promise<Blob> {
-    const reader: ReadableStreamDefaultReader<any> = readableStream.getReader();
+async function _readableStreamToBlob(readableStream: ReadableStream): Promise<Blob> {
+    const reader: ReadableStreamDefaultReader<unknown> = readableStream.getReader();
     const chunks: any[] = [];
     while (true) {
         const { done, value } = await reader.read();
@@ -28,10 +29,12 @@ namespace exports {
      *
      * @param {typeof volumeCategories[number]} category The volume category to get the volume of.
      * @returns {number} The volume of the volume category. Between 0 and 100 (inclusive).
+     *
+     * @throws {TypeError} If the volume category is invalid.
      */
     export function getAudioCategoryVolume(category: (typeof volumeCategories)[number]): number {
         if (!volumeCategories.includes(category)) {
-            throw new TypeError("Invalid Audio Volume Category: " + JSON.stringify(category));
+            throw new TypeError(`Invalid Audio Volume Category: ${JSON.stringify(category)}`);
         }
         if (category === "master") {
             return config.volume.master;
@@ -45,13 +48,14 @@ namespace exports {
      */
     export class SoundEffects {
         private constructor() {}
-        static audioElements = {
+        public static audioElements = {
             pop: new Audio("resource://sounds/ui/click/Click_stereo.ogg.mp3"),
             release: new Audio("resource://sounds/ui/click/Release.ogg.mp3"),
             toast: new Audio("resource://sounds/ui/Toast.ogg"),
         };
-        static dataURLs: { pop: string; release: string; toast: string } = {} as any;
-        static audioElementsB = {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- TEMP
+        public static dataURLs: { pop: string; release: string; toast: string } = {} as any;
+        public static audioElementsB = {
             get pop(): HTMLAudioElement {
                 return new Audio(SoundEffects.dataURLs.pop);
             },
@@ -65,7 +69,8 @@ namespace exports {
         /**
          * @type {{pop: AudioBuffer; release: AudioBuffer; toast: AudioBuffer;}}
          */
-        static audioBuffers: { pop: AudioBuffer; release: AudioBuffer; toast: AudioBuffer } = {} as any;
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- TEMP
+        public static audioBuffers: { pop: AudioBuffer; release: AudioBuffer; toast: AudioBuffer } = {} as any;
         /**
          * Plays the pop sound effect.
          *
@@ -74,13 +79,16 @@ namespace exports {
          * @param {number} [options.volume = undefined] The volume to use. If undefined, the volume of the volume category will be used. If specified it will override the volume of the volume category. Should be a float between 0 and 100 (inclusive).
          * @returns {Promise<void>} A promise that resolves when the audio has finished playing.
          */
-        static async pop(
-            options: { volumeCategory?: (typeof volumeCategories)[number]; volume?: number } = { volumeCategory: "ui", volume: undefined }
+        public static async pop(
+            options: { volumeCategory?: (typeof volumeCategories)[number] | undefined; volume?: number | undefined } = {
+                volumeCategory: "ui",
+                volume: undefined,
+            }
         ): Promise<void> {
             const volume: number = (options?.volume ?? getAudioCategoryVolume(options?.volumeCategory ?? "ui")) / 100;
             const audioElement: HTMLAudioElement = this.audioElementsB.pop;
             audioElement.volume = volume;
-            return await audioElement.play();
+            return void (await audioElement.play());
         }
         /**
          * Plays the pop sound effect using an audio buffer.
@@ -90,8 +98,11 @@ namespace exports {
          * @param {number} [options.volume = undefined] The volume to use. If undefined, the volume of the volume category will be used. If specified it will override the volume of the volume category. Should be a float between 0 and 100 (inclusive).
          * @returns {Promise<{source: AudioScheduledSourceNode; ev: Event;}>} A promise that resolves with the audio source and event when the audio buffer has finished playing.
          */
-        static async popB(
-            options: { volumeCategory?: (typeof volumeCategories)[number]; volume?: number } = { volumeCategory: "ui", volume: undefined }
+        public static async popB(
+            options: { volumeCategory?: (typeof volumeCategories)[number] | undefined; volume?: number | undefined } = {
+                volumeCategory: "ui",
+                volume: undefined,
+            }
         ): Promise<{ source: AudioScheduledSourceNode; ev: Event }> {
             return await this.playBuffer(this.audioBuffers.pop, options);
         }
@@ -103,13 +114,16 @@ namespace exports {
          * @param {number} [options.volume = undefined] The volume to use. If undefined, the volume of the volume category will be used. If specified it will override the volume of the volume category. Should be a float between 0 and 100 (inclusive).
          * @returns {Promise<void>} A promise that resolves when the audio has finished playing.
          */
-        static async release(
-            options: { volumeCategory?: (typeof volumeCategories)[number]; volume?: number } = { volumeCategory: "ui", volume: undefined }
+        public static async release(
+            options: { volumeCategory?: (typeof volumeCategories)[number] | undefined; volume?: number | undefined } = {
+                volumeCategory: "ui",
+                volume: undefined,
+            }
         ): Promise<void> {
             const volume: number = (options?.volume ?? getAudioCategoryVolume(options?.volumeCategory ?? "ui")) / 100;
             const audioElement: HTMLAudioElement = this.audioElementsB.release;
             audioElement.volume = volume;
-            return await audioElement.play();
+            return void (await audioElement.play());
         }
         /**
          * Plays the release sound effect using an audio buffer.
@@ -119,8 +133,11 @@ namespace exports {
          * @param {number} [options.volume = undefined] The volume to use. If undefined, the volume of the volume category will be used. If specified it will override the volume of the volume category. Should be a float between 0 and 100 (inclusive).
          * @returns {Promise<{source: AudioScheduledSourceNode; ev: Event;}>} A promise that resolves with the audio source and event when the audio buffer has finished playing.
          */
-        static async releaseB(
-            options: { volumeCategory?: (typeof volumeCategories)[number]; volume?: number } = { volumeCategory: "ui", volume: undefined }
+        public static async releaseB(
+            options: { volumeCategory?: (typeof volumeCategories)[number] | undefined; volume?: number | undefined } = {
+                volumeCategory: "ui",
+                volume: undefined,
+            }
         ): Promise<{ source: AudioScheduledSourceNode; ev: Event }> {
             return await this.playBuffer(this.audioBuffers.release, options);
         }
@@ -132,13 +149,16 @@ namespace exports {
          * @param {number} [options.volume = undefined] The volume to use. If undefined, the volume of the volume category will be used. If specified it will override the volume of the volume category. Should be a float between 0 and 100 (inclusive).
          * @returns {Promise<void>} A promise that resolves when the audio has finished playing.
          */
-        static async toast(
-            options: { volumeCategory?: (typeof volumeCategories)[number]; volume?: number } = { volumeCategory: "ui", volume: undefined }
+        public static async toast(
+            options: { volumeCategory?: (typeof volumeCategories)[number] | undefined; volume?: number | undefined } = {
+                volumeCategory: "ui",
+                volume: undefined,
+            }
         ): Promise<void> {
             const volume: number = (options?.volume ?? getAudioCategoryVolume(options?.volumeCategory ?? "ui")) / 100;
             const audioElement: HTMLAudioElement = this.audioElementsB.toast;
             audioElement.volume = volume;
-            return await audioElement.play();
+            return void (await audioElement.play());
         }
         /**
          * Plays the toast sound effect using an audio buffer.
@@ -148,8 +168,11 @@ namespace exports {
          * @param {number} [options.volume = undefined] The volume to use. If undefined, the volume of the volume category will be used. If specified it will override the volume of the volume category. Should be a float between 0 and 100 (inclusive).
          * @returns {Promise<{source: AudioScheduledSourceNode; ev: Event;}>} A promise that resolves with the audio source and event when the audio buffer has finished playing.
          */
-        static async toastB(
-            options: { volumeCategory?: (typeof volumeCategories)[number]; volume?: number } = { volumeCategory: "ui", volume: undefined }
+        public static async toastB(
+            options: { volumeCategory?: (typeof volumeCategories)[number] | undefined; volume?: number | undefined } = {
+                volumeCategory: "ui",
+                volume: undefined,
+            }
         ): Promise<{ source: AudioScheduledSourceNode; ev: Event }> {
             return await this.playBuffer(this.audioBuffers.toast, options);
         }
@@ -162,9 +185,12 @@ namespace exports {
          * @param {number} [options.volume = undefined] The volume to use. If undefined, the volume of the volume category will be used. If specified it will override the volume of the volume category. Should be a float between 0 and 100 (inclusive).
          * @returns {Promise<{source: AudioScheduledSourceNode, ev: Event}>} A promise that resolves with the audio source and event when the audio buffer has finished playing.
          */
-        static playBuffer(
+        public static async playBuffer(
             audioBuffer: AudioBuffer | null,
-            options: { volumeCategory?: (typeof volumeCategories)[number]; volume?: number } = { volumeCategory: "ui", volume: undefined }
+            options: { volumeCategory?: (typeof volumeCategories)[number] | undefined; volume?: number | undefined } = {
+                volumeCategory: "ui",
+                volume: undefined,
+            }
         ): Promise<{ source: AudioScheduledSourceNode; ev: Event }> {
             const volume: number = -1 + (options?.volume ?? getAudioCategoryVolume(options?.volumeCategory ?? "ui")) / 100;
             // create an AudioBufferSourceNode
@@ -183,17 +209,18 @@ namespace exports {
 
             // start playback
             source.start();
-            return new Promise(
-                (resolve: (value: { source: AudioScheduledSourceNode; ev: Event }) => void) => (source.onended = (ev) => resolve({ source, ev }))
+            return await new Promise(
+                (resolve: (value: { source: AudioScheduledSourceNode; ev: Event }) => void): undefined =>
+                    void (source.onended = (ev: Event): undefined => void resolve({ source, ev }))
             );
         }
     }
-    (async (): Promise<typeof SoundEffects.audioBuffers> => ({
+    void (async (): Promise<typeof SoundEffects.audioBuffers> => ({
         pop: await audioCtx.decodeAudioData(await (await fetch("resource://sounds/ui/click/Click_stereo.ogg.mp3")).arrayBuffer()),
         release: await audioCtx.decodeAudioData(await (await fetch("resource://sounds/ui/click/Release.ogg.mp3")).arrayBuffer()),
         toast: await audioCtx.decodeAudioData(await (await fetch("resource://sounds/ui/Toast.ogg")).arrayBuffer()),
     }))().then((o: typeof SoundEffects.audioBuffers): typeof SoundEffects.audioBuffers => (SoundEffects.audioBuffers = o));
-    (async (): Promise<void> => {
+    void (async (): Promise<void> => {
         const file: Blob = await (await fetch("resource://sounds/ui/click/Click_stereo.ogg.mp3")).blob();
         const reader = new FileReader();
 
@@ -210,7 +237,7 @@ namespace exports {
             reader.readAsDataURL(file);
         }
     })();
-    (async (): Promise<void> => {
+    void (async (): Promise<void> => {
         const file: Blob = await (await fetch("resource://sounds/ui/click/Release.ogg.mp3")).blob();
         const reader = new FileReader();
 
@@ -227,7 +254,7 @@ namespace exports {
             reader.readAsDataURL(file);
         }
     })();
-    (async (): Promise<void> => {
+    void (async (): Promise<void> => {
         const file: Blob = await (await fetch("resource://sounds/ui/Toast.ogg")).blob();
         const reader = new FileReader();
 

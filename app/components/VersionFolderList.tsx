@@ -1,5 +1,7 @@
+// DEPRECATED
+//#vignore
+/* eslint-disable */
 // @ts-nocheck This file is not ready for use yet, it should be ignored for now.
-// @eslint-ignore
 
 import type { JSX } from "preact";
 import ItemListItem, { ItemListItemColumn } from "./ItemListItem";
@@ -62,9 +64,9 @@ export default function VersionFolderList(
                         versionFolderPath={versionFolder.path}
                         installationStatus={
                             versionFolder.installationStatus +
-                            (versionFolder.installationStatus === "Installed" || versionFolder.installationStatus === "Partially Failed Installation"
-                                ? ` (v${versionFolder.installedVersion})` + (versionFolder.getIsUpdateAvailable() ? " (Update Available)" : "")
-                                : "")
+                            (versionFolder.installationStatus === "Installed" || versionFolder.installationStatus === "Partially Failed Installation" ?
+                                ` (v${versionFolder.installedVersion})` + (versionFolder.getIsUpdateAvailable() ? " (Update Available)" : "")
+                            :   "")
                         }
                         onOptionsButtonMouseDown={(): void => {
                             SoundEffects.popB();
@@ -147,3 +149,4 @@ export function VersionFolderListItem(
         </ItemListItem>
     );
 }
+//#endvignore

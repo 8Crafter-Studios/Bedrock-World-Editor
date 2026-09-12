@@ -106,11 +106,12 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
                         event.currentTarget.disabled = true;
                         try {
                             await props.tab.loadData(true);
+                            if (!props.tab.isValid || props.tab.rawMode) return;
                             props.tab.rawMode = true;
                             if (props.tab.parentTab.selectedTab !== props.tab) return;
                             props.tab.parentTab.emit("reloadCurrentSubTab");
                         } finally {
-                            event.currentTarget.disabled = false;
+                            if (event.currentTarget) event.currentTarget.disabled = false;
                         }
                     }}
                     disabled={!props.tab}
@@ -157,6 +158,7 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
                                                 defaultId: 0,
                                                 cancelId: 3,
                                             });
+                                            if (!props.tab.isValid || !props.tab?.isModified()) return;
                                             switch (result.response) {
                                                 case 0:
                                                     props.dataStorageObject.data = convertEditorValueToData(data, "binary");
@@ -172,6 +174,7 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
                                                     await props.tab.loadData(true);
                                                     break;
                                                 case 3:
+                                                default:
                                                     return;
                                             }
                                         } else {
@@ -185,6 +188,7 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
                                                 defaultId: 0,
                                                 cancelId: 2,
                                             });
+                                            if (!props.tab.isValid || !props.tab?.isModified()) return;
                                             switch (result.response) {
                                                 case 0:
                                                     await props.tab.save();
@@ -195,6 +199,7 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
                                                     await props.tab.loadData(true);
                                                     break;
                                                 case 2:
+                                                default:
                                                     return;
                                             }
                                         }
@@ -209,23 +214,29 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
                                             defaultId: 0,
                                             cancelId: 2,
                                         });
+                                        if (!props.tab.isValid) return;
                                         switch (result.response) {
-                                            case 0:
+                                            case 0: {
                                                 props.tab.hasUnsavedChanges = true;
-                                                props.dataStorageObject.data = await convertEditorValueToData(data, "binary");
+                                                const newData = await convertEditorValueToData(data, "binary");
+                                                if (!props.tab.isValid || !props.tab?.isModified()) return;
+                                                props.dataStorageObject.data = newData;
                                                 props.dataStorageObject.dataType = "binary";
                                                 await props.tab.save();
                                                 break;
+                                            }
                                             case 1:
                                                 props.tab.hasUnsavedChanges = false;
                                                 await props.tab.loadData(true);
                                                 break;
                                             case 2:
+                                            default:
                                                 return;
                                         }
                                     } else {
                                         await props.tab.loadData(true);
                                     }
+                                    if (!props.tab.isValid || props.tab.rawMode) return;
                                     props.tab.rawMode = true;
                                     if (props.tab.parentTab.selectedTab !== props.tab) return;
                                     props.tab.parentTab.emit("reloadCurrentSubTab");
@@ -260,6 +271,7 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
                                             defaultId: 0,
                                             cancelId: 2,
                                         });
+                                        if (!props.tab.isValid || !props.tab?.isModified()) return;
                                         switch (result.response) {
                                             case 0:
                                                 await props.tab.save();
@@ -270,6 +282,7 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
                                                 delete props.tab.currentState.options.dataStorageObject;
                                                 break;
                                             case 2:
+                                            default:
                                                 return;
                                         }
                                     } else {
@@ -329,7 +342,7 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
                 lastChangeTime = Date.now();
                 saveNewValue: try {
                     try {
-                        var value = await convertEditorValueToData(newValue);
+                        var value: unknown = await convertEditorValueToData(newValue);
                     } catch (e) {
                         console.error(e);
                         hasUnparseableChanges = true;
@@ -351,10 +364,11 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
             lastChangeStartTime = currentChangeTime;
             lastChangeTime = currentChangeTime;
             const delayUntilParsePromise: PromiseWithResolvers<void> = Promise.withResolvers();
+            void waitForParseToCompleteBeforeNextChangeHandle;
             waitForParseToCompleteBeforeNextChangeHandle = delayUntilParsePromise.promise;
             saveNewValue: try {
                 try {
-                    var value = await convertEditorValueToData(newValue);
+                    var value: unknown = await convertEditorValueToData(newValue);
                 } catch (e) {
                     console.error(e);
                     hasUnparseableChanges = true;
@@ -368,6 +382,7 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
             } catch (e) {
                 console.error(e);
             } finally {
+                void waitForParseToCompleteBeforeNextChangeHandle;
                 waitForParseToCompleteBeforeNextChangeHandle = null;
                 delayUntilParsePromise.resolve();
             }
@@ -378,6 +393,7 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
         return (supportedSyncEditorValueDataTypes as DataStorageObject["dataType"][]).includes(dataType);
     }
     function convertDataToEditorValueSync(): number[] | undefined {
+        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
         switch (props.dataStorageObject.dataType) {
             case "binary":
                 return Array.from(props.dataStorageObject.data);
@@ -389,6 +405,7 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
         if (isSupportedSyncEditorValueDataType(props.dataStorageObject.dataType)) {
             return convertDataToEditorValueSync()!;
         }
+        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
         switch (props.dataStorageObject.dataType) {
             default:
                 if (props.tab) return Array.from(await props.tab.exportRawData());
@@ -407,6 +424,7 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
         dataType: DataStorageObject["dataType"] = props.dataStorageObject.dataType
     ): Promise<(typeof props.dataStorageObject)["data"]> {
         const value: number[] = editorValue.at(-1) === null ? (editorValue.slice(0, -1) as number[]) : (editorValue as number[]);
+        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
         switch (dataType) {
             case "binary":
                 return Buffer.from(value) satisfies Extract<DataStorageObject, { dataType: typeof dataType }>["data"];
@@ -414,11 +432,12 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
                 if (props.tab) {
                     const data = await props.tab.parseRawData(Buffer.from(value), props.dataStorageObject.sourceType);
                     // TODO: Maybe add conversion when the requested type does not match, or make a new method on the TabManagerSubTab class for parsing raw data from a format type to a specific data type, or add that into the existing parseRawData method as an optional third parameter.
-                    if (dataType !== data.dataType)
+                    if (dataType !== data.dataType) {
                         throw new TypeError(
                             `The binary data failed to convert to the requested data type "${dataType}", it converted to "${data.dataType}" instead.`
                         );
-                    return data.data as Extract<DataStorageObject, { dataType: typeof dataType }>["data"];
+                    }
+                    return data.data; // as Extract<DataStorageObject, { dataType: typeof dataType }>["data"]
                 }
                 throw new TypeError(`The data type "${dataType}" is not yet supported in the hex editor when props.tab is not provided.`);
         }
@@ -448,6 +467,7 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
         }
     }
     const editorParams = new URLSearchParams({ contentType: props.contentType ?? "Unknown" });
+    void editorParams; // TEMP
     const data: [...number[], null] | ([] & (number | null)[]) = _React.useMemo(
         (): [...number[], null] | [] =>
             isSupportedSyncEditorValueDataType(props.dataStorageObject.dataType) ? [...convertDataToEditorValueSync()!, null] : [],
@@ -498,7 +518,7 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
                 if (hexEditorBackspaceKeyDown) cursorShift = 0;
                 else if (hexEditorDeleteKeyDown) cursorShift = 0;
                 if (data.at(-1) !== null) data.push(null);
-                handleEditorValueChanged(data);
+                void handleEditorValueChanged(data);
                 setNonce((v: number): number => v + 1);
                 requestAnimationFrame(function fixHexEditorCursorPosition(): void {
                     if (!editorRef.current) return;
@@ -507,7 +527,7 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
             },
             [data]
         );
-        rerenderRef.current = (): void => setNonce((v: number): number => v + 1);
+        rerenderRef.current = (): void => void setNonce((v: number): number => v + 1);
         return (
             <HexEditor
                 columns={0x10}
@@ -530,7 +550,7 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
         useEffect((): void => {
             if (!editorConainterRef.current) return;
             if (data.length) return;
-            convertDataToEditorValue().then((editorValue: number[]): void => {
+            void convertDataToEditorValue().then((editorValue: number[]): void => {
                 if (data.length) return;
                 data.push(...editorValue, null);
                 if (!editorConainterRef.current) return;

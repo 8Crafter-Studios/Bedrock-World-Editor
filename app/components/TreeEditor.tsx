@@ -144,7 +144,7 @@ export const treeEditorIcons = {
 Object.entries(treeEditorIcons).forEach(([key, value]) => {
     Object.entries(value).forEach(([key2, value2]) => {
         fetch(value2)
-            .then((response: Response): Promise<Blob> => response.blob())
+            .then(async (response: Response): Promise<Blob> => await response.blob())
             .then(
                 async (blob: Blob): Promise<void> =>
                     void ((treeEditorIcons[key as keyof typeof treeEditorIcons][key2 as keyof (typeof treeEditorIcons)[keyof typeof treeEditorIcons]] as any) =
@@ -154,7 +154,8 @@ Object.entries(treeEditorIcons).forEach(([key, value]) => {
     });
 });
 
-type NBTTreeNodeValue = NBT.Tags[NBT.TagType] | NBT.Tags[NBT.TagType.List]["value"]["value"];
+type NBTTreeNodeValue = NBT.Tags[NBT.TagType] | (NBT.Tags[NBT.TagType.List]["value"]["value"][number] | undefined)[];
+type DirectNBTTreeNodeValue = NBT.Tags[NBT.TagType]["value"] | undefined;
 type JSONTreeNodeValue = { [key: string | number]: JSONTreeNodeValue } | string | number | boolean | null | JSONTreeNodeValue[];
 
 // TODO: When creating a non-primitive tag, the created tag should be automatically selected (it should clear the previous selection too).
@@ -252,7 +253,7 @@ export default class TreeEditor extends React.Component<
                                         const path: string[] = JSON.parse(headerElement.dataset.path!) as string[];
                                         const depth: number = JSON.parse(headerElement.dataset.depth!) as number;
                                         const type = JSON.parse(headerElement.dataset.type!) as KeysOfUnion<
-                                            (typeof treeEditorIcons)[keyof typeof treeEditorIcons]
+                                            (typeof treeEditorIcons)[Exclude<keyof typeof treeEditorIcons, "generic">]
                                         >;
                                         const isDirectType = JSON.parse(headerElement.dataset.isDirectType!) as boolean;
                                         // const originalPath: string[] | null =
@@ -264,9 +265,13 @@ export default class TreeEditor extends React.Component<
                                                 propertyPath = path.concat(isDirectType ? [""] : ["value", ""]);
                                                 break;
                                             case "byteArray": {
-                                                const parentObject: any = path
+                                                const parentObject: unknown = path
                                                     .concat(isDirectType ? [] : ["value"])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (!Array.isArray(parentObject)) throw new Error("Parent object is not an array.");
                                                 // if (listIndex !== null && Number.isFinite(listIndex) && listIndex > 0) {
                                                 //     parentObject.splice(listIndex, 0, getDefaultValueTagForNodeType("byte", Array.isArray(parentObject)));
                                                 //     // ~FIXME: This does not update the expansion data.
@@ -294,12 +299,22 @@ export default class TreeEditor extends React.Component<
                                             case "list": {
                                                 const parentObject: any = path
                                                     .concat(["value", ...(isDirectType ? [] : ["value"])])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
-                                                const parentParentObject: any = path
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (!Array.isArray(parentObject)) throw new Error("Parent object is not an array.");
+                                                const parentParentObject: unknown = path
                                                     .concat(isDirectType ? [] : ["value"])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
-                                                if (parentParentObject.type === "end") {
-                                                    parentParentObject.type = "byte";
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (
+                                                    typeof parentParentObject === "object" &&
+                                                    (parentParentObject as Record<string, unknown> | undefined)?.type === "end"
+                                                ) {
+                                                    (parentParentObject as Record<string, unknown>).type = "byte";
                                                 }
                                                 // if (listIndex !== null && Number.isFinite(listIndex) && listIndex > 0) {
                                                 //     parentObject.splice(listIndex, 0, getDefaultValueTagForNodeType("byte", Array.isArray(parentObject)));
@@ -327,6 +342,20 @@ export default class TreeEditor extends React.Component<
                                                 // }
                                                 return;
                                             }
+                                            case "string":
+                                            case "number":
+                                            case "boolean":
+                                            case "object":
+                                            case "byte":
+                                            case "short":
+                                            case "int":
+                                            case "long":
+                                            case "float":
+                                            case "double":
+                                            case "shortArray":
+                                            case "intArray":
+                                            case "longArray":
+                                            case "end":
                                             default:
                                                 return;
                                         }
@@ -335,14 +364,7 @@ export default class TreeEditor extends React.Component<
                                         childrenContainerElement.appendChild(containerElement);
                                         function Elem(): JSX.Element {
                                             return (
-                                                <TreeNode
-                                                    depth={depth + 1}
-                                                    propertyPath={propertyPath}
-                                                    name=""
-                                                    typeToCreate="byte"
-                                                    isInCreationMode={true}
-                                                    // containerRef={ref(containerElement)}
-                                                />
+                                                <TreeNode depth={depth + 1} propertyPath={propertyPath} name="" typeToCreate="byte" isInCreationMode={true} />
                                             );
                                         }
                                         render(<Elem />, containerElement);
@@ -382,7 +404,7 @@ export default class TreeEditor extends React.Component<
                                         const path: string[] = JSON.parse(headerElement.dataset.path!) as string[];
                                         const depth: number = JSON.parse(headerElement.dataset.depth!) as number;
                                         const type = JSON.parse(headerElement.dataset.type!) as KeysOfUnion<
-                                            (typeof treeEditorIcons)[keyof typeof treeEditorIcons]
+                                            (typeof treeEditorIcons)[Exclude<keyof typeof treeEditorIcons, "generic">]
                                         >;
                                         const isDirectType = JSON.parse(headerElement.dataset.isDirectType!) as boolean;
                                         let propertyPath: string[];
@@ -393,7 +415,11 @@ export default class TreeEditor extends React.Component<
                                             case "shortArray": {
                                                 const parentObject: any = path
                                                     .concat(isDirectType ? [] : ["value"])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (!Array.isArray(parentObject)) throw new Error("Parent object is not an array.");
                                                 parentObject.push(getDefaultValueTagForNodeType("short", Array.isArray(parentObject)));
                                                 props.dataStorageObject.treeEditor.currentListChildInCreationMode = path.concat([
                                                     ...(isDirectType ? [] : ["value"]),
@@ -408,12 +434,22 @@ export default class TreeEditor extends React.Component<
                                             case "list": {
                                                 const parentObject: any = path
                                                     .concat(["value", ...(isDirectType ? [] : ["value"])])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
-                                                const parentParentObject: any = path
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (!Array.isArray(parentObject)) throw new Error("Parent object is not an array.");
+                                                const parentParentObject: unknown = path
                                                     .concat(isDirectType ? [] : ["value"])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
-                                                if (parentParentObject.type === "end") {
-                                                    parentParentObject.type = "short";
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (
+                                                    typeof parentParentObject === "object" &&
+                                                    (parentParentObject as Record<string, unknown> | undefined)?.type === "end"
+                                                ) {
+                                                    (parentParentObject as Record<string, unknown>).type = "short";
                                                 }
                                                 parentObject.push(getDefaultValueTagForNodeType("short", Array.isArray(parentObject)));
                                                 props.dataStorageObject.treeEditor.currentListChildInCreationMode = path.concat([
@@ -427,6 +463,20 @@ export default class TreeEditor extends React.Component<
                                                 });
                                                 return;
                                             }
+                                            case "string":
+                                            case "number":
+                                            case "boolean":
+                                            case "object":
+                                            case "int":
+                                            case "byte":
+                                            case "short":
+                                            case "long":
+                                            case "float":
+                                            case "double":
+                                            case "byteArray":
+                                            case "intArray":
+                                            case "longArray":
+                                            case "end":
                                             default:
                                                 return;
                                         }
@@ -435,14 +485,7 @@ export default class TreeEditor extends React.Component<
                                         childrenContainerElement.appendChild(containerElement);
                                         function Elem(): JSX.Element {
                                             return (
-                                                <TreeNode
-                                                    depth={depth + 1}
-                                                    propertyPath={propertyPath}
-                                                    name=""
-                                                    typeToCreate="short"
-                                                    isInCreationMode={true}
-                                                    // containerRef={ref(containerElement)}
-                                                />
+                                                <TreeNode depth={depth + 1} propertyPath={propertyPath} name="" typeToCreate="short" isInCreationMode={true} />
                                             );
                                         }
                                         render(<Elem />, containerElement);
@@ -482,7 +525,7 @@ export default class TreeEditor extends React.Component<
                                         const path: string[] = JSON.parse(headerElement.dataset.path!) as string[];
                                         const depth: number = JSON.parse(headerElement.dataset.depth!) as number;
                                         const type = JSON.parse(headerElement.dataset.type!) as KeysOfUnion<
-                                            (typeof treeEditorIcons)[keyof typeof treeEditorIcons]
+                                            (typeof treeEditorIcons)[Exclude<keyof typeof treeEditorIcons, "generic">]
                                         >;
                                         const isDirectType = JSON.parse(headerElement.dataset.isDirectType!) as boolean;
                                         let propertyPath: string[];
@@ -493,7 +536,11 @@ export default class TreeEditor extends React.Component<
                                             case "intArray": {
                                                 const parentObject: any = path
                                                     .concat(isDirectType ? [] : ["value"])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (!Array.isArray(parentObject)) throw new Error("Parent object is not an array.");
                                                 parentObject.push(getDefaultValueTagForNodeType("int", Array.isArray(parentObject)));
                                                 props.dataStorageObject.treeEditor.currentListChildInCreationMode = path.concat([
                                                     ...(isDirectType ? [] : ["value"]),
@@ -508,12 +555,22 @@ export default class TreeEditor extends React.Component<
                                             case "list": {
                                                 const parentObject: any = path
                                                     .concat(["value", ...(isDirectType ? [] : ["value"])])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
-                                                const parentParentObject: any = path
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (!Array.isArray(parentObject)) throw new Error("Parent object is not an array.");
+                                                const parentParentObject: unknown = path
                                                     .concat(isDirectType ? [] : ["value"])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
-                                                if (parentParentObject.type === "end") {
-                                                    parentParentObject.type = "int";
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (
+                                                    typeof parentParentObject === "object" &&
+                                                    (parentParentObject as Record<string, unknown> | undefined)?.type === "end"
+                                                ) {
+                                                    (parentParentObject as Record<string, unknown>).type = "int";
                                                 }
                                                 parentObject.push(getDefaultValueTagForNodeType("int", Array.isArray(parentObject)));
                                                 props.dataStorageObject.treeEditor.currentListChildInCreationMode = path.concat([
@@ -527,6 +584,20 @@ export default class TreeEditor extends React.Component<
                                                 });
                                                 return;
                                             }
+                                            case "string":
+                                            case "number":
+                                            case "boolean":
+                                            case "object":
+                                            case "int":
+                                            case "byte":
+                                            case "short":
+                                            case "long":
+                                            case "float":
+                                            case "double":
+                                            case "byteArray":
+                                            case "shortArray":
+                                            case "longArray":
+                                            case "end":
                                             default:
                                                 return;
                                         }
@@ -535,14 +606,7 @@ export default class TreeEditor extends React.Component<
                                         childrenContainerElement.appendChild(containerElement);
                                         function Elem(): JSX.Element {
                                             return (
-                                                <TreeNode
-                                                    depth={depth + 1}
-                                                    propertyPath={propertyPath}
-                                                    name=""
-                                                    typeToCreate="int"
-                                                    isInCreationMode={true}
-                                                    // containerRef={ref(containerElement)}
-                                                />
+                                                <TreeNode depth={depth + 1} propertyPath={propertyPath} name="" typeToCreate="int" isInCreationMode={true} />
                                             );
                                         }
                                         render(<Elem />, containerElement);
@@ -582,7 +646,7 @@ export default class TreeEditor extends React.Component<
                                         const path: string[] = JSON.parse(headerElement.dataset.path!) as string[];
                                         const depth: number = JSON.parse(headerElement.dataset.depth!) as number;
                                         const type = JSON.parse(headerElement.dataset.type!) as KeysOfUnion<
-                                            (typeof treeEditorIcons)[keyof typeof treeEditorIcons]
+                                            (typeof treeEditorIcons)[Exclude<keyof typeof treeEditorIcons, "generic">]
                                         >;
                                         const isDirectType = JSON.parse(headerElement.dataset.isDirectType!) as boolean;
                                         let propertyPath: string[];
@@ -593,7 +657,11 @@ export default class TreeEditor extends React.Component<
                                             case "longArray": {
                                                 const parentObject: any = path
                                                     .concat(isDirectType ? [] : ["value"])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (!Array.isArray(parentObject)) throw new Error("Parent object is not an array.");
                                                 parentObject.push(getDefaultValueTagForNodeType("long", Array.isArray(parentObject)));
                                                 props.dataStorageObject.treeEditor.currentListChildInCreationMode = path.concat([
                                                     ...(isDirectType ? [] : ["value"]),
@@ -608,12 +676,22 @@ export default class TreeEditor extends React.Component<
                                             case "list": {
                                                 const parentObject: any = path
                                                     .concat(["value", ...(isDirectType ? [] : ["value"])])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
-                                                const parentParentObject: any = path
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (!Array.isArray(parentObject)) throw new Error("Parent object is not an array.");
+                                                const parentParentObject: unknown = path
                                                     .concat(isDirectType ? [] : ["value"])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
-                                                if (parentParentObject.type === "end") {
-                                                    parentParentObject.type = "long";
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (
+                                                    typeof parentParentObject === "object" &&
+                                                    (parentParentObject as Record<string, unknown> | undefined)?.type === "end"
+                                                ) {
+                                                    (parentParentObject as Record<string, unknown>).type = "long";
                                                 }
                                                 parentObject.push(getDefaultValueTagForNodeType("long", Array.isArray(parentObject)));
                                                 props.dataStorageObject.treeEditor.currentListChildInCreationMode = path.concat([
@@ -627,6 +705,20 @@ export default class TreeEditor extends React.Component<
                                                 });
                                                 return;
                                             }
+                                            case "string":
+                                            case "number":
+                                            case "boolean":
+                                            case "object":
+                                            case "int":
+                                            case "byte":
+                                            case "short":
+                                            case "long":
+                                            case "float":
+                                            case "double":
+                                            case "byteArray":
+                                            case "shortArray":
+                                            case "intArray":
+                                            case "end":
                                             default:
                                                 return;
                                         }
@@ -635,14 +727,7 @@ export default class TreeEditor extends React.Component<
                                         childrenContainerElement.appendChild(containerElement);
                                         function Elem(): JSX.Element {
                                             return (
-                                                <TreeNode
-                                                    depth={depth + 1}
-                                                    propertyPath={propertyPath}
-                                                    name=""
-                                                    typeToCreate="long"
-                                                    isInCreationMode={true}
-                                                    // containerRef={ref(containerElement)}
-                                                />
+                                                <TreeNode depth={depth + 1} propertyPath={propertyPath} name="" typeToCreate="long" isInCreationMode={true} />
                                             );
                                         }
                                         render(<Elem />, containerElement);
@@ -682,7 +767,7 @@ export default class TreeEditor extends React.Component<
                                         const path: string[] = JSON.parse(headerElement.dataset.path!) as string[];
                                         const depth: number = JSON.parse(headerElement.dataset.depth!) as number;
                                         const type = JSON.parse(headerElement.dataset.type!) as KeysOfUnion<
-                                            (typeof treeEditorIcons)[keyof typeof treeEditorIcons]
+                                            (typeof treeEditorIcons)[Exclude<keyof typeof treeEditorIcons, "generic">]
                                         >;
                                         const isDirectType = JSON.parse(headerElement.dataset.isDirectType!) as boolean;
                                         let propertyPath: string[];
@@ -693,7 +778,12 @@ export default class TreeEditor extends React.Component<
                                             // case "floatArray": {
                                             //     const parentObject: any = path
                                             //         .concat(["value"])
-                                            //         .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
+                                            //         .reduce(
+                                            //             (value: unknown, property: string): unknown =>
+                                            //                 value?.[property as never],
+                                            //             props.dataStorageObject.data
+                                            //         );
+                                            //     if (!Array.isArray(parentObject)) throw new Error("Parent object is not an array.");
                                             //     parentObject.push(getDefaultValueTagForNodeType("float", Array.isArray(parentObject)));
                                             //     props.dataStorageObject.treeEditor.currentListChildInCreationMode = path.concat([
                                             //         "value",
@@ -708,12 +798,22 @@ export default class TreeEditor extends React.Component<
                                             case "list": {
                                                 const parentObject: any = path
                                                     .concat(["value", ...(isDirectType ? [] : ["value"])])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
-                                                const parentParentObject: any = path
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (!Array.isArray(parentObject)) throw new Error("Parent object is not an array.");
+                                                const parentParentObject: unknown = path
                                                     .concat(isDirectType ? [] : ["value"])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
-                                                if (parentParentObject.type === "end") {
-                                                    parentParentObject.type = "float";
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (
+                                                    typeof parentParentObject === "object" &&
+                                                    (parentParentObject as Record<string, unknown> | undefined)?.type === "end"
+                                                ) {
+                                                    (parentParentObject as Record<string, unknown>).type = "float";
                                                 }
                                                 parentObject.push(getDefaultValueTagForNodeType("float", Array.isArray(parentObject)));
                                                 props.dataStorageObject.treeEditor.currentListChildInCreationMode = path.concat([
@@ -727,6 +827,21 @@ export default class TreeEditor extends React.Component<
                                                 });
                                                 return;
                                             }
+                                            case "string":
+                                            case "number":
+                                            case "boolean":
+                                            case "object":
+                                            case "int":
+                                            case "byte":
+                                            case "short":
+                                            case "long":
+                                            case "float":
+                                            case "double":
+                                            case "byteArray":
+                                            case "shortArray":
+                                            case "intArray":
+                                            case "longArray":
+                                            case "end":
                                             default:
                                                 return;
                                         }
@@ -735,14 +850,7 @@ export default class TreeEditor extends React.Component<
                                         childrenContainerElement.appendChild(containerElement);
                                         function Elem(): JSX.Element {
                                             return (
-                                                <TreeNode
-                                                    depth={depth + 1}
-                                                    propertyPath={propertyPath}
-                                                    name=""
-                                                    typeToCreate="float"
-                                                    isInCreationMode={true}
-                                                    // containerRef={ref(containerElement)}
-                                                />
+                                                <TreeNode depth={depth + 1} propertyPath={propertyPath} name="" typeToCreate="float" isInCreationMode={true} />
                                             );
                                         }
                                         render(<Elem />, containerElement);
@@ -782,7 +890,7 @@ export default class TreeEditor extends React.Component<
                                         const path: string[] = JSON.parse(headerElement.dataset.path!) as string[];
                                         const depth: number = JSON.parse(headerElement.dataset.depth!) as number;
                                         const type = JSON.parse(headerElement.dataset.type!) as KeysOfUnion<
-                                            (typeof treeEditorIcons)[keyof typeof treeEditorIcons]
+                                            (typeof treeEditorIcons)[Exclude<keyof typeof treeEditorIcons, "generic">]
                                         >;
                                         const isDirectType = JSON.parse(headerElement.dataset.isDirectType!) as boolean;
                                         let propertyPath: string[];
@@ -793,7 +901,12 @@ export default class TreeEditor extends React.Component<
                                             // case "doubleArray": {
                                             //     const parentObject: any = path
                                             //         .concat(["value"])
-                                            //         .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
+                                            //         .reduce(
+                                            //             (value: unknown, property: string): unknown =>
+                                            //                 value?.[property as never],
+                                            //             props.dataStorageObject.data
+                                            //         );
+                                            //     if (!Array.isArray(parentObject)) throw new Error("Parent object is not an array.");
                                             //     parentObject.push(getDefaultValueTagForNodeType("double", Array.isArray(parentObject)));
                                             //     props.dataStorageObject.treeEditor.currentListChildInCreationMode = path.concat([
                                             //         "value",
@@ -808,12 +921,22 @@ export default class TreeEditor extends React.Component<
                                             case "list": {
                                                 const parentObject: any = path
                                                     .concat(["value", ...(isDirectType ? [] : ["value"])])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
-                                                const parentParentObject: any = path
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (!Array.isArray(parentObject)) throw new Error("Parent object is not an array.");
+                                                const parentParentObject: unknown = path
                                                     .concat(isDirectType ? [] : ["value"])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
-                                                if (parentParentObject.type === "end") {
-                                                    parentParentObject.type = "double";
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (
+                                                    typeof parentParentObject === "object" &&
+                                                    (parentParentObject as Record<string, unknown> | undefined)?.type === "end"
+                                                ) {
+                                                    (parentParentObject as Record<string, unknown>).type = "double";
                                                 }
                                                 parentObject.push(getDefaultValueTagForNodeType("double", Array.isArray(parentObject)));
                                                 props.dataStorageObject.treeEditor.currentListChildInCreationMode = path.concat([
@@ -827,6 +950,21 @@ export default class TreeEditor extends React.Component<
                                                 });
                                                 return;
                                             }
+                                            case "string":
+                                            case "number":
+                                            case "boolean":
+                                            case "object":
+                                            case "int":
+                                            case "byte":
+                                            case "short":
+                                            case "long":
+                                            case "float":
+                                            case "double":
+                                            case "byteArray":
+                                            case "shortArray":
+                                            case "intArray":
+                                            case "longArray":
+                                            case "end":
                                             default:
                                                 return;
                                         }
@@ -875,7 +1013,7 @@ export default class TreeEditor extends React.Component<
                                         const path: string[] = JSON.parse(headerElement.dataset.path!) as string[];
                                         const depth: number = JSON.parse(headerElement.dataset.depth!) as number;
                                         const type = JSON.parse(headerElement.dataset.type!) as KeysOfUnion<
-                                            (typeof treeEditorIcons)[keyof typeof treeEditorIcons]
+                                            (typeof treeEditorIcons)[Exclude<keyof typeof treeEditorIcons, "generic">]
                                         >;
                                         const isDirectType = JSON.parse(headerElement.dataset.isDirectType!) as boolean;
                                         let propertyPath: string[];
@@ -886,12 +1024,22 @@ export default class TreeEditor extends React.Component<
                                             case "list": {
                                                 const parentObject: any = path
                                                     .concat(["value", ...(isDirectType ? [] : ["value"])])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
-                                                const parentParentObject: any = path
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (!Array.isArray(parentObject)) throw new Error("Parent object is not an array.");
+                                                const parentParentObject: unknown = path
                                                     .concat(isDirectType ? [] : ["value"])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
-                                                if (parentParentObject.type === "end") {
-                                                    parentParentObject.type = "byteArray";
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (
+                                                    typeof parentParentObject === "object" &&
+                                                    (parentParentObject as Record<string, unknown> | undefined)?.type === "end"
+                                                ) {
+                                                    (parentParentObject as Record<string, unknown>).type = "byteArray";
                                                 }
                                                 parentObject.push(getDefaultValueTagForNodeType("byteArray", Array.isArray(parentObject)));
                                                 props.dataStorageObject.treeEditor.currentListChildInCreationMode = path.concat([
@@ -905,6 +1053,21 @@ export default class TreeEditor extends React.Component<
                                                 });
                                                 return;
                                             }
+                                            case "string":
+                                            case "number":
+                                            case "boolean":
+                                            case "object":
+                                            case "byte":
+                                            case "short":
+                                            case "int":
+                                            case "long":
+                                            case "float":
+                                            case "double":
+                                            case "byteArray":
+                                            case "shortArray":
+                                            case "intArray":
+                                            case "longArray":
+                                            case "end":
                                             default:
                                                 return;
                                         }
@@ -959,7 +1122,7 @@ export default class TreeEditor extends React.Component<
                                         const path: string[] = JSON.parse(headerElement.dataset.path!) as string[];
                                         const depth: number = JSON.parse(headerElement.dataset.depth!) as number;
                                         const type = JSON.parse(headerElement.dataset.type!) as KeysOfUnion<
-                                            (typeof treeEditorIcons)[keyof typeof treeEditorIcons]
+                                            (typeof treeEditorIcons)[Exclude<keyof typeof treeEditorIcons, "generic">]
                                         >;
                                         const isDirectType = JSON.parse(headerElement.dataset.isDirectType!) as boolean;
                                         let propertyPath: string[];
@@ -970,12 +1133,22 @@ export default class TreeEditor extends React.Component<
                                             case "list": {
                                                 const parentObject: any = path
                                                     .concat(["value", ...(isDirectType ? [] : ["value"])])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
-                                                const parentParentObject: any = path
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (!Array.isArray(parentObject)) throw new Error("Parent object is not an array.");
+                                                const parentParentObject: unknown = path
                                                     .concat(isDirectType ? [] : ["value"])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
-                                                if (parentParentObject.type === "end") {
-                                                    parentParentObject.type = "shortArray";
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (
+                                                    typeof parentParentObject === "object" &&
+                                                    (parentParentObject as Record<string, unknown> | undefined)?.type === "end"
+                                                ) {
+                                                    (parentParentObject as Record<string, unknown>).type = "shortArray";
                                                 }
                                                 parentObject.push(getDefaultValueTagForNodeType("shortArray", Array.isArray(parentObject)));
                                                 props.dataStorageObject.treeEditor.currentListChildInCreationMode = path.concat([
@@ -989,6 +1162,21 @@ export default class TreeEditor extends React.Component<
                                                 });
                                                 return;
                                             }
+                                            case "string":
+                                            case "number":
+                                            case "boolean":
+                                            case "object":
+                                            case "byte":
+                                            case "short":
+                                            case "int":
+                                            case "long":
+                                            case "float":
+                                            case "double":
+                                            case "byteArray":
+                                            case "shortArray":
+                                            case "intArray":
+                                            case "longArray":
+                                            case "end":
                                             default:
                                                 return;
                                         }
@@ -1043,7 +1231,7 @@ export default class TreeEditor extends React.Component<
                                         const path: string[] = JSON.parse(headerElement.dataset.path!) as string[];
                                         const depth: number = JSON.parse(headerElement.dataset.depth!) as number;
                                         const type = JSON.parse(headerElement.dataset.type!) as KeysOfUnion<
-                                            (typeof treeEditorIcons)[keyof typeof treeEditorIcons]
+                                            (typeof treeEditorIcons)[Exclude<keyof typeof treeEditorIcons, "generic">]
                                         >;
                                         const isDirectType = JSON.parse(headerElement.dataset.isDirectType!) as boolean;
                                         let propertyPath: string[];
@@ -1054,12 +1242,22 @@ export default class TreeEditor extends React.Component<
                                             case "list": {
                                                 const parentObject: any = path
                                                     .concat(["value", ...(isDirectType ? [] : ["value"])])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
-                                                const parentParentObject: any = path
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (!Array.isArray(parentObject)) throw new Error("Parent object is not an array.");
+                                                const parentParentObject: unknown = path
                                                     .concat(isDirectType ? [] : ["value"])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
-                                                if (parentParentObject.type === "end") {
-                                                    parentParentObject.type = "intArray";
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (
+                                                    typeof parentParentObject === "object" &&
+                                                    (parentParentObject as Record<string, unknown> | undefined)?.type === "end"
+                                                ) {
+                                                    (parentParentObject as Record<string, unknown>).type = "intArray";
                                                 }
                                                 parentObject.push(getDefaultValueTagForNodeType("intArray", Array.isArray(parentObject)));
                                                 props.dataStorageObject.treeEditor.currentListChildInCreationMode = path.concat([
@@ -1073,6 +1271,21 @@ export default class TreeEditor extends React.Component<
                                                 });
                                                 return;
                                             }
+                                            case "string":
+                                            case "number":
+                                            case "boolean":
+                                            case "object":
+                                            case "int":
+                                            case "byte":
+                                            case "short":
+                                            case "long":
+                                            case "float":
+                                            case "double":
+                                            case "byteArray":
+                                            case "shortArray":
+                                            case "intArray":
+                                            case "longArray":
+                                            case "end":
                                             default:
                                                 return;
                                         }
@@ -1127,7 +1340,7 @@ export default class TreeEditor extends React.Component<
                                         const path: string[] = JSON.parse(headerElement.dataset.path!) as string[];
                                         const depth: number = JSON.parse(headerElement.dataset.depth!) as number;
                                         const type = JSON.parse(headerElement.dataset.type!) as KeysOfUnion<
-                                            (typeof treeEditorIcons)[keyof typeof treeEditorIcons]
+                                            (typeof treeEditorIcons)[Exclude<keyof typeof treeEditorIcons, "generic">]
                                         >;
                                         const isDirectType = JSON.parse(headerElement.dataset.isDirectType!) as boolean;
                                         let propertyPath: string[];
@@ -1138,12 +1351,22 @@ export default class TreeEditor extends React.Component<
                                             case "list": {
                                                 const parentObject: any = path
                                                     .concat(["value", ...(isDirectType ? [] : ["value"])])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
-                                                const parentParentObject: any = path
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (!Array.isArray(parentObject)) throw new Error("Parent object is not an array.");
+                                                const parentParentObject: unknown = path
                                                     .concat(isDirectType ? [] : ["value"])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
-                                                if (parentParentObject.type === "end") {
-                                                    parentParentObject.type = "longArray";
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (
+                                                    typeof parentParentObject === "object" &&
+                                                    (parentParentObject as Record<string, unknown> | undefined)?.type === "end"
+                                                ) {
+                                                    (parentParentObject as Record<string, unknown>).type = "longArray";
                                                 }
                                                 parentObject.push(getDefaultValueTagForNodeType("longArray", Array.isArray(parentObject)));
                                                 props.dataStorageObject.treeEditor.currentListChildInCreationMode = path.concat([
@@ -1157,6 +1380,21 @@ export default class TreeEditor extends React.Component<
                                                 });
                                                 return;
                                             }
+                                            case "string":
+                                            case "number":
+                                            case "boolean":
+                                            case "object":
+                                            case "int":
+                                            case "byte":
+                                            case "short":
+                                            case "long":
+                                            case "float":
+                                            case "double":
+                                            case "byteArray":
+                                            case "shortArray":
+                                            case "intArray":
+                                            case "longArray":
+                                            case "end":
                                             default:
                                                 return;
                                         }
@@ -1211,7 +1449,7 @@ export default class TreeEditor extends React.Component<
                                         const path: string[] = JSON.parse(headerElement.dataset.path!) as string[];
                                         const depth: number = JSON.parse(headerElement.dataset.depth!) as number;
                                         const type = JSON.parse(headerElement.dataset.type!) as KeysOfUnion<
-                                            (typeof treeEditorIcons)[keyof typeof treeEditorIcons]
+                                            (typeof treeEditorIcons)[Exclude<keyof typeof treeEditorIcons, "generic">]
                                         >;
                                         const isDirectType = JSON.parse(headerElement.dataset.isDirectType!) as boolean;
                                         let propertyPath: string[];
@@ -1222,12 +1460,22 @@ export default class TreeEditor extends React.Component<
                                             case "list": {
                                                 const parentObject: any = path
                                                     .concat(["value", ...(isDirectType ? [] : ["value"])])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
-                                                const parentParentObject: any = path
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (!Array.isArray(parentObject)) throw new Error("Parent object is not an array.");
+                                                const parentParentObject: unknown = path
                                                     .concat(isDirectType ? [] : ["value"])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
-                                                if (parentParentObject.type === "end") {
-                                                    parentParentObject.type = "list";
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (
+                                                    typeof parentParentObject === "object" &&
+                                                    (parentParentObject as Record<string, unknown> | undefined)?.type === "end"
+                                                ) {
+                                                    (parentParentObject as Record<string, unknown>).type = "list";
                                                 }
                                                 parentObject.push(getDefaultValueTagForNodeType("list", Array.isArray(parentObject)));
                                                 props.dataStorageObject.treeEditor.currentListChildInCreationMode = path.concat([
@@ -1241,6 +1489,21 @@ export default class TreeEditor extends React.Component<
                                                 });
                                                 return;
                                             }
+                                            case "string":
+                                            case "number":
+                                            case "boolean":
+                                            case "object":
+                                            case "int":
+                                            case "byte":
+                                            case "short":
+                                            case "long":
+                                            case "float":
+                                            case "double":
+                                            case "byteArray":
+                                            case "shortArray":
+                                            case "intArray":
+                                            case "longArray":
+                                            case "end":
                                             default:
                                                 return;
                                         }
@@ -1289,7 +1552,7 @@ export default class TreeEditor extends React.Component<
                                         const path: string[] = JSON.parse(headerElement.dataset.path!) as string[];
                                         const depth: number = JSON.parse(headerElement.dataset.depth!) as number;
                                         const type = JSON.parse(headerElement.dataset.type!) as KeysOfUnion<
-                                            (typeof treeEditorIcons)[keyof typeof treeEditorIcons]
+                                            (typeof treeEditorIcons)[Exclude<keyof typeof treeEditorIcons, "generic">]
                                         >;
                                         const isDirectType = JSON.parse(headerElement.dataset.isDirectType!) as boolean;
                                         let propertyPath: string[];
@@ -1300,12 +1563,22 @@ export default class TreeEditor extends React.Component<
                                             case "list": {
                                                 const parentObject: any = path
                                                     .concat(["value", ...(isDirectType ? [] : ["value"])])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
-                                                const parentParentObject: any = path
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (!Array.isArray(parentObject)) throw new Error("Parent object is not an array.");
+                                                const parentParentObject: unknown = path
                                                     .concat(isDirectType ? [] : ["value"])
-                                                    .reduce((value: any, property: string): any => value?.[property], props.dataStorageObject.data);
-                                                if (parentParentObject.type === "end") {
-                                                    parentParentObject.type = "compound";
+                                                    .reduce(
+                                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                                        props.dataStorageObject.data
+                                                    );
+                                                if (
+                                                    typeof parentParentObject === "object" &&
+                                                    (parentParentObject as Record<string, unknown> | undefined)?.type === "end"
+                                                ) {
+                                                    (parentParentObject as Record<string, unknown>).type = "compound";
                                                 }
                                                 parentObject.push(getDefaultValueTagForNodeType("compound", Array.isArray(parentObject)));
                                                 props.dataStorageObject.treeEditor.currentListChildInCreationMode = path.concat([
@@ -1319,6 +1592,21 @@ export default class TreeEditor extends React.Component<
                                                 });
                                                 return;
                                             }
+                                            case "string":
+                                            case "number":
+                                            case "boolean":
+                                            case "object":
+                                            case "int":
+                                            case "byte":
+                                            case "short":
+                                            case "long":
+                                            case "float":
+                                            case "double":
+                                            case "byteArray":
+                                            case "shortArray":
+                                            case "intArray":
+                                            case "longArray":
+                                            case "end":
                                             default:
                                                 return;
                                         }
@@ -1351,9 +1639,10 @@ export default class TreeEditor extends React.Component<
                     widgetRef
                 );
             }
-            if (outerContainerElementRef.current?.parentElement)
+            if (outerContainerElementRef.current?.parentElement) {
                 outerContainerElementRef.current.parentElement.scrollTop =
                     this.props.dataStorageObject.treeEditor.scrollTop ?? outerContainerElementRef.current.parentElement.scrollTop;
+            }
             const props: RenderableProps<TreeEditorProps & { dataStorageObject: TreeEditorDataStorageObject }, any> = this.props;
             function onScroll(event: Event): void {
                 const target: HTMLDivElement | null = event.currentTarget as HTMLDivElement | null;
@@ -1371,15 +1660,16 @@ export default class TreeEditor extends React.Component<
                                 ".treeEditorTreeNode:has(> .treeEditorTreeNodeHeader.selected) > .treeEditorTreeNodeChildren .treeEditorTreeNodeHeader.selected"
                             )
                             .toArray();
-                        let removedPropertyPaths: string[][] = [];
+                        const removedPropertyPaths: string[][] = [];
                         for (const headerElement of selectedHeaders) {
-                            const propertyPath: string[] = JSON.parse(headerElement.dataset.path!);
-                            const parentObject: any = propertyPath
+                            const propertyPath: string[] = JSON.parse(headerElement.dataset.path!) as string[];
+                            const parentObject: unknown = propertyPath
                                 .slice(0, -1)
-                                .reduce((value: any, property: string): any => value?.[property], this.props.dataStorageObject.data);
+                                .reduce((value: unknown, property: string): unknown => value?.[property as never], this.props.dataStorageObject.data);
+                            if (typeof parentObject !== "object" || !parentObject) return;
                             if (!(propertyPath.at(-1)! in parentObject)) return;
                             if (Array.isArray(parentObject)) parentObject.splice(Number(propertyPath.at(-1)!), 1);
-                            else delete parentObject[propertyPath.at(-1)!];
+                            else delete parentObject[propertyPath.at(-1)! as never];
                             const parentExpansionDataObject = propertyPath
                                 .slice(0, -1)
                                 .reduce(
@@ -1389,7 +1679,7 @@ export default class TreeEditor extends React.Component<
                                     ): TreeEditorDataStorageObjectExpansionData | undefined => (!value ? undefined : value.data?.[property]),
                                     this.props.dataStorageObject.treeEditor.expansionData ?? {}
                                 );
-                            if (parentExpansionDataObject?.data !== undefined && parentExpansionDataObject.data[propertyPath.at(-1)!] !== undefined) {
+                            if (parentExpansionDataObject?.data?.[propertyPath.at(-1)!] !== undefined) {
                                 if (Array.isArray(parentObject)) {
                                     const expData: Record<string, TreeEditorDataStorageObjectExpansionData> = parentExpansionDataObject.data;
                                     const deletedIndex: number = Number(propertyPath.at(-1)!);
@@ -1472,6 +1762,8 @@ export default class TreeEditor extends React.Component<
                     return { type, value: {} };
                 case "object":
                     return {};
+                case "end":
+                    return undefined;
                 default:
                     console.error(`Error getting default node value tag, value type ${JSON.stringify(type)} is not a type that can hold a value.`);
                     return undefined;
@@ -1502,7 +1794,8 @@ export default class TreeEditor extends React.Component<
                     case "object":
                     case "compound":
                     case "boolean":
-                    case "number": {
+                    case "number":
+                    case "end": {
                         return [];
                     }
                     case "string": {
@@ -1514,8 +1807,11 @@ export default class TreeEditor extends React.Component<
                             case "JSON": {
                                 return [];
                             }
+                            default:
+                                throw new TypeError(
+                                    `Missing handling for dataStorageObject.dataType of ${JSON.stringify((this.props.dataStorageObject as GenericDataStorageObject).dataType)}.`
+                                );
                         }
-                        break;
                     }
                     case "byte":
                     case "short":
@@ -1532,7 +1828,8 @@ export default class TreeEditor extends React.Component<
 
             const getDefaultValueForNodeType = (
                 type: KeysOfUnion<(typeof treeEditorIcons)[Exclude<keyof typeof treeEditorIcons, "generic">]>
-            ): string | boolean | number | bigint | [number, number] | Record<string, any> | any[] | undefined => {
+                // TODO: Fix this return type.
+            ): NBTTreeNodeValue | JSONTreeNodeValue | undefined => {
                 switch (type) {
                     case "long":
                         return toLongParts(0n);
@@ -1559,6 +1856,8 @@ export default class TreeEditor extends React.Component<
                         return { type, value: {} };
                     case "object":
                         return {};
+                    case "end":
+                        return undefined;
                     default:
                         console.error(`Error getting default node value tag, value type ${JSON.stringify(type)} is not a type that can hold a value.`);
                         return undefined;
@@ -1614,7 +1913,7 @@ export default class TreeEditor extends React.Component<
                     if (!props.isInCreationMode && nameTextBoxRef.current.defaultValue === nameTextBoxRef.current.value) return;
                     let rawPreviousName: string;
                     try {
-                        rawPreviousName = JSON.parse(`"${nameTextBoxRef.current.defaultValue.replaceAll('"', '\\"')}"`);
+                        rawPreviousName = JSON.parse(`"${nameTextBoxRef.current.defaultValue.replaceAll('"', '\\"')}"`) as string;
                     } catch (e) {
                         setTextDisplayErrorState(nameTextDisplayRef, "criticalInternalError");
                         // TODO: Add a popup warning that something went wrong.
@@ -1623,7 +1922,7 @@ export default class TreeEditor extends React.Component<
                     }
                     let rawNewName: string;
                     try {
-                        rawNewName = JSON.parse(`"${nameTextBoxRef.current.value.replaceAll('"', '\\"')}"`);
+                        rawNewName = JSON.parse(`"${nameTextBoxRef.current.value.replaceAll('"', '\\"')}"`) as string;
                     } catch (e) {
                         nameTextBoxRef.current.value = nameTextBoxRef.current.defaultValue;
                         nameTextBoxRef.current.dispatchEvent(new Event("input"));
@@ -1633,9 +1932,15 @@ export default class TreeEditor extends React.Component<
                         return;
                     }
                     // console.log(_event);
-                    const parentObject: any = props.propertyPath
+                    const parentObject: unknown = props.propertyPath
                         .slice(0, -1)
-                        .reduce((value: any, property: string): any => value?.[property], dataStorageObject.data);
+                        .reduce((value: unknown, property: string): unknown => value?.[property as never], dataStorageObject.data);
+                    if (typeof parentObject !== "object" || parentObject === null) {
+                        setTextDisplayErrorState(nameTextDisplayRef, "criticalInternalError");
+                        // TODO: Add a popup warning that something went wrong.
+                        console.error("Parent object is not an object.", parentObject);
+                        return;
+                    }
                     if (!props.isInCreationMode && !(rawPreviousName in parentObject)) return;
                     if (rawNewName in parentObject) {
                         setTextDisplayErrorState(nameTextDisplayRef, "treeEditorTextBoxError_duplicatePropertyName");
@@ -1644,12 +1949,12 @@ export default class TreeEditor extends React.Component<
                         return;
                     }
                     if (props.isInCreationMode) {
-                        parentObject[rawNewName] = getDefaultValueTagForNodeType(props.typeToCreate!, Array.isArray(parentObject));
+                        (parentObject as Record<string, unknown>)[rawNewName] = getDefaultValueTagForNodeType(props.typeToCreate!, Array.isArray(parentObject));
                         if (
                             props.typeToCreate &&
-                            !(
-                                ["byteArray", "shortArray", "intArray", "longArray", "compound", "list", "object"] as NonNullable<typeof props.typeToCreate>[]
-                            ).includes(props.typeToCreate)
+                            !(["byteArray", "shortArray", "intArray", "longArray", "compound", "list", "object"] as (typeof props.typeToCreate)[]).includes(
+                                props.typeToCreate
+                            )
                         ) {
                             dataStorageObject.treeEditor.currentListChildInCreationMode = [...props.propertyPath.slice(0, -1), rawNewName];
                         }
@@ -1658,20 +1963,20 @@ export default class TreeEditor extends React.Component<
                             type: "addProperty",
                         });
                     } else {
-                        parentObject[rawNewName] = parentObject[rawPreviousName];
-                        delete parentObject[rawPreviousName];
+                        parentObject[rawNewName as never] = parentObject[rawPreviousName as never];
+                        delete parentObject[rawPreviousName as never];
                         // console.log(5);
                         const parentExpansionDataObject = props.propertyPath
                             .slice(0, -1)
                             .reduce(
                                 (
-                                    value: { data?: Record<string, any>; value?: boolean } | undefined,
+                                    value: TreeEditorDataStorageObjectExpansionData | undefined,
                                     property: string
-                                ): { data?: Record<string, any>; value?: boolean } | undefined => (!value ? undefined : value.data?.[property]),
+                                ): TreeEditorDataStorageObjectExpansionData | undefined => (!value ? undefined : value.data?.[property]),
                                 dataStorageObject.treeEditor.expansionData ?? {}
                             );
-                        if (parentExpansionDataObject?.data !== undefined && parentExpansionDataObject.data[rawPreviousName] !== undefined) {
-                            parentExpansionDataObject.data[rawNewName] = parentExpansionDataObject.data[rawPreviousName];
+                        if (parentExpansionDataObject?.data?.[rawPreviousName] !== undefined) {
+                            parentExpansionDataObject.data[rawNewName] = parentExpansionDataObject.data[rawPreviousName]!;
                             delete parentExpansionDataObject.data[rawPreviousName];
                         }
                         onValueChange?.(dataStorageObject, {
@@ -1700,7 +2005,15 @@ export default class TreeEditor extends React.Component<
                     }
                     if (valueTextBoxRef.current.defaultValue === valueTextBoxRef.current.value) return;
                     const actualPath: string[] = [...props.propertyPath, ...getSubPropertyPathFromType(type)];
-                    const parentObject: any = actualPath.slice(0, -1).reduce((value: any, property: string): any => value?.[property], dataStorageObject.data);
+                    const parentObject: unknown = actualPath
+                        .slice(0, -1)
+                        .reduce((value: unknown, property: string): unknown => value?.[property as never], dataStorageObject.data);
+                    if (typeof parentObject !== "object" || parentObject === null) {
+                        setTextDisplayErrorState(valueTextDisplayRef, "criticalInternalError");
+                        // TODO: Add a popup warning that something went wrong.
+                        console.error("Parent object is not an object.", parentObject);
+                        return;
+                    }
                     let newValue: string | boolean | number | bigint | [number, number];
                     function getPrimitiveTypeFromType(
                         type: KeysOfUnion<(typeof treeEditorIcons)[Exclude<keyof typeof treeEditorIcons, "generic">]>
@@ -1733,7 +2046,7 @@ export default class TreeEditor extends React.Component<
                     }
                     let rawPreviousValue: string;
                     try {
-                        rawPreviousValue = JSON.parse(`"${valueTextBoxRef.current.defaultValue.replaceAll('"', '\\"')}"`);
+                        rawPreviousValue = JSON.parse(`"${valueTextBoxRef.current.defaultValue.replaceAll('"', '\\"')}"`) as string;
                     } catch (e) {
                         setTextDisplayErrorState(valueTextDisplayRef, "criticalInternalError");
                         // TODO: Add a popup warning that something went wrong.
@@ -1792,8 +2105,13 @@ export default class TreeEditor extends React.Component<
                             // TODO: Add a popup warning that something went wrong.
                             console.error(`Error saving new node value, value type ${JSON.stringify(type)} is not allowed to have its value directly edited.`);
                             return;
+                        default:
+                            setTextDisplayErrorState(valueTextDisplayRef, "criticalInternalError");
+                            // TODO: Add a popup warning that something went wrong.
+                            console.error(`Error saving new node value, unknown type ${JSON.stringify(type)}.`);
+                            return;
                     }
-                    parentObject[actualPath.at(-1)!] = newValue;
+                    parentObject[actualPath.at(-1)! as never] = newValue as never;
                     onValueChange?.(dataStorageObject, {
                         propertyPath: actualPath.slice(0, -1),
                         type: "changeValue",
@@ -1919,10 +2237,14 @@ export default class TreeEditor extends React.Component<
                     }
                 };
             });
-            const value: NBTTreeNodeValue | JSONTreeNodeValue =
+            const value: NBTTreeNodeValue | DirectNBTTreeNodeValue | JSONTreeNodeValue =
                 props.typeToCreate ?
                     getDefaultValueForNodeType(props.typeToCreate)
-                :   props.propertyPath.reduce((value: any, property: string): any => value[property], this.props.dataStorageObject.data);
+                :   (props.propertyPath.reduce((value: unknown, property: string): unknown => value?.[property as never], this.props.dataStorageObject.data) as
+                        | NBTTreeNodeValue
+                        | DirectNBTTreeNodeValue
+                        | JSONTreeNodeValue);
+            // TODO: Figure out how this handled "end" type list entries (which are usually undefined).
             if (value === undefined) {
                 console.warn("No value found for property path", props.propertyPath, "in data", this.props.dataStorageObject.data);
                 return;
@@ -1943,20 +2265,32 @@ export default class TreeEditor extends React.Component<
                         fakeAssertIsNBTNodeTreeNodeValue(value);
                         if (Array.isArray(value)) {
                             // console.log(3);
+                            // XXX: This code is designed to crash the editor if the data structure is invalid or when something is wrong with the code below.
                             const parentParentValue: NBT.List<NBT.TagType> = props.propertyPath
                                 .slice(0, -2)
-                                .reduce((value: any, property: string): any => value[property], this.props.dataStorageObject.data);
+                                .reduce(
+                                    (value: unknown, property: string): unknown => value?.[property as never],
+                                    this.props.dataStorageObject.data
+                                ) as NBT.List<NBT.TagType>;
                             if (parentParentValue.type === NBT.TagType.List) {
                                 // console.log(4);
                                 const parentValue: NBT.List<NBT.TagType>["value"] = props.propertyPath
                                     .slice(0, -1)
-                                    .reduce((value: any, property: string): any => value[property], this.props.dataStorageObject.data);
+                                    .reduce(
+                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                        this.props.dataStorageObject.data
+                                    ) as NBT.List<NBT.TagType>["value"];
                                 type = parentValue.type;
                             } else {
                                 // console.log(4.1);
                                 const parentValue: NBT.ByteArray | NBT.ShortArray | NBT.IntArray | NBT.LongArray | NBT.Long = props.propertyPath
                                     .slice(0, -1)
-                                    .reduce((value: any, property: string): any => value[property], this.props.dataStorageObject.data);
+                                    .reduce((value: unknown, property: string): unknown => value?.[property as never], this.props.dataStorageObject.data) as
+                                    | NBT.ByteArray
+                                    | NBT.ShortArray
+                                    | NBT.IntArray
+                                    | NBT.LongArray
+                                    | NBT.Long;
                                 type =
                                     parentValue.type === "byteArray" ? "byte"
                                     : parentValue.type === "shortArray" ? "short"
@@ -1979,48 +2313,65 @@ export default class TreeEditor extends React.Component<
                             !Array.isArray(
                                 props.propertyPath
                                     .slice(0, -1)
-                                    .reduce((value: any, property: string): any => value[property], this.props.dataStorageObject.data)
+                                    .reduce((value: unknown, property: string): unknown => value?.[property as never], this.props.dataStorageObject.data)
                             )
                         ) {
                             // console.log(5);
                             type = value.type;
                             if (type === "list" && (value.value as NBT.List<NBT.TagType>["value"] | undefined)?.type) {
-                                listType = (value.value as NBT.List<NBT.TagType>["value"]).type as keyof (typeof treeEditorIcons)["NBT"];
+                                listType = (value.value as NBT.List<NBT.TagType>["value"]).type; // as keyof (typeof treeEditorIcons)["NBT"]
                             }
                         } else {
                             // TEST: This needs to be tested for nested arrays, and other things inside nested arrays, and other things nested at the root of an array.
                             // console.log(6);
                             const parentParentParentValue: NBT.List<NBT.TagType> = props.propertyPath
                                 .slice(0, -3)
-                                .reduce((value: any, property: string): any => value[property], this.props.dataStorageObject.data);
+                                .reduce(
+                                    (value: unknown, property: string): unknown => value?.[property as never],
+                                    this.props.dataStorageObject.data
+                                ) as NBT.List<NBT.TagType>;
                             const parentValue: NBT.List<NBT.TagType>["value"] = props.propertyPath
                                 .slice(0, -1)
-                                .reduce((value: any, property: string): any => value[property], this.props.dataStorageObject.data);
+                                .reduce(
+                                    (value: unknown, property: string): unknown => value?.[property as never],
+                                    this.props.dataStorageObject.data
+                                ) as NBT.List<NBT.TagType>["value"];
                             // console.log(parentParentParentValue);
                             if (Array.isArray(parentValue) && Array.isArray(parentParentParentValue)) {
                                 const parentParentValue: NBT.List<NBT.TagType>["value"] = props.propertyPath
                                     .slice(0, -2)
-                                    .reduce((value: any, property: string): any => value[property], this.props.dataStorageObject.data);
+                                    .reduce(
+                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                        this.props.dataStorageObject.data
+                                    ) as NBT.List<NBT.TagType>["value"];
                                 type = parentParentValue.type;
                                 isDirectType = true;
                                 if (type === "list" && (value as NBT.List<NBT.TagType>["value"] | undefined)?.type) {
-                                    listType = (value as NBT.List<NBT.TagType>["value"]).type as keyof (typeof treeEditorIcons)["NBT"];
+                                    listType = (value as NBT.List<NBT.TagType>["value"]).type; // as keyof (typeof treeEditorIcons)["NBT"]
                                 }
                             } else if (parentParentParentValue.type === NBT.TagType.List) {
                                 // console.log(7);
                                 const parentParentValue: NBT.List<NBT.TagType>["value"] = props.propertyPath
                                     .slice(0, -2)
-                                    .reduce((value: any, property: string): any => value[property], this.props.dataStorageObject.data);
+                                    .reduce(
+                                        (value: unknown, property: string): unknown => value?.[property as never],
+                                        this.props.dataStorageObject.data
+                                    ) as NBT.List<NBT.TagType>["value"];
                                 type = parentParentValue.type;
                                 isDirectType = true;
                                 if (type === "list" && (value as NBT.List<NBT.TagType>["value"] | undefined)?.type) {
-                                    listType = (value as NBT.List<NBT.TagType>["value"]).type as keyof (typeof treeEditorIcons)["NBT"];
+                                    listType = (value as NBT.List<NBT.TagType>["value"]).type; // as keyof (typeof treeEditorIcons)["NBT"]
                                 }
                             } else {
                                 // console.log(8);
                                 const parentParentValue: NBT.ByteArray | NBT.ShortArray | NBT.IntArray | NBT.LongArray | NBT.Long = props.propertyPath
                                     .slice(0, -2)
-                                    .reduce((value: any, property: string): any => value[property], this.props.dataStorageObject.data);
+                                    .reduce((value: unknown, property: string): unknown => value?.[property as never], this.props.dataStorageObject.data) as
+                                    | NBT.ByteArray
+                                    | NBT.ShortArray
+                                    | NBT.IntArray
+                                    | NBT.LongArray
+                                    | NBT.Long;
                                 type =
                                     parentParentValue.type === "byteArray" ? "byte"
                                     : parentParentValue.type === "shortArray" ? "short"
@@ -2050,6 +2401,10 @@ export default class TreeEditor extends React.Component<
                         }
                         break;
                     }
+                    default:
+                        throw new TypeError(
+                            `Missing handling for dataStorageObject.dataType of ${JSON.stringify((this.props.dataStorageObject as GenericDataStorageObject).dataType)}.`
+                        );
                 }
             } else type = props.typeToCreate;
             // console.log(props, type, value);
@@ -2061,42 +2416,54 @@ export default class TreeEditor extends React.Component<
                     case "shortArray":
                     case "intArray":
                     case "longArray": {
-                        const value2: NBT.ByteArray | NBT.ShortArray | NBT.IntArray | NBT.LongArray = value as any;
+                        const value2 = value as NBT.ByteArray | NBT.ShortArray | NBT.IntArray | NBT.LongArray;
                         childrenCount = value2.value.length;
                         break;
                     }
                     case "list": {
                         if (this.props.dataStorageObject.dataType === "JSON") {
-                            const value2: JSONTreeNodeValue[] = value as any;
+                            const value2 = value as JSONTreeNodeValue[];
                             childrenCount = value2.length;
                             break;
                         }
-                        const value2: NBT.List<NBT.TagType> | NBT.List<NBT.TagType>["value"] = value as any;
+                        const value2 = value as NBT.List<NBT.TagType> | NBT.List<NBT.TagType>["value"];
                         childrenCount = (isDirectType ? (value2 as NBT.List<NBT.TagType>["value"]).value : (value2 as NBT.List<NBT.TagType>).value.value)
                             .length;
                         break;
                     }
                     case "compound": {
-                        const value2: NBT.Compound | NBT.Compound["value"] = value as any;
-                        childrenCount = Object.keys(isDirectType ? (value2 as NBT.Compound["value"]) : (value2 as NBT.Compound).value).length;
+                        const value2 = value as NBT.Compound | NBT.Compound["value"];
+                        childrenCount = Object.keys(isDirectType ? value2 : (value2 as NBT.Compound).value).length;
                         break;
                     }
                     case "object": {
-                        const value2: Exclude<Extract<JSONTreeNodeValue, object>, any[]> = value as any;
+                        const value2 = value as Exclude<Extract<JSONTreeNodeValue, object>, any[]>;
                         childrenCount = Object.keys(value2).length;
                         break;
                     }
+                    case "string":
+                    case "number":
+                    case "boolean":
+                    case "byte":
+                    case "short":
+                    case "int":
+                    case "long":
+                    case "float":
+                    case "double":
+                    case "end":
+                    default:
+                        break;
                 }
             }
             const getChildren = (): JSX.SpecificElement<"div">[] | undefined => {
-                let children: JSX.SpecificElement<"div">[] | undefined = undefined;
+                let children: JSX.SpecificElement<"div">[] | undefined;
                 if (hasChildren) {
                     switch (type) {
                         case "byteArray":
                         case "shortArray":
                         case "intArray":
                         case "longArray": {
-                            const value2: NBT.ByteArray | NBT.ShortArray | NBT.IntArray | NBT.LongArray = value as any;
+                            const value2 = value as NBT.ByteArray | NBT.ShortArray | NBT.IntArray | NBT.LongArray;
                             children = value2.value.map((_value: number | [number, number], index: number): JSX.SpecificElement<"div"> => {
                                 return (
                                     <div class="treeEditorTreeNodeChild">
@@ -2108,7 +2475,7 @@ export default class TreeEditor extends React.Component<
                         }
                         case "list": {
                             if (this.props.dataStorageObject.dataType === "JSON") {
-                                const value2: JSONTreeNodeValue[] = value as any;
+                                const value2 = value as JSONTreeNodeValue[];
                                 children = value2.map((_value: JSONTreeNodeValue, index: number): JSX.SpecificElement<"div"> => {
                                     return (
                                         <div class="treeEditorTreeNodeChild">
@@ -2118,7 +2485,7 @@ export default class TreeEditor extends React.Component<
                                 });
                                 break;
                             }
-                            const value2: NBT.List<NBT.TagType> | NBT.List<NBT.TagType>["value"] = value as any;
+                            const value2 = value as NBT.List<NBT.TagType> | NBT.List<NBT.TagType>["value"];
                             children = (isDirectType ? (value2 as NBT.List<NBT.TagType>["value"]).value : (value2 as NBT.List<NBT.TagType>).value.value).map(
                                 (_value: NBT.List<NBT.TagType>["value"]["value"][number], index: number): JSX.SpecificElement<"div"> => {
                                     return (
@@ -2134,7 +2501,7 @@ export default class TreeEditor extends React.Component<
                             break;
                         }
                         case "compound": {
-                            const value2: NBT.Compound | NBT.Compound["value"] = value as any;
+                            const value2 = value as NBT.Compound | NBT.Compound["value"];
                             children = Object.keys(isDirectType ? (value2 as NBT.Compound["value"]) : (value2 as NBT.Compound).value)
                                 .sort()
                                 .map((key: string): JSX.SpecificElement<"div"> => {
@@ -2151,7 +2518,7 @@ export default class TreeEditor extends React.Component<
                             break;
                         }
                         case "object": {
-                            const value2: Exclude<Extract<JSONTreeNodeValue, object>, any[]> = value as any;
+                            const value2 = value as Exclude<Extract<JSONTreeNodeValue, object>, any[]>;
                             children = Object.keys(value2)
                                 .sort()
                                 .map((key: string): JSX.SpecificElement<"div"> => {
@@ -2163,6 +2530,18 @@ export default class TreeEditor extends React.Component<
                                 });
                             break;
                         }
+                        case "string":
+                        case "number":
+                        case "boolean":
+                        case "int":
+                        case "byte":
+                        case "short":
+                        case "long":
+                        case "float":
+                        case "double":
+                        case "end":
+                        default:
+                            break;
                     }
                 }
                 return children;
@@ -2170,20 +2549,20 @@ export default class TreeEditor extends React.Component<
             let expanded: boolean =
                 hasChildren &&
                 (props.propertyPath.length === 0 ?
-                    (this.props.dataStorageObject.treeEditor.expansionData ?? {}).value === true
+                    this.props.dataStorageObject.treeEditor.expansionData?.value === true
                 :   props.propertyPath.reduce(
                         (
-                            value: { data?: Record<string, any>; value?: boolean } | boolean,
+                            value: TreeEditorDataStorageObjectExpansionData | boolean,
                             property: string,
                             index: number,
                             array: string[]
-                        ): { data?: Record<string, any>; value?: boolean } | boolean =>
+                        ): TreeEditorDataStorageObjectExpansionData | boolean =>
                             !value ? false : (
                                 value === true || (index === array.length - 1 ? (value.data?.[property]?.value ?? false) : (value.data?.[property] ?? false))
                             ),
                         this.props.dataStorageObject.treeEditor.expansionData ?? {}
                     ) === true);
-            let displayValue: string | undefined = undefined;
+            let displayValue: string | undefined;
             switch (type) {
                 case "byteArray":
                 case "shortArray":
@@ -2191,7 +2570,8 @@ export default class TreeEditor extends React.Component<
                 case "longArray":
                 case "list":
                 case "object":
-                case "compound": {
+                case "compound":
+                case "end": {
                     break;
                 }
                 case "boolean":
@@ -2210,6 +2590,10 @@ export default class TreeEditor extends React.Component<
                             displayValue = value as string;
                             break;
                         }
+                        default:
+                            throw new TypeError(
+                                `Missing handling for dataStorageObject.dataType of ${JSON.stringify((this.props.dataStorageObject as GenericDataStorageObject).dataType)} for getting display value.`
+                            );
                     }
                     break;
                 }
@@ -2225,6 +2609,10 @@ export default class TreeEditor extends React.Component<
                     displayValue = toLong((value as NBT.Long).value ?? value).toString();
                     break;
                 }
+                default:
+                    throw new TypeError(
+                        `Missing handling for type of ${JSON.stringify((this.props.dataStorageObject as GenericDataStorageObject).dataType)} for getting display value.`
+                    );
             }
             // console.log(displayValue, value, type, expanded, props);
             const children = expanded ? getChildren() : undefined;
@@ -2267,7 +2655,7 @@ export default class TreeEditor extends React.Component<
                                         .not(event.currentTarget)
                                         .removeClass("selected");
                                     event.currentTarget.classList.add("selectionStart");
-                                    let headerElement: HTMLDivElement | undefined = event.currentTarget;
+                                    const headerElement: HTMLDivElement | undefined = event.currentTarget;
                                     if (!headerElement) {
                                         for (const button of [...Object.values(widgetButtons.NBT), ...Object.values(widgetButtons.JSON)]) {
                                             if (!button.current) continue;
@@ -2275,7 +2663,7 @@ export default class TreeEditor extends React.Component<
                                         }
                                         return;
                                     }
-                                    let childrenContainerElement: HTMLDivElement | null | undefined = childrenRef.current;
+                                    const childrenContainerElement: HTMLDivElement | null | undefined = childrenRef.current;
                                     if (!childrenContainerElement) {
                                         for (const button of [...Object.values(widgetButtons.NBT), ...Object.values(widgetButtons.JSON)]) {
                                             if (!button.current) continue;
@@ -2437,21 +2825,21 @@ export default class TreeEditor extends React.Component<
                                         } else {
                                             props.propertyPath.reduce(
                                                 (
-                                                    value: { data?: Record<string, any>; value?: boolean } | boolean,
+                                                    value: TreeEditorDataStorageObjectExpansionData | boolean,
                                                     property: string,
                                                     index: number,
                                                     array: string[]
-                                                ): { data?: Record<string, any>; value?: boolean } | boolean => {
+                                                ): TreeEditorDataStorageObjectExpansionData | boolean => {
                                                     if (typeof value === "boolean") {
                                                         return value;
                                                     }
-                                                    value["data"] ??= {};
+                                                    value.data ??= {};
                                                     if (index === array.length - 1) {
-                                                        value["data"][property] ??= { data: {} };
-                                                        value["data"][property]["value"] = expanded;
-                                                        return value["data"][property]["value"];
+                                                        value.data[property] ??= { data: {} };
+                                                        value.data[property].value = expanded;
+                                                        return value.data[property].value;
                                                     }
-                                                    return (value["data"][property] ??= { data: {} });
+                                                    return (value.data[property] ??= { data: {} });
                                                 },
                                                 this.props.dataStorageObject.treeEditor.expansionData
                                             );
@@ -2605,8 +2993,14 @@ export default class TreeEditor extends React.Component<
                     </div>
                 );
             }
+            // TODO: Replace this with a better error message using the Notice component.
             default:
-                return <p>Unknown data type: {"dataType" in this.state ? JSON.stringify((this.state as any).dataType) : JSON.stringify(this.state)}</p>;
+                return (
+                    <p>
+                        Unknown data type:{" "}
+                        {"dataType" in this.state ? JSON.stringify((this.state as GenericDataStorageObject).dataType) : JSON.stringify(this.state)}
+                    </p>
+                );
         }
     }
 }

@@ -1,30 +1,24 @@
 // TODO: Add support for older worlds that use Entity instead of ActorPrefix.
 // TODO: Add an option to switch the dimension of entities.
 import type { JSX, RefObject, TargetedMouseEvent } from "preact";
-import _React, { render, useEffect, useRef, useState } from "preact/compat";
+import _React, { render, useEffect, useRef } from "preact/compat";
 import {
-    DBEntryContentTypes,
     dimensions,
     dimensionVectorDimensionToIdSync,
     entryContentTypeToFormatMap,
-    gameModes,
     getChunkKeyIndices,
     getInt32Val,
     getKeyDisplayName,
-    getKeysOfType,
     prettyPrintSNBT,
     prismarineToSNBT,
     toLong,
-    type DBEntryContentType,
     type Dimension,
+    type EntryContentTypeFormatData,
     type NBTSchemas,
-    type Vector3,
 } from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { createObservable, testForObjectExtension, type Observable } from "../../src/utils/miscUtils";
-import { ControlledMenu, MenuItem } from "@szhsin/react-menu";
+import { createObservable, type Observable } from "../../src/utils/miscUtils";
+// import { ControlledMenu, MenuItem } from "@szhsin/react-menu";
 import { LoadingScreenContents } from "../app";
 import SearchString from "search-string";
 import { PageNavigation } from "../components/PageNavigation";
@@ -33,6 +27,9 @@ import SearchSyntaxHelpMenu from "../components/SearchSyntaxHelpMenu";
 import { viewFilesTabSearchSyntax } from "./viewFiles";
 import Notice from "../components/Notice";
 
+/**
+ * Props for the {@link EntitiesTab} component.
+ */
 export interface EntitiesTabProps {
     tab: TabManagerTab;
 }
@@ -180,6 +177,14 @@ const entitiesTabSearchSyntax: SearchSyntaxHelpInfo = {
     },
 };
 
+/**
+ * The entities tab.
+ *
+ * This tab is used to manage entities in the world.
+ *
+ * @param props The props for the component.
+ * @returns The JSX element.
+ */
 export default function EntitiesTab(props: EntitiesTabProps): JSX.SpecificElement<"div"> {
     if (!props.tab.db) return <div>The entities sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
     const containerRef: RefObject<HTMLTableElement> = useRef<HTMLTableElement>(null);
@@ -190,16 +195,17 @@ export default function EntitiesTab(props: EntitiesTabProps): JSX.SpecificElemen
         };
     });
     getEntitiesTabContents(props.tab, abortController.signal).then(
-        async (element: JSX.Element): Promise<void> => {
+        (element: JSX.Element): void => {
             if (!containerRef.current) return;
             // const tempElement: HTMLDivElement = document.createElement("div");
             render(null, containerRef.current);
             render(element, containerRef.current /* tempElement */);
             // containerRef.current?.replaceChildren(...tempElement.children);
         },
-        (reason: any): void => {
+        (reason: unknown): void => {
             if (reason instanceof DOMException && reason.name === "AbortError" && reason.message === "Tab switched.") return;
             if (containerRef.current) {
+                // TODO: Replace this with a better error screen.
                 const errorElement: HTMLDivElement = document.createElement("div");
                 errorElement.style.color = "red";
                 errorElement.style.fontFamily = "monospace";
@@ -209,7 +215,8 @@ export default function EntitiesTab(props: EntitiesTabProps): JSX.SpecificElemen
                         reason.stack?.startsWith(reason.toString()) ?
                             reason.stack
                         :   reason.toString() + reason.stack
-                    :   reason;
+                    :   String(reason);
+                render(null, containerRef.current);
                 containerRef.current.replaceChildren("Failed to load data:", errorElement);
             }
             console.error(reason);
@@ -217,7 +224,7 @@ export default function EntitiesTab(props: EntitiesTabProps): JSX.SpecificElemen
     );
     const loadingScreenMessageContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     if (!props.tab.db.isOpen()) {
-        props.tab.awaitDBOpen!.then(async (): Promise<void> => {
+        void props.tab.awaitDBOpen!.then(async (): Promise<void> => {
             if (loadingScreenMessageContainerRef.current && !props.tab.cachedDBKeys) {
                 const formatter = new Intl.NumberFormat();
                 loadingScreenMessageContainerRef.current.textContent = `Reading LevelDB keys${props.tab.loadedCachedDBKeysProgress !== undefined ? `: ${formatter.format(props.tab.loadedCachedDBKeysProgress)}` : ""}...`;
@@ -249,7 +256,7 @@ export default function EntitiesTab(props: EntitiesTabProps): JSX.SpecificElemen
                 await sleep(20);
             }
         });
-        props.tab.awaitCachedDBKeys!.then((): void => {
+        void props.tab.awaitCachedDBKeys!.then((): void => {
             if (loadingScreenMessageContainerRef.current) loadingScreenMessageContainerRef.current.textContent = "";
         });
         return (
@@ -277,7 +284,7 @@ interface KeyData {
 async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): Promise<JSX.Element> {
     if (!tab.db) return <div>The entities sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
     if (!tab.db.isOpen() && !((await tab.awaitDBOpen) ?? true)) {
-        if (tab.errorDueToEncryptedLevelDB)
+        if (tab.errorDueToEncryptedLevelDB) {
             return (
                 <Notice
                     title="Encrypted LevelDB"
@@ -286,6 +293,7 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                     image="access_denied"
                 />
             );
+        }
         return (
             <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
                 <Notice
@@ -297,19 +305,23 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                 />
                 <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
                     {tab.errorOnDBOpen instanceof Error ?
-                        `${tab.errorOnDBOpen.stack !== undefined ? tab.errorOnDBOpen.stack : tab.errorOnDBOpen.toString()}${
+                        `${tab.errorOnDBOpen.stack ?? tab.errorOnDBOpen.toString()}${
                             tab.errorOnDBOpen.cause !== undefined ?
-                                `\nCaused by: ${((): unknown => {
-                                    try {
-                                        return typeof tab.errorOnDBOpen.cause === "object" ? JSON.stringify(tab.errorOnDBOpen.cause) : tab.errorOnDBOpen.cause;
-                                    } catch {
-                                        return tab.errorOnDBOpen.cause;
-                                    }
-                                })()}`
+                                `\nCaused by: ${String(
+                                    ((): unknown => {
+                                        try {
+                                            return typeof tab.errorOnDBOpen.cause === "object" ?
+                                                    JSON.stringify(tab.errorOnDBOpen.cause)
+                                                :   tab.errorOnDBOpen.cause;
+                                        } catch {
+                                            return tab.errorOnDBOpen.cause;
+                                        }
+                                    })()
+                                )}`
                             :   ""
                         }`
                     :   String(
-                            (function (): unknown {
+                            (function formatUnknownErrorValue(): unknown {
                                 try {
                                     return typeof tab.errorOnDBOpen === "object" ? JSON.stringify(tab.errorOnDBOpen) : tab.errorOnDBOpen;
                                 } catch {
@@ -325,8 +337,8 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
     if (!tab.cachedDBKeys) await tab.awaitCachedDBKeys!;
     signal.throwIfAborted();
     const rawKeys: Buffer[] = tab.cachedDBKeys!.ActorPrefix;
-    let asyncMode: boolean =
-        "__FORCE_ASYNC_KEY_MODE__" in window ? !!window["__FORCE_ASYNC_KEY_MODE__"]
+    const asyncMode: boolean =
+        "__FORCE_ASYNC_KEY_MODE__" in window ? !!window.__FORCE_ASYNC_KEY_MODE__
         : config.useAsyncModeInEntryViews === "auto" ?
             rawKeys.length >= config.asyncModeEntryThreshold ||
             Object.values(tab.cachedDBKeys!).reduce((a: number, b: Buffer[]): number => a + b.length, 0) >= config.asyncModeTotalKeyCountThreshold
@@ -346,12 +358,12 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
         :   await getEntityDimensionMappings(tab);
     let targetKeys: KeyData[] = keys;
     // globalThis.a = keys;
-    let dynamicProperties: NBT.NBT | undefined = await tab
-        .db!.get("DynamicProperties")
+    const dynamicProperties: NBT.NBT | undefined = await tab.db
+        .get("DynamicProperties")
         .then((data: Buffer | null): Promise<NBT.NBT> | undefined =>
-            data ? NBT.parse(data!).then((data: { parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata }): NBT.NBT => data.parsed) : undefined
+            data ? NBT.parse(data).then((data: { parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata }): NBT.NBT => data.parsed) : undefined
         )
-        .catch((e: any): undefined => (console.error(e), undefined));
+        .catch((e: unknown): undefined => (console.error(e), undefined));
     // console.log(dynamicProperties);
     let mode: ConfigConstants.views.Entities.EntitiesTabMode = config.views.entities.mode;
     let emptyTablesContents: JSX.Element[][] =
@@ -364,7 +376,8 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                             tab,
                             keys,
                             dynamicProperties,
-                            mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Entities.EntitiesTabSectionMode,
+                            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- There is only one section atm, if another section is ever added, remove this disable comment.
+                            mode: sectionID === null ? mode : `${mode}_${sectionID}`,
                             entityDimensionMappings,
                         })
                 )
@@ -380,10 +393,10 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
             searchButton: useRef<HTMLButtonElement>(null),
             helpButton: useRef<HTMLButtonElement>(null),
         };
-        const viewOptionsRefs = {
-            viewOptionsContainer: useRef<HTMLDivElement>(null),
-            viewOptionsTabbedSelector: useRef<HTMLDivElement>(null),
-        };
+        // const viewOptionsRefs = {
+        //     viewOptionsContainer: useRef<HTMLDivElement>(null),
+        //     viewOptionsTabbedSelector: useRef<HTMLDivElement>(null),
+        // };
         async function getTablesContentsInRange(sectionIndex: number, start: number, end: number): Promise<JSX.Element[]> {
             const sectionID: (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[typeof mode][number] =
                 ConfigConstants.views.Entities.entitiesTabModeToSectionIDs[mode][sectionIndex]!;
@@ -395,14 +408,15 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                         .map(async (key: KeyData): Promise<KeyData> => ({ ...key, data: await NBT.parse((await tab.db!.get(key.rawKey))!) }))
                 ),
                 dynamicProperties,
-                mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Entities.EntitiesTabSectionMode,
+                // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- There is only one section atm, if another section is ever added, remove this disable comment.
+                mode: sectionID === null ? mode : `${mode}_${sectionID}`,
                 entityDimensionMappings,
             });
         }
-        async function loadTablesContentsInRange(sectionIndex: number, start: number, end: number): Promise<void> {
+        async function _loadTablesContentsInRange(sectionIndex: number, start: number, end: number): Promise<void> {
             if (!asyncMode) return;
-            const sectionID: (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[typeof mode][number] =
-                ConfigConstants.views.Entities.entitiesTabModeToSectionIDs[mode][sectionIndex]!;
+            // const sectionID: (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[typeof mode][number] =
+            //     ConfigConstants.views.Entities.entitiesTabModeToSectionIDs[mode][sectionIndex]!;
             tablesContents = [...tablesContents];
             tablesContents[sectionIndex] = [...emptyTablesContents[sectionIndex]!];
             tablesContents[sectionIndex].splice(start, end - start, ...(await getTablesContentsInRange(sectionIndex, start, end)));
@@ -413,19 +427,22 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                     switch (sectionID) {
                         case null:
                             return targetKeys.length;
+                        default:
+                            return NaN;
                     }
                 }
             );
         }
         function TablesContents(): JSX.Element {
-            let localTablesContents: Observable<JSX.Element[][]> = createObservable([[]]);
+            const localTablesContents: Observable<JSX.Element[][]> = createObservable([[]]);
             if (asyncMode) {
-                Promise.all(
+                // TODO: Add an error handler to this.
+                void Promise.all(
                     ConfigConstants.views.Entities.entitiesTabModeToSectionIDs[mode].map(
                         async (
                             _sectionID: (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[typeof mode][number],
                             index: number
-                        ): Promise<JSX.Element[]> => getTablesContentsInRange(index, 0, 20)
+                        ): Promise<JSX.Element[]> => await getTablesContentsInRange(index, 0, 20)
                     )
                 ).then((tablesContents: JSX.Element[][]): void => {
                     localTablesContents.set(tablesContents);
@@ -439,15 +456,15 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                                 const bodyRef: RefObject<HTMLTableSectionElement> = useRef<HTMLTableSectionElement>(null);
                                 localTablesContents.observe((tablesContents: JSX.Element[][]): void => {
                                     if (!asyncMode || !bodyRef.current) return;
-                                    let tempElement: HTMLDivElement = document.createElement("div");
+                                    const tempElement: HTMLDivElement = document.createElement("div");
                                     render(<>{...tablesContents[index]!}</>, tempElement);
                                     bodyRef.current.replaceChildren(...tempElement.children);
                                 });
                                 // const [columnHeadersContextMenu_isOpen, columnHeadersContextMenu_setOpen] = useState(false);
                                 // const [columnHeadersContextMenu_anchorPoint, columnHeadersContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
                                 const headerName = ConfigConstants.views.Entities.entitiesTabModeSectionHeaderNames[mode][index];
-                                const sectionMode: ConfigConstants.views.Entities.EntitiesTabSectionMode = (
-                                    sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Entities.EntitiesTabSectionMode;
+                                // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- There is only one section atm, if another section is ever added, remove this disable comment.
+                                const sectionMode: ConfigConstants.views.Entities.EntitiesTabSectionMode = sectionID === null ? mode : `${mode}_${sectionID}`;
                                 return (
                                     <>
                                         {/* TO-DO: Add in this context menu once the bug with it is fixed. https://github.com/szhsin/react-menu/issues/1591 */}
@@ -507,7 +524,7 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                                                                         page * 20
                                                                     );
                                                                 }
-                                                                let tempElement: HTMLDivElement = document.createElement("div");
+                                                                const tempElement: HTMLDivElement = document.createElement("div");
                                                                 render(
                                                                     <>
                                                                         {...asyncMode ?
@@ -532,7 +549,7 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                 </>
             );
         }
-        let query: Omit<TabManagerTab_LevelDBSearchQuery<true>, "searchTargets"> & {
+        const query: Omit<TabManagerTab_LevelDBSearchQuery<true>, "searchTargets"> & {
             searchTargets: {
                 key: Buffer<ArrayBufferLike>;
                 displayKey: string;
@@ -543,9 +560,11 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                           metadata: NBT.Metadata;
                       }
                     | (() => Promise<{ parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata }>);
-                valueType: {
-                    readonly type: "NBT";
-                };
+                valueType:
+                    | {
+                          readonly type: "NBT";
+                      }
+                    | Extract<EntryContentTypeFormatData, { type: "custom"; resultType: "JSONNBT" }>;
                 contentType: "ActorPrefix";
                 data: KeyData;
                 searchableContents: string[];
@@ -556,7 +575,7 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                     ({
                         key: key.rawKey,
                         displayKey: key.displayKey,
-                        value: asyncMode ? async () => await NBT.parse((await tab.db!.get(key.rawKey))!) : key.data!,
+                        value: asyncMode ? async (): Promise<NonNullable<KeyData["data"]>> => await NBT.parse((await tab.db!.get(key.rawKey))!) : key.data!,
                         valueType: entryContentTypeToFormatMap.ActorPrefix,
                         contentType: "ActorPrefix",
                         data: key,
@@ -594,6 +613,7 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
             ),
         };
         async function updateTablesContents(reloadData: boolean): Promise<void> {
+            // TODO: Add an error handler to this function.
             if (!tablesContainerRef.current) return;
             if (reloadData) {
                 mode = config.views.entities.mode;
@@ -610,8 +630,9 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                                 for await (const value of iterator) {
                                     i++;
                                     if (t + 15 < Date.now()) {
-                                        if (loadingScreenMessageContainerRef.current)
+                                        if (loadingScreenMessageContainerRef.current) {
                                             loadingScreenMessageContainerRef.current.textContent = `Searching LevelDB: ${formatter.format(i)}/${formatter.format(keys.length)} (${formatter.format(results.length)} results)...`;
+                                        }
                                         signal.throwIfAborted();
                                         await sleep(5);
                                         t = Date.now();
@@ -638,7 +659,8 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                                                 .map((key): KeyData => key.originalObject.data)
                                         :   keys,
                                     dynamicProperties,
-                                    mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Entities.EntitiesTabSectionMode,
+                                    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- There is only one section atm, if another section is ever added, remove this disable comment.
+                                    mode: sectionID === null ? mode : `${mode}_${sectionID}`,
                                     entityDimensionMappings,
                                 })
                         )
@@ -652,11 +674,11 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
         }
         useEffect((): (() => void) => {
             function onModeChanged(): void {
-                updateTablesContents(true);
+                void updateTablesContents(true);
             }
             function onSimpleModeColumnsChanged(): void {
                 if (mode !== "simple") return;
-                updateTablesContents(false);
+                void updateTablesContents(false);
             }
             config.on("settingChanged:views.entities.mode", onModeChanged);
             config.on("settingChanged:views.entities.modeSettings.simple.columns", onSimpleModeColumnsChanged);
@@ -665,7 +687,7 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                 config.off("settingChanged:views.entities.modeSettings.simple.columns", onSimpleModeColumnsChanged);
             };
         });
-        let lastHideErrorPopupFunction: (() => void) | undefined = undefined;
+        let lastHideErrorPopupFunction: (() => void) | undefined;
         return (
             <>
                 {/* <div
@@ -771,16 +793,17 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                                     });
                                 }
                                 for (const key in queryData) {
-                                    if ([...getKeywordedOperators(["typeid", "nbt", "uuid", "name", "contents"])].includes(key as any)) continue;
+                                    if (!Object.hasOwn(queryData, key)) continue;
+                                    if ([...getKeywordedOperators(["typeid", "nbt", "uuid", "name", "contents"])].includes(key as never)) continue;
                                     if (
-                                        !keywordPrefixOperators.includes(key.slice(0, 1) as any) &&
-                                        keywords.includes(key.slice(1) as any) &&
+                                        !keywordPrefixOperators.includes(key.slice(0, 1) as never) &&
+                                        keywords.includes(key.slice(1) as never) &&
                                         /^[^a-z0-9]$/i.test(key.slice(0, 1))
                                     ) {
                                         showError({ message: `Unknown operator: ${key.slice(0, 1)}` });
-                                    } else if (!keywordedOperators.includes(key as any)) {
+                                    } else if (!keywordedOperators.includes(key as never)) {
                                         showError({
-                                            message: `Unknown filter: ${keywordPrefixOperators.includes(key.slice(0, 1) as any) ? key.slice(1) : key}`,
+                                            message: `Unknown filter: ${keywordPrefixOperators.includes(key.slice(0, 1) as never) ? key.slice(1) : key}`,
                                         });
                                     } else {
                                         showError({ message: `Operator ${key.slice(0, 1)} is not supported for filter: ${key.slice(1)}` });
@@ -818,17 +841,19 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                                     function parseNBTQueries(queries: string[]): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery[] {
                                         return queries
                                             .map((v: string): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery | undefined => {
-                                                let data: TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery | undefined = undefined;
+                                                let data: TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery | undefined;
                                                 try {
-                                                    const val: any = JSON.parse(v);
+                                                    const val: unknown = JSON.parse(v);
                                                     if (typeof val !== "object") {
+                                                        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
                                                         switch (typeof val) {
                                                             // case "string":
                                                             //     if ()
                                                             default:
-                                                                throw new Error();
+                                                                throw new SyntaxError(`Expected a JSON object for NBT query, but got ${typeof val} instead.`);
                                                         }
                                                     } else {
+                                                        if (val === null) throw new SyntaxError("Expected a JSON object for NBT query, but got null instead.");
                                                         if (
                                                             [
                                                                 "path",
@@ -842,13 +867,13 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                                                         ) {
                                                             data = val;
                                                         } else {
-                                                            throw new Error();
+                                                            throw new SyntaxError("Missing known fields for NBT query.");
                                                         }
                                                     }
-                                                } catch {
+                                                } catch (e) {
                                                     if (v.split("=").length === 2) {
                                                         let [key, value] = v.split("=");
-                                                        let tagType: NBT.TagType | undefined = undefined;
+                                                        let tagType: NBT.TagType | undefined;
                                                         if (key?.includes(":")) {
                                                             let preKey: string;
                                                             [preKey, key] = key.split(":") as [preKey: string, key: string, ...string[]];
@@ -858,15 +883,17 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                                                                 }
                                                             }
                                                         }
-                                                        let path: string[] | undefined = key?.split("/");
+                                                        const path: string[] | undefined = key?.split("/");
                                                         data = {};
                                                         data.key = key;
                                                         data.value = value;
                                                         data.path = path;
                                                         data.tagType = tagType;
                                                     } else {
+                                                        // TODO: The actual error should be displayed in the error message. #54
+                                                        reportError(e); // TEMP: Remove this once the actual error is included in the error message.
                                                         showError({ message: `Invalid NBT query: ${v}` });
-                                                        throw new Error("Error to return but already handled.");
+                                                        throw new Error("Error to return but already handled.", { cause: e });
                                                     }
                                                 }
                                                 return data;
@@ -969,7 +996,7 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                                     );
                                     tablesContainerRef.current.replaceChildren(...tempElement.children);
                                 }
-                                updateTablesContents(true);
+                                void updateTablesContents(true);
                             } catch (e) {
                                 if (e instanceof Error && e.message === "Error to return but already handled.") return;
                                 throw e;
@@ -984,7 +1011,7 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                         class="search-help-button piximg invert_on_light_theme"
                         title="Help"
                         onClick={(): void => {
-                            let containerElement: HTMLDivElement = document.createElement("div");
+                            const containerElement: HTMLDivElement = document.createElement("div");
                             containerElement.style.display = "contents";
                             function OverlaySearchSyntaxHelpMenu(): JSX.SpecificElement<"div"> {
                                 const overlayElementRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
@@ -1045,7 +1072,7 @@ async function getEntityDimensionMappings(
                     typeof dimensionVectorDimension === "number" ?
                         (idToDimensionNameMapping[dimensionVectorDimension] ?? dimensionVectorDimension)
                     :   dimensionVectorDimension;
-            } catch (e) {
+            } catch (_e) {
                 try {
                     dimension = getChunkKeyIndices(digest).dimension;
                 } catch (e) {
@@ -1108,6 +1135,7 @@ function getEntityDimensionFromMappings(
     return undefined;
 }
 
+// eslint-disable-next-line @typescript-eslint/require-await -- TEMP
 async function getEntitiesTabContentsRows(data: {
     /**
      * The tab manager tab.
@@ -1333,9 +1361,15 @@ async function getEntitiesTabContentsRows(data: {
                                     }
                                     return (
                                         <td>
-                                            {key.data.parsed.value.Rotation?.type === "list" ?
-                                                key.data.parsed.value.Rotation.value.value.join(", ")
+                                            {key.data.parsed.value.Rotation?.type === "list" && key.data.parsed.value.Rotation.value.type === "float" ?
+                                                (key.data.parsed.value.Rotation.value.value as number[]).join(", ")
                                             :   <span style="color: red;">null</span>}
+                                        </td>
+                                    );
+                                default:
+                                    return (
+                                        <td>
+                                            <span style="color: red;">ERROR: MISSING COLUMN HANDLER</span>
                                         </td>
                                     );
                             }
@@ -1344,5 +1378,7 @@ async function getEntitiesTabContentsRows(data: {
                 );
             });
         }
+        // TODO: Maybe add an error message here?
+        // no default
     }
 }

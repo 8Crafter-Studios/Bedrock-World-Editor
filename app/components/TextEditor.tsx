@@ -1,5 +1,5 @@
 import { Editor, type Monaco } from "@monaco-editor/react";
-import { type DBEntryContentType } from "mcbe-leveldb";
+import type { DBEntryContentType } from "mcbe-leveldb";
 import * as monaco from "monaco-editor";
 import type { JSX } from "preact";
 import { LoadingScreenContents } from "../app";
@@ -80,7 +80,7 @@ export default function TextEditor(props: TextEditorProps): JSX.Element {
     let editorValue: string | undefined;
     let lastChangeTime: number = Date.now() - 1000;
     let lastChangeStartTime: number = Date.now() - 1000;
-    function handleEditorValueChanged(value: string | undefined, ev: monaco.editor.IModelContentChangedEvent): void {
+    function handleEditorValueChanged(value: string | undefined, _ev: monaco.editor.IModelContentChangedEvent): void {
         if (value === undefined || !dataLoaded) return;
         const currentChangeTime: number = Date.now();
         editorValue = value;
@@ -125,7 +125,7 @@ export default function TextEditor(props: TextEditorProps): JSX.Element {
             value={dataLoaded ? String(props.dataStorageObject.data) : "Data is not loaded."}
             onMount={handleEditorDidMount}
             options={{
-                readOnly: props.readonly || !dataLoaded,
+                readOnly: !!props.readonly || !dataLoaded,
                 readOnlyMessage:
                     props.readonly ? props.readonlyMessage!
                     : !dataLoaded ? { value: "Data is not loaded." }

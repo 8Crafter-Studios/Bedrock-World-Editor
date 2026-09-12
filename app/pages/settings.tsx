@@ -519,7 +519,14 @@ It loads data as needed and unloads it after, this makes the initial view load f
                 </div>
             );
         default:
-            return <Notice title="Error" subtitle="Something went wrong..." detail={`Invalid settings tab: ${props.selectedTab}`} image="generic_error" />;
+            return (
+                <Notice
+                    title="Error"
+                    subtitle="Something went wrong..."
+                    detail={`Invalid settings tab: ${props.selectedTab as string}`}
+                    image="generic_error"
+                />
+            );
     }
 }
 
@@ -543,7 +550,7 @@ function SettingsLeftSidebar(props: SettingsLeftSidebarProps): JSX.SpecificEleme
         $(`#settings_left_sidebar .sidebar_button[data-path-id=${newTab}]`).addClass("active");
     }
     useEffect((): (() => void) => {
-        $(`#settings_left_sidebar .sidebar_button[data-path-id=${[previousTab]}]`).addClass("active");
+        $(`#settings_left_sidebar .sidebar_button[data-path-id=${previousTab}]`).addClass("active");
         const unsubscribeSelectedTabObserver: () => boolean = props.selectedTab.observe((selectedTab: SettingsTab): void => {
             if (previousTab === selectedTab) return;
             onSubTabSwitch({ previousTab, newTab: selectedTab });
@@ -622,7 +629,7 @@ function SettingsLeftSidebar(props: SettingsLeftSidebarProps): JSX.SpecificEleme
             // { icon: "resource://images/ui/glyphs/flame_full_image.png", id: "fun", name: "Fun", resolution: 13 },
             // { icon: "resource://images/ui/glyphs/Source.png", id: "integrations", name: "Integrations", resolution: 12 },
         ] as const satisfies (Tab | false | undefined)[]
-    ).filter((tab: Tab | false | undefined): tab is Tab => !!tab) as Tab[];
+    ).filter((tab: Tab | false | undefined): tab is Tab => !!tab);
     return (
         <div style="display: flex; flex-direction: column; height: 100%; width: 200px; overflow: hidden auto;" id="settings_left_sidebar">
             {tabs.map((tab: Tab): JSX.SpecificElement<"div"> => {
@@ -674,7 +681,7 @@ function MinecraftWorldFoldersOption(props: MinecraftWorldFoldersOptionProps): J
         worldFolderLocations = locations ?? config[props.configOption];
         Array.from(worldFolderLocationsListContainerRef.current.children)
             .slice(worldFolderLocations.length)
-            .forEach((child: Element): void => child.remove());
+            .forEach((child: Element): void => void child.remove());
         render(<WorldFolderLocationList locations={worldFolderLocations} />, worldFolderLocationsListContainerRef.current);
     }
     function appendWorldFolderLocation(location: string = ""): void {
@@ -913,6 +920,8 @@ function MinecraftWorldFoldersOption(props: MinecraftWorldFoldersOptionProps): J
                                 config[props.configOption] = config[props.configOption].concat(result.filePaths);
                                 return;
                             }
+                            default:
+                                throw new Error(`Unknown config option: ${props.configOption as string}`);
                         }
                     }}
                 >
@@ -921,7 +930,7 @@ function MinecraftWorldFoldersOption(props: MinecraftWorldFoldersOptionProps): J
                 <button
                     type="button"
                     style={{ flexGrow: 1 }}
-                    onClick={async (event: JSX.TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
+                    onClick={(event: JSX.TargetedMouseEvent<HTMLButtonElement>): void => {
                         if (event.currentTarget.disabled) return;
                         config[props.configOption] = undefined;
                     }}

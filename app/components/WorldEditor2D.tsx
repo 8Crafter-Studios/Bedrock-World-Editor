@@ -1,32 +1,24 @@
 // TEST: Test this with custom dimensions.
 // TEST: Test this with custom biomes.
-import { app, clipboard, dialog } from "@electron/remote";
+import { clipboard, dialog } from "@electron/remote";
 import { ControlledMenu, MenuDivider, MenuHeader, MenuItem, SubMenu } from "@szhsin/react-menu";
-import type { MessageBoxReturnValue, SaveDialogReturnValue } from "electron";
+import type { MessageBoxReturnValue } from "electron";
 import {
     BiomeData,
-    chunkBlockIndexToOffset,
-    DBChunkKeyEntryContentTypes,
     DBChunkLinkedContentTypes,
-    DBEntryContentTypes,
     dimensions,
     dimensionVectorDimensionToInt,
     entryContentTypeToFormatMap,
     generateChunkKeyFromIndices,
     getBiomeTypeFromID,
     getChunkKeyIndices,
-    getDimensionTypes,
     getDimensionTypesSync,
     getKeyDisplayName,
     intToDimensionVectorDimension,
     offsetToChunkBlockIndex,
-    toLong,
-    type DBChunkKeyEntryContentType,
     type DBChunkLinkedContentType,
-    type DBEntryContentType,
     type Dimension,
     type DimensionLocation,
-    type DimensionVector2,
     type DimensionVectorXZ,
     type NBTSchemas,
     type Vector2,
@@ -34,8 +26,8 @@ import {
     type VectorXZ,
 } from "mcbe-leveldb";
 import mergeRefs from "merge-refs";
-import { existsSync, readFileSync } from "node:fs";
-import { readFile, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import { useEffect, useRef, useState } from "preact/compat";
@@ -50,12 +42,12 @@ import type { LevelDB } from "@8crafter/leveldb-zlib";
 import Notice from "./Notice";
 import showNumberInputDialog, { type ShowNumberInputDialogResult } from "./NumberInputDialog";
 import showLocationInputDialog, { type ShowLocationInputDialogResult } from "./LocationInputDialog";
-const mime = require("mime-types") as typeof import("mime-types");
+// const mime = require("mime-types") as typeof import("mime-types");
 
 /**
  * The data storage object for the {@link WorldEditor2D}.
  */
-export type WorldEditor2DDataStorageObject = {
+export interface WorldEditor2DDataStorageObject {
     /**
      * The options for the {@link WorldEditor2D}.
      */
@@ -140,7 +132,7 @@ export type WorldEditor2DDataStorageObject = {
             portals: boolean;
         };
     };
-};
+}
 
 // IDEA: Maybe add a way to save some parts of the configs that are in the data storage object.
 
@@ -183,7 +175,7 @@ export interface WorldEditor2DRendererProps {
     tab: TabManagerTab;
     dataStorageObject: WorldEditor2DDataStorageObject;
     readonly?: boolean | undefined;
-    canvasRef?: RefObject<HTMLCanvasElement> | undefined;
+    // canvasRef?: RefObject<HTMLCanvasElement> | undefined;
     containerRef?: RefObject<HTMLDivElement> | undefined;
     interactionRef?: RefObject<WorldEditor2DInteraction> | undefined;
     /**
@@ -493,18 +485,21 @@ async function getHeightRangeForChunk(
                 if (
                     additionalInfo.subchunkCount === 8 ||
                     (additionalInfo.subchunkCount === 25 && (additionalInfo.dimension === "nether" || additionalInfo.dimension === 1))
-                )
+                ) {
                     return [0, 128];
+                }
                 if (
                     additionalInfo.subchunkCount === 16 ||
                     (additionalInfo.subchunkCount === 25 && (additionalInfo.dimension === "the_end" || additionalInfo.dimension === 2))
-                )
+                ) {
                     return [0, 256];
+                }
                 if (
                     additionalInfo.subchunkCount === 24 ||
                     (additionalInfo.subchunkCount === 25 && (additionalInfo.dimension === "overworld" || additionalInfo.dimension === 0))
-                )
+                ) {
                     return [-64, 320];
+                }
 
                 if (
                     additionalInfo.version !== undefined &&
@@ -555,18 +550,21 @@ async function getHeightRangeForChunk(
                 if (
                     additionalInfo.subchunkCount === 8 ||
                     (additionalInfo.subchunkCount === 25 && (additionalInfo.dimension === "nether" || additionalInfo.dimension === 1))
-                )
+                ) {
                     return [0, 128];
+                }
                 if (
                     additionalInfo.subchunkCount === 16 ||
                     (additionalInfo.subchunkCount === 25 && (additionalInfo.dimension === "the_end" || additionalInfo.dimension === 2))
-                )
+                ) {
                     return [0, 256];
+                }
                 if (
                     additionalInfo.subchunkCount === 24 ||
                     (additionalInfo.subchunkCount === 25 && (additionalInfo.dimension === "overworld" || additionalInfo.dimension === 0))
-                )
+                ) {
                     return [-64, 320];
+                }
 
                 if (
                     additionalInfo.version !== undefined &&
@@ -634,12 +632,12 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         );
     }
     const formatter = new Intl.NumberFormat();
-    const containerRef: RefObject<HTMLDivElement> = mergeRefs(useRef<HTMLDivElement>(null), props.containerRef);
-    const canvasRef: RefObject<HTMLCanvasElement> = mergeRefs(useRef<HTMLCanvasElement>(null), props.canvasRef);
+    const containerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
+    // const canvasRef: RefObject<HTMLCanvasElement> = useRef<HTMLCanvasElement>(null);
     if (FALLBACK_ERROR_CHUNK_IMAGE === undefined) {
         FALLBACK_ERROR_CHUNK_IMAGE = "loading";
         fetch("resource://images/ui/misc/bug_pack_icon_16x.png")
-            .then((response: Response): Promise<Blob> => response.blob())
+            .then(async (response: Response): Promise<Blob> => await response.blob())
             .then(async (blob: Blob): Promise<void> => {
                 FALLBACK_ERROR_CHUNK_IMAGE = blob;
                 const imageBitmap = await createImageBitmap(blob);
@@ -655,6 +653,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             });
     }
     if (LOADING_CHUNK_IMAGE === undefined) {
+        void 0;
         // LOADING_CHUNK_IMAGE = "loading";
         // fetch("resource://images/ui/misc/bug_pack_icon_16x.png")
         //     .then((response: Response): Promise<Blob> => response.blob())
@@ -690,6 +689,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         };
     }
     if (LOADING_PENDING_CHUNK_IMAGE === undefined) {
+        void 0;
         LOADING_PENDING_CHUNK_IMAGE = {
             getImageData(size: number, timestamp: number): ImageData {
                 size = Math.round(size);
@@ -702,6 +702,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         };
     }
     if (NO_DATA_CHUNK_IMAGE === undefined) {
+        void 0;
         // NO_DATA_CHUNK_IMAGE = {
         //     getImageData(size: number, _timestamp: number): ImageData {
         //         size = Math.round(size);
@@ -732,7 +733,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         };
     }
 
-    let stopCurrentInteraction: (() => void) | undefined = undefined;
+    let stopCurrentInteraction: (() => void) | undefined;
     // function updateMap(): void {
     //     data = (
     //         props.dataStorageObject.dataType === "NBT" ? props.dataStorageObject.data.parsed
@@ -768,14 +769,11 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     //     }
     // }
 
-    const [worldEditor2DAddMarkerMenu_isOpen, worldEditor2DAddMarkerMenu_setOpen] = useState(false);
-    const [worldEditor2DAddMarkerMenu_anchorPoint, worldEditor2DAddMarkerMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
-
     let levelDatLoaded: boolean | "loading" | "error" = false;
-    let isOldWorld: boolean | null | undefined = undefined;
-    let worldSpawn: DimensionLocation | null | undefined = undefined;
-    let worldBorder: { from: VectorXZ; to: VectorXZ } | null | undefined = undefined;
-    let netherScale: number | null | undefined = undefined;
+    let isOldWorld: boolean | null | undefined;
+    let worldSpawn: DimensionLocation | null | undefined;
+    let worldBorder: { from: VectorXZ; to: VectorXZ } | null | undefined;
+    let netherScale: number | null | undefined;
     function unloadLevelDatData(): void {
         levelDatLoaded = false;
         isOldWorld = undefined;
@@ -885,7 +883,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             );
         }
     }
-    loadNeededDataFromLevelDat();
+    void loadNeededDataFromLevelDat();
 
     useEffect((): (() => void) => {
         const widgetID: string = `WorldEditor2D_${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
@@ -905,14 +903,14 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 type="button"
                                 title="Filter Biomes"
                                 class="image-only-button"
-                                onMouseDown={(event: JSX.TargetedMouseEvent<HTMLButtonElement>): void => {
+                                onMouseDown={(event: TargetedMouseEvent<HTMLButtonElement>): void => {
                                     event.currentTarget.dataset.preventImmediateReopen = "false";
                                     if (!dimensionSwitcherContextMenuInteractionRef.current) return;
                                     if (!dimensionSwitcherContextMenuInteractionRef.current.isOpen) return;
                                     event.currentTarget.dataset.preventImmediateReopen = "true";
                                     dimensionSwitcherContextMenuInteractionRef.current.setOpen(false);
                                 }}
-                                onClick={async (event: JSX.TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
+                                onClick={(event: TargetedMouseEvent<HTMLButtonElement>): void => {
                                     // TODO
                                     if (event.currentTarget.dataset.preventImmediateReopen === "true") {
                                         event.currentTarget.dataset.preventImmediateReopen = "false";
@@ -921,7 +919,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                     if (!containerRef.current) return;
                                     // if (!dimensionSwitcherContextMenuInteractionRef.current) return;
                                     if (!engineRef.current?.instance) {
-                                        dialog.showMessageBox({
+                                        void dialog.showMessageBox({
                                             type: "error",
                                             title: "Error",
                                             message: `The 2D renderer engine is not ready yet.`,
@@ -945,14 +943,14 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 type="button"
                                 title="Overlays"
                                 class="image-only-button"
-                                onMouseDown={(event: JSX.TargetedMouseEvent<HTMLButtonElement>): void => {
+                                onMouseDown={(event: TargetedMouseEvent<HTMLButtonElement>): void => {
                                     event.currentTarget.dataset.preventImmediateReopen = "false";
                                     if (!visibleOverlaysContextMenuInteractionRef.current) return;
                                     if (!visibleOverlaysContextMenuInteractionRef.current.isOpen) return;
                                     event.currentTarget.dataset.preventImmediateReopen = "true";
                                     visibleOverlaysContextMenuInteractionRef.current.setOpen(false);
                                 }}
-                                onClick={async (event: JSX.TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
+                                onClick={(event: TargetedMouseEvent<HTMLButtonElement>): void => {
                                     if (event.currentTarget.dataset.preventImmediateReopen === "true") {
                                         event.currentTarget.dataset.preventImmediateReopen = "false";
                                         return;
@@ -960,7 +958,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                     if (!containerRef.current) return;
                                     if (!visibleOverlaysContextMenuInteractionRef.current) return;
                                     if (!engineRef.current?.instance) {
-                                        dialog.showMessageBox({
+                                        void dialog.showMessageBox({
                                             type: "error",
                                             title: "Error",
                                             message: `The 2D renderer engine is not ready yet.`,
@@ -978,14 +976,14 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 type="button"
                                 title="2D Map Settings"
                                 class="image-only-button"
-                                onMouseDown={(event: JSX.TargetedMouseEvent<HTMLButtonElement>): void => {
+                                onMouseDown={(event: TargetedMouseEvent<HTMLButtonElement>): void => {
                                     event.currentTarget.dataset.preventImmediateReopen = "false";
                                     if (!settingsContextMenuInteractionRef.current) return;
                                     if (!settingsContextMenuInteractionRef.current.isOpen) return;
                                     event.currentTarget.dataset.preventImmediateReopen = "true";
                                     settingsContextMenuInteractionRef.current.setOpen(false);
                                 }}
-                                onClick={async (event: JSX.TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
+                                onClick={(event: TargetedMouseEvent<HTMLButtonElement>): void => {
                                     if (event.currentTarget.dataset.preventImmediateReopen === "true") {
                                         event.currentTarget.dataset.preventImmediateReopen = "false";
                                         return;
@@ -993,7 +991,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                     if (!containerRef.current) return;
                                     if (!settingsContextMenuInteractionRef.current) return;
                                     if (!engineRef.current?.instance) {
-                                        dialog.showMessageBox({
+                                        void dialog.showMessageBox({
                                             type: "error",
                                             title: "Error",
                                             message: `The 2D renderer engine is not ready yet.`,
@@ -1015,14 +1013,14 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 type="button"
                                 title="Switch Layer"
                                 class="image-only-button"
-                                onMouseDown={(event: JSX.TargetedMouseEvent<HTMLButtonElement>): void => {
+                                onMouseDown={(event: TargetedMouseEvent<HTMLButtonElement>): void => {
                                     event.currentTarget.dataset.preventImmediateReopen = "false";
                                     if (!layerContextMenuInteractionRef.current) return;
                                     if (!layerContextMenuInteractionRef.current.isOpen) return;
                                     event.currentTarget.dataset.preventImmediateReopen = "true";
                                     layerContextMenuInteractionRef.current.setOpen(false);
                                 }}
-                                onClick={async (event: JSX.TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
+                                onClick={(event: TargetedMouseEvent<HTMLButtonElement>): void => {
                                     if (event.currentTarget.dataset.preventImmediateReopen === "true") {
                                         event.currentTarget.dataset.preventImmediateReopen = "false";
                                         return;
@@ -1030,7 +1028,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                     if (!containerRef.current) return;
                                     if (!layerContextMenuInteractionRef.current) return;
                                     if (!engineRef.current?.instance) {
-                                        dialog.showMessageBox({
+                                        void dialog.showMessageBox({
                                             type: "error",
                                             title: "Error",
                                             message: `The 2D renderer engine is not ready yet.`,
@@ -1052,14 +1050,14 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 type="button"
                                 title="Switch Dimension"
                                 class="image-only-button"
-                                onMouseDown={(event: JSX.TargetedMouseEvent<HTMLButtonElement>): void => {
+                                onMouseDown={(event: TargetedMouseEvent<HTMLButtonElement>): void => {
                                     event.currentTarget.dataset.preventImmediateReopen = "false";
                                     if (!dimensionSwitcherContextMenuInteractionRef.current) return;
                                     if (!dimensionSwitcherContextMenuInteractionRef.current.isOpen) return;
                                     event.currentTarget.dataset.preventImmediateReopen = "true";
                                     dimensionSwitcherContextMenuInteractionRef.current.setOpen(false);
                                 }}
-                                onClick={async (event: JSX.TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
+                                onClick={(event: TargetedMouseEvent<HTMLButtonElement>): void => {
                                     if (event.currentTarget.dataset.preventImmediateReopen === "true") {
                                         event.currentTarget.dataset.preventImmediateReopen = "false";
                                         return;
@@ -1067,7 +1065,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                     if (!containerRef.current) return;
                                     if (!dimensionSwitcherContextMenuInteractionRef.current) return;
                                     if (!engineRef.current?.instance) {
-                                        dialog.showMessageBox({
+                                        void dialog.showMessageBox({
                                             type: "error",
                                             title: "Error",
                                             message: `The 2D renderer engine is not ready yet.`,
@@ -1091,10 +1089,10 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 type="button"
                                 title="Zoom Out"
                                 class="image-only-button"
-                                onClick={async (event: JSX.TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
+                                onClick={(_event: TargetedMouseEvent<HTMLButtonElement>): void => {
                                     if (!containerRef.current) return;
                                     if (!engineRef.current?.instance) {
-                                        dialog.showMessageBox({
+                                        void dialog.showMessageBox({
                                             type: "error",
                                             title: "Error",
                                             message: `The 2D renderer engine is not ready yet.`,
@@ -1114,10 +1112,10 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 type="button"
                                 title="Reset Zoom"
                                 class="image-only-button"
-                                onClick={async (event: JSX.TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
+                                onClick={(_event: TargetedMouseEvent<HTMLButtonElement>): void => {
                                     if (!containerRef.current) return;
                                     if (!engineRef.current?.instance) {
-                                        dialog.showMessageBox({
+                                        void dialog.showMessageBox({
                                             type: "error",
                                             title: "Error",
                                             message: `The 2D renderer engine is not ready yet.`,
@@ -1141,10 +1139,10 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 type="button"
                                 title="Zoom In"
                                 class="image-only-button"
-                                onClick={async (event: JSX.TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
+                                onClick={(_event: TargetedMouseEvent<HTMLButtonElement>): void => {
                                     if (!containerRef.current) return;
                                     if (!engineRef.current?.instance) {
-                                        dialog.showMessageBox({
+                                        void dialog.showMessageBox({
                                             type: "error",
                                             title: "Error",
                                             message: `The 2D renderer engine is not ready yet.`,
@@ -1166,12 +1164,12 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 type="button"
                                 title="Go to Random Chunk With Biome Data"
                                 class="image-only-button"
-                                onClick={async (event: JSX.TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
+                                onClick={(_event: TargetedMouseEvent<HTMLButtonElement>): void => {
                                     // IDEA: Add a version of this that only searching the Version and LegacyVersion keys instead and is Go to Random Chunk With Data.
                                     if (!containerRef.current) return;
                                     if (!props.tab.cachedDBKeys) return;
                                     if (!engineRef.current?.instance) {
-                                        dialog.showMessageBox({
+                                        void dialog.showMessageBox({
                                             type: "error",
                                             title: "Error",
                                             message: `The 2D renderer engine is not ready yet.`,
@@ -1211,7 +1209,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                         } catch {}
                                     }
                                     if (chunksInDimension.size === 0) {
-                                        dialog.showMessageBox({
+                                        void dialog.showMessageBox({
                                             type: "error",
                                             title: "Error",
                                             message: `No chunks with biome data in dimension ${currentDimension} were found.`,
@@ -1232,7 +1230,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                         }
                                     }
                                     if (!chunk) {
-                                        dialog.showMessageBox({
+                                        void dialog.showMessageBox({
                                             type: "error",
                                             title: "Error",
                                             message: `Failed to get the random chunk at index ${chunkIndex} from the set of chunks in this dimension with biome data.`,
@@ -1260,10 +1258,10 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 type="button"
                                 title="Teleport"
                                 class="image-only-button"
-                                onClick={async (_event: JSX.TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
+                                onClick={async (_event: TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
                                     if (!containerRef.current) return;
                                     if (!engineRef.current?.instance) {
-                                        dialog.showMessageBox({
+                                        void dialog.showMessageBox({
                                             type: "error",
                                             title: "Error",
                                             message: `The 2D renderer engine is not ready yet.`,
@@ -1294,12 +1292,12 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 type="button"
                                 title="Go to Spawn"
                                 class="image-only-button"
-                                onClick={async (event: JSX.TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
+                                onClick={async (event: TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
                                     if (!containerRef.current) return;
                                     if (worldSpawn === undefined) {
                                         await loadNeededDataFromLevelDat();
                                         if (levelDatLoaded === "error") {
-                                            dialog.showMessageBox({
+                                            void dialog.showMessageBox({
                                                 type: "error",
                                                 title: "Error",
                                                 message: "An error occured while loading the needed data from level.dat.",
@@ -1310,7 +1308,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                         }
                                     }
                                     if (worldSpawn === undefined) {
-                                        dialog.showMessageBox({
+                                        void dialog.showMessageBox({
                                             type: "error",
                                             title: "Error",
                                             message: "Something went wrong while finding the world spawn.",
@@ -1320,7 +1318,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                         return;
                                     }
                                     if (worldSpawn === null) {
-                                        dialog.showMessageBox({
+                                        void dialog.showMessageBox({
                                             type: "error",
                                             title: "Error",
                                             message: "The world spawn could not be found.",
@@ -1331,7 +1329,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                         return;
                                     }
                                     if (!engineRef.current?.instance) {
-                                        dialog.showMessageBox({
+                                        void dialog.showMessageBox({
                                             type: "error",
                                             title: "Error",
                                             message: `The 2D renderer engine is not ready yet.`,
@@ -1371,20 +1369,20 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             }
         };
     });
-    const [worldEditor2DCanvasContextMenu_isOpen, worldEditor2DCanvasContextMenu_setOpen] = useState(false);
-    const [worldEditor2DCanvasContextMenu_anchorPoint, worldEditor2DCanvasContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
-    function onCanvasRightClick(event: JSX.TargetedMouseEvent<HTMLCanvasElement>): void {
-        event.preventDefault();
-        event.stopPropagation();
-        const clickPosition: { x: number; y: number } = {
-            x: event.clientX,
-            y: event.clientY,
-        };
-        // console.log(clickPosition);
+    // const [worldEditor2DCanvasContextMenu_isOpen, worldEditor2DCanvasContextMenu_setOpen] = useState(false);
+    // const [worldEditor2DCanvasContextMenu_anchorPoint, worldEditor2DCanvasContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
+    // function onCanvasRightClick(event: TargetedMouseEvent<HTMLCanvasElement>): void {
+    //     event.preventDefault();
+    //     event.stopPropagation();
+    //     const clickPosition: { x: number; y: number } = {
+    //         x: event.clientX,
+    //         y: event.clientY,
+    //     };
+    //     // console.log(clickPosition);
 
-        worldEditor2DCanvasContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
-        worldEditor2DCanvasContextMenu_setOpen(true);
-    }
+    //     worldEditor2DCanvasContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
+    //     worldEditor2DCanvasContextMenu_setOpen(true);
+    // }
     const engineRef: RefObject<EngineHandle> = useRef<EngineHandle>(null);
     interface ContentsInteraction {
         rerenderContents(): void;
@@ -1510,6 +1508,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             }
             await props.tab.awaitDBOpen;
         }
+        if (biomeIdsTable !== "loading") return;
         if (!props.tab.db.isOpen()) {
             biomeIdsTable = "error";
             return;
@@ -1517,12 +1516,14 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
 
         try {
             const rawBiomeIdsTable: Buffer | null = await props.tab.db.get("BiomeIdsTable");
+            if (biomeIdsTable !== "loading") return;
             if (!rawBiomeIdsTable) {
                 biomeIdsTable = "no_data";
                 return;
             }
             const parsedBiomeIdsTable: NBTSchemas.NBTSchemaTypes.BiomeIdsTable & NBT.NBT = (await NBT.parse(rawBiomeIdsTable, "little"))
                 .parsed as NBTSchemas.NBTSchemaTypes.BiomeIdsTable & NBT.NBT;
+            if (biomeIdsTable !== "loading") return;
             biomeIdsTable = parsedBiomeIdsTable;
         } catch (e) {
             biomeIdsTable = "error";
@@ -1543,6 +1544,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             }
             await props.tab.awaitDBOpen;
         }
+        if (portalRecords !== "loading") return;
         if (!props.tab.db.isOpen()) {
             portalRecords = "error";
             return;
@@ -1550,25 +1552,27 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
 
         try {
             const rawPortalRecords: Buffer | null = await props.tab.db.get("portals");
+            if (portalRecords !== "loading") return;
             if (!rawPortalRecords) {
                 portalRecords = "no_data";
                 return;
             }
-            const parsedPortalRecords: NBTSchemas.NBTSchemaTypes.Portals & NBT.NBT = (await NBT.parse(rawPortalRecords, "little"))
-                .parsed as NBTSchemas.NBTSchemaTypes.Portals & NBT.NBT;
+            const parsedPortalRecords: NBTSchemas.NBTSchemaTypes.Portals & NBT.NBT = (await NBT.parse(rawPortalRecords, "little")).parsed;
+            if (portalRecords !== "loading") return;
             portalRecords = parsedPortalRecords;
         } catch (e) {
             portalRecords = "error";
             console.error("Error loading portal records:", e);
         }
     }
-    loadLevelChunkMetaDataDictionary();
-    loadDimensionNameIdTable();
-    loadBiomeIdsTable();
-    loadPortalRecords();
+    void loadLevelChunkMetaDataDictionary();
+    void loadDimensionNameIdTable();
+    void loadBiomeIdsTable();
+    void loadPortalRecords();
     function cullCachedOutOfBoundsChunks(bounds: { min: Vector2; max: Vector2 }): void {
         const min: Vector2 = { x: Math.floor(bounds.min.x), y: Math.floor(bounds.min.y) };
         const max: Vector2 = { x: Math.ceil(bounds.max.x), y: Math.ceil(bounds.max.y) };
+        // eslint-disable-next-line guard-for-in -- Performance optimization
         for (const x in cachedChunkColorData) {
             if (Number(x) < min.x || Number(x) > max.x) {
                 delete cachedChunkColorData[x];
@@ -1584,6 +1588,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     }
     /** @deprecated */
     function cullCachedOutOfBoundsImageBitmaps(bounds: { min: Vector2; max: Vector2 }, scale: number): void {
+        // eslint-disable-next-line guard-for-in -- Performance optimization
         for (const zoom in cachedChunkImageBitmaps) {
             if (Number(zoom) !== scale) {
                 delete cachedChunkImageBitmaps[zoom];
@@ -1651,16 +1656,16 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             legacyTerrainKeySet = new Set(props.tab.cachedDBKeys.LegacyTerrain.map((buf: Buffer): string => buf.toString("hex")));
             legacyTerrainKeyCount = props.tab.cachedDBKeys.LegacyTerrain.length;
         }
-        if (data3dKeySet && data3dKeySet.has(generateChunkKeyFromIndices(chunk, "Data3D").toString("hex"))) {
+        if (data3dKeySet?.has(generateChunkKeyFromIndices(chunk, "Data3D").toString("hex"))) {
             return true;
         }
-        if (data2dKeySet && data2dKeySet.has(generateChunkKeyFromIndices(chunk, "Data2D").toString("hex"))) {
+        if (data2dKeySet?.has(generateChunkKeyFromIndices(chunk, "Data2D").toString("hex"))) {
             return true;
         }
-        if (data2dLegacyKeySet && data2dLegacyKeySet.has(generateChunkKeyFromIndices(chunk, "Data2DLegacy").toString("hex"))) {
+        if (data2dLegacyKeySet?.has(generateChunkKeyFromIndices(chunk, "Data2DLegacy").toString("hex"))) {
             return true;
         }
-        if (legacyTerrainKeySet && legacyTerrainKeySet.has(generateChunkKeyFromIndices(chunk, "LegacyTerrain").toString("hex"))) {
+        if (legacyTerrainKeySet?.has(generateChunkKeyFromIndices(chunk, "LegacyTerrain").toString("hex"))) {
             return true;
         }
         return data3dKeySet && data2dKeySet && data2dLegacyKeySet && legacyTerrainKeySet ? false : null;
@@ -1695,7 +1700,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         const biomeData = new Int32Array(16 * 16);
         const heightMap = new Uint16Array(16 * 16);
         let __cachedOldWorldData2D__: Buffer | null = null;
-        let version: number | undefined = undefined;
+        let version: number | undefined;
         // FIXME: If the world is an old world, and both Data3D and Data2D are present, and the version is between 35 and 38 (inclusive), then the Data2D should be used instead of the Data3D.
         data3dParser: {
             const data3dKey: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(chunk, "Data3D");
@@ -1706,8 +1711,9 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 config.views.world.modeSettings["2D"].checkCachedDBKeysForBiomeDataKeysIfAvailable &&
                 data3dKeySet &&
                 !data3dKeySet.has(data3dKey.toString("hex"))
-            )
+            ) {
                 break data3dParser;
+            }
 
             const versionRaw: Buffer | null = await props.tab.db.get(generateChunkKeyFromIndices(chunk, "Version"));
             version = versionRaw ? (versionRaw[0] ?? undefined) : undefined;
@@ -1782,10 +1788,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 break heightMapPositionBiomeDataRetriever;
                             }
                             const color: `rgb(${number}, ${number}, ${number})` = getBiomeColor(biomeId);
-                            const [r, g, b] = (color
-                                .match(/^rgb\((\d+), (\d+), (\d+)\)$/)
-                                ?.slice(1)
-                                .map(Number) ?? [-1, -1, -1]) as [number, number, number];
+                            const [r, g, b] = (/^rgb\((\d+), (\d+), (\d+)\)$/.exec(color)?.slice(1).map(Number) ?? [-1, -1, -1]) as [number, number, number];
                             if (r === -1) {
                                 throw new TypeError(
                                     `Invalid biome color: ${color}; Biome ID: ${biomeId}; Subchunk index: ${subchunkIndex}; Subchunk Y offset: ${subchunkYOffset}; X: ${x}; Z: ${z}`
@@ -1822,14 +1825,16 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                     if (biomeId === -1) continue;
                                     if (biomeId === undefined) continue;
                                     const color: `rgb(${number}, ${number}, ${number})` = getBiomeColor(biomeId);
-                                    const [r, g, b] = (color
-                                        .match(/^rgb\((\d+), (\d+), (\d+)\)$/)
-                                        ?.slice(1)
-                                        .map(Number) ?? [-1, -1, -1]) as [number, number, number];
-                                    if (r === -1)
+                                    const [r, g, b] = (/^rgb\((\d+), (\d+), (\d+)\)$/.exec(color)?.slice(1).map(Number) ?? [-1, -1, -1]) as [
+                                        number,
+                                        number,
+                                        number,
+                                    ];
+                                    if (r === -1) {
                                         throw new TypeError(
                                             `Invalid biome color: ${color}; Biome ID: ${biomeId}; Subchunk index: ${i}; X: ${x}; Y: ${subchunkYOffset}; Z: ${z}`
                                         );
+                                    }
                                     const colorDataIndex: number = offsetTo2DChunkBlockColorDataIndex({ x, z });
                                     colorData.set([r, g, b, 255], colorDataIndex);
                                     biomeData[colorDataIndex / 4] = biomeId;
@@ -1840,10 +1845,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             }
                             if (biomeId === undefined) continue;
                             const color: `rgb(${number}, ${number}, ${number})` = getBiomeColor(biomeId);
-                            const [r, g, b] = (color
-                                .match(/^rgb\((\d+), (\d+), (\d+)\)$/)
-                                ?.slice(1)
-                                .map(Number) ?? [-1, -1, -1]) as [number, number, number];
+                            const [r, g, b] = (/^rgb\((\d+), (\d+), (\d+)\)$/.exec(color)?.slice(1).map(Number) ?? [-1, -1, -1]) as [number, number, number];
                             if (r === -1) {
                                 throw new TypeError(`Invalid biome color: ${color}; Biome ID: ${biomeId}; Subchunk index: ${i}; X: ${x}; Y: 15; Z: ${z}`);
                             }
@@ -1883,14 +1885,16 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 fallbackBiomeIdDetails ??= { x, y: subchunkYOffset, z, i };
                                 if (!CAVE_BIOMES.includes(biomeId)) continue;
                                 const color: `rgb(${number}, ${number}, ${number})` = getBiomeColor(biomeId);
-                                const [r, g, b] = (color
-                                    .match(/^rgb\((\d+), (\d+), (\d+)\)$/)
-                                    ?.slice(1)
-                                    .map(Number) ?? [-1, -1, -1]) as [number, number, number];
-                                if (r === -1)
+                                const [r, g, b] = (/^rgb\((\d+), (\d+), (\d+)\)$/.exec(color)?.slice(1).map(Number) ?? [-1, -1, -1]) as [
+                                    number,
+                                    number,
+                                    number,
+                                ];
+                                if (r === -1) {
                                     throw new TypeError(
                                         `Invalid biome color: ${color}; Biome ID: ${biomeId}; Subchunk index: ${i}; X: ${x}; Y: ${subchunkYOffset}; Z: ${z}`
                                     );
+                                }
                                 const colorDataIndex: number = offsetTo2DChunkBlockColorDataIndex({ x, z });
                                 colorData.set([r, g, b, 255], colorDataIndex);
                                 biomeData[colorDataIndex / 4] = biomeId;
@@ -1905,10 +1909,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             continue;
                         }
                         const color: `rgb(${number}, ${number}, ${number})` = getBiomeColor(fallbackBiomeId);
-                        const [r, g, b] = (color
-                            .match(/^rgb\((\d+), (\d+), (\d+)\)$/)
-                            ?.slice(1)
-                            .map(Number) ?? [-1, -1, -1]) as [number, number, number];
+                        const [r, g, b] = (/^rgb\((\d+), (\d+), (\d+)\)$/.exec(color)?.slice(1).map(Number) ?? [-1, -1, -1]) as [number, number, number];
                         if (r === -1) {
                             throw new TypeError(
                                 `Invalid biome color: ${color}; Biome ID: ${fallbackBiomeId}; Subchunk index: ${fallbackBiomeIdDetails.i}; X: ${fallbackBiomeIdDetails.x}; Y: ${fallbackBiomeIdDetails.y}; Z: ${fallbackBiomeIdDetails.z}`
@@ -1948,14 +1949,12 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             continue;
                         }
                         const color: `rgb(${number}, ${number}, ${number})` = getBiomeColor(biomeId);
-                        const [r, g, b] = (color
-                            .match(/^rgb\((\d+), (\d+), (\d+)\)$/)
-                            ?.slice(1)
-                            .map(Number) ?? [-1, -1, -1]) as [number, number, number];
-                        if (r === -1)
+                        const [r, g, b] = (/^rgb\((\d+), (\d+), (\d+)\)$/.exec(color)?.slice(1).map(Number) ?? [-1, -1, -1]) as [number, number, number];
+                        if (r === -1) {
                             throw new TypeError(
                                 `Invalid biome color: ${color}; Biome ID: ${biomeId}; Subchunk index: ${subchunkIndex}; X: ${x}; Y: ${subchunkYOffset}; Z: ${z}`
                             );
+                        }
                         const colorDataIndex: number = offsetTo2DChunkBlockColorDataIndex({ x, z });
                         colorData.set([r, g, b, 255], colorDataIndex);
                         biomeData[colorDataIndex / 4] = biomeId;
@@ -1990,14 +1989,12 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             continue;
                         }
                         const color: `rgb(${number}, ${number}, ${number})` = getBiomeColor(biomeId);
-                        const [r, g, b] = (color
-                            .match(/^rgb\((\d+), (\d+), (\d+)\)$/)
-                            ?.slice(1)
-                            .map(Number) ?? [-1, -1, -1]) as [number, number, number];
-                        if (r === -1)
+                        const [r, g, b] = (/^rgb\((\d+), (\d+), (\d+)\)$/.exec(color)?.slice(1).map(Number) ?? [-1, -1, -1]) as [number, number, number];
+                        if (r === -1) {
                             throw new TypeError(
                                 `Invalid biome color: ${color}; Biome ID: ${biomeId}; Subchunk index: ${subchunkIndex}; X: ${x}; Y: ${subchunkYOffset}; Z: ${z}`
                             );
+                        }
                         const colorDataIndex: number = offsetTo2DChunkBlockColorDataIndex({ x, z });
                         colorData.set([r, g, b, 255], colorDataIndex);
                         biomeData[colorDataIndex / 4] = biomeId;
@@ -2015,8 +2012,9 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 config.views.world.modeSettings["2D"].checkCachedDBKeysForBiomeDataKeysIfAvailable &&
                 data2dKeySet &&
                 !data2dKeySet.has(data2dKey.toString("hex"))
-            )
+            ) {
                 break data2dParser;
+            }
             const data2d: Buffer | null = __cachedOldWorldData2D__ ?? (await props.tab.db.get(data2dKey));
             if (!data2d) break data2dParser;
             const data2dData: NBTSchemas.NBTSchemaTypes.Data2D = entryContentTypeToFormatMap.Data2D.parse(data2d);
@@ -2044,10 +2042,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 for (let z = 0; z < 16; z++) {
                     const biomeId: number = data2dData.value.biomeData.value.value[x]!.value[z]!;
                     const color: `rgb(${number}, ${number}, ${number})` = getBiomeColor(biomeId);
-                    const [r, g, b] = (color
-                        .match(/^rgb\((\d+), (\d+), (\d+)\)$/)
-                        ?.slice(1)
-                        .map(Number) ?? [-1, -1, -1]) as [number, number, number];
+                    const [r, g, b] = (/^rgb\((\d+), (\d+), (\d+)\)$/.exec(color)?.slice(1).map(Number) ?? [-1, -1, -1]) as [number, number, number];
                     if (r === -1) throw new TypeError(`Invalid biome color: ${color}; Biome ID: ${biomeId}; X: ${x}; Z: ${z}`);
                     const colorDataIndex: number = offsetTo2DChunkBlockColorDataIndex({ x, z });
                     colorData.set([r, g, b, 255], colorDataIndex);
@@ -2103,10 +2098,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                         continue;
                     }
                     const color: `rgb(${number}, ${number}, ${number})` = getBiomeColor(biomeId);
-                    const [r, g, b] = (color
-                        .match(/^rgb\((\d+), (\d+), (\d+)\)$/)
-                        ?.slice(1)
-                        .map(Number) ?? [-1, -1, -1]) as [number, number, number];
+                    const [r, g, b] = (/^rgb\((\d+), (\d+), (\d+)\)$/.exec(color)?.slice(1).map(Number) ?? [-1, -1, -1]) as [number, number, number];
                     if (r === -1) throw new TypeError(`Invalid biome color: ${color}; Biome ID: ${biomeId}; X: ${x}; Z: ${z}`);
                     colorData.set([r, g, b, 255], colorDataIndex);
                     biomeData[colorDataIndex / 4] = biomeId;
@@ -2159,10 +2151,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                         continue;
                     }
                     const color: `rgb(${number}, ${number}, ${number})` = getBiomeColor(biomeId);
-                    const [r, g, b] = (color
-                        .match(/^rgb\((\d+), (\d+), (\d+)\)$/)
-                        ?.slice(1)
-                        .map(Number) ?? [-1, -1, -1]) as [number, number, number];
+                    const [r, g, b] = (/^rgb\((\d+), (\d+), (\d+)\)$/.exec(color)?.slice(1).map(Number) ?? [-1, -1, -1]) as [number, number, number];
                     if (r === -1) throw new TypeError(`Invalid biome color: ${color}; Biome ID: ${biomeId}; X: ${x}; Z: ${z}`);
                     colorData.set([r, g, b, 255], colorDataIndex);
                     biomeData[colorDataIndex / 4] = biomeId;
@@ -2194,7 +2183,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     function drawCachedChunks(
         ctx: CanvasRenderingContext2D,
         bounds: { min: Vector2; max: Vector2 },
-        blockBounds: { min: VectorXZ; max: VectorXZ },
+        _blockBounds: { min: VectorXZ; max: VectorXZ },
         _size: { width: number; height: number },
         scale: number
     ): void {
@@ -2202,10 +2191,10 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             min: { x: Math.floor(bounds.min.x), y: Math.floor(bounds.min.y) },
             max: { x: Math.ceil(bounds.max.x), y: Math.ceil(bounds.max.y) },
         };
-        blockBounds = {
-            min: { x: Math.floor(blockBounds.min.x), z: Math.floor(blockBounds.min.z) },
-            max: { x: Math.ceil(blockBounds.max.x), z: Math.ceil(blockBounds.max.z) },
-        };
+        // blockBounds = {
+        //     min: { x: Math.floor(blockBounds.min.x), z: Math.floor(blockBounds.min.z) },
+        //     max: { x: Math.ceil(blockBounds.max.x), z: Math.ceil(blockBounds.max.z) },
+        // };
         if (!cachedChunkImageBitmaps[scale]) return;
         let loadingImage: ImageData;
         let loadingPendingImage: ImageData;
@@ -2213,12 +2202,13 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         for (let x = roundedBounds.min.x; x <= roundedBounds.max.x; x++) {
             for (let y = roundedBounds.min.y; y <= roundedBounds.max.y; y++) {
                 if (cachedChunkImageBitmaps[scale][x]?.[y]) continue;
-                if (typeof LOADING_PENDING_CHUNK_IMAGE === "object")
+                if (typeof LOADING_PENDING_CHUNK_IMAGE === "object") {
                     ctx.putImageData(
                         (loadingPendingImage ??= LOADING_PENDING_CHUNK_IMAGE.getImageData(scale, Date.now())),
                         (Number(x) - bounds.min.x) * scale,
                         (Number(y) - bounds.min.y) * scale
                     );
+                }
                 continue;
             }
         }
@@ -2230,18 +2220,19 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             // if (!cachedChunkColorData[x]) continue;
             if (!cachedChunkImageBitmaps[scale][x]) continue;
             // for (const y in cachedChunkColorData[x]!) {
-            for (const y in cachedChunkImageBitmaps[scale][x]!) {
+            for (const y in cachedChunkImageBitmaps[scale][x]) {
                 if (Number(y) < roundedBounds.min.y || Number(y) > roundedBounds.max.y) continue;
                 // if (!cachedChunkColorData[x][y]) continue;
                 if (!cachedChunkImageBitmaps[scale][x]?.[y]) continue;
                 const imageBitmap: ImageBitmap | "loading" | "no_data" | "error" = cachedChunkImageBitmaps[scale][x][y];
                 if (imageBitmap === "loading") {
-                    if (typeof LOADING_CHUNK_IMAGE === "object")
+                    if (typeof LOADING_CHUNK_IMAGE === "object") {
                         ctx.putImageData(
                             (loadingImage ??= LOADING_CHUNK_IMAGE.getImageData(scale, Date.now())),
                             (Number(x) - bounds.min.x) * scale,
                             (Number(y) - bounds.min.y) * scale
                         );
+                    }
                     // IDEA: Maybe add an option to add a special backround for chunks that are loading.
                     continue;
                 }
@@ -2257,12 +2248,13 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                     continue;
                 }
                 if (imageBitmap === "no_data") {
-                    if (typeof NO_DATA_CHUNK_IMAGE === "object")
+                    if (typeof NO_DATA_CHUNK_IMAGE === "object") {
                         ctx.putImageData(
                             (noDataImage ??= NO_DATA_CHUNK_IMAGE.getImageData(scale, Date.now())),
                             (Number(x) - bounds.min.x) * scale,
                             (Number(y) - bounds.min.y) * scale
                         );
+                    }
                     // IDEA: Maybe add an option to add the transparent checkerboard background for chunks with no data.
                     continue;
                 }
@@ -2322,9 +2314,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 const entry = col?.[y];
                 if (!entry) {
                     if (typeof LOADING_PENDING_CHUNK_IMAGE === "object") {
-                        if (!loadingPendingImage) {
-                            loadingPendingImage = LOADING_PENDING_CHUNK_IMAGE.getImageData(scale, now);
-                        }
+                        loadingPendingImage ??= LOADING_PENDING_CHUNK_IMAGE.getImageData(scale, now);
                         ctx.putImageData(loadingPendingImage, screenX, screenY);
                     }
                     continue;
@@ -2332,9 +2322,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
 
                 if (entry === "loading") {
                     if (typeof LOADING_CHUNK_IMAGE === "object") {
-                        if (!loadingImage) {
-                            loadingImage = LOADING_CHUNK_IMAGE.getImageData(scale, now);
-                        }
+                        loadingImage ??= LOADING_CHUNK_IMAGE.getImageData(scale, now);
                         ctx.putImageData(loadingImage, screenX, screenY);
                     }
                     continue;
@@ -2350,16 +2338,14 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
 
                 if (entry === "no_data") {
                     if (typeof NO_DATA_CHUNK_IMAGE === "object") {
-                        if (!noDataImage) {
-                            noDataImage = NO_DATA_CHUNK_IMAGE.getImageData(scale, now);
-                        }
+                        noDataImage ??= NO_DATA_CHUNK_IMAGE.getImageData(scale, now);
                         ctx.putImageData(noDataImage, screenX, screenY);
                     }
                     continue;
                 }
 
                 // Normal cached chunk
-                ctx.drawImage(entry as ImageBitmap, screenX, screenY, scale, scale);
+                ctx.drawImage(entry, screenX, screenY, scale, scale);
             }
         }
     }
@@ -2622,7 +2608,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             })
                             .catch((error: unknown): void => {
                                 console.error("Error converting fallback error chunk image to image bitmap:", error);
-                                createImageBitmap(generateErrorImageData(), {
+                                void createImageBitmap(generateErrorImageData(), {
                                     resizeQuality: "pixelated",
                                     resizeWidth: scale,
                                     resizeHeight: scale,
@@ -2632,7 +2618,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 });
                             });
                     } else {
-                        createImageBitmap(generateErrorImageData(), {
+                        void createImageBitmap(generateErrorImageData(), {
                             resizeQuality: "pixelated",
                             resizeWidth: scale,
                             resizeHeight: scale,
@@ -2692,6 +2678,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             resizeWidth: scale,
                             resizeHeight: scale,
                         });
+                        if (!chunkImageBitmapIsLoadingWithNoParallelization) return;
                         if (!cachedChunkImageBitmaps[scale]?.[x]?.[y]) return;
                         cachedChunkImageBitmaps[scale][x]![y] = imageBitmap;
                     } catch (e) {
@@ -2729,6 +2716,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             continue;
                         case null:
                             break;
+                        // no default
                     }
                 }
                 if (cachedChunkColorData[x]![y] === "loading" && !config.views.world.modeSettings["2D"].parallelizeChunkLoading) break;
@@ -2737,16 +2725,18 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                     config.views.world.modeSettings["2D"].parallelizeChunkLoading &&
                     hasMaxParallelizationLimit &&
                     currentParallelLoadingChunks.length >= config.views.world.modeSettings["2D"].maxParallelLoadingChunks
-                )
+                ) {
                     continue;
+                }
 
                 if (cachedChunkColorData[x]![y] && cachedChunkColorData[x]![y] !== "has_data") continue;
                 if (
                     config.views.world.modeSettings["2D"].parallelizeChunkLoading &&
                     hasMaxParallelizationLimit &&
                     currentParallelLoadingChunks.includes(`${x},${y}`)
-                )
+                ) {
                     continue;
+                }
 
                 if (!config.views.world.modeSettings["2D"].parallelizeChunkLoading) chunkColorDataIsLoadingWithNoParallelization = true;
                 else if (hasMaxParallelizationLimit) currentParallelLoadingChunks.push(`${x},${y}`);
@@ -2800,6 +2790,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 } else {
                     try {
                         await loadChunkColorData();
+                        if (!chunkColorDataIsLoadingWithNoParallelization) return;
                         // const chunkColorData = new Uint8ClampedArray(16 * 16 * 4);
                         // const columnColors: [r: number, g: number, b: number, a: number][] = [
                         //     [255, 0, 0, 255],
@@ -2850,13 +2841,13 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         mapReset = true;
         if (reloadStaticDBKeysAndLevelDat) {
             levelChunkMetaDataDictionary = undefined;
-            loadLevelChunkMetaDataDictionary();
+            void loadLevelChunkMetaDataDictionary();
             dimensionNameIdTable = undefined;
-            loadDimensionNameIdTable();
+            void loadDimensionNameIdTable();
             biomeIdsTable = undefined;
-            loadBiomeIdsTable();
+            void loadBiomeIdsTable();
             unloadLevelDatData();
-            loadNeededDataFromLevelDat();
+            void loadNeededDataFromLevelDat();
         }
         if (rerenderMode === "rerenderContents") contentsInteractionRef.current?.rerenderContents();
         else if (rerenderMode === "renderFrame") engineRef.current?.render();
@@ -2953,7 +2944,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                         <MenuItem
                                             type="checkbox"
                                             checked={props.dataStorageObject.worldEditor2D.dimension === intToDimensionVectorDimension(dimensionId)}
-                                            onClick={async (): Promise<void> => {
+                                            onClick={(): void => {
                                                 props.dataStorageObject.worldEditor2D.dimension = intToDimensionVectorDimension(dimensionId);
                                                 reloadMap(false, "renderFrame");
                                             }}
@@ -3011,7 +3002,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 <MenuItem
                     type="checkbox"
                     checked={props.dataStorageObject.worldEditor2D.layer === "surface"}
-                    onClick={async (): Promise<void> => {
+                    onClick={(): void => {
                         props.dataStorageObject.worldEditor2D.layer = "surface";
                         reloadMap(false, "renderFrame");
                     }}
@@ -3021,7 +3012,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 <MenuItem
                     type="checkbox"
                     checked={props.dataStorageObject.worldEditor2D.layer === "underground"}
-                    onClick={async (): Promise<void> => {
+                    onClick={(): void => {
                         props.dataStorageObject.worldEditor2D.layer = "underground";
                         reloadMap(false, "renderFrame");
                     }}
@@ -3033,7 +3024,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 <MenuItem
                     type="checkbox"
                     checked={props.dataStorageObject.worldEditor2D.layer === "bottom"}
-                    onClick={async (): Promise<void> => {
+                    onClick={(): void => {
                         props.dataStorageObject.worldEditor2D.layer = "bottom";
                         reloadMap(false, "renderFrame");
                     }}
@@ -3046,16 +3037,20 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                     type="checkbox"
                     checked={typeof props.dataStorageObject.worldEditor2D.layer === "number"}
                     onClick={async (): Promise<void> => {
+                        const lastValue: number =
+                            typeof props.dataStorageObject.worldEditor2D.layer === "number" ? props.dataStorageObject.worldEditor2D.layer : 0;
                         const layer: ShowNumberInputDialogResult = await showNumberInputDialog({
                             optionLabel: "Custom layer: ",
-                            optionDefaultValue:
-                                typeof props.dataStorageObject.worldEditor2D.layer === "number" ? props.dataStorageObject.worldEditor2D.layer : 0,
+                            optionDefaultValue: lastValue,
                             submitButtonText: "Set layer",
                             optionMinValue: -513,
                             optionMaxValue: 512,
                             optionStep: 1,
                         });
                         if (layer.canceled) return;
+                        if (lastValue !== (typeof props.dataStorageObject.worldEditor2D.layer === "number" ? props.dataStorageObject.worldEditor2D.layer : 0)) {
+                            return;
+                        }
                         props.dataStorageObject.worldEditor2D.layer = Math.trunc(layer.value);
                         reloadMap(false, "renderFrame");
                     }}
@@ -3105,7 +3100,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                     <MenuItem
                         type="checkbox"
                         checked={props.dataStorageObject.worldEditor2D.renderType === "biomes"}
-                        onClick={async (): Promise<void> => {
+                        onClick={(): void => {
                             props.dataStorageObject.worldEditor2D.renderType = "biomes";
                             engineRef.current?.render();
                         }}
@@ -3115,7 +3110,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                     <MenuItem
                         type="checkbox"
                         checked={props.dataStorageObject.worldEditor2D.renderType === "blocks_accurate"}
-                        onClick={async (): Promise<void> => {
+                        onClick={(): void => {
                             props.dataStorageObject.worldEditor2D.renderType = "blocks_accurate";
                             engineRef.current?.render();
                         }}
@@ -3127,7 +3122,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                     <MenuItem
                         type="checkbox"
                         checked={props.dataStorageObject.worldEditor2D.renderType === "blocks_map"}
-                        onClick={async (): Promise<void> => {
+                        onClick={(): void => {
                             props.dataStorageObject.worldEditor2D.renderType = "blocks_map";
                             engineRef.current?.render();
                         }}
@@ -3139,7 +3134,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                     <MenuItem
                         type="checkbox"
                         checked={props.dataStorageObject.worldEditor2D.renderType === "heightmap"}
-                        onClick={async (): Promise<void> => {
+                        onClick={(): void => {
                             props.dataStorageObject.worldEditor2D.renderType = "heightmap";
                             engineRef.current?.render();
                         }}
@@ -3153,7 +3148,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 <MenuItem
                     type="checkbox"
                     checked={props.dataStorageObject.worldEditor2D.heightmap}
-                    onClick={async (): Promise<void> => {
+                    onClick={(): void => {
                         props.dataStorageObject.worldEditor2D.heightmap = !props.dataStorageObject.worldEditor2D.heightmap;
                         engineRef.current?.render();
                     }}
@@ -3164,7 +3159,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 <MenuItem
                     type="checkbox"
                     checked={props.dataStorageObject.worldEditor2D.showGrid === true || props.dataStorageObject.worldEditor2D.showGrid === "auto"}
-                    onClick={async (): Promise<void> => {
+                    onClick={(): void => {
                         props.dataStorageObject.worldEditor2D.showGrid = !props.dataStorageObject.worldEditor2D.showGrid;
                         if (!engineRef.current) return;
                         engineRef.current.clearLayer(1);
@@ -3180,7 +3175,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                     <MenuItem
                         type="checkbox"
                         checked={config.views.world.modeSettings["2D"].showHeightmapDefault}
-                        onClick={async (): Promise<void> => {
+                        onClick={(): void => {
                             config.views.world.modeSettings["2D"].showHeightmapDefault = !config.views.world.modeSettings["2D"].showHeightmapDefault;
                         }}
                     >
@@ -3189,7 +3184,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                     <MenuItem
                         type="checkbox"
                         checked={config.views.world.modeSettings["2D"].showGridDefault}
-                        onClick={async (): Promise<void> => {
+                        onClick={(): void => {
                             config.views.world.modeSettings["2D"].showGridDefault = !config.views.world.modeSettings["2D"].showGridDefault;
                         }}
                     >
@@ -3236,7 +3231,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 <MenuItem
                     type="checkbox"
                     checked={props.dataStorageObject.worldEditor2D.dataOverlays.portals}
-                    onClick={async (): Promise<void> => {
+                    onClick={(): void => {
                         props.dataStorageObject.worldEditor2D.dataOverlays.portals = !props.dataStorageObject.worldEditor2D.dataOverlays.portals;
                         engineRef.current?.render();
                     }}
@@ -3356,7 +3351,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                         break;
                     }
                     default:
-                        console.error(new Error(`Missing handling for chunk key entry content type: ${contentType}`));
+                        console.error(new Error(`Missing handling for chunk key entry content type: ${contentType as string}`));
                 }
             }
         }
@@ -3369,7 +3364,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             >
                 <MenuItem
                     title="Copy block coordinates to clipboard"
-                    onClick={async (): Promise<void> => {
+                    onClick={(): void => {
                         clipboard.writeText(
                             `${targetChunkDetails.block.x} ${
                                 height !== undefined ?
@@ -3415,7 +3410,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                         const displayKey: string = getKeyDisplayName(key);
                                         return (
                                             <MenuItem
-                                                onClick={async (): Promise<void> => {
+                                                onClick={(): void => {
                                                     props.tab.openTab({
                                                         contentType,
                                                         icon: "auto",
@@ -3434,7 +3429,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                     })}
                                 </SubMenu>
                             :   <MenuItem
-                                    onClick={async (): Promise<void> => {
+                                    onClick={(): void => {
                                         props.tab.openTab({
                                             contentType,
                                             icon: "auto",
@@ -3464,7 +3459,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 <MenuHeader>Chunk</MenuHeader>
                 <MenuItem
                     title="Copy chunk coordinates to clipboard"
-                    onClick={async (): Promise<void> => {
+                    onClick={(): void => {
                         clipboard.writeText(`${targetChunkDetails.chunk.x} ${targetChunkDetails.chunk.z}`);
                     }}
                 >
@@ -3472,7 +3467,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 </MenuItem>
                 <MenuItem
                     title="Copy chunk boundaries to clipboard"
-                    onClick={async (): Promise<void> => {
+                    onClick={(): void => {
                         clipboard.writeText(
                             `${targetChunkDetails.chunk.x * 16} ${targetChunkDetails.chunk.z * 16} -> ${targetChunkDetails.chunk.x * 16 + 15} ${targetChunkDetails.chunk.z * 16 + 15}`
                         );
@@ -3483,48 +3478,48 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 </MenuItem>
                 <MenuDivider />
 
-                {netherScale === undefined || netherScale === null ?
+                {netherScale === undefined ?
                     null
                 : ["overworld", 0].includes(targetChunkDetails.dimension) ?
                     <>
                         <MenuHeader>Nether</MenuHeader>
                         <MenuItem
                             title="Copy Nether block coordinates to clipboard"
-                            onClick={async (): Promise<void> => {
-                                if (netherScale === undefined || netherScale === null) return;
+                            onClick={(): void => {
+                                if (netherScale === undefined) return;
                                 clipboard.writeText(
-                                    `${Math.floor((targetChunkDetails.rawPosition.x * 16) / netherScale)} ${Math.floor((targetChunkDetails.rawPosition.y * 16) / netherScale)}`
+                                    `${Math.floor((targetChunkDetails.rawPosition.x * 16) / (netherScale ?? 8))} ${Math.floor((targetChunkDetails.rawPosition.y * 16) / (netherScale ?? 8))}`
                                 );
                             }}
                         >
-                            X: {formatter.format(Math.floor((targetChunkDetails.rawPosition.x * 16) / netherScale))} Z:{" "}
-                            {formatter.format(Math.floor((targetChunkDetails.rawPosition.y * 16) / netherScale))}
+                            X: {formatter.format(Math.floor((targetChunkDetails.rawPosition.x * 16) / (netherScale ?? 8)))} Z:{" "}
+                            {formatter.format(Math.floor((targetChunkDetails.rawPosition.y * 16) / (netherScale ?? 8)))}
                         </MenuItem>
                         <MenuItem
                             title="Copy Nether chunk coordinates to clipboard"
-                            onClick={async (): Promise<void> => {
-                                if (netherScale === undefined || netherScale === null) return;
+                            onClick={(): void => {
+                                if (netherScale === undefined) return;
                                 clipboard.writeText(
-                                    `${Math.floor(targetChunkDetails.rawPosition.x / netherScale)} ${Math.floor(targetChunkDetails.rawPosition.y / netherScale)}`
+                                    `${Math.floor(targetChunkDetails.rawPosition.x / (netherScale ?? 8))} ${Math.floor(targetChunkDetails.rawPosition.y / (netherScale ?? 8))}`
                                 );
                             }}
                         >
-                            Chunk: X: {formatter.format(Math.floor(targetChunkDetails.rawPosition.x / netherScale))} Z:{" "}
-                            {formatter.format(Math.floor(targetChunkDetails.rawPosition.y / netherScale))}
+                            Chunk: X: {formatter.format(Math.floor(targetChunkDetails.rawPosition.x / (netherScale ?? 8)))} Z:{" "}
+                            {formatter.format(Math.floor(targetChunkDetails.rawPosition.y / (netherScale ?? 8)))}
                         </MenuItem>
                         <MenuItem
                             title="Copy Nether chunk boundaries to clipboard"
-                            onClick={async (): Promise<void> => {
-                                if (netherScale === undefined || netherScale === null) return;
+                            onClick={(): void => {
+                                if (netherScale === undefined) return;
                                 clipboard.writeText(
-                                    `${Math.floor(targetChunkDetails.rawPosition.x / netherScale) * 16} ${Math.floor(targetChunkDetails.rawPosition.y / netherScale) * 16} -> ${Math.floor(targetChunkDetails.rawPosition.x / netherScale) * 16 + 15} ${Math.floor(targetChunkDetails.rawPosition.y / netherScale) * 16 + 15}`
+                                    `${Math.floor(targetChunkDetails.rawPosition.x / (netherScale ?? 8)) * 16} ${Math.floor(targetChunkDetails.rawPosition.y / (netherScale ?? 8)) * 16} -> ${Math.floor(targetChunkDetails.rawPosition.x / (netherScale ?? 8)) * 16 + 15} ${Math.floor(targetChunkDetails.rawPosition.y / (netherScale ?? 8)) * 16 + 15}`
                                 );
                             }}
                         >
-                            ({formatter.format(Math.floor(targetChunkDetails.rawPosition.x / netherScale) * 16)} /{" "}
-                            {formatter.format(Math.floor(targetChunkDetails.rawPosition.y / netherScale) * 16)}) -&gt; (
-                            {formatter.format(Math.floor(targetChunkDetails.rawPosition.x / netherScale) * 16 + 15)} /{" "}
-                            {formatter.format(Math.floor(targetChunkDetails.rawPosition.y / netherScale) * 16 + 15)})
+                            ({formatter.format(Math.floor(targetChunkDetails.rawPosition.x / (netherScale ?? 8)) * 16)} /{" "}
+                            {formatter.format(Math.floor(targetChunkDetails.rawPosition.y / (netherScale ?? 8)) * 16)}) -&gt; (
+                            {formatter.format(Math.floor(targetChunkDetails.rawPosition.x / (netherScale ?? 8)) * 16 + 15)} /{" "}
+                            {formatter.format(Math.floor(targetChunkDetails.rawPosition.y / (netherScale ?? 8)) * 16 + 15)})
                         </MenuItem>
                         <MenuItem
                             title={
@@ -3532,9 +3527,9 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                     "The 2D renderer engine is not ready yet."
                                 :   "Brings you to the associated location in the Nether dimension on the map"
                             }
-                            onClick={async (): Promise<void> => {
+                            onClick={(): void => {
                                 if (levelDatLoaded === true && netherScale === undefined) {
-                                    dialog.showMessageBox({
+                                    void dialog.showMessageBox({
                                         type: "error",
                                         title: "Error",
                                         message: "The nether scale was not loaded properly.",
@@ -3544,7 +3539,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                     return;
                                 }
                                 if (netherScale === undefined) {
-                                    dialog.showMessageBox({
+                                    void dialog.showMessageBox({
                                         type: "error",
                                         title: "Error",
                                         message: "The nether scale has not been loaded yet.",
@@ -3553,18 +3548,18 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                     });
                                     return;
                                 }
-                                if (netherScale === null) {
-                                    dialog.showMessageBox({
-                                        type: "error",
-                                        title: "Error",
-                                        message: "The nether scale could not be determined.",
-                                        buttons: ["OK"],
-                                        noLink: true,
-                                    });
-                                    return;
-                                }
+                                // if (netherScale === null) {
+                                //     void dialog.showMessageBox({
+                                //         type: "error",
+                                //         title: "Error",
+                                //         message: "The nether scale could not be determined.",
+                                //         buttons: ["OK"],
+                                //         noLink: true,
+                                //     });
+                                //     return;
+                                // }
                                 if (!engineRef.current?.instance) {
-                                    dialog.showMessageBox({
+                                    void dialog.showMessageBox({
                                         type: "error",
                                         title: "Error",
                                         message: `The 2D renderer engine is not ready yet.`,
@@ -3576,8 +3571,8 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 props.dataStorageObject.worldEditor2D.dimension = "nether";
                                 reloadMap(false, "renderFrame");
                                 engineRef.current.instance.goCoords(
-                                    targetChunkDetails.rawPosition.x / netherScale,
-                                    targetChunkDetails.rawPosition.y / netherScale,
+                                    targetChunkDetails.rawPosition.x / (netherScale ?? 8),
+                                    targetChunkDetails.rawPosition.y / (netherScale ?? 8),
                                     config.views.world.modeSettings["2D"].mapGoToPositionAnimationDuration
                                 );
                             }}
@@ -3592,41 +3587,41 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                         <MenuHeader>Overworld</MenuHeader>
                         <MenuItem
                             title="Copy Overworld block coordinates to clipboard"
-                            onClick={async (): Promise<void> => {
-                                if (netherScale === undefined || netherScale === null) return;
+                            onClick={(): void => {
+                                if (netherScale === undefined) return;
                                 clipboard.writeText(
-                                    `${Math.floor(targetChunkDetails.rawPosition.x * 16 * netherScale)} ${Math.floor(targetChunkDetails.rawPosition.y * 16 * netherScale)}`
+                                    `${Math.floor(targetChunkDetails.rawPosition.x * 16 * (netherScale ?? 8))} ${Math.floor(targetChunkDetails.rawPosition.y * 16 * (netherScale ?? 8))}`
                                 );
                             }}
                         >
-                            X: {formatter.format(Math.floor(targetChunkDetails.rawPosition.x * 16 * netherScale))} Z:{" "}
-                            {formatter.format(Math.floor(targetChunkDetails.rawPosition.y * 16 * netherScale))}
+                            X: {formatter.format(Math.floor(targetChunkDetails.rawPosition.x * 16 * (netherScale ?? 8)))} Z:{" "}
+                            {formatter.format(Math.floor(targetChunkDetails.rawPosition.y * 16 * (netherScale ?? 8)))}
                         </MenuItem>
                         <MenuItem
                             title="Copy Overworld chunk coordinates to clipboard"
-                            onClick={async (): Promise<void> => {
-                                if (netherScale === undefined || netherScale === null) return;
+                            onClick={(): void => {
+                                if (netherScale === undefined) return;
                                 clipboard.writeText(
-                                    `${Math.floor(targetChunkDetails.rawPosition.x * netherScale)} ${Math.floor(targetChunkDetails.rawPosition.y * netherScale)}`
+                                    `${Math.floor(targetChunkDetails.rawPosition.x * (netherScale ?? 8))} ${Math.floor(targetChunkDetails.rawPosition.y * (netherScale ?? 8))}`
                                 );
                             }}
                         >
-                            Chunk: X: {formatter.format(Math.floor(targetChunkDetails.rawPosition.x * netherScale))} Z:{" "}
-                            {formatter.format(Math.floor(targetChunkDetails.rawPosition.y * netherScale))}
+                            Chunk: X: {formatter.format(Math.floor(targetChunkDetails.rawPosition.x * (netherScale ?? 8)))} Z:{" "}
+                            {formatter.format(Math.floor(targetChunkDetails.rawPosition.y * (netherScale ?? 8)))}
                         </MenuItem>
                         <MenuItem
                             title="Copy Overworld chunk boundaries to clipboard"
-                            onClick={async (): Promise<void> => {
-                                if (netherScale === undefined || netherScale === null) return;
+                            onClick={(): void => {
+                                if (netherScale === undefined) return;
                                 clipboard.writeText(
-                                    `${Math.floor(targetChunkDetails.rawPosition.x * netherScale) * 16} ${Math.floor(targetChunkDetails.rawPosition.y * netherScale) * 16} -> ${Math.floor(targetChunkDetails.rawPosition.x * netherScale) * 16 + 15} ${Math.floor(targetChunkDetails.rawPosition.y * netherScale) * 16 + 15}`
+                                    `${Math.floor(targetChunkDetails.rawPosition.x * (netherScale ?? 8)) * 16} ${Math.floor(targetChunkDetails.rawPosition.y * (netherScale ?? 8)) * 16} -> ${Math.floor(targetChunkDetails.rawPosition.x * (netherScale ?? 8)) * 16 + 15} ${Math.floor(targetChunkDetails.rawPosition.y * (netherScale ?? 8)) * 16 + 15}`
                                 );
                             }}
                         >
-                            ({formatter.format(Math.floor(targetChunkDetails.rawPosition.x * netherScale) * 16)} /{" "}
-                            {formatter.format(Math.floor(targetChunkDetails.rawPosition.y * netherScale) * 16)}) -&gt; (
-                            {formatter.format(Math.floor(targetChunkDetails.rawPosition.x * netherScale) * 16 + 15)} /{" "}
-                            {formatter.format(Math.floor(targetChunkDetails.rawPosition.y * netherScale) * 16 + 15)})
+                            ({formatter.format(Math.floor(targetChunkDetails.rawPosition.x * (netherScale ?? 8)) * 16)} /{" "}
+                            {formatter.format(Math.floor(targetChunkDetails.rawPosition.y * (netherScale ?? 8)) * 16)}) -&gt; (
+                            {formatter.format(Math.floor(targetChunkDetails.rawPosition.x * (netherScale ?? 8)) * 16 + 15)} /{" "}
+                            {formatter.format(Math.floor(targetChunkDetails.rawPosition.y * (netherScale ?? 8)) * 16 + 15)})
                         </MenuItem>
                         <MenuItem
                             title={
@@ -3634,9 +3629,9 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                     "The 2D renderer engine is not ready yet."
                                 :   "Brings you to the associated location in the Overworld dimension on the map"
                             }
-                            onClick={async (): Promise<void> => {
+                            onClick={(): void => {
                                 if (levelDatLoaded === true && netherScale === undefined) {
-                                    dialog.showMessageBox({
+                                    void dialog.showMessageBox({
                                         type: "error",
                                         title: "Error",
                                         message: "The nether scale was not loaded properly.",
@@ -3646,7 +3641,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                     return;
                                 }
                                 if (netherScale === undefined) {
-                                    dialog.showMessageBox({
+                                    void dialog.showMessageBox({
                                         type: "error",
                                         title: "Error",
                                         message: "The nether scale has not been loaded yet.",
@@ -3655,18 +3650,18 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                     });
                                     return;
                                 }
-                                if (netherScale === null) {
-                                    dialog.showMessageBox({
-                                        type: "error",
-                                        title: "Error",
-                                        message: "The nether scale could not be determined.",
-                                        buttons: ["OK"],
-                                        noLink: true,
-                                    });
-                                    return;
-                                }
+                                // if (netherScale === null) {
+                                //     void dialog.showMessageBox({
+                                //         type: "error",
+                                //         title: "Error",
+                                //         message: "The nether scale could not be determined.",
+                                //         buttons: ["OK"],
+                                //         noLink: true,
+                                //     });
+                                //     return;
+                                // }
                                 if (!engineRef.current?.instance) {
-                                    dialog.showMessageBox({
+                                    void dialog.showMessageBox({
                                         type: "error",
                                         title: "Error",
                                         message: `The 2D renderer engine is not ready yet.`,
@@ -3678,8 +3673,8 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 props.dataStorageObject.worldEditor2D.dimension = "overworld";
                                 reloadMap(false, "renderFrame");
                                 engineRef.current.instance.goCoords(
-                                    targetChunkDetails.rawPosition.x * netherScale,
-                                    targetChunkDetails.rawPosition.y * netherScale,
+                                    targetChunkDetails.rawPosition.x * (netherScale ?? 8),
+                                    targetChunkDetails.rawPosition.y * (netherScale ?? 8),
                                     config.views.world.modeSettings["2D"].mapGoToPositionAnimationDuration
                                 );
                             }}
@@ -3693,7 +3688,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
 
                 <MenuItem
                     title="Reload the data for this chunk"
-                    onClick={async (): Promise<void> => {
+                    onClick={(): void => {
                         delete cachedChunkColorData[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
                         delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
                     }}
@@ -3723,7 +3718,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                         for (const [key, contentType] of existingKeys) {
                             if (key instanceof Array) {
                                 for (const currentKey of key) {
-                                    props.tab.db.delete(currentKey).then((success: boolean): void => {
+                                    void props.tab.db.delete(currentKey).then((success: boolean): void => {
                                         if (!success) return;
                                         props.tab.setLevelDBIsModified();
                                         if (contentType === "Data3D" && data3dKeyCount) {
@@ -3755,7 +3750,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 }
                                 continue;
                             }
-                            props.tab.db.delete(key).then((success: boolean): void => {
+                            void props.tab.db.delete(key).then((success: boolean): void => {
                                 if (!success) return;
                                 props.tab.setLevelDBIsModified();
                                 if (contentType === "Data3D" && data3dKeyCount) {
@@ -3793,6 +3788,11 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             </ControlledMenu>
         );
     }
+    void cullCachedOutOfBoundsImageBitmaps;
+    void drawCachedChunks;
+    void drawCachedChunks_v2;
+    void loadChunkImageBitmapsInBounds;
+    void rerenderMap; // TEMP
     const hoverInfoRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     function Contents(): JSX.Element {
         const engine: EngineHandle = useCanvasTileEngine();
@@ -3813,7 +3813,10 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         }
 
         return (
-            <div style={{ display: "flex", height: "-webkit-fill-available", justifyContent: "center", flexDirection: "column" }} ref={containerRef}>
+            <div
+                style={{ display: "flex", height: "-webkit-fill-available", justifyContent: "center", flexDirection: "column" }}
+                ref={mergeRefs(containerRef, props.containerRef)}
+            >
                 <div style={{ position: "relative", top: 0, left: 0, height: "0", zIndex: 1 }}>
                     <div
                         style={{
@@ -4002,16 +4005,16 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                     ["overworld", 0].includes(props.dataStorageObject.worldEditor2D.dimension) ?
                                         netherScale === undefined ?
                                             "\nNether Coordinates: Loading...\nNether Chunk: Loading..."
-                                        :   `\nNether Coordinates: ${formatter.format(Math.floor((coords.raw.x * 16) / netherScale))}, ${formatter.format(
-                                                Math.floor((coords.raw.y * 16) / netherScale)
-                                            )}\nNether Chunk: ${formatter.format(Math.floor(coords.raw.x / netherScale))}, ${formatter.format(
-                                                Math.floor(coords.raw.y / netherScale)
+                                        :   `\nNether Coordinates: ${formatter.format(Math.floor((coords.raw.x * 16) / (netherScale ?? 8)))}, ${formatter.format(
+                                                Math.floor((coords.raw.y * 16) / (netherScale ?? 8))
+                                            )}\nNether Chunk: ${formatter.format(Math.floor(coords.raw.x / (netherScale ?? 8)))}, ${formatter.format(
+                                                Math.floor(coords.raw.y / (netherScale ?? 8))
                                             )}`
                                     : netherScale === undefined ? "\nOverworld Coordinates: Loading...\nOverworld Chunk: Loading..."
-                                    : `\nOverworld Coordinates: ${formatter.format(Math.floor(coords.raw.x * 16 * netherScale))}, ${formatter.format(
-                                            Math.floor(coords.raw.y * 16 * netherScale)
-                                        )}\nOverworld Chunk: ${formatter.format(Math.floor(coords.raw.x * netherScale))}, ${formatter.format(
-                                            Math.floor(coords.raw.y * netherScale)
+                                    : `\nOverworld Coordinates: ${formatter.format(Math.floor(coords.raw.x * 16 * (netherScale ?? 8)))}, ${formatter.format(
+                                            Math.floor(coords.raw.y * 16 * (netherScale ?? 8))
+                                        )}\nOverworld Chunk: ${formatter.format(Math.floor(coords.raw.x * (netherScale ?? 8)))}, ${formatter.format(
+                                            Math.floor(coords.raw.y * (netherScale ?? 8))
                                         )}`
                                 :   ""
                             }`;
@@ -4025,16 +4028,16 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                     ["overworld", 0].includes(props.dataStorageObject.worldEditor2D.dimension) ?
                                         netherScale === undefined ?
                                             "\nNether Coordinates: Loading...\nNether Chunk: Loading..."
-                                        :   `\nNether Coordinates: ${formatter.format(Math.floor((coords.raw.x * 16) / netherScale))}, ${formatter.format(
-                                                Math.floor((coords.raw.y * 16) / netherScale)
-                                            )}\nNether Chunk: ${formatter.format(Math.floor(coords.raw.x / netherScale))}, ${formatter.format(
-                                                Math.floor(coords.raw.y / netherScale)
+                                        :   `\nNether Coordinates: ${formatter.format(Math.floor((coords.raw.x * 16) / (netherScale ?? 8)))}, ${formatter.format(
+                                                Math.floor((coords.raw.y * 16) / (netherScale ?? 8))
+                                            )}\nNether Chunk: ${formatter.format(Math.floor(coords.raw.x / (netherScale ?? 8)))}, ${formatter.format(
+                                                Math.floor(coords.raw.y / (netherScale ?? 8))
                                             )}`
                                     : netherScale === undefined ? "\nOverworld Coordinates: Loading...\nOverworld Chunk: Loading..."
-                                    : `\nOverworld Coordinates: ${formatter.format(Math.floor(coords.raw.x * 16 * netherScale))}, ${formatter.format(
-                                            Math.floor(coords.raw.y * 16 * netherScale)
-                                        )}\nOverworld Chunk: ${formatter.format(Math.floor(coords.raw.x * netherScale))}, ${formatter.format(
-                                            Math.floor(coords.raw.y * netherScale)
+                                    : `\nOverworld Coordinates: ${formatter.format(Math.floor(coords.raw.x * 16 * (netherScale ?? 8)))}, ${formatter.format(
+                                            Math.floor(coords.raw.y * 16 * (netherScale ?? 8))
+                                        )}\nOverworld Chunk: ${formatter.format(Math.floor(coords.raw.x * (netherScale ?? 8)))}, ${formatter.format(
+                                            Math.floor(coords.raw.y * (netherScale ?? 8))
                                         )}`
                                 :   ""
                             }`;
@@ -4066,10 +4069,12 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                         ): void => {
                             if (!(ctx instanceof CanvasRenderingContext2D)) return;
                             if (mapReset) onMapContentsReset();
-                            if (!portalsRendered && props.dataStorageObject.worldEditor2D.dataOverlays.portals)
+                            if (!portalsRendered && props.dataStorageObject.worldEditor2D.dataOverlays.portals) {
                                 portalsRendered = renderPortalsOnMap(config.scale);
-                            if (portalsRendered && !props.dataStorageObject.worldEditor2D.dataOverlays.portals)
+                            }
+                            if (portalsRendered && !props.dataStorageObject.worldEditor2D.dataOverlays.portals) {
                                 portalsRendered = !renderPortalsOnMap(config.scale, true);
+                            }
                             const bounds: { min: Vector2; max: Vector2 } = {
                                 min: { ...coords },
                                 max: { x: coords.x + config.size.width / config.scale, y: coords.y + config.size.height / config.scale },
@@ -4102,7 +4107,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             // Wait for the level.dat to finish attempting to load before loading chunk data.
                             if (isOldWorld === undefined && levelDatLoaded === "loading") return;
 
-                            loadChunksInBounds(bounds);
+                            void loadChunksInBounds(bounds);
                             // loadChunkImageBitmapsInBounds(bounds, config.scale);
 
                             // ~DEBUG
@@ -4151,7 +4156,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                     height={128}
                     class="map-renderer-canvas piximg"
                     style="max-width: round(down, 100%, 128px); max-height: round(down, 100%, 128px);"
-                    ref={canvasRef}
+                    ref={mergeRefs(canvasRef, props.canvasRef)}
                     onContextMenu={(event: TargetedMouseEvent<HTMLCanvasElement>): void => void onCanvasRightClick(event)}
                 />
             </div> */}

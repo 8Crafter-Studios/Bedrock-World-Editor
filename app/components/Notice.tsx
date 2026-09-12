@@ -113,6 +113,7 @@ export default function Notice(props: NoticeProps): JSX.SpecificElement<"center"
                         display: "inline-block",
                         width: "-webkit-fill-available",
                         height: "-webkit-fill-available",
+                        // eslint-disable-next-line @typescript-eslint/no-misused-spread
                         ...props.style,
                     }
 

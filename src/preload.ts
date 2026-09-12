@@ -21,18 +21,18 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 }); */
 
-export function onThemeChange(value: typeof config.theme): void {
+function onThemeChange(value: typeof config.theme): void {
     switch (value) {
-        default:
-        case "auto":
-            nativeTheme.themeSource = "system";
-            break;
         case "dark":
             nativeTheme.themeSource = "dark";
             break;
         case "light":
         case "blue":
             nativeTheme.themeSource = "light";
+            break;
+        case "auto":
+        default:
+            nativeTheme.themeSource = "system";
             break;
     }
 
@@ -42,8 +42,8 @@ export function onThemeChange(value: typeof config.theme): void {
 function changeTheme(theme: typeof config.actualTheme): void {
     forEachRuleCallback((rule: CSSStyleDeclaration, _ruleName: string, _styleSheet: CSSStyleSheet): void => {
         if (
-            rule?.cssText?.match(
-                /(?<=(?:[\n\s;{]|^)---theme-var-switcher--[a-zA-Z0-9\-_]+[\n\s]*:[\n\s]*var\([\n\s]*--[a-zA-Z0-9\-_]*)(?:light|dark|blue-theme)(?=[a-zA-Z0-9\-_]*[\n\s]*\)[\n\s]*;?)/
+            /(?<=(?:[\n\s;{]|^)---theme-var-switcher--[a-zA-Z0-9\-_]+[\n\s]*:[\n\s]*var\([\n\s]*--[a-zA-Z0-9\-_]*)(?:light|dark|blue-theme)(?=[a-zA-Z0-9\-_]*[\n\s]*\)[\n\s]*;?)/.exec(
+                rule?.cssText
             )
         ) {
             rule.cssText = rule.cssText.replaceAll(
@@ -63,6 +63,7 @@ function changeTheme(theme: typeof config.actualTheme): void {
  * @returns Returns `null`.
  */
 function forEachRuleCallback(callbackfn: (rule: CSSStyleDeclaration, ruleName: string, styleSheet: CSSStyleSheet) => any): null {
+    // eslint-disable-next-line @typescript-eslint/prefer-for-of -- I think this may have been necessary in some environments.
     for (var i: number = 0; i < document.styleSheets.length; i++) {
         var ix,
             sheet: CSSStyleSheet = document.styleSheets[i]!;
@@ -271,7 +272,7 @@ const menu = Menu.buildFromTemplate([
             {
                 label: translate`menu_bar.help.open_app_data_folder.label`,
                 click(): void {
-                    shell.openPath(APP_DATA_FOLDER_PATH);
+                    void shell.openPath(APP_DATA_FOLDER_PATH);
                 },
             },
             {
@@ -280,19 +281,19 @@ const menu = Menu.buildFromTemplate([
             {
                 label: translate`menu_bar.help.website.label`,
                 click(): void {
-                    shell.openExternal("https://wiki.8crafter.com/main/apps/bedrock-world-editor");
+                    void shell.openExternal("https://wiki.8crafter.com/main/apps/bedrock-world-editor");
                 },
             },
             {
                 label: translate`menu_bar.help.github.label`,
                 click(): void {
-                    shell.openExternal("https://github.com/8Crafter-Studios/Bedrock-World-Editor");
+                    void shell.openExternal("https://github.com/8Crafter-Studios/Bedrock-World-Editor");
                 },
             },
             {
                 label: translate`menu_bar.help.discord.label`,
                 click(): void {
-                    shell.openExternal("https://discord.8crafter.com");
+                    void shell.openExternal("https://discord.8crafter.com");
                 },
             },
             {
@@ -306,7 +307,7 @@ const menu = Menu.buildFromTemplate([
                         const feedURL = `https://update.electronjs.org/8Crafter-Studios/Bedrock-World-Editor/${process.platform}-${process.arch}/${app.getVersion()}`;
                         const feedInfo: Response = await fetch(feedURL);
                         if (feedInfo.status === 204) {
-                            dialog.showMessageBox({
+                            void dialog.showMessageBox({
                                 type: "info",
                                 title: "Up to Date",
                                 message: "Bedrock World Editor is up to date.",
@@ -314,7 +315,7 @@ const menu = Menu.buildFromTemplate([
                                 noLink: true,
                             });
                         } else if (feedInfo.status !== 200) {
-                            dialog.showMessageBox({
+                            void dialog.showMessageBox({
                                 type: "error",
                                 title: "Error Checking for Updates",
                                 message: `There was an error checking for updates. Status Code: ${feedInfo.status}`,
@@ -324,12 +325,12 @@ const menu = Menu.buildFromTemplate([
                             });
                             return;
                         }
-                        const releaseInfo: {
+                        const releaseInfo = (await feedInfo.json()) as {
                             name: string;
                             // TODO: Figure out if this actually could be a null type or not, or whether it is just not present.
                             notes?: string | null;
                             url: string;
-                        } = await feedInfo.json();
+                        };
                         let trimmedChangelog: string | undefined =
                             releaseInfo.notes ? releaseInfo.notes.split("\n").slice(0, 10).join("\n").slice(0, 2000) : undefined;
                         if (trimmedChangelog) {
@@ -355,7 +356,7 @@ const menu = Menu.buildFromTemplate([
                         });
                         function notifyOfUpdateReady(): void {
                             autoUpdater.off("update-downloaded", notifyOfUpdateReady);
-                            dialog
+                            void dialog
                                 .showMessageBox({
                                     type: "info",
                                     title: "Application Update",
@@ -373,7 +374,7 @@ const menu = Menu.buildFromTemplate([
                         autoUpdater.on("update-downloaded", notifyOfUpdateReady);
                         autoUpdater.checkForUpdates();
                     } catch (e) {
-                        dialog.showMessageBox({
+                        void dialog.showMessageBox({
                             type: "error",
                             title: "Error Checking for Updates",
                             message: "There was an error checking for updates.",
@@ -390,7 +391,7 @@ const menu = Menu.buildFromTemplate([
                         async click(_menuItem: Electron.MenuItem, baseWindow: Electron.BaseWindow | undefined): Promise<void> {
                             const isLatestVersion: boolean | undefined = await checkIfCurrentOreUICustomizerVersionIsLatest();
                             if (isLatestVersion === undefined) {
-                                dialog.showMessageBox({
+                                void dialog.showMessageBox({
                                     type: "error",
                                     title: "Error",
                                     message: "There was an error checking for updates, check your internet connection and try again.",
@@ -420,7 +421,7 @@ const menu = Menu.buildFromTemplate([
                             } else {
                                 const latestVersion: APIVersionJSON | undefined = await getLatestOreUICustomizerVersion();
                                 if (latestVersion === undefined) {
-                                    dialog.showMessageBox({
+                                    void dialog.showMessageBox({
                                         type: "error",
                                         title: "Error",
                                         message: "There was an error checking for updates, check your internet connection and try again.",
@@ -455,7 +456,7 @@ const menu = Menu.buildFromTemplate([
                 label: translate`menu_bar.help.changelogs.label`,
                 enabled: false,
                 click(): void {
-                    dialog.showMessageBox({
+                    void dialog.showMessageBox({
                         type: "error",
                         title: "Function Not Implemented",
                         message: "This feature is not implemented yet.",

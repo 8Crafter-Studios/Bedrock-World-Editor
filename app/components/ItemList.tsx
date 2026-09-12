@@ -1,3 +1,7 @@
+// DEPRECATED
+//#vignore
+/* eslint-disable */
+// @ts-nocheck
 import type { JSX, RefObject } from "preact";
 import _React, { useRef, useEffect } from "preact/compat";
 
@@ -125,7 +129,7 @@ export default function ItemList(options: ItemListOptions): JSX.HTMLAttributes<H
                 ref={headersContainerRef}
             >
                 {options.tableHeaders?.map((header: ItemListTableHeader, index: number): JSX.HTMLAttributes<HTMLDivElement> | undefined =>
-                    index === 0 ? (
+                    index === 0 ?
                         <div
                             style={`width: ${
                                 header.width ?? (options.tableHeaders!.length === 1 ? "100%" : `${40 * (2 / options.tableHeaders!.length)}%`)
@@ -133,7 +137,7 @@ export default function ItemList(options: ItemListOptions): JSX.HTMLAttributes<H
                         >
                             <span style={{ padding: header.paddingOverride ?? "8.5px 0px" }}>{header.label}</span>
                         </div>
-                    ) : index === options.tableHeaders!.length - 1 ? (
+                    : index === options.tableHeaders!.length - 1 ?
                         <div
                             style={{
                                 width: `calc(${header.width ?? `${60 * (2 / options.tableHeaders!.length)}%`} - 11px)`,
@@ -148,8 +152,7 @@ export default function ItemList(options: ItemListOptions): JSX.HTMLAttributes<H
                         >
                             {header.label}
                         </div>
-                    ) : (
-                        <div
+                    :   <div
                             style={{
                                 width: `calc(${header.width ?? `${100 / options.tableHeaders!.length}%`} - 11px)`,
                                 "font-size": "var(--base-font-size)",
@@ -163,7 +166,6 @@ export default function ItemList(options: ItemListOptions): JSX.HTMLAttributes<H
                         >
                             {header.label}
                         </div>
-                    )
                 )}
             </div>
             <div
@@ -173,13 +175,12 @@ export default function ItemList(options: ItemListOptions): JSX.HTMLAttributes<H
                     options.tableHeaders?.map(
                         (header: ItemListTableHeader, index: number): string =>
                             header.width ??
-                            (index === 0
-                                ? options.tableHeaders!.length === 1
-                                    ? "100%"
-                                    : `${40 * (2 / options.tableHeaders!.length)}%`
-                                : index === options.tableHeaders!.length - 1
-                                ? `${60 * (2 / options.tableHeaders!.length)}%`
-                                : `${100 / options.tableHeaders!.length}%`)
+                            (index === 0 ?
+                                options.tableHeaders!.length === 1 ?
+                                    "100%"
+                                :   `${40 * (2 / options.tableHeaders!.length)}%`
+                            : index === options.tableHeaders!.length - 1 ? `${60 * (2 / options.tableHeaders!.length)}%`
+                            : `${100 / options.tableHeaders!.length}%`)
                     )
                 )}
                 onResize={(): void => {
@@ -191,3 +192,4 @@ export default function ItemList(options: ItemListOptions): JSX.HTMLAttributes<H
         </div>
     );
 }
+//#endvignore

@@ -1,19 +1,21 @@
-import { BrowserWindow, ipcMain, ipcRenderer, type IpcMainEvent, type IpcMainInvokeEvent } from "electron";
+/* eslint-disable @typescript-eslint/unified-signatures */
+import { BrowserWindow, ipcMain, type IpcMainEvent, type IpcMainInvokeEvent } from "electron";
 import { createWindow } from "../main";
 
-ipcMain.on("new-window", async (_event: IpcMainEvent): Promise<void> => {
+ipcMain.on("new-window", (_event: IpcMainEvent): void => {
     try {
         createWindow();
         return void true;
-    } catch (e) {
+    } catch (error) {
+        console.error(error);
         return void false;
     }
 });
 
 ipcMain.on("window-eval", (event: IpcMainEvent, script: string): void => {
-    const sourceWindow: BrowserWindow = BrowserWindow.fromWebContents(event.sender)!;
+    // const sourceWindow: BrowserWindow = BrowserWindow.fromWebContents(event.sender)!;
     try {
-        event.returnValue = eval(script);
+        event.returnValue = eval(script) as unknown;
     } catch (error) {
         console.error(error);
         event.returnValue = void false;
@@ -748,16 +750,16 @@ ipcMain.on("get-is-404-response", async (event: IpcMainEvent, uri: string): Prom
     try {
         const response = await fetch(uri);
         event.returnValue = response.status === 404;
-    } catch (e) {
+    } catch {
         event.returnValue = true;
     }
 });
 
-ipcMain.handle("get-is-404-response", async (event: IpcMainInvokeEvent, uri: string): Promise<boolean> => {
+ipcMain.handle("get-is-404-response", async (_event: IpcMainInvokeEvent, uri: string): Promise<boolean> => {
     try {
         const response = await fetch(uri);
         return response.status === 404;
-    } catch (e) {
+    } catch {
         return true;
     }
 });
@@ -780,7 +782,7 @@ declare global {
             send<_T extends 1>(channel: "new-window"): void;
             sendSync<_T extends 1>(channel: "new-window"): boolean;
             sendSync<_T extends 1>(channel: "window-eval", script: string): any;
-            sendSync<_T extends 1>(channel: "set-progress-bar", progress: number, options?: Electron.ProgressBarOptions): void;
+            sendSync<_T extends 1>(channel: "set-progress-bar", progress: number, options?: ProgressBarOptions): void;
             sendSync<_T extends 1>(channel: "center-window"): void;
             sendSync<_T extends 1>(channel: "get-document-is-edited"): boolean;
             sendSync<_T extends 1>(channel: "set-document-is-edited", isEdited: boolean): void;
@@ -788,8 +790,8 @@ declare global {
             sendSync<_T extends 1>(channel: "set-window-is-movable", isMovable: boolean): void;
             sendSync<_T extends 1>(channel: "get-window-is-always-on-top"): boolean;
             sendSync<_T extends 1>(channel: "set-window-is-always-on-top", isAlwaysOnTop: boolean): void;
-            sendSync<_T extends 1>(channel: "set-app-details", options: Electron.AppDetailsOptions): void;
-            sendSync<_T extends 1>(channel: "set-aspect-ratio", aspectRatio: number, extraSize?: Electron.Size): void;
+            sendSync<_T extends 1>(channel: "set-app-details", options: AppDetailsOptions): void;
+            sendSync<_T extends 1>(channel: "set-aspect-ratio", aspectRatio: number, extraSize?: Size): void;
             sendSync<_T extends 1>(channel: "set-auto-hide-cursor", autoHide: boolean): void;
             sendSync<_T extends 1>(channel: "get-menu-bar-is-visible"): boolean;
             sendSync<_T extends 1>(channel: "set-menu-bar-is-visible", visible: boolean): void;
@@ -801,17 +803,17 @@ declare global {
                 channel: "set-window-background-material",
                 material: globalThis.Parameters<BrowserWindow["setBackgroundMaterial"]>[0]
             ): string;
-            sendSync<_T extends 1>(channel: "get-window-bounds"): Electron.Rectangle;
-            sendSync<_T extends 1>(channel: "set-window-bounds", bounds: Partial<Electron.Rectangle>, animate?: boolean): void;
-            sendSync<_T extends 1>(channel: "set-window-taskbar-overlay-icon", overlay: Electron.NativeImage | null, description: string): void;
-            sendSync<_T extends 1>(channel: "set-window-title-bar-overlay", options: Electron.TitleBarOverlayOptions): void;
-            sendSync<_T extends 1>(channel: "set-window-ignore-mouse-events", ignore: boolean, options?: Electron.IgnoreMouseEventsOptions): void;
+            sendSync<_T extends 1>(channel: "get-window-bounds"): Rectangle;
+            sendSync<_T extends 1>(channel: "set-window-bounds", bounds: Partial<Rectangle>, animate?: boolean): void;
+            sendSync<_T extends 1>(channel: "set-window-taskbar-overlay-icon", overlay: NativeImage | null, description: string): void;
+            sendSync<_T extends 1>(channel: "set-window-title-bar-overlay", options: TitleBarOverlayOptions): void;
+            sendSync<_T extends 1>(channel: "set-window-ignore-mouse-events", ignore: boolean, options?: IgnoreMouseEventsOptions): void;
             sendSync<_T extends 1>(channel: "get-window-is-kiosk"): boolean;
             sendSync<_T extends 1>(channel: "set-window-is-kiosk", flag: boolean): void;
             sendSync<_T extends 1>(channel: "get-window-position"): number[];
             sendSync<_T extends 1>(channel: "set-window-position", x: number, y: number, animate?: boolean): void;
-            sendSync<_T extends 1>(channel: "get-window-button-position"): Electron.Point | null;
-            sendSync<_T extends 1>(channel: "set-window-button-position", position: Electron.Point | null): void;
+            sendSync<_T extends 1>(channel: "get-window-button-position"): Point | null;
+            sendSync<_T extends 1>(channel: "set-window-button-position", position: Point | null): void;
             sendSync<_T extends 1>(channel: "set-window-button-visibility", visible: boolean): void;
             sendSync<_T extends 1>(channel: "get-window-is-resizable"): boolean;
             sendSync<_T extends 1>(channel: "set-window-is-resizable", resizable: boolean): void;
@@ -820,13 +822,13 @@ declare global {
             sendSync<_T extends 1>(channel: "get-window-content-size"): number[];
             sendSync<_T extends 1>(channel: "set-window-content-size", width: number, height: number, animate?: boolean): void;
             sendSync<_T extends 1>(channel: "set-window-skip-taskbar", skip: boolean): number;
-            sendSync<_T extends 1>(channel: "set-thumbar-buttons", buttons: Electron.ThumbarButton[]): number;
+            sendSync<_T extends 1>(channel: "set-thumbar-buttons", buttons: ThumbarButton[]): number;
             sendSync<_T extends 1>(channel: "get-window-title"): string;
             sendSync<_T extends 1>(channel: "set-window-title", title: string): void;
             sendSync<_T extends 1>(
                 channel: "set-window-vibrancy",
                 type: globalThis.Parameters<BrowserWindow["setVibrancy"]>[0],
-                options?: Electron.VibrancyOptions
+                options?: VibrancyOptions
             ): string;
             sendSync<_T extends 1>(channel: "get-window-is-minimized"): boolean;
             sendSync<_T extends 1>(channel: "minimize-window"): void;

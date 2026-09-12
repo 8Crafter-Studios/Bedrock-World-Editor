@@ -26,14 +26,14 @@ type Monaco = typeof monaco;
 //   ["productService"]: IProductService,
 // });
 
-import type { IGrammar, IRawGrammar, IRawTheme, IOnigLib, StateStack } from "vscode-textmate";
+import type { IGrammar, IRawGrammar, IRawTheme, IOnigLib, StateStack, ITokenizeLineResult2, ITokenizeLineResult, IToken } from "vscode-textmate";
 
 import { INITIAL, Registry, parseRawGrammar } from "vscode-textmate";
-// @ts-ignore
+// @ts-ignore: Necessary import.
 import { generateTokensCSSForColorMap } from "monaco-editor/esm/vs/editor/common/languages/supports/tokenization.js";
-// @ts-ignore
+// @ts-ignore: Necessary import.
 import { TokenizationRegistry } from "monaco-editor/esm/vs/editor/common/tokenizationRegistry.js";
-// @ts-ignore
+// @ts-ignore: Necessary import.
 import { Color } from "monaco-editor/esm/vs/base/common/color.js";
 import { createOnigScanner, createOnigString, loadWASM } from "vscode-oniguruma";
 import themeTomorrowNightBlue from "../themes/theme-tomorrow-night-blue";
@@ -58,22 +58,22 @@ loader.config({
     monaco,
 });
 
-loader.init();
+void loader.init();
 
-// @ts-ignore
+// @ts-ignore: DEBUG
 globalThis.monaco = monaco; // DEBUG
-// @ts-ignore
+// @ts-ignore: DEBUG
 global.monacoLoader = loader; // DEBUG
 
 //#region Register
 
 /** String identifier like 'cpp' or 'java'. */
-export type LanguageId = string;
+type LanguageId = string;
 
-export type LanguageInfo = {
+interface LanguageInfo {
     tokensProvider: monaco.languages.EncodedTokensProvider | null;
     configuration: monaco.languages.LanguageConfiguration | null;
-};
+}
 
 /**
  * This function needs to be called before monaco.editor.create().
@@ -82,7 +82,7 @@ export type LanguageInfo = {
  * @param fetchLanguageInfo fetches full language configuration on demand.
  * @param monaco instance of Monaco on which to register languages information.
  */
-export function registerLanguages(
+function registerLanguages(
     languages: monaco.languages.ILanguageExtensionPoint[],
     fetchLanguageInfo: (language: LanguageId) => Promise<LanguageInfo>,
     monaco: Monaco
@@ -98,11 +98,11 @@ export function registerLanguages(
         monaco.languages.onLanguage(languageId, async (): Promise<void> => {
             const { tokensProvider, configuration } = await fetchLanguageInfo(languageId);
 
-            if (tokensProvider != null) {
+            if (tokensProvider !== null && tokensProvider !== undefined) {
                 monaco.languages.setTokensProvider(languageId, tokensProvider);
             }
 
-            if (configuration != null) {
+            if (configuration !== null && configuration !== undefined) {
                 monaco.languages.setLanguageConfiguration(languageId, configuration);
             }
         });
@@ -114,14 +114,14 @@ export function registerLanguages(
 //#region Providers
 
 /** String identifier for a "scope name" such as 'source.cpp' or 'source.java'. */
-export type ScopeName = string;
+type ScopeName = string;
 
-export type TextMateGrammar = {
+interface TextMateGrammar {
     type: "json" | "plist";
     grammar: string;
-};
+}
 
-export type SimpleLanguageInfoProviderConfig = {
+interface SimpleLanguageInfoProviderConfig {
     // Key is a ScopeName.
     grammars: { [scopeName: string]: ScopeNameInfo };
 
@@ -138,10 +138,9 @@ export type SimpleLanguageInfoProviderConfig = {
 
     onigLib: Promise<IOnigLib>;
     monaco: Monaco;
-};
+}
 
-// eslint-disable-next-line jsdoc/require-jsdoc
-export interface ScopeNameInfo {
+interface ScopeNameInfo {
     /**
      * If set, this is the id of an ILanguageExtensionPoint. This establishes the
      * mapping from a MonacoLanguage to a TextMate grammar.
@@ -161,12 +160,12 @@ export interface ScopeNameInfo {
  * power registerLanguages(). It is designed to fetch all resources
  * asynchronously based on a simple layout of static resources on the server.
  */
-export class SimpleLanguageInfoProvider {
+class SimpleLanguageInfoProvider {
     private monaco: Monaco;
     private registry: Registry;
     private tokensProviderCache: TokensProviderCache;
 
-    constructor(private config: SimpleLanguageInfoProviderConfig) {
+    public constructor(private config: SimpleLanguageInfoProviderConfig) {
         const { grammars, fetchGrammar, theme, onigLib, monaco } = config;
         this.monaco = monaco;
 
@@ -174,8 +173,8 @@ export class SimpleLanguageInfoProvider {
             onigLib,
 
             async loadGrammar(scopeName: ScopeName): Promise<IRawGrammar | null> {
-                const scopeNameInfo = grammars[scopeName];
-                if (scopeNameInfo == null) {
+                const scopeNameInfo: ScopeNameInfo | undefined = grammars[scopeName];
+                if (scopeNameInfo === undefined) {
                     return null;
                 }
 
@@ -214,34 +213,38 @@ export class SimpleLanguageInfoProvider {
      * Be sure this is done after Monaco injects its default styles so that the
      * injected CSS overrides the defaults.
      */
-    injectCSS() {
+    public injectCSS(): void {
         const cssColors = this.registry.getColorMap();
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access -- TEMP: There are no type declarations for this. Maybe make some at some point.
         const colorMap = cssColors.map(Color.Format.CSS.parseHex);
         // This is needed to ensure the minimap gets the right colors.
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- TEMP: There are no type declarations for this. Maybe make some at some point.
         TokenizationRegistry.setColorMap(colorMap);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- TEMP: There are no type declarations for this. Maybe make some at some point.
         const css = generateTokensCSSForColorMap(colorMap);
         const style = createStyleElementForColorsCSS();
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- TEMP: There are no type declarations for this. Maybe make some at some point.
         style.innerHTML = css;
     }
 
-    async fetchLanguageInfo(language: LanguageId): Promise<LanguageInfo> {
+    public async fetchLanguageInfo(language: LanguageId): Promise<LanguageInfo> {
         const [tokensProvider, configuration] = await Promise.all([this.getTokensProviderForLanguage(language), this.config.fetchConfiguration(language)]);
         return { tokensProvider, configuration };
     }
 
-    public getTokensProviderForLanguage(language: string): Promise<monaco.languages.EncodedTokensProvider | null> {
-        const scopeName = this.getScopeNameForLanguage(language);
-        if (scopeName == null) {
-            return Promise.resolve(null);
+    public async getTokensProviderForLanguage(language: string): Promise<monaco.languages.EncodedTokensProvider | null> {
+        const scopeName: string | null = this.getScopeNameForLanguage(language);
+        if (scopeName === null) {
+            return null;
         }
 
-        const encodedLanguageId = this.monaco.languages.getEncodedLanguageId(language);
+        const encodedLanguageId: number = this.monaco.languages.getEncodedLanguageId(language);
         // Ensure the result of createEncodedTokensProvider() is resolved before
         // setting the language configuration.
-        return this.tokensProviderCache.createEncodedTokensProvider(scopeName, encodedLanguageId);
+        return await this.tokensProviderCache.createEncodedTokensProvider(scopeName, encodedLanguageId);
     }
 
-    public getDecodedTokensProviderForLanguage(language: string): Promise<
+    public async getDecodedTokensProviderForLanguage(language: string): Promise<
         | (monaco.languages.TokensProvider & {
               tokenizeWithScopesArray(
                   line: string,
@@ -250,13 +253,13 @@ export class SimpleLanguageInfoProvider {
           })
         | null
     > {
-        const scopeName = this.getScopeNameForLanguage(language);
-        if (scopeName == null) {
-            return Promise.resolve(null);
+        const scopeName: string | null = this.getScopeNameForLanguage(language);
+        if (scopeName === null) {
+            return null;
         }
 
-        const encodedLanguageId = this.monaco.languages.getEncodedLanguageId(language);
-        return this.tokensProviderCache.createTokensProvider(scopeName, encodedLanguageId);
+        const encodedLanguageId: number = this.monaco.languages.getEncodedLanguageId(language);
+        return await this.tokensProviderCache.createTokensProvider(scopeName, encodedLanguageId);
     }
 
     private getScopeNameForLanguage(language: string): string | null {
@@ -270,27 +273,27 @@ export class SimpleLanguageInfoProvider {
 }
 
 class TokensProviderCache {
-    private scopeNameToGrammar: Map<string, Promise<IGrammar>> = new Map();
+    private scopeNameToGrammar: Map<string, Promise<IGrammar>> = new Map<string, Promise<IGrammar>>();
 
-    constructor(private registry: Registry) {}
+    public constructor(private registry: Registry) {}
 
-    async createEncodedTokensProvider(scopeName: string, encodedLanguageId: number): Promise<monaco.languages.EncodedTokensProvider> {
-        const grammar = await this.getGrammar(scopeName, encodedLanguageId);
+    public async createEncodedTokensProvider(scopeName: string, encodedLanguageId: number): Promise<monaco.languages.EncodedTokensProvider> {
+        const grammar: IGrammar = await this.getGrammar(scopeName, encodedLanguageId);
 
         return {
-            getInitialState() {
+            getInitialState(): StateStack {
                 return INITIAL;
             },
 
             tokenizeEncoded(line: string, state: monaco.languages.IState): monaco.languages.IEncodedLineTokens {
-                const tokenizeLineResult2 = grammar.tokenizeLine2(line, state as StateStack);
+                const tokenizeLineResult2: ITokenizeLineResult2 = grammar.tokenizeLine2(line, state as StateStack);
                 const { tokens, ruleStack: endState } = tokenizeLineResult2;
                 return { tokens, endState };
             },
         };
     }
 
-    async createTokensProvider(
+    public async createTokensProvider(
         scopeName: string,
         encodedLanguageId: number
     ): Promise<
@@ -301,34 +304,34 @@ class TokensProviderCache {
             ): Omit<monaco.languages.ILineTokens, "tokens"> & Pick<import("vscode-textmate").ITokenizeLineResult, "tokens">;
         }
     > {
-        const grammar = await this.getGrammar(scopeName, encodedLanguageId);
+        const grammar: IGrammar = await this.getGrammar(scopeName, encodedLanguageId);
 
         return {
-            getInitialState() {
+            getInitialState(): StateStack {
                 return INITIAL;
             },
 
             tokenize(line: string, state: monaco.languages.IState): monaco.languages.ILineTokens {
-                const tokenizeLineResult2 = grammar.tokenizeLine(line, state as StateStack);
+                const tokenizeLineResult2: ITokenizeLineResult = grammar.tokenizeLine(line, state as StateStack);
                 const { tokens, ruleStack: endState } = tokenizeLineResult2;
-                return { tokens: tokens.map((token) => ({ ...token, scopes: token.scopes.join(", ") })), endState };
+                return { tokens: tokens.map((token: IToken) => ({ ...token, scopes: token.scopes.join(", ") })), endState };
             },
 
             tokenizeWithScopesArray(
                 line: string,
                 state: monaco.languages.IState
             ): Omit<monaco.languages.ILineTokens, "tokens"> & Pick<import("vscode-textmate").ITokenizeLineResult, "tokens"> {
-                const tokenizeLineResult = grammar.tokenizeLine(line, state as StateStack);
+                const tokenizeLineResult: ITokenizeLineResult = grammar.tokenizeLine(line, state as StateStack);
                 const { tokens, ruleStack: endState } = tokenizeLineResult;
-                return { tokens: tokens, endState };
+                return { tokens, endState };
             },
         };
     }
 
-    getGrammar(scopeName: string, encodedLanguageId: number): Promise<IGrammar> {
-        const grammar = this.scopeNameToGrammar.get(scopeName);
-        if (grammar != null) {
-            return grammar;
+    public async getGrammar(scopeName: string, encodedLanguageId: number): Promise<IGrammar> {
+        const grammar: Promise<IGrammar> | undefined = this.scopeNameToGrammar.get(scopeName);
+        if (grammar !== undefined) {
+            return await grammar;
         }
 
         // This is defined in vscode-textmate and has optional embeddedLanguages
@@ -342,36 +345,35 @@ class TokensProviderCache {
         // Failure to do so means that the LanguageId cannot be read back later,
         // which can cause other Monaco features, such as "Toggle Line Comment",
         // to fail.
-        const promise = this.registry.loadGrammarWithConfiguration(scopeName, encodedLanguageId, grammarConfiguration).then((grammar: IGrammar | null) => {
-            if (grammar) {
-                return grammar;
-            } else {
+        const promise: Promise<IGrammar> = this.registry
+            .loadGrammarWithConfiguration(scopeName, encodedLanguageId, grammarConfiguration)
+            .then((grammar: IGrammar | null) => {
+                if (grammar) {
+                    return grammar;
+                }
                 throw Error(`failed to load grammar for ${scopeName}`);
-            }
-        });
+            });
         this.scopeNameToGrammar.set(scopeName, promise);
-        return promise;
+        return await promise;
     }
 }
 
 function createStyleElementForColorsCSS(): HTMLStyleElement {
     // We want to ensure that our <style> element appears after Monaco's so that
     // we can override some styles it inserted for the default theme.
-    const style = document.createElement("style");
+    const style: HTMLStyleElement = document.createElement("style");
     // style.id = "theme-color-injection"
 
     // We expect the styles we need to override to be in an element with the class
     // name 'monaco-colors' based on:
     // https://github.com/microsoft/vscode/blob/f78d84606cd16d75549c82c68888de91d8bdec9f/src/vs/editor/standalone/browser/standaloneThemeServiceImpl.ts#L206-L214
-    const monacoColors = document.getElementsByClassName("monaco-colors")[0];
+    const monacoColors: Element | undefined = document.getElementsByClassName("monaco-colors")[0];
     if (monacoColors) {
         monacoColors.parentElement?.insertBefore(style, monacoColors.nextSibling);
     } else {
         // Though if we cannot find it, just append to <head>.
         let { head } = document;
-        if (head == null) {
-            head = document.getElementsByTagName("head")[0]!;
-        }
+        head ??= document.getElementsByTagName("head")[0]!;
         head?.appendChild(style);
     }
     return style;
@@ -411,10 +413,10 @@ const REGEXP_PROPERTIES = [
  * accept a RegExp or a string literal. Possibly a small struct if flags need
  * to be specified to the RegExp constructor.
  */
-export function rehydrateRegexps(rawConfiguration: string): monaco.languages.LanguageConfiguration {
-    const out = json5.parse(rawConfiguration);
+function rehydrateRegexps(rawConfiguration: string): monaco.languages.LanguageConfiguration {
+    const out: Record<string, unknown> = json5.parse(rawConfiguration);
     for (const property of REGEXP_PROPERTIES) {
-        const value = getProp(out, property);
+        const value: unknown = getProp(out, property);
         if (typeof value === "string") {
             setProp(out, property, new RegExp(value));
         }
@@ -422,28 +424,24 @@ export function rehydrateRegexps(rawConfiguration: string): monaco.languages.Lan
     return out;
 }
 
-function getProp(obj: { string: any }, selector: string): any {
+function getProp(obj: unknown, selector: string): any {
     const components = selector.split(".");
-    // @ts-ignore
-    return components.reduce((acc, cur) => (acc != null ? acc[cur] : null), obj);
+    return components.reduce((acc, cur) => (acc !== null && acc !== undefined ? acc[cur as never] : null), obj);
 }
 
-function setProp(obj: { string: any }, selector: string, value: RegExp): void {
+function setProp(obj: unknown, selector: string, value: RegExp): void {
     const components = selector.split(".");
     const indexToSet = components.length - 1;
-    components.reduce((acc, cur, index) => {
-        if (acc == null) {
+    components.reduce((acc: unknown, cur, index) => {
+        if (acc === null || acc === undefined) {
             return acc;
         }
 
         if (index === indexToSet) {
-            // @ts-ignore
-            acc[cur] = value;
+            acc[cur as never] = value as never;
             return null;
-        } else {
-            // @ts-ignore
-            return acc[cur];
         }
+        return acc[cur as never];
     }, obj);
 }
 
@@ -455,46 +453,46 @@ interface DemoScopeNameInfo extends ScopeNameInfo {
     path: `${string}.${"json" | "plist"}`;
 }
 
-main("snbt");
+void main("snbt");
 
 declare global {
     var MonacoEnvironment: monaco.Environment | undefined;
 }
 
 globalThis.MonacoEnvironment = {
-    getWorkerUrl: function (moduleId: string, label: string) {
+    getWorkerUrl(_moduleId: string, label: string): string {
         if (label === "json") {
             if (location.protocol === "file:" && location.pathname.includes("/app.asar/.vite/")) {
-                return location.href.slice(0, location.href.indexOf("/app.asar/.vite/")) + "/app.asar/.vite/build/json.worker.js";
+                return `${location.href.slice(0, location.href.indexOf("/app.asar/.vite/"))}/app.asar/.vite/build/json.worker.js`;
             }
             return "node_modules/monaco-editor/esm/vs/language/json/json.worker.js";
         }
         if (label === "css") {
             if (location.protocol === "file:" && location.pathname.includes("/app.asar/.vite/")) {
-                return location.href.slice(0, location.href.indexOf("/app.asar/.vite/")) + "/app.asar/.vite/build/css.worker.js";
+                return `${location.href.slice(0, location.href.indexOf("/app.asar/.vite/"))}/app.asar/.vite/build/css.worker.js`;
             }
             return "node_modules/monaco-editor/esm/vs/language/css/css.worker.js";
         }
         if (label === "html") {
             if (location.protocol === "file:" && location.pathname.includes("/app.asar/.vite/")) {
-                return location.href.slice(0, location.href.indexOf("/app.asar/.vite/")) + "/app.asar/.vite/build/html.worker.js";
+                return `${location.href.slice(0, location.href.indexOf("/app.asar/.vite/"))}/app.asar/.vite/build/html.worker.js`;
             }
             return "node_modules/monaco-editor/esm/vs/language/html/html.worker.js";
         }
         if (label === "typescript" || label === "javascript") {
             if (location.protocol === "file:" && location.pathname.includes("/app.asar/.vite/")) {
-                return location.href.slice(0, location.href.indexOf("/app.asar/.vite/")) + "/app.asar/.vite/build/ts.worker.js";
+                return `${location.href.slice(0, location.href.indexOf("/app.asar/.vite/"))}/app.asar/.vite/build/ts.worker.js`;
             }
             return "node_modules/monaco-editor/esm/vs/language/typescript/ts.worker.js";
         }
         if (location.protocol === "file:" && location.pathname.includes("/app.asar/.vite/")) {
-            return location.href.slice(0, location.href.indexOf("/app.asar/.vite/")) + "/app.asar/.vite/build/editor.worker.js";
+            return `${location.href.slice(0, location.href.indexOf("/app.asar/.vite/"))}/app.asar/.vite/build/editor.worker.js`;
         }
         return "node_modules/monaco-editor/esm/vs/editor/editor.worker.js";
     },
 };
 
-async function main(language: LanguageId): Promise<void> {
+async function main(_language: LanguageId): Promise<void> {
     // In this demo, the following values are hardcoded to support Python using
     // the VS Code Dark+ theme. Currently, end users are responsible for
     // extracting the data from the relevant VS Code extensions themselves to
@@ -541,7 +539,7 @@ async function main(language: LanguageId): Promise<void> {
     }
 
     const data: ArrayBuffer | Response = await loadVSCodeOnigurumWASM();
-    loadWASM(data);
+    void loadWASM(data);
     const onigLib = Promise.resolve({
         createOnigScanner,
         createOnigString,
@@ -556,10 +554,10 @@ async function main(language: LanguageId): Promise<void> {
         onigLib,
         monaco,
     });
-    registerLanguages(languages, (language: LanguageId): Promise<LanguageInfo> => provider.fetchLanguageInfo(language), monaco);
+    registerLanguages(languages, async (language: LanguageId): Promise<LanguageInfo> => await provider.fetchLanguageInfo(language), monaco);
     monaco.editor.defineTheme(themeTomorrowNightBlue.details.id, themeTomorrowNightBlue.monaco);
 
-    // This script lists all content types that are missing from the setDiagnosticsOptions.
+    // NOTE: This script lists all content types that are missing from the setDiagnosticsOptions.
     // const missingContentTypes = Object.keys(require("mcbe-leveldb").entryContentTypeToFormatMap).filter(v=>!monaco.languages.json.jsonDefaults.diagnosticsOptions.schemas.some(v2=>v2.uri===`inmemory://schemas/json/${v}`));
     // const missingContentTypesWithSchemas = missingContentTypes.filter(v=>v in require("mcbe-leveldb").NBTSchemas.nbtSchemas);
     function setJSONSchemas(attempt: number = 0, actionIfExistingSchemas: "skip" | "append" | "overwrite" = "overwrite"): void {
@@ -1417,7 +1415,7 @@ async function main(language: LanguageId): Promise<void> {
             console.debug("Set JSON schemas.", monaco.languages.json.jsonDefaults);
             setTimeout(setJSONSchemas.bind(void 0, 0, "skip"), 500);
         } else {
-            console.debug("Failed to set JSON schemas, retrying in 50ms (attempt " + (attempt + 1) + ").", monaco.languages.json.jsonDefaults);
+            console.debug(`Failed to set JSON schemas, retrying in 50ms (attempt ${attempt + 1}).`, monaco.languages.json.jsonDefaults);
             setTimeout(setJSONSchemas.bind(void 0, attempt + 1), 50);
         }
     }
@@ -1438,6 +1436,17 @@ async function main(language: LanguageId): Promise<void> {
                 return "This list contains elements of different types. Was this intentional?\n\nThis will be converted to a compound list if left in.";
             case "ExpectedEndOfInput":
                 return "Expected end of input.";
+
+            case "InvalidArgumentToFunction":
+            case "UnsupportedFunction":
+            case "UnsupportedSNBTPrimitive":
+            case "InvalidSNBTString":
+            case "InvalidUUID":
+            case "DisallowedTypeInTypedArray":
+            case "UnsupportedTypeInTypedArray":
+            case "InvalidSNBTKey":
+            case "ExpectedCompoundOrList":
+            case undefined:
             default:
                 return err?.message ?? (error as string);
         }
@@ -1449,13 +1458,13 @@ async function main(language: LanguageId): Promise<void> {
     ): monaco.editor.IMarkerData[] {
         const markers: monaco.editor.IMarkerData[] = [];
         const value: string = model.getValue();
-        const data: {
+        const data = extractSNBT(value, { ...options, keepGoingAfterError: true }) as {
             value: NBT.Compound | NBT.List<NBT.TagType>;
             startPos: number;
             endPos: number;
             remaining: string;
             errors: SNBTParseError<true>[];
-        } = extractSNBT(value, { ...options, keepGoingAfterError: true }) as any;
+        };
         if (data.errors.length > 0) {
             for (const error of data.errors) {
                 const [startLineNumber, startColumn] = error.getErrorPosition();
@@ -1464,10 +1473,10 @@ async function main(language: LanguageId): Promise<void> {
                 const errorMessage: string = getSNBTErrorMessageFromErrorOrType(error);
                 markers.push({
                     severity: errorType === "MixedListTypesNotAllowed" ? monaco.MarkerSeverity.Warning : monaco.MarkerSeverity.Error,
-                    startLineNumber: startLineNumber,
-                    startColumn: startColumn,
-                    endLineNumber: endLineNumber,
-                    endColumn: endColumn,
+                    startLineNumber,
+                    startColumn,
+                    endLineNumber,
+                    endColumn,
                     message: errorMessage,
                     code: errorType ? SNBTParseErrorTypeToCode[errorType] : undefined!,
                     source: SNBTParseErrorDisplayNamespace,
@@ -1519,7 +1528,7 @@ async function main(language: LanguageId): Promise<void> {
     });
 
     monaco.languages.registerCompletionItemProvider("snbt", {
-        async provideCompletionItems(model, position, context, token) {
+        async provideCompletionItems(model, position, _context, _token) {
             const tokensProvider = await provider.getDecodedTokensProviderForLanguage(model.getLanguageId());
             if (!tokensProvider) {
                 return {
@@ -1579,12 +1588,16 @@ async function main(language: LanguageId): Promise<void> {
             console.debug("[MonacoEditorAutoCompletionData]:", model, model.id, model.uri);
             const contentType: DBEntryContentType = (new URLSearchParams(model.uri.query).get("contentType") as DBEntryContentType | null) ?? "Unknown";
             if (tokenAtCursor) {
+                // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
                 switch (true) {
                     case tokenAtCursor.scopes.some((scope: string): boolean => scope.startsWith("support.type.property-name.") && scope.endsWith(".snbt")): {
                         const text: string = model.getLineContent(position.lineNumber).slice(tokenAtCursor.startIndex ?? 0, position.column - 1);
+                        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check, default-case -- TEMP
                         switch (contentType) {
                             // TODO: Switch this to use NBT schemas.
                             case "LevelDat": {
+                                break;
+                                // DEBUG
                                 return {
                                     suggestions: [
                                         ...(Object.values(monaco.languages.CompletionItemKind) as monaco.languages.CompletionItemKind[])
@@ -1592,7 +1605,7 @@ async function main(language: LanguageId): Promise<void> {
                                             .map((kind) => ({
                                                 insertText: "abilities",
                                                 label: `(${kind} (${
-                                                    monaco.languages.CompletionItemKind[kind as Extract<monaco.languages.CompletionItemKind, number>]
+                                                    monaco.languages.CompletionItemKind[kind /* as Extract<monaco.languages.CompletionItemKind, number> */]
                                                 })) abilities ${JSON.stringify(text)}`,
                                                 kind /* : monaco.languages.CompletionItemKind.Property */,
                                                 range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column),
@@ -1713,6 +1726,7 @@ async function main(language: LanguageId): Promise<void> {
                             ],
                         };
                     }
+                    // no default
                 }
             }
             return {
@@ -1745,7 +1759,7 @@ async function loadVSCodeOnigurumWASM(): Promise<ArrayBuffer> {
     return response.buffer;
 }
 
-function getSampleCodeForLanguage(language: LanguageId): string {
+function _getSampleCodeForLanguage(language: LanguageId): string {
     if (language === "python") {
         return `\
 import foo

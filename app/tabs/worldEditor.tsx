@@ -1,13 +1,8 @@
 import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useRef } from "preact/compat";
-import TreeEditor from "../components/TreeEditor";
-import { entryContentTypeToFormatMap, type EntryContentTypeFormatData } from "mcbe-leveldb";
 import { LoadingScreenContents } from "../app";
-import SNBTEditor from "../components/SNBTEditor";
-import PrismarineNBTEditor from "../components/PrismarineNBTEditor";
 import EditorWidgetOverlayBar, { type EditorWidgetOverlayBarWidgetRegistry } from "../components/EditorWidgetOverlayBar";
 import { initWorldEditor2DDataStorageObjectProps, WorldEditor2D, type WorldEditor2DDataStorageObject } from "../components/WorldEditor2D";
-import BinaryHexEditor, { initHexEditorDataStorageObjectProps, type HexEditorDataStorageObject } from "../components/BinaryHexEditor";
 import Notice from "../components/Notice";
 import UnderConstruction from "../components/UnderConstruction";
 
@@ -27,6 +22,9 @@ export interface WorldEditorDataStorageObject extends WorldEditor2DDataStorageOb
 
 /**
  * The world editor tab.
+ *
+ * This tab currently contains a 2D world map, but in the future will have a 3D view, a mode that allows you to enter the coordinates and dimension of a block
+ * to manage all data at that block location, and a mode to search the entire world for blocks and possibly other things.
  *
  * @param props The props for the component.
  * @returns The JSX element.
@@ -59,7 +57,7 @@ export default function WorldEditorTab(props: WorldEditorTabProps): JSX.Specific
     }
     void checkForLevelDBOpenFailure();
     function LevelDBOpenFailureNotice(): JSX.Element {
-        if (props.tab.errorDueToEncryptedLevelDB)
+        if (props.tab.errorDueToEncryptedLevelDB) {
             return (
                 <Notice
                     title="Encrypted LevelDB"
@@ -68,6 +66,7 @@ export default function WorldEditorTab(props: WorldEditorTabProps): JSX.Specific
                     image="access_denied"
                 />
             );
+        }
         return (
             <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
                 <Notice
@@ -79,21 +78,23 @@ export default function WorldEditorTab(props: WorldEditorTabProps): JSX.Specific
                 />
                 <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
                     {props.tab.errorOnDBOpen instanceof Error ?
-                        `${props.tab.errorOnDBOpen.stack !== undefined ? props.tab.errorOnDBOpen.stack : props.tab.errorOnDBOpen.toString()}${
+                        `${props.tab.errorOnDBOpen.stack ?? props.tab.errorOnDBOpen.toString()}${
                             props.tab.errorOnDBOpen.cause !== undefined ?
-                                `\nCaused by: ${((): unknown => {
-                                    try {
-                                        return typeof props.tab.errorOnDBOpen.cause === "object" ?
-                                                JSON.stringify(props.tab.errorOnDBOpen.cause)
-                                            :   props.tab.errorOnDBOpen.cause;
-                                    } catch {
-                                        return props.tab.errorOnDBOpen.cause;
-                                    }
-                                })()}`
+                                `\nCaused by: ${String(
+                                    ((): unknown => {
+                                        try {
+                                            return typeof props.tab.errorOnDBOpen.cause === "object" ?
+                                                    JSON.stringify(props.tab.errorOnDBOpen.cause)
+                                                :   props.tab.errorOnDBOpen.cause;
+                                        } catch {
+                                            return props.tab.errorOnDBOpen.cause;
+                                        }
+                                    })()
+                                )}`
                             :   ""
                         }`
                     :   String(
-                            (function (): unknown {
+                            (function formatUnknownErrorValue(): unknown {
                                 try {
                                     return typeof props.tab.errorOnDBOpen === "object" ? JSON.stringify(props.tab.errorOnDBOpen) : props.tab.errorOnDBOpen;
                                 } catch {
@@ -148,7 +149,7 @@ export default function WorldEditorTab(props: WorldEditorTabProps): JSX.Specific
                     <button
                         type="button"
                         class={props.tab.currentState.worldTab.viewMode === "3D" ? "selected" : ""}
-                        onClick={(event: JSX.TargetedMouseEvent<HTMLButtonElement>): void => {
+                        onClick={(event: TargetedMouseEvent<HTMLButtonElement>): void => {
                             if (!props.tab.currentState.worldTab) return;
                             if (event.currentTarget.classList.contains("selected")) return;
                             $(event.currentTarget).siblings("button").removeClass("selected");
@@ -163,7 +164,7 @@ export default function WorldEditorTab(props: WorldEditorTabProps): JSX.Specific
                     <button
                         type="button"
                         class={props.tab.currentState.worldTab.viewMode === "2D" ? "selected" : ""}
-                        onClick={(event: JSX.TargetedMouseEvent<HTMLButtonElement>): void => {
+                        onClick={(event: TargetedMouseEvent<HTMLButtonElement>): void => {
                             if (!props.tab.currentState.worldTab) return;
                             if (event.currentTarget.classList.contains("selected")) return;
                             $(event.currentTarget).siblings("button").removeClass("selected");
@@ -177,7 +178,7 @@ export default function WorldEditorTab(props: WorldEditorTabProps): JSX.Specific
                     <button
                         type="button"
                         class={props.tab.currentState.worldTab.viewMode === "block" ? "selected" : ""}
-                        onClick={(event: JSX.TargetedMouseEvent<HTMLButtonElement>): void => {
+                        onClick={(event: TargetedMouseEvent<HTMLButtonElement>): void => {
                             if (!props.tab.currentState.worldTab) return;
                             if (event.currentTarget.classList.contains("selected")) return;
                             $(event.currentTarget).siblings("button").removeClass("selected");
@@ -192,7 +193,7 @@ export default function WorldEditorTab(props: WorldEditorTabProps): JSX.Specific
                     <button
                         type="button"
                         class={props.tab.currentState.worldTab.viewMode === "search" ? "selected" : ""}
-                        onClick={(event: JSX.TargetedMouseEvent<HTMLButtonElement>): void => {
+                        onClick={(event: TargetedMouseEvent<HTMLButtonElement>): void => {
                             if (!props.tab.currentState.worldTab) return;
                             if (event.currentTarget.classList.contains("selected")) return;
                             $(event.currentTarget).siblings("button").removeClass("selected");

@@ -1,24 +1,19 @@
 import type { JSX, RefObject, TargetedEvent, TargetedMouseEvent } from "preact";
-import _React, { createElement, render, useEffect, useRef, useState } from "preact/compat";
-import TreeEditor from "../components/TreeEditor";
+import _React, { createElement, render, useEffect, useRef } from "preact/compat";
 import {
     dimensions,
     entryContentTypeToFormatMap,
     gameModes,
     getKeyDisplayName,
-    getKeysOfType,
     getPlayerNameFromUUIDSync,
     prettyPrintSNBT,
     prismarineToSNBT,
     toLong,
     type NBTSchemas,
-    type Vector3,
 } from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
-import { readFileSync } from "node:fs";
-import path from "node:path";
 import { testForObjectExtension } from "../../src/utils/miscUtils";
-import { ControlledMenu, MenuItem } from "@szhsin/react-menu";
+// import { ControlledMenu, MenuItem } from "@szhsin/react-menu";
 import { LoadingScreenContents } from "../app";
 import type { SearchSyntaxHelpInfo } from "../components/SearchSyntaxHelpMenu";
 import { viewFilesTabSearchSyntax } from "./viewFiles";
@@ -29,6 +24,9 @@ import Notice from "../components/Notice";
 
 // TODO: Implement Async Mode for this tab.
 
+/**
+ * Props for the {@link PlayersTab} component.
+ */
 export interface PlayersTabProps {
     tab: TabManagerTab;
 }
@@ -321,6 +319,14 @@ const playersTabSearchSyntax: SearchSyntaxHelpInfo = {
     },
 };
 
+/**
+ * The players tab.
+ *
+ * This tab is used to manage players in the world.
+ *
+ * @param props The props for the component.
+ * @returns The JSX element.
+ */
 export default function PlayersTab(props: PlayersTabProps): JSX.SpecificElement<"div"> {
     if (!props.tab.db) return <div>The players sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
     const containerRef: RefObject<HTMLTableElement> = useRef<HTMLTableElement>(null);
@@ -331,16 +337,17 @@ export default function PlayersTab(props: PlayersTabProps): JSX.SpecificElement<
         };
     });
     getPlayersTabContents(props.tab, abortController.signal).then(
-        async (element: JSX.Element): Promise<void> => {
+        (element: JSX.Element): void => {
             if (!containerRef.current) return;
             // const tempElement: HTMLDivElement = document.createElement("div");
             render(null, containerRef.current);
             render(element, containerRef.current /* tempElement */);
             // containerRef.current?.replaceChildren(...tempElement.children);
         },
-        (reason: any): void => {
+        (reason: unknown): void => {
             if (reason instanceof DOMException && reason.name === "AbortError" && reason.message === "Tab switched.") return;
             if (containerRef.current) {
+                // TODO: Replace this with a better error screen.
                 const errorElement: HTMLDivElement = document.createElement("div");
                 errorElement.style.color = "red";
                 errorElement.style.fontFamily = "monospace";
@@ -350,7 +357,7 @@ export default function PlayersTab(props: PlayersTabProps): JSX.SpecificElement<
                         reason.stack?.startsWith(reason.toString()) ?
                             reason.stack
                         :   reason.toString() + reason.stack
-                    :   reason;
+                    :   String(reason);
                 render(null, containerRef.current);
                 containerRef.current.replaceChildren("Failed to load data:", errorElement);
             }
@@ -359,7 +366,7 @@ export default function PlayersTab(props: PlayersTabProps): JSX.SpecificElement<
     );
     const loadingScreenMessageContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     if (!props.tab.db.isOpen()) {
-        props.tab.awaitDBOpen!.then(async (): Promise<void> => {
+        void props.tab.awaitDBOpen!.then(async (): Promise<void> => {
             if (loadingScreenMessageContainerRef.current && !props.tab.cachedDBKeys) {
                 const formatter = new Intl.NumberFormat();
                 loadingScreenMessageContainerRef.current.textContent = `Reading LevelDB keys${props.tab.loadedCachedDBKeysProgress !== undefined ? `: ${formatter.format(props.tab.loadedCachedDBKeysProgress)}` : ""}...`;
@@ -391,7 +398,7 @@ export default function PlayersTab(props: PlayersTabProps): JSX.SpecificElement<
                 await sleep(20);
             }
         });
-        props.tab.awaitCachedDBKeys!.then((): void => {
+        void props.tab.awaitCachedDBKeys!.then((): void => {
             if (loadingScreenMessageContainerRef.current) loadingScreenMessageContainerRef.current.textContent = "";
         });
         return (
@@ -434,8 +441,8 @@ interface ServerKeyData {
 
 async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): Promise<JSX.Element> {
     if (!tab.db) return <div>The players sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
-    if (!tab.db.isOpen() && !(await tab.awaitDBOpen ?? true)) {
-        if (tab.errorDueToEncryptedLevelDB)
+    if (!tab.db.isOpen() && !((await tab.awaitDBOpen) ?? true)) {
+        if (tab.errorDueToEncryptedLevelDB) {
             return (
                 <Notice
                     title="Encrypted LevelDB"
@@ -444,6 +451,7 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
                     image="access_denied"
                 />
             );
+        }
         return (
             <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
                 <Notice
@@ -455,19 +463,23 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
                 />
                 <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
                     {tab.errorOnDBOpen instanceof Error ?
-                        `${tab.errorOnDBOpen.stack !== undefined ? tab.errorOnDBOpen.stack : tab.errorOnDBOpen.toString()}${
+                        `${tab.errorOnDBOpen.stack ?? tab.errorOnDBOpen.toString()}${
                             tab.errorOnDBOpen.cause !== undefined ?
-                                `\nCaused by: ${((): unknown => {
-                                    try {
-                                        return typeof tab.errorOnDBOpen.cause === "object" ? JSON.stringify(tab.errorOnDBOpen.cause) : tab.errorOnDBOpen.cause;
-                                    } catch {
-                                        return tab.errorOnDBOpen.cause;
-                                    }
-                                })()}`
+                                `\nCaused by: ${String(
+                                    ((): unknown => {
+                                        try {
+                                            return typeof tab.errorOnDBOpen.cause === "object" ?
+                                                    JSON.stringify(tab.errorOnDBOpen.cause)
+                                                :   tab.errorOnDBOpen.cause;
+                                        } catch {
+                                            return tab.errorOnDBOpen.cause;
+                                        }
+                                    })()
+                                )}`
                             :   ""
                         }`
                     :   String(
-                            (function (): unknown {
+                            (function formatUnknownErrorValue(): unknown {
                                 try {
                                     return typeof tab.errorOnDBOpen === "object" ? JSON.stringify(tab.errorOnDBOpen) : tab.errorOnDBOpen;
                                 } catch {
@@ -482,9 +494,18 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
     }
     if (!tab.cachedDBKeys) await tab.awaitCachedDBKeys!;
     signal.throwIfAborted();
+    const LOCAL_PLAYER_KEY_BUFFER: Buffer<ArrayBuffer> = Buffer.from("~local_player", "utf-8");
+    const LOCAL_PLAYER_EDITOR_KEY_BUFFER: Buffer<ArrayBuffer> = Buffer.from("~local_player.Editor", "utf-8");
     const keys = {
         client: tab.cachedDBKeys!.PlayerClient,
-        server: tab.cachedDBKeys!.Player.toSorted((a: Buffer, b: Buffer): number => (a.equals(Buffer.from("~local_player", "utf-8")) ? -1 : 0)),
+        server: tab.cachedDBKeys!.Player.toSorted((a: Buffer, b: Buffer): number =>
+            a.equals(LOCAL_PLAYER_KEY_BUFFER) ? -1
+            : a.equals(LOCAL_PLAYER_EDITOR_KEY_BUFFER) ?
+                b.equals(LOCAL_PLAYER_KEY_BUFFER) ?
+                    1
+                :   -1
+            :   0
+        ),
     };
     const clientKeys: ClientKeyData[] = await Promise.all(
         keys.client.map(
@@ -504,7 +525,7 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
             })
         )
     );
-    const serverToClientKeyMap: Map<string, [ClientKeyData, ...ClientKeyData[]] | undefined> = new Map();
+    const serverToClientKeyMap = new Map<string, [ClientKeyData, ...ClientKeyData[]] | undefined>();
     serverKeys.forEach((serverKey: ServerKeyData): void => {
         const correspondingClientKeys: ClientKeyData[] = clientKeys.filter(
             (clientKey: ClientKeyData): boolean => clientKey.data?.parsed.value.ServerId?.value === serverKey.displayKey
@@ -514,7 +535,7 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
             correspondingClientKeys[0] === undefined ? undefined : (correspondingClientKeys as [ClientKeyData, ...ClientKeyData[]])
         );
     });
-    const clientToServerKeyMap: Map<string, ServerKeyData> = new Map();
+    const clientToServerKeyMap = new Map<string, ServerKeyData>();
     clientKeys.forEach(
         (clientKey: ClientKeyData): void =>
             void clientToServerKeyMap.set(
@@ -522,12 +543,12 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
                 serverKeys.find((serverKey: ServerKeyData): boolean => serverKey.displayKey === clientKey.data?.parsed.value.ServerId?.value)!
             )
     );
-    let dynamicProperties: NBT.NBT | undefined = await tab
-        .db!.get("DynamicProperties")
+    const dynamicProperties: NBT.NBT | undefined = await tab.db
+        .get("DynamicProperties")
         .then((data: Buffer | null): Promise<NBT.NBT> | undefined =>
-            data ? NBT.parse(data!).then((data: { parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata }): NBT.NBT => data.parsed) : undefined
+            data ? NBT.parse(data).then((data: { parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata }): NBT.NBT => data.parsed) : undefined
         )
-        .catch((e: any): undefined => (console.error(e), undefined));
+        .catch((e: unknown): undefined => (console.error(e), undefined));
     // console.log(dynamicProperties);
     let mode: ConfigConstants.views.Players.PlayersTabMode = config.views.players.mode;
     let tablesContents: JSX.Element[][] = await Promise.all(
@@ -646,6 +667,7 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
             );
         }
         async function updateTablesContents(reloadData: boolean): Promise<void> {
+            // TODO: Add an error handler to this function.
             if (!tablesContainerRef.current) return;
             if (reloadData) {
                 mode = config.views.players.mode;
@@ -881,22 +903,22 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
                                 `ERROR: No placeholder mapping for search mode: ${config.views.players.modeSettings.raw.searchMode}`;
                             break searchModeHandler;
                         default:
-                            console.error(new TypeError(`Unknown mode: ${newModeValue}`, { cause: newModeValue }));
+                            console.error(new TypeError(`Unknown mode: ${newModeValue as string}`, { cause: newModeValue }));
                             searchRefs.rawTabMode_searchModeDropdown.current.hidden = true;
                             if (!searchRefs.searchTextBox.current) break searchModeHandler;
                             searchRefs.searchTextBox.current.placeholder = "Search...";
                             break searchModeHandler;
                     }
                 }
-                updateTablesContents(true);
+                void updateTablesContents(true);
             }
             function onSimpleModeColumnsChanged(): void {
                 if (mode !== "simple") return;
-                updateTablesContents(false);
+                void updateTablesContents(false);
             }
             function onRawModeColumnsChanged(): void {
                 if (mode !== "raw") return;
-                updateTablesContents(false);
+                void updateTablesContents(false);
             }
             config.on("settingChanged:views.players.mode", onModeChanged);
             config.on("settingChanged:views.players.modeSettings.simple.columns", onSimpleModeColumnsChanged);
@@ -909,7 +931,7 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
                 config.off("settingChanged:views.players.modeSettings.raw.sections.server.columns", onRawModeColumnsChanged);
             };
         });
-        let lastHideErrorPopupFunction: (() => void) | undefined = undefined;
+        let lastHideErrorPopupFunction: (() => void) | undefined;
         const rawTabMode_searchModeToSearchBarPlaceholderMap: Readonly<Record<ConfigConstants.views.Players.RawTabMode_SearchMode, string>> = {
             grouped: "Search...",
             client: "Search client entries...",
@@ -1071,10 +1093,10 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
                                                 case "server":
                                                     return [...universalKeywords, ...serverExclusiveKeywords, ...serverCompatibleClientExclusiveKeywords];
                                                 default:
-                                                    throw new TypeError(`Unknown search mode: ${searchMode}`);
+                                                    throw new TypeError(`Unknown search mode: ${searchMode as string}`);
                                             }
                                         default:
-                                            throw new TypeError(`Unknown mode: ${mode}`);
+                                            throw new TypeError(`Unknown mode: ${mode as string}`);
                                     }
                                 }
                                 /**
@@ -1102,10 +1124,10 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
                                                 case "server":
                                                     return ["typeid", "nbt", "uuid"];
                                                 default:
-                                                    throw new TypeError(`Unknown search mode: ${searchMode}`);
+                                                    throw new TypeError(`Unknown search mode: ${searchMode as string}`);
                                             }
                                         default:
-                                            throw new TypeError(`Unknown mode: ${mode}`);
+                                            throw new TypeError(`Unknown mode: ${mode as string}`);
                                     }
                                 }
                                 /**
@@ -1155,10 +1177,10 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
                                                         { keyword: "server_id", options: {} },
                                                     ];
                                                 default:
-                                                    throw new TypeError(`Unknown search mode: ${searchMode}`);
+                                                    throw new TypeError(`Unknown search mode: ${searchMode as string}`);
                                             }
                                         default:
-                                            throw new TypeError(`Unknown mode: ${mode}`);
+                                            throw new TypeError(`Unknown mode: ${mode as string}`);
                                     }
                                 }
                                 const keywordsForMode: readonly (typeof keywords)[number][] = getKeywordsForMode(mode);
@@ -1202,24 +1224,25 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
                                     });
                                 }
                                 for (const key in queryData) {
+                                    if (!Object.hasOwn(queryData, key)) continue;
                                     if (getKeywordedOperators<string>(keywords).includes(key)) {
                                         if (getKeywordedOperators<string>(keywordsForMode).includes(key)) continue;
                                         showError({
                                             message: `The following filter is not supported in ${mode} mode${
                                                 mode === "raw" ? ` in ${searchMode} search mode` : ""
-                                            }: ${keywordPrefixOperators.includes(key.slice(0, 1) as any) ? key.slice(1) : key}`,
+                                            }: ${keywordPrefixOperators.includes(key.slice(0, 1) as never) ? key.slice(1) : key}`,
                                         });
                                         return;
                                     }
                                     if (
-                                        !keywordPrefixOperators.includes(key.slice(0, 1) as any) &&
-                                        keywords.includes(key.slice(1) as any) &&
+                                        !keywordPrefixOperators.includes(key.slice(0, 1) as never) &&
+                                        keywords.includes(key.slice(1) as never) &&
                                         /^[^a-z0-9]$/i.test(key.slice(0, 1))
                                     ) {
                                         showError({ message: `Unknown operator: ${key.slice(0, 1)}` });
-                                    } else if (!keywordedOperators.includes(key as any)) {
+                                    } else if (!keywordedOperators.includes(key as never)) {
                                         showError({
-                                            message: `Unknown filter: ${keywordPrefixOperators.includes(key.slice(0, 1) as any) ? key.slice(1) : key}`,
+                                            message: `Unknown filter: ${keywordPrefixOperators.includes(key.slice(0, 1) as never) ? key.slice(1) : key}`,
                                         });
                                     } else {
                                         showError({ message: `Operator ${key.slice(0, 1)} is not supported for filter: ${key.slice(1)}` });
@@ -1259,17 +1282,19 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
                                     function parseNBTQueries(queries: string[]): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery[] {
                                         return queries
                                             .map((v: string): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery | undefined => {
-                                                let data: TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery | undefined = undefined;
+                                                let data: TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery | undefined;
                                                 try {
-                                                    const val: any = JSON.parse(v);
+                                                    const val: unknown = JSON.parse(v);
                                                     if (typeof val !== "object") {
+                                                        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
                                                         switch (typeof val) {
                                                             // case "string":
                                                             //     if ()
                                                             default:
-                                                                throw new Error();
+                                                                throw new SyntaxError(`Expected a JSON object for NBT query, but got ${typeof val} instead.`);
                                                         }
                                                     } else {
+                                                        if (val === null) throw new SyntaxError("Expected a JSON object for NBT query, but got null instead.");
                                                         if (
                                                             [
                                                                 "path",
@@ -1283,13 +1308,13 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
                                                         ) {
                                                             data = val;
                                                         } else {
-                                                            throw new Error();
+                                                            throw new SyntaxError("Missing known fields for NBT query.");
                                                         }
                                                     }
-                                                } catch {
+                                                } catch (e) {
                                                     if (v.split("=").length === 2) {
                                                         let [key, value] = v.split("=");
-                                                        let tagType: NBT.TagType | undefined = undefined;
+                                                        let tagType: NBT.TagType | undefined;
                                                         if (key?.includes(":")) {
                                                             let preKey: string;
                                                             [preKey, key] = key.split(":") as [preKey: string, key: string, ...string[]];
@@ -1299,15 +1324,17 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
                                                                 }
                                                             }
                                                         }
-                                                        let path: string[] | undefined = key?.split("/");
+                                                        const path: string[] | undefined = key?.split("/");
                                                         data = {};
                                                         data.key = key;
                                                         data.value = value;
                                                         data.path = path;
                                                         data.tagType = tagType;
                                                     } else {
+                                                        // TODO: The actual error should be displayed in the error message. #54
+                                                        reportError(e); // TEMP: Remove this once the actual error is included in the error message.
                                                         showError({ message: `Invalid NBT query: ${v}` });
-                                                        throw new Error("Error to return but already handled.");
+                                                        throw new Error("Error to return but already handled.", { cause: e });
                                                     }
                                                 }
                                                 return data;
@@ -1530,7 +1557,7 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
                                     );
                                     // tablesContainerRef.current.replaceChildren(...tempElement.children);
                                 }
-                                updateTablesContents(true);
+                                void updateTablesContents(true);
                             } catch (e) {
                                 if (e instanceof Error && e.message === "Error to return but already handled.") return;
                                 throw e;
@@ -1545,7 +1572,7 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
                         class="search-help-button piximg invert_on_light_theme"
                         title="Help"
                         onClick={(): void => {
-                            let containerElement: HTMLDivElement = document.createElement("div");
+                            const containerElement: HTMLDivElement = document.createElement("div");
                             containerElement.style.display = "contents";
                             function OverlaySearchSyntaxHelpMenu(): JSX.SpecificElement<"div"> {
                                 const overlayElementRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
@@ -1580,6 +1607,7 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
     return <Contents />;
 }
 
+// eslint-disable-next-line @typescript-eslint/require-await -- TEMP
 async function getPlayersTabContentsRows(data: {
     /**
      * The tab manager tab.
@@ -1612,12 +1640,12 @@ async function getPlayersTabContentsRows(data: {
         case "simple": {
             const columns = config.views.players.modeSettings.simple.columns;
             return data.serverKeys.map((serverKey: ServerKeyData): JSX.Element => {
-                const correspondingClientKeys: [ClientKeyData, ...ClientKeyData[]] | undefined = data.serverToClientKeyMap.get(serverKey.displayKey);
+                // const correspondingClientKeys: [ClientKeyData, ...ClientKeyData[]] | undefined = data.serverToClientKeyMap.get(serverKey.displayKey);
                 // console.log(serverKey, clientKey);
                 // Add the ability to get the player's name from dynamic properties, it should be able to get it from both
                 // 8Crafter's Server Utilities & Debug Sticks, and a custom behavior pack advertised here that saved the
                 // player's name to a player dynamic property specifically for being accessed here.
-                // Add a context menu to the individual rows to set player name.
+                // TODO: Add a context menu to the individual rows to set player name.
                 function onEntryMiddleClick(_event: TargetedMouseEvent<HTMLTableRowElement>): void {
                     data.tab.openTab(
                         {
@@ -1690,26 +1718,24 @@ async function getPlayersTabContentsRows(data: {
                                                         <span style="color: red;">null</span>
                                                     </td>
                                                 );
-                                            } else {
-                                                return (
-                                                    <td title="This player's UniqueID NBT tag is missing." style={{ cursor: "help" }}>
-                                                        <span style="color: red;">null</span>
-                                                    </td>
-                                                );
                                             }
-                                        } else {
                                             return (
-                                                <td
-                                                    title={
-                                                        "This player's name was not found in the world's dynamic properties. " +
-                                                        "This is because the world has no saved dynamic properties."
-                                                    }
-                                                    style={{ cursor: "help" }}
-                                                >
-                                                    <span style="color: red;">N/A</span>
+                                                <td title="This player's UniqueID NBT tag is missing." style={{ cursor: "help" }}>
+                                                    <span style="color: red;">null</span>
                                                 </td>
                                             );
                                         }
+                                        return (
+                                            <td
+                                                title={
+                                                    "This player's name was not found in the world's dynamic properties. " +
+                                                    "This is because the world has no saved dynamic properties."
+                                                }
+                                                style={{ cursor: "help" }}
+                                            >
+                                                <span style="color: red;">N/A</span>
+                                            </td>
+                                        );
                                     }
                                     const playerName: string | null = getPlayerNameFromUUIDSync(data.dynamicProperties!, UUID);
                                     if (!playerName) {
@@ -1786,7 +1812,7 @@ async function getPlayersTabContentsRows(data: {
                                                         op: { value: 1 },
                                                         opencontainers: { value: 1 },
                                                         teleport: { value: 1 },
-                                                    } as DeepPartial<NBT.Compound["value"]>)
+                                                    })
                                                 ) ?
                                                     <span style="color: #5f5;">Operator</span>
                                                 : (
@@ -1799,7 +1825,7 @@ async function getPlayersTabContentsRows(data: {
                                                         op: { value: 1 },
                                                         opencontainers: { value: 1 },
                                                         teleport: { value: 0 },
-                                                    } as DeepPartial<NBT.Compound["value"]>)
+                                                    })
                                                 ) ?
                                                     <span style="color: #8f5;">Operator (No TP)</span>
                                                 : (
@@ -1812,7 +1838,7 @@ async function getPlayersTabContentsRows(data: {
                                                         op: { value: 0 },
                                                         opencontainers: { value: 1 },
                                                         teleport: { value: 0 },
-                                                    } as DeepPartial<NBT.Compound["value"]>)
+                                                    })
                                                 ) ?
                                                     <span style="color: #55f;">Member</span>
                                                 : (
@@ -1825,11 +1851,17 @@ async function getPlayersTabContentsRows(data: {
                                                         op: { value: 0 },
                                                         opencontainers: { value: 0 },
                                                         teleport: { value: 0 },
-                                                    } as DeepPartial<NBT.Compound["value"]>)
+                                                    })
                                                 ) ?
                                                     <span style="color: #f55;">Visitor</span>
                                                 :   <span style="color: #ff5;">Custom</span>
                                             :   <span style="color: red;">null</span>}
+                                        </td>
+                                    );
+                                default:
+                                    return (
+                                        <td>
+                                            <span style="color: red;">ERROR: MISSING COLUMN HANDLER</span>
                                         </td>
                                     );
                             }
@@ -1924,26 +1956,24 @@ async function getPlayersTabContentsRows(data: {
                                                         <span style="color: red;">null</span>
                                                     </td>
                                                 );
-                                            } else {
-                                                return (
-                                                    <td title="This player's UniqueID NBT tag is missing." style={{ cursor: "help" }}>
-                                                        <span style="color: red;">null</span>
-                                                    </td>
-                                                );
                                             }
-                                        } else {
                                             return (
-                                                <td
-                                                    title={
-                                                        "This player's name was not found in the world's dynamic properties. " +
-                                                        "This is because the world has no saved dynamic properties."
-                                                    }
-                                                    style={{ cursor: "help" }}
-                                                >
-                                                    <span style="color: red;">N/A</span>
+                                                <td title="This player's UniqueID NBT tag is missing." style={{ cursor: "help" }}>
+                                                    <span style="color: red;">null</span>
                                                 </td>
                                             );
                                         }
+                                        return (
+                                            <td
+                                                title={
+                                                    "This player's name was not found in the world's dynamic properties. " +
+                                                    "This is because the world has no saved dynamic properties."
+                                                }
+                                                style={{ cursor: "help" }}
+                                            >
+                                                <span style="color: red;">N/A</span>
+                                            </td>
+                                        );
                                     }
                                     const playerName: string | null = getPlayerNameFromUUIDSync(data.dynamicProperties!, UUID);
                                     if (!playerName) {
@@ -2011,6 +2041,12 @@ async function getPlayersTabContentsRows(data: {
                                         );
                                     }
                                     return <td>{clientKey.data.parsed.value.ServerId?.value ?? <span style="color: red;">null</span>}</td>;
+                                default:
+                                    return (
+                                        <td>
+                                            <span style="color: red;">ERROR: MISSING COLUMN HANDLER</span>
+                                        </td>
+                                    );
                             }
                         })}
                     </tr>
@@ -2113,26 +2149,24 @@ async function getPlayersTabContentsRows(data: {
                                                         <span style="color: red;">null</span>
                                                     </td>
                                                 );
-                                            } else {
-                                                return (
-                                                    <td title="This player's UniqueID NBT tag is missing." style={{ cursor: "help" }}>
-                                                        <span style="color: red;">null</span>
-                                                    </td>
-                                                );
                                             }
-                                        } else {
                                             return (
-                                                <td
-                                                    title={
-                                                        "This player's name was not found in the world's dynamic properties. " +
-                                                        "This is because the world has no saved dynamic properties."
-                                                    }
-                                                    style={{ cursor: "help" }}
-                                                >
-                                                    <span style="color: red;">N/A</span>
+                                                <td title="This player's UniqueID NBT tag is missing." style={{ cursor: "help" }}>
+                                                    <span style="color: red;">null</span>
                                                 </td>
                                             );
                                         }
+                                        return (
+                                            <td
+                                                title={
+                                                    "This player's name was not found in the world's dynamic properties. " +
+                                                    "This is because the world has no saved dynamic properties."
+                                                }
+                                                style={{ cursor: "help" }}
+                                            >
+                                                <span style="color: red;">N/A</span>
+                                            </td>
+                                        );
                                     }
                                     const playerName: string | null = getPlayerNameFromUUIDSync(data.dynamicProperties!, UUID);
                                     if (!playerName) {
@@ -2208,7 +2242,7 @@ async function getPlayersTabContentsRows(data: {
                                                         op: { value: 1 },
                                                         opencontainers: { value: 1 },
                                                         teleport: { value: 1 },
-                                                    } as DeepPartial<NBT.Compound["value"]>)
+                                                    })
                                                 ) ?
                                                     <span style="color: #5f5;">Operator</span>
                                                 : (
@@ -2221,7 +2255,7 @@ async function getPlayersTabContentsRows(data: {
                                                         op: { value: 1 },
                                                         opencontainers: { value: 1 },
                                                         teleport: { value: 0 },
-                                                    } as DeepPartial<NBT.Compound["value"]>)
+                                                    })
                                                 ) ?
                                                     <span style="color: #8f5;">Operator (No TP)</span>
                                                 : (
@@ -2234,7 +2268,7 @@ async function getPlayersTabContentsRows(data: {
                                                         op: { value: 0 },
                                                         opencontainers: { value: 1 },
                                                         teleport: { value: 0 },
-                                                    } as DeepPartial<NBT.Compound["value"]>)
+                                                    })
                                                 ) ?
                                                     <span style="color: #55f;">Member</span>
                                                 : (
@@ -2247,7 +2281,7 @@ async function getPlayersTabContentsRows(data: {
                                                         op: { value: 0 },
                                                         opencontainers: { value: 0 },
                                                         teleport: { value: 0 },
-                                                    } as DeepPartial<NBT.Compound["value"]>)
+                                                    })
                                                 ) ?
                                                     <span style="color: #f55;">Visitor</span>
                                                 :   <span style="color: #ff5;">Custom</span>
@@ -2328,8 +2362,11 @@ async function getPlayersTabContentsRows(data: {
                                     }
                                     return (
                                         <td>
-                                            {serverKey.data.parsed.value.Rotation?.type === "list" ?
-                                                serverKey.data.parsed.value.Rotation.value.value.join(", ")
+                                            {(
+                                                serverKey.data.parsed.value.Rotation?.type === "list" &&
+                                                serverKey.data.parsed.value.Rotation.value.type === "float"
+                                            ) ?
+                                                (serverKey.data.parsed.value.Rotation.value.value as number[]).join(", ")
                                             :   <span style="color: red;">null</span>}
                                         </td>
                                     );
@@ -2353,8 +2390,8 @@ async function getPlayersTabContentsRows(data: {
                                             {serverKey.data.parsed.value.SpawnX?.type === "int" ?
                                                 serverKey.data.parsed.value.SpawnX?.value === -2147483648 ?
                                                     "Not Set"
-                                                :   `${serverKey.data.parsed.value.SpawnX.value}, ${serverKey.data.parsed.value.SpawnY?.value}, ${
-                                                        serverKey.data.parsed.value.SpawnZ?.value
+                                                :   `${serverKey.data.parsed.value.SpawnX.value}, ${serverKey.data.parsed.value.SpawnY?.type === "int" ? serverKey.data.parsed.value.SpawnY?.value : "!!"}, ${
+                                                        serverKey.data.parsed.value.SpawnZ?.type === "int" ? serverKey.data.parsed.value.SpawnZ?.value : "!!"
                                                     } ${
                                                         serverKey.data.parsed.value.SpawnDimension?.type === "int" ?
                                                             (dimensions[serverKey.data.parsed.value.SpawnDimension.value] ??
@@ -2438,7 +2475,9 @@ async function getPlayersTabContentsRows(data: {
                                         <td>
                                             {serverKey.data.parsed.value.PlayerLevel?.type === "int" ?
                                                 serverKey.data.parsed.value.PlayerLevel.value +
-                                                (serverKey.data.parsed.value.PlayerLevelProgress?.value.toString().slice(1, 5) ?? "")
+                                                (serverKey.data.parsed.value.PlayerLevelProgress?.type === "float" ?
+                                                    serverKey.data.parsed.value.PlayerLevelProgress.value.toString().slice(1, 5)
+                                                :   "")
                                             :   <span style="color: red;">null</span>}
                                         </td>
                                     );
@@ -2474,11 +2513,19 @@ async function getPlayersTabContentsRows(data: {
                                         );
                                     }
                                     return <td>{serverKey.data.parsed.value.permissionsLevel?.value ?? <span style="color: red;">null</span>}</td>;
+                                default:
+                                    return (
+                                        <td>
+                                            <span style="color: red;">ERROR: MISSING COLUMN HANDLER</span>
+                                        </td>
+                                    );
                             }
                         })}
                     </tr>
                 );
             });
         }
+        // TODO: Maybe add an error message here?
+        // no default
     }
 }

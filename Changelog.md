@@ -27,6 +27,16 @@
     -   When there is a warning in the Node editor, there is now a short yellow fading outline animation around the displayed value.
 -   Added the newer polished error screen for data loading/parsing errors to hex editor sub-tabs. Unlike with the other editors, the open in raw mode button is replaced with a report bug button.
 -   The "World" tab now has an error screen for when the LevelDB was unable to be opened, instead of just showing error textures for every chunk.
+-   Added an error screen to the "Repair Forced World Corruption" tab.
+-   The contents of keys with the following data types can now have their contents searched in the "View Files" tab:
+    -   `UTF-8`
+    -   `SNBT`
+    -   `binary`
+    -   `binaryPlainText`
+    -   `JSON`
+    -   `hex`
+    -   `custom/SNBT`
+-   An error message now appears below the search bar on the "View Files" tab when an invalid NBT query is provided, like it does on other tabs.
 
 ## Changes
 
@@ -36,6 +46,39 @@
 -   Special characters in the Node editor are now escaped, both in the text boxes and when displayed.
 -   Improved input validation in the Node editor.
 -   Minor table footer redesign.
+-   When there are no entries in a tab or tab section, the first page number in the page navigation footer of the table will now be `0` instead of `1`.
+-   When the active sub-tab's content type is `Entity`, the "Entities" left sidebar tab now renders as active.
+-   When the active sub-tab's content type is any of the following, the "World" left sidebar tab now renders as active:
+    -   `Data3D`
+    -   `Version`
+    -   `Data2D`
+    -   `Data2DLegacy`
+    -   `LegacyTerrain`
+    -   `LegacyBlockExtraData`
+    -   `BiomeState`
+    -   `FinalizedState`
+    -   `ConversionData`
+    -   `BorderBlocks`
+    -   `HardcodedSpawners`
+    -   `Checksums`
+    -   `GenerationSeed`
+    -   `GeneratedPreCavesAndCliffsBlending`
+    -   `BlendingBiomeHeight`
+    -   `MetaDataHash`
+    -   `BlendingData`
+    -   `ActorDigestVersion`
+    -   `LegacyVersion`
+    -   `AABBVolumes`
+    -   `Digest`
+-   When the active sub-tab's content type is any of the following, the "Villages" left sidebar tab now renders as active:
+    -   `VillageDwellers`
+    -   `VillageInfo`
+    -   `VillagePOI`
+    -   `VillagePlayers`
+    -   `VillageRaid`
+    -   `MVillages`
+    -   `Villages`
+-   The search entry data loading screen for the "View Files" tab now says "Reading LevelDB entry data #/#..." instead of "Reading NBT data #/#..." when a query that searches non-NBT data is provided.
 
 ## Fixes
 
@@ -53,8 +96,26 @@
 -   Keys and values in the Node editor now have a minimum amount of space that they take up, so that it is possible to select them if their value is an empty string `""`.
 -   When double-clicking a key or value in the Node editor to start editing it, the text box is now automatically focused.
 -   When double-clicking elsewhere to stop editing a key or value in the Node editor, the text box is now automatically updated to the correct width once its value is reset.
+-   Many miscellaneous minor fixes for the Node editor.
 -   Switching modes on sub-tabs where the associated LevelDB key is missing no longer causes errors ([#53](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/53)).
 -   The open in raw mode buttons no longer fail to work if an error occurs while trying to load the data as binary.
+-   Fixed a bug where on really old worlds that don't have the `NetherScale` field in the `level.dat` file, the "World" tab acted as if the Nether scale could not be determined, instead of assuming it to be `8`.
+-   Fixed a bug where the validation for the Prismarine-NBT editor to prevent errors when converting it to SNBT did not work properly.
+-   Fixed a race condition in the `Save & Close Others` tab context menu option.
+-   Fixed many minor miscellaneous race conditions.
+-   Fixed a bug where the `Close Others` tab context menu option would miss some tabs in many cases.
+-   Major fixes the the content type suggestions for the `type` search filter of the "View Files" tab.
+-   Fixed a bug where when exporting sub-tabs with a data type of `ASCII` as plain text, it would write with `utf-8` encoding instead of `ascii` encoding.
+-   Fixed a bug where when exporting sub-tabs with a data type of `binaryPlainText` as plain text, it would write with `utf-8` encoding instead of `binary` encoding.
+-   Fixed a bug where the error dialogs for opening files with the app would display the path as `[object Object]` instead of the actual path.
+-   Fixed a bug where the contents of entries with a data type of `NBT` or `custom/JSONNBT` could not be searched with the `contents` query in the "View Files" tab.
+-   Fixed a bug where if a search in the "View Files" tab that did not include an `nbt` or `contents` query was performed prior to performing a search with an `nbt` or `contents` query, without switching off of the tab in between the two searches, the NBT data for the entries would not be loaded, resulting in the `nbt` or `contents` query not matching any NBT search results.
+
+## Performance Improvements
+
+-   Minor optimizations to the loading times of the "Players" tab.
+-   Minor performance improvements.
+-   Major load time improvements to the "View Files" tab, as it no longer unnecessarily reads and parses the data of all entries with a data type of `ascii` or `int` during the initial load.
 
 # v1.0.0-beta.34
 

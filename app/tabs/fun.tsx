@@ -1,18 +1,28 @@
-import type { JSX } from "preact";
-import React from "preact/compat";
-import GenericNBTEditorTab from "./genericNBTEditor";
+import type { JSX, RefObject } from "preact";
+import { useEffect, useRef } from "preact/compat";
 
+/**
+ * The props for the {@link FunTab} component.
+ */
 export interface FunTabProps {
     tab: TabManagerTab;
 }
 
+/**
+ * The fun tab.
+ *
+ * This tab has miscellaneous options for messing with the world.
+ *
+ * @param props The props for the component.
+ * @returns The JSX element.
+ */
 export default function FunTab(props: FunTabProps): JSX.SpecificElement<"div"> {
-    const forceCorruptWorldButtonRef: React.RefObject<HTMLButtonElement> = React.useRef<HTMLButtonElement>(null);
-    let forceCorruptWorldButtonInitiallyDisabled: boolean = !props.tab.cachedDBKeys || props.tab.cachedDBKeys.ForcedWorldCorruption.length > 0;
-    React.useEffect((): void => {
+    const forceCorruptWorldButtonRef: RefObject<HTMLButtonElement> = useRef<HTMLButtonElement>(null);
+    const forceCorruptWorldButtonInitiallyDisabled: boolean = !props.tab.cachedDBKeys || props.tab.cachedDBKeys.ForcedWorldCorruption.length > 0;
+    useEffect((): void => {
         if (forceCorruptWorldButtonInitiallyDisabled) {
-            props.tab.awaitCachedDBKeys?.then((): void => {
-                if (props.tab.cachedDBKeys && props.tab.cachedDBKeys.ForcedWorldCorruption.length === 0) {
+            void props.tab.awaitCachedDBKeys?.then((): void => {
+                if (props.tab.cachedDBKeys?.ForcedWorldCorruption.length === 0) {
                     if (!forceCorruptWorldButtonRef.current) return;
                     forceCorruptWorldButtonRef.current.disabled = false;
                 }
@@ -44,10 +54,13 @@ export default function FunTab(props: FunTabProps): JSX.SpecificElement<"div"> {
                     try {
                         const keyBuffer: Buffer = Buffer.from("DedicatedServerForcedCorruption");
                         await props.tab.db.put(keyBuffer, "true");
-                        if (!props.tab.cachedDBKeys.ForcedWorldCorruption.some((key) => key.equals(keyBuffer)))
+                        if (!props.tab.cachedDBKeys.ForcedWorldCorruption.some((key) => key.equals(keyBuffer))) {
                             props.tab.cachedDBKeys.ForcedWorldCorruption.push(keyBuffer);
+                        }
                         props.tab.setLevelDBIsModified();
-                        const repairForcedWorldCorruptionButton: HTMLElement | null = document.querySelector('.sidebar_button[data-path-id="repair-forced-world-corruption"]');
+                        const repairForcedWorldCorruptionButton: HTMLElement | null = document.querySelector(
+                            '.sidebar_button[data-path-id="repair-forced-world-corruption"]'
+                        );
                         if (repairForcedWorldCorruptionButton) {
                             repairForcedWorldCorruptionButton.hidden = !props.tab.cachedDBKeys?.ForcedWorldCorruption?.length;
                         }

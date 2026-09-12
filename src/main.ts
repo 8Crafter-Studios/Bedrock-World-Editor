@@ -4,7 +4,6 @@ import {
     /* autoUpdater,  */ BrowserWindow,
     dialog,
     ipcMain,
-    Menu,
     nativeTheme,
     net,
     protocol,
@@ -12,7 +11,6 @@ import {
     type ApplicationInfoForProtocolReturnValue,
     type IpcMainEvent,
     type MessageBoxReturnValue,
-    type OpenDialogReturnValue,
 } from "electron";
 import path from "node:path";
 import started from "electron-squirrel-startup";
@@ -20,8 +18,8 @@ import "./init/sleep.ts";
 import "./init/JSONB.ts";
 import { initialize as initializeRemote, enable as enableRemoteForWebContents } from "@electron/remote/main";
 import isDev from "electron-is-dev";
-import { ProgId, Regedit, ShellOption } from "electron-regedit-fixed";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+// import { ProgId, Regedit, ShellOption } from "electron-regedit-fixed";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 // import "./utils/ProgressBar.ts";
 import "./utils/version.ts";
 import "./utils/config.ts";
@@ -29,12 +27,11 @@ import "./init/Locale.ts";
 import "./api/main.ts";
 import { APP_DATA_FOLDER_PATH } from "./utils/URLs.ts";
 import { updateElectronApp } from "update-electron-app";
-import CommentJSON from "comment-json";
 import { Octokit } from "@octokit/rest";
 import semver from "semver";
 const mime = require("mime-types") as typeof import("mime-types");
 // import { setupTitlebar, attachTitlebarToWindow } from "custom-electron-titlebar/main";
-const openAboutWindow_function = require("about-window").default as typeof import("about-window").default;
+const openAboutWindow_function = (require("about-window") as typeof import("about-window")).default;
 function openAboutWindow(parentWindow?: BrowserWindow): BrowserWindow {
     return openAboutWindow_function({
         icon_path:
@@ -73,6 +70,7 @@ if (!existsSync(path.join(APP_DATA_FOLDER_PATH, "mounted_volumes"))) {
 
 const mainWindowIDs: number[] = [];
 
+// eslint-disable-next-line prefer-const -- TEMP
 let startup: boolean = false;
 
 if (!isDev) {
@@ -297,7 +295,7 @@ if (started) {
 
 if (!isSecondInstance && (process.platform === "win32" || process.platform === "darwin")) {
     if (!config.shownDialogs.includes("allow_automatic_updates")) {
-        app.whenReady().then((): void => {
+        void app.whenReady().then((): void => {
             const result: number = dialog.showMessageBoxSync({
                 type: "question",
                 title: "Enable Automatic Updates?",
@@ -379,12 +377,12 @@ if (!startup) {
  * @param pid The ID of the process.
  * @returns Whether the process with the given ID is alive.
  */
-function isProcessAlive(pid: number): boolean {
+function _isProcessAlive(pid: number): boolean {
     try {
         process.kill(pid, 0);
         return true;
-    } catch (err: any) {
-        if (err?.code === "ESRCH") return false;
+    } catch (err: unknown) {
+        if (typeof err === "object" && err && "code" in err && err?.code === "ESRCH") return false;
         return true;
     }
 }
@@ -408,7 +406,7 @@ export function createWindow(previousWindowData?: {
     wasMaximized: boolean;
     wasFullScreen: boolean;
     wasDevToolsOpen: boolean;
-}): number | void {
+}): number | undefined {
     if (isSecondInstance) return;
     if (isDev) process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
     // Create the browser window.
@@ -416,7 +414,7 @@ export function createWindow(previousWindowData?: {
         width: 1200,
         height: 900,
         title: "Bedrock World Editor",
-        icon: path.join(__dirname, (isDev ? "../../" : "") + "resources/icon.png"),
+        icon: path.join(__dirname, `${isDev ? "../../" : ""}resources/icon.png`),
         // accentColor: "#00c066",
         // backgroundColor: "#00FFFF",
         // titleBarStyle: "hidden",
@@ -441,7 +439,7 @@ export function createWindow(previousWindowData?: {
     if (previousWindowData?.wasFullScreen) {
         mainWindow.setFullScreen(true);
     }
-    mainWindow.webContents.on("will-navigate", (e, url) => {
+    mainWindow.webContents.on("will-navigate", (_event, url) => {
         if (url.endsWith(".wasm")) {
             console.log(url);
             const request = net.request(url);
@@ -456,8 +454,8 @@ export function createWindow(previousWindowData?: {
 
     mainWindow.webContents.on(
         "render-process-gone",
-        (): Promise<void> =>
-            dialog
+        async (): Promise<void> =>
+            void (await dialog
                 .showMessageBox(mainWindow, {
                     type: "error",
                     title: "Crashed",
@@ -468,7 +466,7 @@ export function createWindow(previousWindowData?: {
                     defaultId: 0,
                     cancelId: 1,
                 })
-                .then(async (result: MessageBoxReturnValue): Promise<void> => {
+                .then((result: MessageBoxReturnValue): void => {
                     if (result.response === 0) {
                         const bounds: Electron.Rectangle = mainWindow.getBounds();
                         const wasMaximized: boolean = mainWindow.isMaximized();
@@ -487,14 +485,14 @@ export function createWindow(previousWindowData?: {
                     } else {
                         mainWindow.close();
                     }
-                })
+                }))
     );
 
     // and load the index.html of the app.
     if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-        mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+        void mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
     } else {
-        mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
+        void mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
     }
     // mainWindow.webContents.setWindowOpenHandler((details)=>handleWindowOpen(details, mainWindow));
     enableRemoteForWebContents(mainWindow.webContents);
@@ -698,7 +696,7 @@ export function createWindow(previousWindowData?: {
     //                 async click(_menuItem: Electron.MenuItem, baseWindow: Electron.BaseWindow | undefined): Promise<void> {
     //                     const isLatestVersion: boolean | undefined = await checkIfCurrentOreUICustomizerVersionIsLatest();
     //                     if (isLatestVersion === undefined) {
-    //                         dialog.showMessageBox({
+    //                         void dialog.showMessageBox({
     //                             type: "error",
     //                             title: "Error",
     //                             message: "There was an error checking for updates, check your internet connection and try again.",
@@ -728,7 +726,7 @@ export function createWindow(previousWindowData?: {
     //                     } else {
     //                         const latestVersion: APIVersionJSON | undefined = await getLatestOreUICustomizerVersion();
     //                         if (latestVersion === undefined) {
-    //                             dialog.showMessageBox({
+    //                             void dialog.showMessageBox({
     //                                 type: "error",
     //                                 title: "Error",
     //                                 message: "There was an error checking for updates, check your internet connection and try again.",
@@ -762,7 +760,7 @@ export function createWindow(previousWindowData?: {
     //             {
     //                 label: "App Changelogs",
     //                 click(): void {
-    //                     dialog.showMessageBox({
+    //                     void dialog.showMessageBox({
     //                         type: "error",
     //                         title: "Function Not Implemented",
     //                         message: "This feature is not implemented yet.",
@@ -774,7 +772,7 @@ export function createWindow(previousWindowData?: {
     //             {
     //                 label: "Customizer Changelogs",
     //                 click(): void {
-    //                     dialog.showMessageBox({
+    //                     void dialog.showMessageBox({
     //                         type: "error",
     //                         title: "Function Not Implemented",
     //                         message: "This feature is not implemented yet.",
@@ -827,7 +825,7 @@ if (!startup && !started) {
         app.runningUnderARM64Translation &&
         process.platform !== "win32" // TEMP: There is no ARM64 build for windows at the moment. Remove this when one is available.
     ) {
-        dialog
+        void dialog
             .showMessageBox({
                 type: "warning",
                 title: "ARM64 Translation",
@@ -838,7 +836,7 @@ if (!startup && !started) {
             })
             .then((result: MessageBoxReturnValue): void => {
                 if (result.response === 0) {
-                    shell.openExternal("https://github.com/Bedrock-World-Editor/Bedrock-World-Editor/releases");
+                    void shell.openExternal("https://github.com/Bedrock-World-Editor/Bedrock-World-Editor/releases");
                 }
             });
     }
@@ -853,7 +851,7 @@ if (!startup && !started) {
         event.returnValue = openAboutWindow(parentWindow ?? undefined).id;
     });
 
-    let ready: boolean = false;
+    // let ready: boolean = false;
 
     const onReadyCallbacks: (() => void)[] = [];
 
@@ -861,11 +859,11 @@ if (!startup && !started) {
     // initialization and is ready to create browser windows.
     // Some APIs can only be used after this event occurs.
     app.on("ready", (): void => {
-        protocol.handle("resource", async (request: GlobalRequest): Promise<GlobalResponse> => {
+        protocol.handle("resource", (request: GlobalRequest): GlobalResponse => {
             // console.log(request);
             const url: URL = new URL(request.url);
             // console.log(url);
-            /* dialog.showMessageBox({
+            /* void dialog.showMessageBox({
             type: "info",
             title: "Resource Request",
             message: `A resource request was made for the following URL:\n${url.href}\n${__dirname}`,
@@ -894,18 +892,17 @@ if (!startup && !started) {
                         "Content-Type": mime.lookup(path.join(url.hostname, url.pathname === "/" ? "" : url.pathname)) || "application/octet-stream",
                     },
                 });
-            } else {
-                /* BrowserWindow.getAllWindows().forEach((window: BrowserWindow): void => {
+            }
+            /* BrowserWindow.getAllWindows().forEach((window: BrowserWindow): void => {
                 window.webContents.send<1, "log">("console-action", "log", path.join(__dirname, "../", "resources", url.hostname, url.pathname));
             }); */
-                return new Response(readFileSync(path.join(__dirname, "../../../", "resources", url.hostname, url.pathname === "/" ? "" : url.pathname)), {
-                    headers: {
-                        "Content-Type": mime.lookup(path.join(url.hostname, url.pathname === "/" ? "" : url.pathname)) || "application/octet-stream",
-                    },
-                });
-            }
+            return new Response(readFileSync(path.join(__dirname, "../../../", "resources", url.hostname, url.pathname === "/" ? "" : url.pathname)), {
+                headers: {
+                    "Content-Type": mime.lookup(path.join(url.hostname, url.pathname === "/" ? "" : url.pathname)) || "application/octet-stream",
+                },
+            });
         });
-        protocol.handle("resource-image", async (request: GlobalRequest): Promise<GlobalResponse> => {
+        protocol.handle("resource-image", (request: GlobalRequest): GlobalResponse => {
             const url: URL = new URL(request.url);
             if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
                 let imagePath: string = path
@@ -944,6 +941,7 @@ if (!startup && !started) {
                     if (url.searchParams.get("use_missing_texture") !== "false") {
                         return new Response(readFileSync(path.join(__dirname, "../../", "resources", "mc/textures/misc/missing_texture.png")));
                     }
+                    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- TEMP: This is temporary until the stringifyError function is implemented.
                     return new Response(`Image not found. ${e}`, { status: 404 });
                 }
             } else {
@@ -983,11 +981,12 @@ if (!startup && !started) {
                     if (url.searchParams.get("use_missing_texture") !== "false") {
                         return new Response(readFileSync(path.join(__dirname, "../../../", "resources", "mc/textures/misc/missing_texture.png")));
                     }
+                    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- TEMP: This is temporary until the stringifyError function is implemented.
                     return new Response(`Image not found. ${e}`, { status: 404 });
                 }
             }
         });
-        protocol.handle("module", async (request: GlobalRequest): Promise<GlobalResponse> => {
+        protocol.handle("module", (request: GlobalRequest): GlobalResponse => {
             // console.log(request);
             return new Response(`export default require(${JSON.stringify(request.url.replace(/^module:\/?\/?/, "").replace(/\/$/, ""))});`, {
                 headers: {
@@ -995,7 +994,7 @@ if (!startup && !started) {
                 },
             });
         });
-        protocol.handle("node", async (request: GlobalRequest): Promise<GlobalResponse> => {
+        protocol.handle("node", (request: GlobalRequest): GlobalResponse => {
             // console.log(request);
             return new Response(`export default require(${JSON.stringify(request.url.replace(/^node:\/?\/?/, "").replace(/\/$/, ""))});`, {
                 headers: {
@@ -1003,7 +1002,7 @@ if (!startup && !started) {
                 },
             });
         });
-        protocol.handle("script", async (request: GlobalRequest): Promise<GlobalResponse> => {
+        protocol.handle("script", (request: GlobalRequest): GlobalResponse => {
             // console.log(request);
             const pathname: string = decodeURIComponent(new URL(request.url).pathname);
             return new Response(readFileSync(pathname), {
@@ -1022,7 +1021,7 @@ if (!startup && !started) {
         }); */
         });
         createWindow();
-        ready = true;
+        // ready = true;
         onReadyCallbacks.forEach((callback: () => void): void => {
             try {
                 callback();
@@ -1080,7 +1079,7 @@ if (!startup && !started) {
                     break;
                 }
                 default: {
-                    dialog.showMessageBox({
+                    void dialog.showMessageBox({
                         type: "error",
                         title: "Unsupported URI Path",
                         message: `The URI path is not supported.\nURI Path: ${url}`,
@@ -1113,6 +1112,7 @@ if (!startup && !started) {
             case "edit":
             case "preview":
                 try {
+                    // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
                     switch (true) {
                         case type === "world":
                         case type === "leveldb":
@@ -1133,7 +1133,7 @@ if (!startup && !started) {
                             break;
                         case type === null:
                         default:
-                            dialog.showMessageBox({
+                            void dialog.showMessageBox({
                                 type: "error",
                                 title: "Unsupported File Type",
                                 message: `The file type of the file at ${filePath} is not supported.`,
@@ -1142,12 +1142,13 @@ if (!startup && !started) {
                                 noLink: true,
                             });
                     }
-                } catch (e: any) {
-                    dialog.showMessageBox({
+                } catch (e: unknown) {
+                    void dialog.showMessageBox({
                         type: "error",
                         title: "Error Opening File",
                         message: `There was an error opening the file at ${filePath}.`,
-                        detail: e.message + e?.stack,
+                        // TEMP: This is temporary until the stringifyError function is implemented.
+                        detail: e instanceof Error ? e.message + e?.stack : String(e),
                         buttons: ["Okay"],
                         noLink: true,
                     });
@@ -1162,7 +1163,7 @@ if (!startup && !started) {
         event.preventDefault(); /* 
         const dateISOString: string = new Date().toISOString().replaceAll(":", "_");
         writeFileSync(path.join(APP_DATA_FOLDER_PATH, `OPEN_FILE_${dateISOString}.LOG`), `[${new Date().toISOString()}] [LOG] ${process.argv}\n`);
-        dialog.showMessageBox({
+        void dialog.showMessageBox({
             type: "info",
             title: "Open File",
             message: `File Path: ${filePath}`,
@@ -1251,9 +1252,9 @@ if (!startup && !started) {
             } else if (existsSync(path.join(APP_DATA_FOLDER_PATH, "taskbar_user_tasks.json"))) {
                 let tasks: Electron.Task[];
                 try {
-                    tasks = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "taskbar_user_tasks.json"), "utf-8"));
+                    tasks = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "taskbar_user_tasks.json"), "utf-8")) as Electron.Task[];
                 } catch (e) {
-                    dialog.showMessageBox({
+                    void dialog.showMessageBox({
                         type: "error",
                         title: "Error Reading Taskbar User Tasks",
                         message: `There was an error reading the taskbar user tasks from ${path.join(APP_DATA_FOLDER_PATH, "taskbar_user_tasks.json")}.`,
@@ -1266,7 +1267,7 @@ if (!startup && !started) {
                 try {
                     app.setUserTasks(tasks);
                 } catch (e) {
-                    dialog.showMessageBox({
+                    void dialog.showMessageBox({
                         type: "error",
                         title: "Error Setting Taskbar User Tasks",
                         message: `There was an error setting the taskbar user tasks from ${path.join(APP_DATA_FOLDER_PATH, "taskbar_user_tasks.json")}.`,
@@ -1325,7 +1326,7 @@ if (!startup && !started) {
                                 trimmedChangelog += "\n...";
                             }
                         }
-                        dialog
+                        void dialog
                             .showMessageBox({
                                 type: "info",
                                 title: "Update Available",
@@ -1341,7 +1342,7 @@ if (!startup && !started) {
                             })
                             .then((result: Electron.MessageBoxReturnValue): void => {
                                 if (result.response === 0) {
-                                    shell.openExternal(latestRelease.html_url);
+                                    void shell.openExternal(latestRelease.html_url);
                                 }
                             });
                     }

@@ -7,10 +7,19 @@ import Notice from "../components/Notice";
 import { entryContentTypeToFormatMap, type EntryContentTypeFormatData } from "mcbe-leveldb";
 import { shell } from "@electron/remote";
 
+/**
+ * Props for the {@link HexEditorTab} component.
+ */
 export interface HexEditorTabProps {
     tab: TabManagerSubTab;
 }
 
+/**
+ * The hex editor tab.
+ *
+ * @param props The props for the component.
+ * @returns The JSX element.
+ */
 export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElement<"div"> {
     const containerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     const viewOptionsRefs = {
@@ -27,11 +36,11 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
     fakeAssertIsValidOptionsType(props.tab.currentState.options);
     props.tab.currentState.options.viewMode ??= "raw";
     let dataLoadFailureNoticeReasonExists: boolean = false;
-    let dataLoadFailureNoticeReason: any = null;
+    let dataLoadFailureNoticeReason: unknown = null;
     let levelDBOpenFailure: boolean = false;
     let missingLevelDBKey: boolean = false;
     function LevelDBOpenFailureNotice(): JSX.Element {
-        if (props.tab.parentTab.errorDueToEncryptedLevelDB)
+        if (props.tab.parentTab.errorDueToEncryptedLevelDB) {
             return (
                 <Notice
                     title="Encrypted LevelDB"
@@ -40,6 +49,7 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
                     image="access_denied"
                 />
             );
+        }
         return (
             <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
                 <Notice
@@ -51,21 +61,23 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
                 />
                 <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
                     {props.tab.parentTab.errorOnDBOpen instanceof Error ?
-                        `${props.tab.parentTab.errorOnDBOpen.stack !== undefined ? props.tab.parentTab.errorOnDBOpen.stack : props.tab.parentTab.errorOnDBOpen.toString()}${
+                        `${props.tab.parentTab.errorOnDBOpen.stack ?? props.tab.parentTab.errorOnDBOpen.toString()}${
                             props.tab.parentTab.errorOnDBOpen.cause !== undefined ?
-                                `\nCaused by: ${((): unknown => {
-                                    try {
-                                        return typeof props.tab.parentTab.errorOnDBOpen.cause === "object" ?
-                                                JSON.stringify(props.tab.parentTab.errorOnDBOpen.cause)
-                                            :   props.tab.parentTab.errorOnDBOpen.cause;
-                                    } catch {
-                                        return props.tab.parentTab.errorOnDBOpen.cause;
-                                    }
-                                })()}`
+                                `\nCaused by: ${String(
+                                    ((): unknown => {
+                                        try {
+                                            return typeof props.tab.parentTab.errorOnDBOpen.cause === "object" ?
+                                                    JSON.stringify(props.tab.parentTab.errorOnDBOpen.cause)
+                                                :   props.tab.parentTab.errorOnDBOpen.cause;
+                                        } catch {
+                                            return props.tab.parentTab.errorOnDBOpen.cause;
+                                        }
+                                    })()
+                                )}`
                             :   ""
                         }`
                     :   String(
-                            (function (): unknown {
+                            (function formatUnknownErrorValue(): unknown {
                                 try {
                                     return typeof props.tab.parentTab.errorOnDBOpen === "object" ?
                                             JSON.stringify(props.tab.parentTab.errorOnDBOpen)
@@ -80,7 +92,7 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
             </div>
         );
     }
-    function DataLoadFailureNotice({ reason }: { reason: any }): JSX.SpecificElement<"div"> {
+    function DataLoadFailureNotice({ reason }: { reason: unknown }): JSX.SpecificElement<"div"> {
         return (
             <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: center;">
                 <Notice
@@ -94,11 +106,11 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
                     type="button"
                     title="Opens the GitHub bug report issue creation page."
                     class="genericRoundButton"
-                    onClick={async (event: TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
+                    onClick={(event: TargetedMouseEvent<HTMLButtonElement>): void => {
                         event.preventDefault();
                         if (event.currentTarget.disabled) return;
                         event.currentTarget.blur();
-                        shell.openExternal("https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/new?template=bug_report.md");
+                        void shell.openExternal("https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/new?template=bug_report.md");
                     }}
                 >
                     Report Bug
@@ -108,7 +120,7 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
                         reason.stack?.startsWith(reason.toString()) ?
                             reason.stack
                         :   reason.toString() + reason.stack
-                    :   reason}
+                    :   String(reason)}
                 </div>
             </div>
         );
@@ -151,7 +163,7 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
             (): void => {
                 reloadContents();
             },
-            (reason: any): void => {
+            (reason: unknown): void => {
                 if (containerRef.current) {
                     if (reason instanceof Error && reason.message === "LevelDB open failure.") {
                         render(null, containerRef.current);
@@ -175,10 +187,8 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
         );
     }
     if (!props.tab.currentState.options.dataStorageObject) triggerLoadData();
-    else {
-        if (!props.tab.currentState.options.dataStorageObject.hexEditor) {
-            initHexEditorDataStorageObjectProps(props.tab.currentState.options.dataStorageObject);
-        }
+    else if (!props.tab.currentState.options.dataStorageObject.hexEditor) {
+        initHexEditorDataStorageObjectProps(props.tab.currentState.options.dataStorageObject);
     }
     function reloadContents(): void {
         if (!containerRef.current) return;
@@ -206,6 +216,7 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
         props: HexEditorTabProps;
         options: Extract<HexEditorTabProps["tab"]["currentState"]["options"], { viewMode?: any }>;
     }): JSX.Element {
+        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
         switch (props.options.viewMode) {
             case "raw":
                 return (

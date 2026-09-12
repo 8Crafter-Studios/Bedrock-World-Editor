@@ -1,7 +1,5 @@
-import { BrowserWindow } from "@electron/remote";
-import type { Dimension, SubChunkIndexDimensionVectorXZ } from "mcbe-leveldb";
 import type { JSX, RefObject, TargetedEvent } from "preact";
-import { render, useEffect, useRef } from "preact/compat";
+import { render, useRef } from "preact/compat";
 
 /**
  * Options for the {@link showNumberInputDialog} function.
@@ -79,8 +77,8 @@ export type ShowNumberInputDialogResult =
  * Props for the {@link NumberInputDialog} component.
  */
 export interface NumberInputDialogProps extends ShowNumberInputDialogOptions {
-    onSubmit(value: number): void;
-    onCancel(): void;
+    onSubmit(this: void, value: number): void;
+    onCancel(this: void): void;
 }
 
 /**
@@ -148,7 +146,7 @@ export function NumberInputDialog(props: NumberInputDialogProps): JSX.Element {
  * @returns A promise that resolves with the result of the dialog.
  */
 export default async function showNumberInputDialog(options: ShowNumberInputDialogOptions): Promise<ShowNumberInputDialogResult> {
-    return new Promise((resolve: (value: ShowNumberInputDialogResult) => void): void => {
+    return await new Promise((resolve: (value: ShowNumberInputDialogResult) => void): void => {
         const container: HTMLDivElement = document.createElement("div");
         container.style.position = "fixed";
         container.style.zIndex = "1200000";

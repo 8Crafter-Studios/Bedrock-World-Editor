@@ -1,24 +1,15 @@
 import type { JSX, RefObject, TargetedKeyboardEvent, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef, useState } from "preact/compat";
-import TreeEditor from "../components/TreeEditor";
 import {
     DBEntryContentTypes,
-    dimensions,
     entryContentTypeToFormatMap,
-    gameModes,
-    getContentTypeFromDBKey,
     getKeyDisplayName,
-    getKeysOfType,
     prettyPrintSNBT,
     prismarineToSNBT,
-    toLong,
     type DBEntryContentType,
-    type Vector3,
+    type EntryContentTypeFormatData,
 } from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { testForObjectExtension } from "../../src/utils/miscUtils";
 import { ControlledMenu, MenuItem, SubMenu, type ClickEvent as ContextMenu_ClickEvent } from "@szhsin/react-menu";
 import { LoadingScreenContents } from "../app";
 import SearchString from "search-string";
@@ -279,9 +270,12 @@ export const viewFilesTabSearchSyntax: SearchSyntaxHelpInfo = {
 /**
  * The view files tab.
  *
+ * This tab is used to view all LevelDB entries. (it only shows LevelDB entries atm, not files)
+ *
  * @param props The props for the component.
  * @returns The JSX element.
  */
+// IDEA: Maybe make the view files tab also show files.
 export default function ViewFilesTab(props: ViewFilesTabProps): JSX.SpecificElement<"div"> {
     if (!props.tab.db) return <div>The viewFiles sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
     const containerRef: RefObject<HTMLTableElement> = useRef<HTMLTableElement>(null);
@@ -292,15 +286,16 @@ export default function ViewFilesTab(props: ViewFilesTabProps): JSX.SpecificElem
         };
     });
     getViewFilesTabContents(props.tab, abortController.signal).then(
-        async (element: JSX.Element): Promise<void> => {
+        (element: JSX.Element): void => {
             if (!containerRef.current) return;
             const tempElement: HTMLDivElement = document.createElement("div");
             render(element, tempElement);
             containerRef.current?.replaceChildren(...tempElement.children);
         },
-        (reason: any): void => {
+        (reason: unknown): void => {
             if (reason instanceof DOMException && reason.name === "AbortError" && reason.message === "Tab switched.") return;
             if (containerRef.current) {
+                // TODO: Replace this with a better error screen.
                 const errorElement: HTMLDivElement = document.createElement("div");
                 errorElement.style.color = "red";
                 errorElement.style.fontFamily = "monospace";
@@ -310,7 +305,8 @@ export default function ViewFilesTab(props: ViewFilesTabProps): JSX.SpecificElem
                         reason.stack?.startsWith(reason.toString()) ?
                             reason.stack
                         :   reason.toString() + reason.stack
-                    :   reason;
+                    :   String(reason);
+                render(null, containerRef.current);
                 containerRef.current.replaceChildren("Failed to load data:", errorElement);
             }
             console.error(reason);
@@ -318,7 +314,7 @@ export default function ViewFilesTab(props: ViewFilesTabProps): JSX.SpecificElem
     );
     const loadingScreenMessageContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     if (!props.tab.db.isOpen()) {
-        props.tab.awaitDBOpen!.then(async (): Promise<void> => {
+        void props.tab.awaitDBOpen!.then(async (): Promise<void> => {
             if (loadingScreenMessageContainerRef.current && !props.tab.cachedDBKeys) {
                 const formatter = new Intl.NumberFormat();
                 loadingScreenMessageContainerRef.current.textContent = `Reading LevelDB keys${props.tab.loadedCachedDBKeysProgress !== undefined ? `: ${formatter.format(props.tab.loadedCachedDBKeysProgress)}` : ""}...`;
@@ -350,7 +346,7 @@ export default function ViewFilesTab(props: ViewFilesTabProps): JSX.SpecificElem
                 await sleep(20);
             }
         });
-        props.tab.awaitCachedDBKeys!.then((): void => {
+        void props.tab.awaitCachedDBKeys!.then((): void => {
             if (loadingScreenMessageContainerRef.current) loadingScreenMessageContainerRef.current.textContent = "";
         });
         return (
@@ -373,7 +369,7 @@ interface KeyData {
     rawKey: Buffer;
     displayKey: string;
     contentType: DBEntryContentType;
-    valueType: (typeof entryContentTypeToFormatMap)[DBEntryContentType];
+    valueType: EntryContentTypeFormatData;
     value?: any;
     // data: { parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata };
 }
@@ -381,7 +377,7 @@ interface KeyData {
 async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal): Promise<JSX.Element> {
     if (!tab.db) return <div>The view files sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
     if (!tab.db.isOpen() && !((await tab.awaitDBOpen) ?? true)) {
-        if (tab.errorDueToEncryptedLevelDB)
+        if (tab.errorDueToEncryptedLevelDB) {
             return (
                 <Notice
                     title="Encrypted LevelDB"
@@ -390,6 +386,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                     image="access_denied"
                 />
             );
+        }
         return (
             <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
                 <Notice
@@ -401,19 +398,23 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                 />
                 <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
                     {tab.errorOnDBOpen instanceof Error ?
-                        `${tab.errorOnDBOpen.stack !== undefined ? tab.errorOnDBOpen.stack : tab.errorOnDBOpen.toString()}${
+                        `${tab.errorOnDBOpen.stack ?? tab.errorOnDBOpen.toString()}${
                             tab.errorOnDBOpen.cause !== undefined ?
-                                `\nCaused by: ${((): unknown => {
-                                    try {
-                                        return typeof tab.errorOnDBOpen.cause === "object" ? JSON.stringify(tab.errorOnDBOpen.cause) : tab.errorOnDBOpen.cause;
-                                    } catch {
-                                        return tab.errorOnDBOpen.cause;
-                                    }
-                                })()}`
+                                `\nCaused by: ${String(
+                                    ((): unknown => {
+                                        try {
+                                            return typeof tab.errorOnDBOpen.cause === "object" ?
+                                                    JSON.stringify(tab.errorOnDBOpen.cause)
+                                                :   tab.errorOnDBOpen.cause;
+                                        } catch {
+                                            return tab.errorOnDBOpen.cause;
+                                        }
+                                    })()
+                                )}`
                             :   ""
                         }`
                     :   String(
-                            (function (): unknown {
+                            (function formatUnknownErrorValue(): unknown {
                                 try {
                                     return typeof tab.errorOnDBOpen === "object" ? JSON.stringify(tab.errorOnDBOpen) : tab.errorOnDBOpen;
                                 } catch {
@@ -445,50 +446,91 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
             })
         );
     let keySearchResults: KeyData[] = keys;
-    for (const key of keys) {
-        valueTypeSwitcher: switch (key.valueType?.type) {
-            case "ASCII": {
-                try {
-                    const data = await tab.db!.get(key.rawKey);
-                    key.value = data?.toString("utf-8");
-                } catch (e) {
-                    console.error(e);
-                }
-                break;
-            }
-            case "NBT": {
-                // Do not load NBT as it takes too long.
-                break;
-            }
-            case "int": {
-                try {
-                    const data = await tab.db!.get(key.rawKey);
-                    key.value = data !== null ? BigInt("0x" + data.slice(0, key.valueType.bytes).toString("hex")).toString(10) : null;
-                } catch (e) {
-                    console.error(e);
-                }
-                break;
-            }
-            case "custom": {
-                switch (key.valueType.resultType) {
-                    case "JSONNBT": {
-                        // Do not load NBT as it takes too long.
-                        break valueTypeSwitcher;
-                    }
-                }
-            }
-            case "unknown": {
-                break;
-            }
-        }
-    }
+    // UNDONE: The view files tab does not need to preload all the data.
+    // for (const key of keys) {
+    //     valueTypeSwitcher: switch (key.valueType?.type) {
+    //         case "UTF-8":
+    //         case "ASCII":
+    //         case "SNBT": {
+    //             try {
+    //                 const data = await tab.db.get(key.rawKey);
+    //                 key.value = data?.toString("utf-8") ?? undefined;
+    //             } catch (e) {
+    //                 console.error(e);
+    //             }
+    //             break;
+    //         }
+    //         case "binary":
+    //         case "binaryPlainText": {
+    //             try {
+    //                 const data = await tab.db.get(key.rawKey);
+    //                 key.value = data?.toString("binary") ?? undefined;
+    //             } catch (e) {
+    //                 console.error(e);
+    //             }
+    //             break;
+    //         }
+    //         case "NBT": {
+    //             // Do not load NBT as it takes too long.
+    //             break;
+    //         }
+    //         case "JSON": {
+    //             try {
+    //                 const data = await tab.db.get(key.rawKey);
+    //                 key.value = data ? JSON.stringify(JSON.parse(data.toString("utf-8"))) : undefined;
+    //             } catch (e) {
+    //                 console.error(e);
+    //             }
+    //             break;
+    //         }
+    //         case "int": {
+    //             try {
+    //                 const data = await tab.db.get(key.rawKey);
+    //                 key.value = data ? BigInt(`0x${data.slice(0, key.valueType.bytes).toString("hex")}`).toString(10) : undefined;
+    //             } catch (e) {
+    //                 console.error(e);
+    //             }
+    //             break;
+    //         }
+    //         case "hex": {
+    //             try {
+    //                 const data = await tab.db.get(key.rawKey);
+    //                 key.value = data ? BigInt(`0x${data.toString("hex")}`).toString(10) : undefined;
+    //             } catch (e) {
+    //                 console.error(e);
+    //             }
+    //             break;
+    //         }
+    //         case "custom": {
+    //             switch (key.valueType.resultType) {
+    //                 case "JSONNBT": {
+    //                     // Do not load NBT as it takes too long.
+    //                     break valueTypeSwitcher;
+    //                 }
+    //                 case "SNBT":
+    //                 case "buffer":
+    //                 case "unknown":
+    //                     break valueTypeSwitcher;
+    //                 default:
+    //                     throw new Error(
+    //                         `Unknown custom value type: ${(key.valueType as Extract<EntryContentTypeFormatData, { type: "custom" }>).resultType}`
+    //                     );
+    //             }
+    //         }
+    //         case "unknown": {
+    //             break;
+    //         }
+    //         default:
+    //             throw new Error(`Unknown value type: ${key.valueType?.type as string}`);
+    //     }
+    // }
     let keyValuesLoaded: boolean = false;
-    let dynamicProperties: NBT.NBT | undefined = await tab
-        .db!.get("DynamicProperties")
+    const dynamicProperties: NBT.NBT | undefined = await tab.db
+        .get("DynamicProperties")
         .then((data: Buffer | null): Promise<NBT.NBT> | undefined =>
-            data ? NBT.parse(data!).then((data: { parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata }): NBT.NBT => data.parsed) : undefined
+            data ? NBT.parse(data).then((data: { parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata }): NBT.NBT => data.parsed) : undefined
         )
-        .catch((e: any): undefined => (console.error(e), undefined));
+        .catch((e: unknown): undefined => (console.error(e), undefined));
     // console.log(dynamicProperties);
     let currentUpdateTablesContentsFunction: ((reloadData: boolean) => Promise<void>) | null = null;
     let tablesContents: JSX.Element[][] = [
@@ -511,14 +553,14 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
             searchButton: useRef<HTMLButtonElement>(null),
             helpButton: useRef<HTMLButtonElement>(null),
         };
-        const viewOptionsRefs = {
-            viewOptionsContainer: useRef<HTMLDivElement>(null),
-            viewOptionsTabbedSelector: useRef<HTMLDivElement>(null),
-        };
+        // const viewOptionsRefs = {
+        //     viewOptionsContainer: useRef<HTMLDivElement>(null),
+        //     viewOptionsTabbedSelector: useRef<HTMLDivElement>(null),
+        // };
         function TablesContents(): JSX.Element {
             return (
                 <>
-                    {...(["simple"] as const).map((sectionID: "simple", index: number): JSX.Element => {
+                    {...(["simple"] as const).map((_sectionID: "simple", index: number): JSX.Element => {
                         const bodyRef: RefObject<HTMLTableSectionElement> = useRef<HTMLTableSectionElement>(null);
                         function Test1(): JSX.Element {
                             // const [columnHeadersContextMenu_isOpen, columnHeadersContextMenu_setOpen] = useState(false);
@@ -560,12 +602,12 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                         <tbody ref={bodyRef}>{...tablesContents[index]!.slice(0, 20)}</tbody>
                                         <tfoot>
                                             <tr class="table-footer-row-page-navigation">
-                                                <td colSpan={ConfigConstants.views.ViewFiles.viewFilesTabModeToColumnIDs["simple"].length}>
+                                                <td colSpan={ConfigConstants.views.ViewFiles.viewFilesTabModeToColumnIDs.simple.length}>
                                                     <PageNavigation
                                                         totalPages={Math.ceil(tablesContents[index]!.length / 20)}
                                                         onPageChange={(page: number): void => {
                                                             if (!bodyRef.current) return;
-                                                            let tempElement: HTMLDivElement = document.createElement("div");
+                                                            const tempElement: HTMLDivElement = document.createElement("div");
                                                             render(<>{...tablesContents[index]!.slice((page - 1) * 20, page * 20)}</>, tempElement);
                                                             bodyRef.current.replaceChildren(...tempElement.children);
                                                         }}
@@ -582,7 +624,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                 </>
             );
         }
-        let query: Omit<TabManagerTab_LevelDBSearchQuery, "searchTargets"> & {
+        const query: Omit<TabManagerTab_LevelDBSearchQuery, "searchTargets"> & {
             searchTargets: (
                 | {
                       key: Buffer<ArrayBufferLike>;
@@ -595,7 +637,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                       key: Buffer<ArrayBufferLike>;
                       displayKey: string;
                       value: any;
-                      valueType: (typeof entryContentTypeToFormatMap)[DBEntryContentType];
+                      valueType: EntryContentTypeFormatData;
                       contentType: DBEntryContentType;
                       data: KeyData;
                       searchableContents: string[];
@@ -616,53 +658,141 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
             ),
         };
         async function updateTablesContents(reloadData: boolean): Promise<void> {
+            // TODO: Add an error handler to this function.
             if (!tablesContainerRef.current) return;
             if (reloadData) {
                 console.debug(query);
-                if (
-                    !keyValuesLoaded &&
-                    ((query.nbtTags?.allOf && query.nbtTags?.allOf.length > 0) ||
+                const hasNBTContentsQuery: boolean = !!(
+                    (
+                        (query.nbtTags?.allOf && query.nbtTags?.allOf.length > 0) ||
                         (query.nbtTags?.anyOf && query.nbtTags?.anyOf.length > 0) ||
                         (query.nbtTags?.oneOf && query.nbtTags?.oneOf.length > 0) ||
                         (query.nbtTags?.noneOf && query.nbtTags?.noneOf.length > 0) ||
                         (query.customDataFields?.contents?.allOf && query.customDataFields?.contents?.allOf.length > 0) ||
                         (query.customDataFields?.contents?.anyOf && query.customDataFields?.contents?.anyOf.length > 0) ||
                         (query.customDataFields?.contents?.oneOf && query.customDataFields?.contents?.oneOf.length > 0) ||
-                        (query.customDataFields?.contents?.noneOf && query.customDataFields?.contents?.noneOf.length > 0))
-                ) {
+                        (query.customDataFields?.contents?.noneOf && query.customDataFields?.contents?.noneOf.length > 0)
+                    ) /* ||
+                    (query.rawValueContents?.allOf && query.rawValueContents?.allOf.length > 0) ||
+                    (query.rawValueContents?.anyOf && query.rawValueContents?.anyOf.length > 0) ||
+                    (query.rawValueContents?.oneOf && query.rawValueContents?.oneOf.length > 0) ||
+                    (query.rawValueContents?.noneOf && query.rawValueContents?.noneOf.length > 0) */ /* TODO */
+                );
+                const hasGenericContentsQuery: boolean = !!(
+                    (query.customDataFields?.contents?.allOf && query.customDataFields?.contents?.allOf.length > 0) ||
+                    (query.customDataFields?.contents?.anyOf && query.customDataFields?.contents?.anyOf.length > 0) ||
+                    (query.customDataFields?.contents?.oneOf && query.customDataFields?.contents?.oneOf.length > 0) ||
+                    (query.customDataFields?.contents?.noneOf && query.customDataFields?.contents?.noneOf.length > 0) ||
+                    (query.contentsStringContents?.allOf && query.contentsStringContents?.allOf.length > 0) ||
+                    (query.contentsStringContents?.anyOf && query.contentsStringContents?.anyOf.length > 0) ||
+                    (query.contentsStringContents?.oneOf && query.contentsStringContents?.oneOf.length > 0) ||
+                    (query.contentsStringContents?.noneOf && query.contentsStringContents?.noneOf.length > 0)
+                );
+                if (!keyValuesLoaded && (hasNBTContentsQuery || hasGenericContentsQuery)) {
                     let i: number = 0;
                     let t: number = Date.now();
                     for (const key of keys) {
                         i++;
                         if (t + 10 < Date.now()) {
                             t = Date.now();
-                            if (loadingScreenMessageContainerRef.current)
-                                loadingScreenMessageContainerRef.current.textContent = `Reading NBT data: ${i}/${keys.length}...`;
+                            if (loadingScreenMessageContainerRef.current) {
+                                loadingScreenMessageContainerRef.current.textContent = `Reading ${hasGenericContentsQuery ? "LevelDB entry" : "NBT"} data: ${i}/${keys.length}...`;
+                            }
                         }
-                        if (query.contentTypes && !query.contentTypes.includes(key.contentType)) continue;
-                        if (query.excludeContentTypes && query.excludeContentTypes.includes(key.contentType)) continue;
                         if (key.value !== undefined) continue;
+                        if (query.contentTypes && !query.contentTypes.includes(key.contentType)) continue;
+                        if (query.excludeContentTypes?.includes(key.contentType)) continue;
                         valueTypeSwitcher: switch (key.valueType?.type) {
+                            case "UTF-8": {
+                                try {
+                                    const data = await tab.db!.get(key.rawKey);
+                                    key.value = data?.toString("utf-8") ?? undefined;
+                                } catch (e) {
+                                    console.error(e);
+                                }
+                                break;
+                            }
+                            case "SNBT": {
+                                if (!hasNBTContentsQuery) break;
+                                try {
+                                    const data = await tab.db!.get(key.rawKey);
+                                    key.value = data?.toString("utf-8") ?? undefined;
+                                } catch (e) {
+                                    console.error(e);
+                                }
+                                break;
+                            }
                             case "ASCII": {
-                                // ASCII would have already been loaded.
+                                try {
+                                    const data = await tab.db!.get(key.rawKey);
+                                    key.value = data?.toString("ascii") ?? undefined;
+                                } catch (e) {
+                                    console.error(e);
+                                }
+                                break;
+                            }
+                            case "binary":
+                            case "binaryPlainText": {
+                                try {
+                                    const data = await tab.db!.get(key.rawKey);
+                                    key.value = data?.toString("binary") ?? undefined;
+                                } catch (e) {
+                                    console.error(e);
+                                }
                                 break;
                             }
                             case "NBT": {
+                                if (!hasNBTContentsQuery) break;
                                 try {
                                     const data = await tab.db!.get(key.rawKey);
-                                    key.value = data !== null ? await NBT.parse(data) : null;
+                                    key.value =
+                                        data !== null ?
+                                            await NBT.parse(
+                                                data,
+                                                !key.valueType.format ? "little"
+                                                : key.valueType.format === "LE" ? "little"
+                                                : key.valueType.format === "BE" ? "big"
+                                                : key.valueType.format === "LEV" ? "littleVarint"
+                                                : "little"
+                                            )
+                                        :   null;
+                                } catch (e) {
+                                    console.error(e);
+                                }
+                                break;
+                            }
+                            case "JSON": {
+                                try {
+                                    const data = await tab.db!.get(key.rawKey);
+                                    key.value = data ? (JSON.parse(data.toString("utf-8")) as unknown) : undefined;
                                 } catch (e) {
                                     console.error(e);
                                 }
                                 break;
                             }
                             case "int": {
-                                // Int would have already been loaded.
+                                try {
+                                    const data = await tab.db!.get(key.rawKey);
+                                    key.value = data ? BigInt(`0x${data.slice(0, key.valueType.bytes).toString("hex")}`).toString(10) : undefined;
+                                } catch (e) {
+                                    console.error(e);
+                                }
+                                break;
+                            }
+                            case "hex": {
+                                try {
+                                    const data = await tab.db!.get(key.rawKey);
+                                    key.value = data ? data.toString("hex") : undefined;
+                                } catch (e) {
+                                    console.error(e);
+                                }
                                 break;
                             }
                             case "custom": {
                                 switch (key.valueType.resultType) {
-                                    case "JSONNBT": {
+                                    case "JSONNBT":
+                                    case "SNBT": {
+                                        if (!hasNBTContentsQuery) break valueTypeSwitcher;
                                         try {
                                             const data = await tab.db!.get(key.rawKey);
                                             key.value = data !== null ? await key.valueType.parse(data) : null;
@@ -671,15 +801,34 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                         }
                                         break valueTypeSwitcher;
                                     }
+                                    case "buffer":
+                                    case "unknown":
+                                        break valueTypeSwitcher;
+                                    default:
+                                        console.error(
+                                            new Error(
+                                                `Unknown custom value type: ${(key.valueType as Extract<EntryContentTypeFormatData, { type: "custom" }>).resultType}`
+                                            ),
+                                            key
+                                        );
+                                        break valueTypeSwitcher;
                                 }
                             }
                             case "unknown": {
                                 break;
                             }
+                            default:
+                                console.error(new Error(`Unknown value type: ${(key.valueType as EntryContentTypeFormatData)?.type as string}`), key);
+                                break;
                         }
                     }
-                    if ((!query.contentTypes || query.contentTypes.length === 0) && (!query.excludeContentTypes || query.excludeContentTypes.length === 0))
+                    if (
+                        (!query.contentTypes || query.contentTypes.length === 0) &&
+                        (!query.excludeContentTypes || query.excludeContentTypes.length === 0) &&
+                        hasNBTContentsQuery
+                    ) {
                         keyValuesLoaded = true;
+                    }
                     query.searchTargets = keys.map(
                         (key: KeyData) =>
                             ({
@@ -696,13 +845,24 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                             key.valueType.type === "NBT" ?
                                                 ((): string => {
                                                     try {
-                                                        // return prettyPrintSNBT(prismarineToSNBT(key.value!), { indent: 0 });
+                                                        // return prettyPrintSNBT(prismarineToSNBT((key.value as { parsed: NBT.NBT }).parsed), { indent: 0 });
                                                         // Disable directly searching SNBT.
                                                         return "";
                                                     } catch {
                                                         return "";
                                                     }
                                                 })()
+                                            : key.valueType.type === "custom" && key.valueType.resultType === "JSONNBT" ?
+                                                ((): string => {
+                                                    try {
+                                                        // return prettyPrintSNBT(prismarineToSNBT(key.value), { indent: 0 });
+                                                        // Disable directly searching SNBT.
+                                                        return "";
+                                                    } catch {
+                                                        return "";
+                                                    }
+                                                })()
+                                            : key.valueType.type === "JSON" ? JSON.stringify(key.value)
                                             : typeof key.value !== "function" && typeof key.value !== "object" && typeof key.value !== "symbol" ?
                                                 String(key.value)
                                             :   "",
@@ -715,11 +875,20 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                             key.valueType.type === "NBT" ?
                                                 ((): string | undefined => {
                                                     try {
-                                                        return prettyPrintSNBT(prismarineToSNBT(key.value!), { indent: 0 });
+                                                        return prettyPrintSNBT(prismarineToSNBT((key.value as { parsed: NBT.NBT }).parsed), { indent: 0 });
                                                     } catch {
                                                         return undefined;
                                                     }
                                                 })()
+                                            : key.valueType.type === "custom" && key.valueType.resultType === "JSONNBT" ?
+                                                ((): string | undefined => {
+                                                    try {
+                                                        return prettyPrintSNBT(prismarineToSNBT(key.value), { indent: 0 });
+                                                    } catch {
+                                                        return undefined;
+                                                    }
+                                                })()
+                                            : key.valueType.type === "JSON" ? JSON.stringify(key.value)
                                             : typeof key.value !== "function" && typeof key.value !== "object" && typeof key.value !== "symbol" ?
                                                 String(key.value)
                                             :   undefined
@@ -729,9 +898,9 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                     );
                 }
                 tablesContents = await Promise.all(
-                    ConfigConstants.views.ViewFiles.viewFilesTabModeToSectionIDs["simple"].map(
+                    ConfigConstants.views.ViewFiles.viewFilesTabModeToSectionIDs.simple.map(
                         async (_sectionID: (typeof ConfigConstants.views.ViewFiles.viewFilesTabModeToSectionIDs)["simple"][number]): Promise<JSX.Element[]> =>
-                            getViewFilesTabContentsRows({
+                            await getViewFilesTabContentsRows({
                                 tab,
                                 keys:
                                     Object.keys(query).length > 1 ?
@@ -744,8 +913,9 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                             for (const value of iterator) {
                                                 i++;
                                                 if (t + 15 < Date.now()) {
-                                                    if (loadingScreenMessageContainerRef.current)
+                                                    if (loadingScreenMessageContainerRef.current) {
                                                         loadingScreenMessageContainerRef.current.textContent = `Searching LevelDB: ${formatter.format(i)}/${formatter.format(keys.length)} (${formatter.format(results.length)} results)...`;
+                                                    }
                                                     signal.throwIfAborted();
                                                     await sleep(5);
                                                     t = Date.now();
@@ -770,7 +940,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
             tablesContainerRef.current.replaceChildren(...tempElement.children);
         }
         currentUpdateTablesContentsFunction = updateTablesContents;
-        let lastHideErrorPopupFunction: (() => void) | undefined = undefined;
+        let lastHideErrorPopupFunction: (() => void) | undefined;
         return (
             <>
                 {/* <div
@@ -841,8 +1011,8 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                 }
                                 await Promise.all(
                                     keySearchResults.map(
-                                        (key: KeyData): Promise<void> =>
-                                            tab.db!.delete(key.rawKey).then((success: boolean): void => {
+                                        async (key: KeyData): Promise<void> =>
+                                            void (await tab.db!.delete(key.rawKey).then((success: boolean): void => {
                                                 if (!success) return;
                                                 tab.setLevelDBIsModified();
                                                 keySearchResults.splice(keySearchResults.indexOf(key), 1);
@@ -857,11 +1027,11 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                                 if (keys.includes(key)) {
                                                     keys.splice(keys.indexOf(key), 1);
                                                 }
-                                            })
+                                            }))
                                     )
                                 );
                                 // OPTIMIZE: This reloads more than is necessary.
-                                updateTablesContents(true);
+                                void updateTablesContents(true);
                             }}
                         >
                             <img
@@ -877,6 +1047,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                         <button
                             type="button"
                             title="New Entry"
+                            // eslint-disable-next-line @typescript-eslint/require-await -- TEMP
                             onClick={async (): Promise<void> => {
                                 try {
                                     if (!tab.db) return;
@@ -892,7 +1063,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                     //     "RandomTicks"
                                     // );
                                     // if (await tab.db.get(key)) {
-                                    //     dialog.showMessageBox({
+                                    //     void dialog.showMessageBox({
                                     //         type: "error",
                                     //         title: "Duplicate Key",
                                     //         message: `Unable to create a new RandomTicks entry at chunk ${creationOptions.data.chunkX} ${creationOptions.data.chunkZ} in dimension ${creationOptions.data.dimension}.`,
@@ -916,7 +1087,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                     //     },
                                     // });
                                 } catch (e) {
-                                    dialog.showMessageBox({
+                                    void dialog.showMessageBox({
                                         type: "error",
                                         title: "Error",
                                         message: `An error occurred while creating the RandomTicks entry.`,
@@ -1021,21 +1192,23 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                     });
                                 }
                                 for (const key in queryData) {
+                                    if (!Object.hasOwn(queryData, key)) continue;
                                     if (
                                         [...getKeywordedOperators(["dbkey", "nbt", "contents"]), ...getKeywordedOperators(["type"], ["", "|", "-"])].includes(
-                                            key as any
+                                            key as never
                                         )
-                                    )
+                                    ) {
                                         continue;
+                                    }
                                     if (
-                                        !keywordPrefixOperators.includes(key.slice(0, 1) as any) &&
-                                        keywords.includes(key.slice(1) as any) &&
+                                        !keywordPrefixOperators.includes(key.slice(0, 1) as never) &&
+                                        keywords.includes(key.slice(1) as never) &&
                                         /^[^a-z0-9]$/i.test(key.slice(0, 1))
                                     ) {
                                         showError({ message: `Unknown operator: ${key.slice(0, 1)}` });
-                                    } else if (!keywordedOperators.includes(key as any)) {
+                                    } else if (!keywordedOperators.includes(key as never)) {
                                         showError({
-                                            message: `Unknown filter: ${keywordPrefixOperators.includes(key.slice(0, 1) as any) ? key.slice(1) : key}`,
+                                            message: `Unknown filter: ${keywordPrefixOperators.includes(key.slice(0, 1) as never) ? key.slice(1) : key}`,
                                         });
                                     } else {
                                         showError({ message: `Operator ${key.slice(0, 1)} is not supported for filter: ${key.slice(1)}` });
@@ -1046,17 +1219,19 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                     function parseNBTQueries(queries: string[]): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery[] {
                                         return queries
                                             .map((v: string): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery | undefined => {
-                                                let data: TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery | undefined = undefined;
+                                                let data: TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery | undefined;
                                                 try {
-                                                    const val: any = JSON.parse(v);
+                                                    const val: unknown = JSON.parse(v);
                                                     if (typeof val !== "object") {
+                                                        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
                                                         switch (typeof val) {
                                                             // case "string":
                                                             //     if ()
                                                             default:
-                                                                throw new Error();
+                                                                throw new SyntaxError(`Expected a JSON object for NBT query, but got ${typeof val} instead.`);
                                                         }
                                                     } else {
+                                                        if (val === null) throw new SyntaxError("Expected a JSON object for NBT query, but got null instead.");
                                                         if (
                                                             [
                                                                 "path",
@@ -1070,13 +1245,13 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                                         ) {
                                                             data = val;
                                                         } else {
-                                                            throw new Error();
+                                                            throw new SyntaxError("Missing known fields for NBT query.");
                                                         }
                                                     }
-                                                } catch {
+                                                } catch (e) {
                                                     if (v.split("=").length === 2) {
                                                         let [key, value] = v.split("=");
-                                                        let tagType: NBT.TagType | undefined = undefined;
+                                                        let tagType: NBT.TagType | undefined;
                                                         if (key?.includes(":")) {
                                                             let preKey: string;
                                                             [preKey, key] = key.split(":") as [preKey: string, key: string, ...string[]];
@@ -1086,12 +1261,17 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                                                 }
                                                             }
                                                         }
-                                                        let path: string[] | undefined = key?.split("/");
+                                                        const path: string[] | undefined = key?.split("/");
                                                         data = {};
                                                         data.key = key;
                                                         data.value = value;
                                                         data.path = path;
                                                         data.tagType = tagType;
+                                                    } else {
+                                                        // TODO: The actual error should be displayed in the error message. #54
+                                                        reportError(e); // TEMP: Remove this once the actual error is included in the error message.
+                                                        showError({ message: `Invalid NBT query: ${v}` });
+                                                        throw new Error("Error to return but already handled.", { cause: e });
                                                     }
                                                 }
                                                 return data;
@@ -1192,7 +1372,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                         Math.max(0, contentType.length - 2, Math.floor(contentType.length / 2)),
                                         4
                                     );
-                                    if (contentType.length > 0)
+                                    if (contentType.length > 0) {
                                         contentTypesLoop: for (const v2 of DBEntryContentTypes) {
                                             const LOCAL_MAX_NONEXISTENT_CHARACTERS: number = Math.min(
                                                 Math.max(0, v2.length - 2, Math.floor(v2.length / 2)),
@@ -1203,7 +1383,6 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                             let i2: number = 0;
                                             let totalDistanceBetweenCharacters: number = 0;
                                             let nonExistentCharacters: number = 0;
-                                            let firstCharacterOffset: number = 0;
                                             while (i2 < v2.length && i < contentType.length) {
                                                 const index: number = v2.toLowerCase().indexOf(contentType[i]!.toLowerCase(), i2);
                                                 i++;
@@ -1212,15 +1391,23 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                                     if (nonExistentCharacters > LOCAL_MAX_NONEXISTENT_CHARACTERS) continue contentTypesLoop;
                                                     continue;
                                                 } else {
-                                                    if (i === 1) firstCharacterOffset = index;
-                                                    totalDistanceBetweenCharacters += index;
-                                                    i2 += index + 1;
+                                                    totalDistanceBetweenCharacters += index - i2;
+                                                    i2 = index + 1;
                                                 }
                                             }
-                                            if (i !== contentType.length && contentType.length - i + nonExistentCharacters > LOCAL_MAX_NONEXISTENT_CHARACTERS)
-                                                continue contentTypesLoop;
-                                            similarVals.push({ quality: totalDistanceBetweenCharacters + nonExistentCharacters * 10, value: v2 });
+                                            if (i !== contentType.length && contentType.length - i + nonExistentCharacters > LOCAL_MAX_NONEXISTENT_CHARACTERS) {
+                                                continue;
+                                            }
+                                            const substringIndex: number = v2.toLowerCase().indexOf(contentType.toLowerCase());
+                                            if (substringIndex !== -1) {
+                                                totalDistanceBetweenCharacters -= Math.max(0, 50 - substringIndex * 5);
+                                            }
+                                            similarVals.push({
+                                                quality: totalDistanceBetweenCharacters + nonExistentCharacters * 10,
+                                                value: v2,
+                                            });
                                         }
+                                    }
                                     if (similarVals.length === 0) {
                                         showError({ message: `Unknown content type: ${contentType}` });
                                     } else {
@@ -1249,34 +1436,34 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                 if (queryData["-type"] !== undefined) {
                                     query.excludeContentTypes ??= [];
                                     query.excludeContentTypes.push(
-                                        ...(queryData["-type"].map((v: string): string => {
+                                        ...queryData["-type"].map((v: string): DBEntryContentType => {
                                             const val = DBEntryContentTypes.find((v2: string): boolean => v2.toLowerCase() === v.toLowerCase());
                                             if (val) return val;
                                             showInvalidContentTypeErrorWithMostSimilarContentTypes(v);
                                             throw new Error("Error to return but already handled.");
-                                        }) as any)
+                                        })
                                     );
                                 }
                                 if (queryData["|type"] !== undefined) {
                                     query.contentTypes ??= [];
                                     query.contentTypes.push(
-                                        ...(queryData["|type"].map((v: string): string => {
+                                        ...queryData["|type"].map((v: string): DBEntryContentType => {
                                             const val = DBEntryContentTypes.find((v2: string): boolean => v2.toLowerCase() === v.toLowerCase());
                                             if (val) return val;
                                             showInvalidContentTypeErrorWithMostSimilarContentTypes(v);
                                             throw new Error("Error to return but already handled.");
-                                        }) as any)
+                                        })
                                     );
                                 }
                                 if (queryData.type !== undefined) {
                                     query.contentTypes ??= [];
                                     query.contentTypes.push(
-                                        ...(queryData.type.map((v: string): string => {
+                                        ...queryData.type.map((v: string): DBEntryContentType => {
                                             const val = DBEntryContentTypes.find((v2: string): boolean => v2.toLowerCase() === v.toLowerCase());
                                             if (val) return val;
                                             showInvalidContentTypeErrorWithMostSimilarContentTypes(v);
                                             throw new Error("Error to return but already handled.");
-                                        }) as any)
+                                        })
                                     );
                                 }
                                 if (textQueryData.length > 0) {
@@ -1311,7 +1498,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                     );
                                     tablesContainerRef.current.replaceChildren(...tempElement.children);
                                 }
-                                updateTablesContents(true);
+                                void updateTablesContents(true);
                             } catch (e) {
                                 if (e instanceof Error && e.message === "Error to return but already handled.") return;
                                 throw e;
@@ -1326,7 +1513,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                         class="search-help-button piximg invert_on_light_theme"
                         title="Help"
                         onClick={(): void => {
-                            let containerElement: HTMLDivElement = document.createElement("div");
+                            const containerElement: HTMLDivElement = document.createElement("div");
                             containerElement.style.display = "contents";
                             function OverlaySearchSyntaxHelpMenu(): JSX.SpecificElement<"div"> {
                                 const overlayElementRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
@@ -1396,6 +1583,7 @@ type CopyContextMenuItemValue =
           }[];
       };
 
+// eslint-disable-next-line @typescript-eslint/require-await -- TEMP
 async function getViewFilesTabContentsRows(data: {
     /**
      * The tab manager tab.
@@ -1408,7 +1596,7 @@ async function getViewFilesTabContentsRows(data: {
     dynamicProperties?: NBT.NBT | undefined;
     get updateTablesContents(): ((reloadData: boolean) => Promise<void>) | null;
 }): Promise<JSX.Element[]> {
-    const columns = ConfigConstants.views.ViewFiles.viewFilesTabModeToColumnIDs["simple"];
+    const columns = ConfigConstants.views.ViewFiles.viewFilesTabModeToColumnIDs.simple;
     return data.keys.map((key: KeyData): JSX.Element => {
         let copyContextMenuItemValue: CopyContextMenuItemValue | null = null as CopyContextMenuItemValue | null;
         function Row(): JSX.Element {
@@ -1418,10 +1606,10 @@ async function getViewFilesTabContentsRows(data: {
             function onEntryRightClick(event: TargetedMouseEvent<HTMLTableRowElement>): void {
                 event.preventDefault();
                 event.stopPropagation();
-                const clickPosition: { x: number; y: number } = {
-                    x: event.clientX,
-                    y: event.clientY,
-                };
+                // const clickPosition: { x: number; y: number } = {
+                //     x: event.clientX,
+                //     y: event.clientY,
+                // };
                 // console.log(clickPosition);
 
                 copyContextMenuItemValue = null;
@@ -1472,22 +1660,22 @@ async function getViewFilesTabContentsRows(data: {
                                     key.rawKey.equals(cachedKey)
                                 );
                                 if (cachedIndex !== -1) data.tab.cachedDBKeys[key.contentType].splice(cachedIndex, 1);
-                                data.updateTablesContents?.(true);
+                                void data.updateTablesContents?.(true);
                             }}
                         >
                             Delete LevelDB Entry
                         </MenuItem>
                         {!copyContextMenuItemValue || copyContextMenuItemValue.value !== undefined || !copyContextMenuItemValue.formatOptions ?
                             <MenuItem
-                                onClick={async (_event: ContextMenu_ClickEvent): Promise<void> => {
+                                onClick={(_event: ContextMenu_ClickEvent): void => {
                                     // if (!(event.syntheticEvent.currentTarget instanceof HTMLLIElement)) return;
                                     // event.syntheticEvent.currentTarget.ariaDisabled = "true";
                                     // event.syntheticEvent.currentTarget.classList.add("szh-menu__item--disabled");
-                                    if (!copyContextMenuItemValue || copyContextMenuItemValue.value === undefined) return;
+                                    if (copyContextMenuItemValue?.value === undefined) return;
                                     clipboard.writeText(copyContextMenuItemValue.value);
                                     // copyContextMenuItemValue = null;
                                 }}
-                                disabled={!copyContextMenuItemValue || copyContextMenuItemValue.value === undefined}
+                                disabled={copyContextMenuItemValue?.value === undefined}
                             >
                                 Copy Cell Value
                             </MenuItem>
@@ -1555,6 +1743,12 @@ async function getViewFilesTabContentsRows(data: {
                                     return (
                                         <td data-copy-data={JSON.stringify({ value: key.contentType } satisfies CopyContextMenuItemValue)}>
                                             {key.contentType}
+                                        </td>
+                                    );
+                                default:
+                                    return (
+                                        <td>
+                                            <span style="color: red;">ERROR: MISSING COLUMN HANDLER</span>
                                         </td>
                                     );
                             }

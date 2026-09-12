@@ -10,10 +10,19 @@ import { initMapEditorDataStorageObjectProps, MapEditor } from "../components/Ma
 import BinaryHexEditor, { initHexEditorDataStorageObjectProps, type HexEditorDataStorageObject } from "../components/BinaryHexEditor";
 import Notice from "../components/Notice";
 
+/**
+ * Props for the {@link MapEditorTab} component.
+ */
 export interface MapEditorTabProps {
     tab: TabManagerSubTab;
 }
 
+/**
+ * The map editor tab.
+ *
+ * @param props The props for the component.
+ * @returns The JSX element.
+ */
 export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElement<"div"> {
     const containerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     const viewOptionsRefs = {
@@ -30,11 +39,11 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
     fakeAssertIsValidOptionsType(props.tab.currentState.options);
     props.tab.currentState.options.viewMode ??= "map";
     let dataLoadFailureNoticeReasonExists: boolean = false;
-    let dataLoadFailureNoticeReason: any = null;
+    let dataLoadFailureNoticeReason: unknown = null;
     let levelDBOpenFailure: boolean = false;
     let missingLevelDBKey: boolean = false;
     function LevelDBOpenFailureNotice(): JSX.Element {
-        if (props.tab.parentTab.errorDueToEncryptedLevelDB)
+        if (props.tab.parentTab.errorDueToEncryptedLevelDB) {
             return (
                 <Notice
                     title="Encrypted LevelDB"
@@ -43,6 +52,7 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
                     image="access_denied"
                 />
             );
+        }
         return (
             <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
                 <Notice
@@ -54,21 +64,23 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
                 />
                 <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
                     {props.tab.parentTab.errorOnDBOpen instanceof Error ?
-                        `${props.tab.parentTab.errorOnDBOpen.stack !== undefined ? props.tab.parentTab.errorOnDBOpen.stack : props.tab.parentTab.errorOnDBOpen.toString()}${
+                        `${props.tab.parentTab.errorOnDBOpen.stack ?? props.tab.parentTab.errorOnDBOpen.toString()}${
                             props.tab.parentTab.errorOnDBOpen.cause !== undefined ?
-                                `\nCaused by: ${((): unknown => {
-                                    try {
-                                        return typeof props.tab.parentTab.errorOnDBOpen.cause === "object" ?
-                                                JSON.stringify(props.tab.parentTab.errorOnDBOpen.cause)
-                                            :   props.tab.parentTab.errorOnDBOpen.cause;
-                                    } catch {
-                                        return props.tab.parentTab.errorOnDBOpen.cause;
-                                    }
-                                })()}`
+                                `\nCaused by: ${String(
+                                    ((): unknown => {
+                                        try {
+                                            return typeof props.tab.parentTab.errorOnDBOpen.cause === "object" ?
+                                                    JSON.stringify(props.tab.parentTab.errorOnDBOpen.cause)
+                                                :   props.tab.parentTab.errorOnDBOpen.cause;
+                                        } catch {
+                                            return props.tab.parentTab.errorOnDBOpen.cause;
+                                        }
+                                    })()
+                                )}`
                             :   ""
                         }`
                     :   String(
-                            (function (): unknown {
+                            (function formatUnknownErrorValue(): unknown {
                                 try {
                                     return typeof props.tab.parentTab.errorOnDBOpen === "object" ?
                                             JSON.stringify(props.tab.parentTab.errorOnDBOpen)
@@ -83,7 +95,7 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
             </div>
         );
     }
-    function DataLoadFailureNotice({ reason }: { reason: any }): JSX.SpecificElement<"div"> {
+    function DataLoadFailureNotice({ reason }: { reason: unknown }): JSX.SpecificElement<"div"> {
         return (
             <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: center;">
                 <Notice
@@ -97,7 +109,7 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
                     type="button"
                     title="Reopens the editor in raw mode, allowing you to edit unparseable data as binary data in the hex editor."
                     class="genericRoundButton"
-                    onClick={async (event: TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
+                    onClick={(event: TargetedMouseEvent<HTMLButtonElement>): void => {
                         if (!props.tab) throw new ReferenceError("props.tab is undefined.");
                         event.preventDefault();
                         if (event.currentTarget.disabled) return;
@@ -122,7 +134,7 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
                         reason.stack?.startsWith(reason.toString()) ?
                             reason.stack
                         :   reason.toString() + reason.stack
-                    :   reason}
+                    :   String(reason)}
                 </div>
             </div>
         );
@@ -163,6 +175,7 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
         if (props.tab.target.type === "LevelDBEntry" && !props.tab.parentTab.db?.isOpen() && !((await props.tab.parentTab.awaitDBOpen) ?? true)) {
             throw new Error("LevelDB open failure.");
         }
+        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
         formatTypeSwitch: switch (format.type) {
             case "NBT": {
                 await props.tab.loadData();
@@ -174,6 +187,7 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
                 break;
             }
             case "custom": {
+                // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
                 switch (format.resultType) {
                     case "JSONNBT": {
                         await props.tab.loadData();
@@ -199,7 +213,7 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
             (): void => {
                 reloadContents();
             },
-            (reason: any): void => {
+            (reason: unknown): void => {
                 if (containerRef.current) {
                     if (reason instanceof Error && reason.message === "LevelDB open failure.") {
                         render(null, containerRef.current);
@@ -260,11 +274,12 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
         props: MapEditorTabProps;
         options: Extract<MapEditorTabProps["tab"]["currentState"]["options"], { viewMode?: any }>;
     }): JSX.Element {
+        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
         switch (props.options.viewMode) {
             case "map":
                 return (
                     <MapEditor
-                        dataStorageObject={props.props.tab.currentState.options.dataStorageObject! as any}
+                        dataStorageObject={props.props.tab.currentState.options.dataStorageObject! as never}
                         tab={props.props.tab}
                         overlayBarRegistry={widgetRegistryRef.current ?? undefined}
                     />
@@ -272,7 +287,7 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
             case "node":
                 return (
                     <TreeEditor
-                        dataStorageObject={props.props.tab.currentState.options.dataStorageObject! as any}
+                        dataStorageObject={props.props.tab.currentState.options.dataStorageObject! as never}
                         onValueChange={(): undefined => {
                             props.props.tab.hasUnsavedChanges = true;
                             if (props.props.tab.target.type === "LevelDBEntry") {
@@ -301,7 +316,7 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
                         path={`tab://${props.props.tab.parentTab.id}/${props.props.tab.id}/jsonnbt`}
                         contentType={props.options.type}
                         triggerSave={(): void => {
-                            props.props.tab.parentTab.save();
+                            void props.props.tab.parentTab.save();
                         }}
                         tab={props.props.tab}
                     />
@@ -322,7 +337,7 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
                         path={`tab://${props.props.tab.parentTab.id}/${props.props.tab.id}/snbt`}
                         contentType={props.options.type}
                         triggerSave={(): void => {
-                            props.props.tab.parentTab.save();
+                            void props.props.tab.parentTab.save();
                         }}
                         tab={props.props.tab}
                     />

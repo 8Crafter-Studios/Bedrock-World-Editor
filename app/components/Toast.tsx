@@ -1,5 +1,5 @@
-import type { JSX, RefObject } from "preact";
-import _React, { useRef, useEffect, Component, hydrate } from "preact/compat";
+import type { JSX } from "preact";
+import _React, { hydrate } from "preact/compat";
 import EventEmitter from "node:events";
 
 /**
@@ -55,7 +55,7 @@ let nextToastID: bigint = 0n;
  * The toast manager class.
  */
 class ToastManager extends EventEmitter<ToastManagerEventMap> {
-    public activeToasts: Map<bigint, ActiveToast> = new Map();
+    public activeToasts: Map<bigint, ActiveToast> = new Map<bigint, ActiveToast>();
     public hidingToasts: ActiveToast[] = [];
     public toastQueue: ActiveToast[] = [];
     public visibleToasts: ActiveToast[] = [];
@@ -67,11 +67,11 @@ class ToastManager extends EventEmitter<ToastManagerEventMap> {
 export const toastManager = new ToastManager();
 
 toastManager.on("toastShown", (): void => {
-    toastManager.visibleToasts.forEach((toast: ActiveToast): void => toast.updatePosition());
+    toastManager.visibleToasts.forEach((toast: ActiveToast): void => void toast.updatePosition());
 });
 
 toastManager.on("toastHideStart", (): void => {
-    toastManager.visibleToasts.forEach((toast: ActiveToast): void => toast.updatePosition());
+    toastManager.visibleToasts.forEach((toast: ActiveToast): void => void toast.updatePosition());
 });
 
 toastManager.on("toastHidden", (): void => {
@@ -105,7 +105,7 @@ export function createToast(toastOptions: ToastOptions): ActiveToast {
     container.classList.add("nsel", "ndrg");
     container.classList.add("toast-container");
     hydrate(<Toast {...toastOptions} />, container);
-    document.body!.appendChild(container);
+    document.body.appendChild(container);
     return new ActiveToast(id, container, toastOptions);
 }
 
@@ -214,7 +214,11 @@ class ActiveToast {
      * @param container The container element of the toast.
      * @param options The options for the toast.
      */
-    public constructor(public readonly id: bigint, public readonly container: HTMLElement, public options: ToastOptions = {}) {
+    public constructor(
+        public readonly id: bigint,
+        public readonly container: HTMLElement,
+        public options: ToastOptions = {}
+    ) {
         this.options = { duration: 3000, mode: "queue", soundEffect: "toast", ...this.options };
         toastManager.activeToasts.set(this.id, this);
         if (this.options.mode === "stack") {
@@ -241,13 +245,13 @@ class ActiveToast {
         }
         toastManager.visibleToasts.push(this);
         if (this.options.soundEffect !== "none") {
-            SoundEffects[`${this.options.soundEffect ?? "toast"}B`]({
+            void SoundEffects[`${this.options.soundEffect ?? "toast"}B`]({
                 volumeCategory: this.options.volumeCategory ?? "ui",
                 volume:
                     this.options.volumeOverride ??
-                    (this.options.volumeMultiplier !== undefined
-                        ? (this.options.volumeMultiplier ?? 1) * getAudioCategoryVolume(this.options.volumeCategory ?? "ui")
-                        : undefined),
+                    (this.options.volumeMultiplier !== undefined ?
+                        (this.options.volumeMultiplier ?? 1) * getAudioCategoryVolume(this.options.volumeCategory ?? "ui")
+                    :   undefined),
             });
         }
         $(this.container).animateCSSVariable("--top", `${toastManager.visibleToasts.indexOf(this) * 36 - 4}`, 500, "linear");
@@ -314,11 +318,16 @@ export default function Toast(props: ToastProps): JSX.SpecificElement<"div"> {
             {props.image && (
                 <img
                     aria-hidden="true"
-                    style={{ width: "calc(13px * var(--gui-scale))", height: "calc(13px * var(--gui-scale))", margin: "calc(5.5px * var(--gui-scale)) calc(1px * var(--gui-scale)) calc(5.5px * var(--gui-scale)) calc(2px * var(--gui-scale))", display: "inline-block" }}
+                    style={{
+                        width: "calc(13px * var(--gui-scale))",
+                        height: "calc(13px * var(--gui-scale))",
+                        margin: "calc(5.5px * var(--gui-scale)) calc(1px * var(--gui-scale)) calc(5.5px * var(--gui-scale)) calc(2px * var(--gui-scale))",
+                        display: "inline-block",
+                    }}
                     src={props.image}
                 />
             )}
-            <div style={{flexGrow: 1}}>
+            <div style={{ flexGrow: 1 }}>
                 {props.title && (
                     <div
                         style={{

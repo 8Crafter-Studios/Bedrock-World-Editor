@@ -22,12 +22,12 @@
  * console.log(testForObjectExtension(obj5, obj6)); // false
  */
 export function testForObjectExtension(objectToTest: object, base: object): boolean {
-    return Object.entries(base).every((v) => {
+    return Object.entries(base).every((v: [string, unknown]): boolean => {
         if (Object.keys(objectToTest).includes(v[0])) {
-            const v2 = Object.entries(objectToTest).find((c) => c[0] == v[0])![1];
+            const v2: unknown = Object.entries(objectToTest).find((c: [string, unknown]): boolean => c[0] === v[0])![1];
             if (typeof v2 !== typeof v[1]) return false;
             if (v2 === null && v[1] !== null) return false;
-            if (typeof v2 === "object") return testForObjectExtension(v2, v[1]);
+            if (typeof v2 === "object" && v2 && v[1]) return testForObjectExtension(v2, v[1]);
             return v2 === v[1];
         }
         return false;
@@ -65,7 +65,7 @@ export interface Observable<T> {
  */
 export function createObservable<T>(initialValue: T): Observable<T> {
     let value: T = initialValue;
-    const listeners: Set<(value: T) => void> = new Set();
+    const listeners = new Set<(value: T) => void>();
 
     return {
         get(): T {
@@ -94,7 +94,7 @@ let measureTextWidth_canvas: HTMLCanvasElement | null = null;
  * @returns The width of the text in pixels.
  */
 export function measureTextWidth(text: string, font: string): number {
-    const canvas: HTMLCanvasElement = measureTextWidth_canvas ?? (measureTextWidth_canvas = document.createElement("canvas"));
+    const canvas: HTMLCanvasElement = (measureTextWidth_canvas ??= document.createElement("canvas"));
     const context: CanvasRenderingContext2D = canvas.getContext("2d")!;
     context.font = font;
     return context.measureText(text).width;

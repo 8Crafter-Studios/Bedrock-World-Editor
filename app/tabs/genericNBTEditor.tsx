@@ -10,10 +10,19 @@ import EditorWidgetOverlayBar, { type EditorWidgetOverlayBarWidgetRegistry } fro
 import BinaryHexEditor, { initHexEditorDataStorageObjectProps, type HexEditorDataStorageObject } from "../components/BinaryHexEditor";
 import Notice from "../components/Notice";
 
+/**
+ * Props for the {@link GenericNBTEditorTab} component.
+ */
 export interface GenericNBTEditorTabProps {
     tab: TabManagerSubTab;
 }
 
+/**
+ * The generic NBT editor tab.
+ *
+ * @param props The props for the component.
+ * @returns The JSX element.
+ */
 export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JSX.SpecificElement<"div"> {
     const containerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     const viewOptionsRefs = {
@@ -30,11 +39,11 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
     fakeAssertIsValidOptionsType(props.tab.currentState.options);
     props.tab.currentState.options.viewMode ??= "node";
     let dataLoadFailureNoticeReasonExists: boolean = false;
-    let dataLoadFailureNoticeReason: any = null;
+    let dataLoadFailureNoticeReason: unknown = null;
     let levelDBOpenFailure: boolean = false;
     let missingLevelDBKey: boolean = false;
     function LevelDBOpenFailureNotice(): JSX.Element {
-        if (props.tab.parentTab.errorDueToEncryptedLevelDB)
+        if (props.tab.parentTab.errorDueToEncryptedLevelDB) {
             return (
                 <Notice
                     title="Encrypted LevelDB"
@@ -43,6 +52,7 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                     image="access_denied"
                 />
             );
+        }
         return (
             <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
                 <Notice
@@ -54,21 +64,23 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                 />
                 <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
                     {props.tab.parentTab.errorOnDBOpen instanceof Error ?
-                        `${props.tab.parentTab.errorOnDBOpen.stack !== undefined ? props.tab.parentTab.errorOnDBOpen.stack : props.tab.parentTab.errorOnDBOpen.toString()}${
+                        `${props.tab.parentTab.errorOnDBOpen.stack ?? props.tab.parentTab.errorOnDBOpen.toString()}${
                             props.tab.parentTab.errorOnDBOpen.cause !== undefined ?
-                                `\nCaused by: ${((): unknown => {
-                                    try {
-                                        return typeof props.tab.parentTab.errorOnDBOpen.cause === "object" ?
-                                                JSON.stringify(props.tab.parentTab.errorOnDBOpen.cause)
-                                            :   props.tab.parentTab.errorOnDBOpen.cause;
-                                    } catch {
-                                        return props.tab.parentTab.errorOnDBOpen.cause;
-                                    }
-                                })()}`
+                                `\nCaused by: ${String(
+                                    ((): unknown => {
+                                        try {
+                                            return typeof props.tab.parentTab.errorOnDBOpen.cause === "object" ?
+                                                    JSON.stringify(props.tab.parentTab.errorOnDBOpen.cause)
+                                                :   props.tab.parentTab.errorOnDBOpen.cause;
+                                        } catch {
+                                            return props.tab.parentTab.errorOnDBOpen.cause;
+                                        }
+                                    })()
+                                )}`
                             :   ""
                         }`
                     :   String(
-                            (function (): unknown {
+                            (function formatUnknownErrorValue(): unknown {
                                 try {
                                     return typeof props.tab.parentTab.errorOnDBOpen === "object" ?
                                             JSON.stringify(props.tab.parentTab.errorOnDBOpen)
@@ -83,7 +95,7 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
             </div>
         );
     }
-    function DataLoadFailureNotice({ reason }: { reason: any }): JSX.SpecificElement<"div"> {
+    function DataLoadFailureNotice({ reason }: { reason: unknown }): JSX.SpecificElement<"div"> {
         return (
             <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: center;">
                 <Notice
@@ -97,7 +109,7 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                     type="button"
                     title="Reopens the editor in raw mode, allowing you to edit unparseable data as binary data in the hex editor."
                     class="genericRoundButton"
-                    onClick={async (event: TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
+                    onClick={(event: TargetedMouseEvent<HTMLButtonElement>): void => {
                         if (!props.tab) throw new ReferenceError("props.tab is undefined.");
                         event.preventDefault();
                         if (event.currentTarget.disabled) return;
@@ -122,7 +134,7 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                         reason.stack?.startsWith(reason.toString()) ?
                             reason.stack
                         :   reason.toString() + reason.stack
-                    :   reason}
+                    :   String(reason)}
                 </div>
             </div>
         );
@@ -174,6 +186,7 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
         if (props.tab.target.type === "LevelDBEntry" && !props.tab.parentTab.db?.isOpen() && !((await props.tab.parentTab.awaitDBOpen) ?? true)) {
             throw new Error("LevelDB open failure.");
         }
+        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
         formatTypeSwitch: switch (format.type) {
             case "NBT": {
                 // props.tab.currentState.options.dataStorageObject = {
@@ -207,6 +220,7 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                 break;
             }
             case "custom": {
+                // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
                 switch (format.resultType) {
                     case "JSONNBT": {
                         // props.tab.currentState.options.dataStorageObject = {
@@ -254,7 +268,7 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
             (): void => {
                 reloadContents();
             },
-            (reason: any): void => {
+            (reason: unknown): void => {
                 if (containerRef.current) {
                     if (reason instanceof Error && reason.message === "LevelDB open failure.") {
                         render(null, containerRef.current);
@@ -304,11 +318,12 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
         props: GenericNBTEditorTabProps;
         options: Extract<GenericNBTEditorTabProps["tab"]["currentState"]["options"], { viewMode?: any }>;
     }): JSX.Element {
+        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
         switch (props.options.viewMode) {
             case "node":
                 return (
                     <TreeEditor
-                        dataStorageObject={props.props.tab.currentState.options.dataStorageObject! as any}
+                        dataStorageObject={props.props.tab.currentState.options.dataStorageObject! as never}
                         onValueChange={(): undefined => {
                             props.props.tab.hasUnsavedChanges = true;
                             if (props.props.tab.target.type === "LevelDBEntry") {
@@ -338,7 +353,7 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                         path={`tab://${props.props.tab.parentTab.id}/${props.props.tab.id}/jsonnbt`}
                         contentType={props.options.type}
                         triggerSave={(): void => {
-                            props.props.tab.parentTab.save();
+                            void props.props.tab.parentTab.save();
                         }}
                         tab={props.props.tab}
                     />
@@ -359,7 +374,7 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                         path={`tab://${props.props.tab.parentTab.id}/${props.props.tab.id}/snbt`}
                         contentType={props.options.type}
                         triggerSave={(): void => {
-                            props.props.tab.parentTab.save();
+                            void props.props.tab.parentTab.save();
                         }}
                         tab={props.props.tab}
                     />

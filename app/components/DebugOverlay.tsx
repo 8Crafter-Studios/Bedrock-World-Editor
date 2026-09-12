@@ -1,6 +1,6 @@
 import type { JSX, RefObject } from "preact";
 import { hydrate, render, useEffect, useRef } from "preact/compat";
-import { app, screen } from "@electron/remote";
+import { app } from "@electron/remote";
 import os from "node:os";
 import v8 from "node:v8";
 import { existsSync } from "node:fs";
@@ -30,15 +30,15 @@ function cleanGPUString(raw: string): string {
     if (!raw) return "Unknown GPU";
 
     // ANGLE Metal (macOS)
-    const metal: RegExpMatchArray | null = raw.match(/Renderer:\s*([^,]+)/i);
+    const metal: RegExpMatchArray | null = /Renderer:\s*([^,]+)/i.exec(raw);
     if (metal) return metal[1]!.trim();
 
     // ANGLE Direct3D (Windows)
-    const d3d: RegExpMatchArray | null = raw.match(/\(([^,]+),\s*([^()]+?)\s*(Direct3D|D3D)/i);
+    const d3d: RegExpMatchArray | null = /\(([^,]+),\s*([^()]+?)\s*(Direct3D|D3D)/i.exec(raw);
     if (d3d) return d3d[2]!.trim();
 
     // Mesa / Vulkan (Linux)
-    const mesa: RegExpMatchArray | null = raw.match(/^([^()]+)\s*\(/);
+    const mesa: RegExpMatchArray | null = /^([^()]+)\s*\(/.exec(raw);
     if (mesa) return mesa[1]!.trim();
 
     // Fallback: strip parentheses and extra metadata
@@ -179,7 +179,7 @@ function DebugOverlay_Top(): JSX.Element {
                 return;
             }
             hydrate(<Contents />, containerRef.current);
-        }, 1000) as unknown as number;
+        }, 1000);
         return (): void => {
             clearInterval(intervalID);
         };
@@ -359,8 +359,8 @@ interface GPUInfo {
     machineModelVersion?: string;
 }
 
-let GPUInfo: GPUInfo | undefined = undefined;
-(app.getGPUInfo("complete") as Promise<GPUInfo>).then((gpuInfo: GPUInfo): void => {
+let GPUInfo: GPUInfo | undefined;
+void (app.getGPUInfo("complete") as Promise<GPUInfo>).then((gpuInfo: GPUInfo): void => {
     GPUInfo = gpuInfo;
 });
 
@@ -560,7 +560,7 @@ function DebugOverlay_Basic(): JSX.Element {
                 return;
             }
             render(<RightContents />, rightContainerRef.current);
-        }, 1000) as unknown as number;
+        }, 1000);
         return (): void => {
             window.removeEventListener("resize", handleWindowResize);
             clearInterval(intervalID);
@@ -639,7 +639,7 @@ function DebugOverlay_Config(): JSX.Element {
     const rightContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     function CrispyDropShadowSpan(props: JSX.HTMLAttributes<HTMLSpanElement>): JSX.Element {
         return (
-            <span {...Object.fromEntries(Object.entries(props).filter(([key, value]: [key: string, value: any]): boolean => key !== "children"))}>
+            <span {...Object.fromEntries(Object.entries(props).filter(([key, _value]: [key: string, value: any]): boolean => key !== "children"))}>
                 <span class="crispy cirspy-text-with-drop-shadow-inner-span">{props.children}</span>
             </span>
         );
@@ -993,7 +993,7 @@ function DebugOverlay_Config(): JSX.Element {
                 return;
             }
             render(<RightContents />, rightContainerRef.current);
-        }, 1000) as unknown as number;
+        }, 1000);
         return (): void => {
             window.removeEventListener("resize", handleWindowResize);
             clearInterval(intervalID);
@@ -1050,7 +1050,7 @@ function DebugOverlay_Config_Views(): JSX.Element {
     const rightContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     function CrispyDropShadowSpan(props: JSX.HTMLAttributes<HTMLSpanElement>): JSX.Element {
         return (
-            <span {...Object.fromEntries(Object.entries(props).filter(([key, value]: [key: string, value: any]): boolean => key !== "children"))}>
+            <span {...Object.fromEntries(Object.entries(props).filter(([key, _value]: [key: string, value: any]): boolean => key !== "children"))}>
                 <span class="crispy cirspy-text-with-drop-shadow-inner-span">{props.children}</span>
             </span>
         );
@@ -1061,7 +1061,7 @@ function DebugOverlay_Config_Views(): JSX.Element {
                 {(Object.keys(config.views) as (keyof typeof subConfigKeyStructure.views)[]).map(
                     (view: keyof typeof subConfigKeyStructure.views): JSX.Element => {
                         const viewSettings = config.views[view];
-                        const modeSettings: UnionToIntersection<typeof viewSettings.modeSettings> = viewSettings.modeSettings as any;
+                        const modeSettings = viewSettings.modeSettings as UnionToIntersection<typeof viewSettings.modeSettings>;
                         return (
                             <>
                                 <span
@@ -1156,7 +1156,7 @@ function DebugOverlay_Config_Views(): JSX.Element {
                 return;
             }
             render(<RightContents />, rightContainerRef.current);
-        }, 1000) as unknown as number;
+        }, 1000);
         return (): void => {
             clearInterval(intervalID);
         };
@@ -1213,7 +1213,7 @@ function DebugOverlay_Tab(): JSX.Element {
     const rightContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     function CrispyDropShadowSpan(props: JSX.HTMLAttributes<HTMLSpanElement>): JSX.Element {
         return (
-            <span {...Object.fromEntries(Object.entries(props).filter(([key, value]: [key: string, value: any]): boolean => key !== "children"))}>
+            <span {...Object.fromEntries(Object.entries(props).filter(([key, _value]: [key: string, value: any]): boolean => key !== "children"))}>
                 <span class="crispy cirspy-text-with-drop-shadow-inner-span">{props.children}</span>
             </span>
         );
@@ -1447,7 +1447,7 @@ function DebugOverlay_Tab(): JSX.Element {
                 return;
             }
             render(<RightContents />, rightContainerRef.current);
-        }, 250) as unknown as number;
+        }, 250);
         return (): void => {
             clearInterval(intervalID);
         };

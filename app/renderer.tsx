@@ -1,4 +1,3 @@
-/* eslint-disable import/no-unresolved */
 import "./index.css";
 import "overlayscrollbars/overlayscrollbars.css";
 import "../src/libs/@szhsin/react-menu/index.css";
@@ -7,16 +6,15 @@ import "../src/importjQueryUtils.ts";
 import { render } from "preact/compat";
 import App from "./app.tsx";
 import "jquery";
-// #DEBUG
-// @ts-expect-error
-globalThis.mcbeLeveldbUri = (() => import("mcbe-leveldb")).toString().split('"')[1];
+// @ts-expect-error: #DEBUG
+globalThis.mcbeLeveldbUri = (async (): Promise<typeof import("mcbe-leveldb")> => await import("mcbe-leveldb")).toString().split('"')[1];
 
 declare module "preact" {
     namespace JSX {
         interface SpecificElement<
-            V extends keyof JSX.IntrinsicElements | HTMLAttributes<any>,
+            V extends keyof IntrinsicElements | HTMLAttributes<any>,
             P = V extends keyof IntrinsicElements ? IntrinsicElements[V] : V,
-            T = P extends HTMLAttributes<infer T> ? T : never
+            T = P extends HTMLAttributes<infer T> ? T : never,
         > extends VNode<ClassAttributes<T> & P> {}
         interface OnlyVisibleOnThemesHTMLAttributes<T extends EventTarget = HTMLUnknownElement> extends HTMLAttributes<T> {
             /**
@@ -48,7 +46,9 @@ declare module "preact" {
              * The deprecated HTML center element.
              */
             center: HTMLAttributes<HTMLElement>;
+            // REMOVE
             "purple-border_background": {
+                // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
                 children?: any[] | any;
             };
         }
@@ -91,4 +91,3 @@ customElements.define("purple-border_background", PurpleBorderBackgroundElement)
 render(<App />, document.getElementById("app")!);
 
 // console.log(document.getElementById("app"));
-

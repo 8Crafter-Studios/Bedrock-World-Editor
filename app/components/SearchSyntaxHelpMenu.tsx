@@ -127,7 +127,7 @@ export interface SearchSyntaxHelpMenuProps {
     /**
      * A callback for when the menu is closed.
      */
-    onClose(): void;
+    onClose(this: void): void;
 }
 
 /**
@@ -191,19 +191,20 @@ export default function SearchSyntaxHelpMenu(props: SearchSyntaxHelpMenuProps): 
                                                             if (containerRef.current && mainHelpInfoPageRef.current) {
                                                                 Array.from(containerRef.current.children)
                                                                     .slice(1)
-                                                                    .forEach((child: Element): void => child.remove());
+                                                                    .forEach((child: Element): void => void child.remove());
                                                                 $(mainHelpInfoPageRef.current).hide();
-                                                                let tempElement: HTMLDivElement = document.createElement("div");
+                                                                const tempElement: HTMLDivElement = document.createElement("div");
                                                                 render(
                                                                     <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
                                                                         <button
                                                                             type="button"
                                                                             onClick={(): void => {
-                                                                                containerRef.current &&
+                                                                                if (containerRef.current) {
                                                                                     Array.from(containerRef.current.children)
                                                                                         .slice(1)
-                                                                                        .forEach((child: Element): void => child.remove());
-                                                                                mainHelpInfoPageRef.current && $(mainHelpInfoPageRef.current).show();
+                                                                                        .forEach((child: Element): void => void child.remove());
+                                                                                }
+                                                                                if (mainHelpInfoPageRef.current) $(mainHelpInfoPageRef.current).show();
                                                                             }}
                                                                             style={{
                                                                                 position: "absolute",
@@ -215,19 +216,17 @@ export default function SearchSyntaxHelpMenu(props: SearchSyntaxHelpMenuProps): 
                                                                             Back
                                                                         </button>
                                                                         <h1>{prefixOperator}</h1>
-                                                                        {prefixOperatorInfo.extendedDescription === undefined ||
-                                                                        typeof prefixOperatorInfo.extendedDescription === "string" ? (
+                                                                        {(
+                                                                            prefixOperatorInfo.extendedDescription === undefined ||
+                                                                            typeof prefixOperatorInfo.extendedDescription === "string"
+                                                                        ) ?
                                                                             <p>{prefixOperatorInfo.extendedDescription ?? prefixOperatorInfo.description}</p>
-                                                                        ) : (
-                                                                            prefixOperatorInfo.extendedDescription
-                                                                        )}
+                                                                        :   prefixOperatorInfo.extendedDescription}
                                                                         {prefixOperatorInfo.examples!.map(
                                                                             (example: string | JSX.Element, index: number): JSX.Element =>
-                                                                                typeof example === "string" ? (
-                                                                                    <p key={prefixOperator + "examples" + index}>{example}</p>
-                                                                                ) : (
-                                                                                    example
-                                                                                )
+                                                                                typeof example === "string" ?
+                                                                                    <p key={`${prefixOperator}examples${index}`}>{example}</p>
+                                                                                :   example
                                                                         )}
                                                                     </div>,
                                                                     tempElement
@@ -265,19 +264,20 @@ export default function SearchSyntaxHelpMenu(props: SearchSyntaxHelpMenuProps): 
                                                                 if (containerRef.current && mainHelpInfoPageRef.current) {
                                                                     Array.from(containerRef.current.children)
                                                                         .slice(1)
-                                                                        .forEach((child: Element): void => child.remove());
+                                                                        .forEach((child: Element): void => void child.remove());
                                                                     $(mainHelpInfoPageRef.current).hide();
-                                                                    let tempElement: HTMLDivElement = document.createElement("div");
+                                                                    const tempElement: HTMLDivElement = document.createElement("div");
                                                                     render(
                                                                         <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
                                                                             <button
                                                                                 type="button"
                                                                                 onClick={(): void => {
-                                                                                    containerRef.current &&
+                                                                                    if (containerRef.current) {
                                                                                         Array.from(containerRef.current.children)
                                                                                             .slice(1)
-                                                                                            .forEach((child: Element): void => child.remove());
-                                                                                    mainHelpInfoPageRef.current && $(mainHelpInfoPageRef.current).show();
+                                                                                            .forEach((child: Element): void => void child.remove());
+                                                                                    }
+                                                                                    if (mainHelpInfoPageRef.current) $(mainHelpInfoPageRef.current).show();
                                                                                 }}
                                                                                 style={{
                                                                                     position: "absolute",
@@ -289,22 +289,20 @@ export default function SearchSyntaxHelpMenu(props: SearchSyntaxHelpMenuProps): 
                                                                                 Back
                                                                             </button>
                                                                             <h1>{filter}</h1>
-                                                                            {filterInfo.extendedDescription === undefined ||
-                                                                            typeof filterInfo.extendedDescription === "string" ? (
+                                                                            {(
+                                                                                filterInfo.extendedDescription === undefined ||
+                                                                                typeof filterInfo.extendedDescription === "string"
+                                                                            ) ?
                                                                                 <p>{filterInfo.extendedDescription ?? filterInfo.description}</p>
-                                                                            ) : (
-                                                                                filterInfo.extendedDescription
-                                                                            )}
+                                                                            :   filterInfo.extendedDescription}
                                                                             <h2>Examples</h2>
                                                                             {filterInfo.examples &&
                                                                                 filterInfo.examples.length > 0 &&
                                                                                 filterInfo.examples.map(
                                                                                     (example: string | JSX.Element, index: number): JSX.Element =>
-                                                                                        typeof example === "string" ? (
-                                                                                            <p key={filter + "examples" + index}>{example}</p>
-                                                                                        ) : (
-                                                                                            example
-                                                                                        )
+                                                                                        typeof example === "string" ?
+                                                                                            <p key={`${filter}examples${index}`}>{example}</p>
+                                                                                        :   example
                                                                                 )}
                                                                         </div>,
                                                                         tempElement
@@ -333,7 +331,7 @@ export default function SearchSyntaxHelpMenu(props: SearchSyntaxHelpMenuProps): 
                             <h2>{props.helpInfo.miscExamplesHeader ?? "Examples"}</h2>
                             {props.helpInfo.miscExamples.map(
                                 (example: string, index: number): JSX.SpecificElement<"p"> => (
-                                    <p key={"miscExamples" + index}>{example}</p>
+                                    <p key={`miscExamples${index}`}>{example}</p>
                                 )
                             )}
                         </div>

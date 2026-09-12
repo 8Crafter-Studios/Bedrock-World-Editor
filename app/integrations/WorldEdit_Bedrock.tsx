@@ -133,7 +133,7 @@ async function action_command_setbiome_legacy_getTargetedChunkCount(
                 if (!entry.FakePlayerName?.value) continue;
                 let commandData: LegacyScoreboardSetBiomeData;
                 try {
-                    commandData = JSON.parse(JSON.parse(`"${entry.FakePlayerName.value}"`)) as LegacyScoreboardSetBiomeData;
+                    commandData = JSON.parse(JSON.parse(`"${entry.FakePlayerName.value}"`) as string) as LegacyScoreboardSetBiomeData;
                 } catch (e) {
                     console.error(
                         "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_legacy_getTargetedChunkCount] Invalid setbiome command data for entry:",
@@ -178,42 +178,40 @@ async function action_command_setbiome_legacy_getTargetedChunkCount(
                             [8, 16].includes(data3dValue.value.biomes.value.value.length) ? 0
                             : data3dValue.value.biomes.value.value.length === 24 ? -4
                             : FALLBACK_MIN_SUBCHUNK_INDEX;
-                    } else {
-                        if (e instanceof ReferenceError && e.message === "Level chunk meta data hash not found.") {
-                            if ([8, 16, 24].includes(data3dValue.value.biomes.value.value.length)) {
-                                minSubchunkIndex =
-                                    [8, 16].includes(data3dValue.value.biomes.value.value.length) ? 0
-                                    : data3dValue.value.biomes.value.value.length === 24 ? -4
-                                    : NaN;
-                                console.warn(
-                                    `[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_legacy_getTargetedChunkCount] Warning for entry. Failed to get level chunk meta data hash for chunk even though the LevelChunkMetaDataDictionary is present, but the height range is able to be inferred from the Data3D biome subchunk array's length (inferred minimum subchunk index: ${minSubchunkIndex}). entry:`,
-                                    entry,
-                                    "error:",
-                                    e
-                                );
-                                targetedChunkCountData.warningTypes.metaDataHashMissing++;
-                                targetedChunkCountData.warnings++;
-                            } else {
-                                console.error(
-                                    "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_legacy_getTargetedChunkCount] Skipping entry. Failed to get level chunk meta data hash for chunk even though the LevelChunkMetaDataDictionary is present, and the height range is unable to be inferred from the Data3D biome subchunk array's length. entry:",
-                                    entry,
-                                    "error:",
-                                    e
-                                );
-                                targetedChunkCountData.errorTypes.metaDataHashMissingUninferrable++;
-                                continue;
-                            }
-                        } else {
-                            // REVIEW: Check if the game actually makes metadata hashes for ALL saved chunks when upgrading worlds to a version with the LevelChunkMetaDataDictionary.
-                            console.error(
-                                "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_legacy_getTargetedChunkCount] Skipping entry. Failed to get level chunk meta data for chunk even though the LevelChunkMetaDataDictionary is present. entry:",
+                    } else if (e instanceof ReferenceError && e.message === "Level chunk meta data hash not found.") {
+                        if ([8, 16, 24].includes(data3dValue.value.biomes.value.value.length)) {
+                            minSubchunkIndex =
+                                [8, 16].includes(data3dValue.value.biomes.value.value.length) ? 0
+                                : data3dValue.value.biomes.value.value.length === 24 ? -4
+                                : NaN;
+                            console.warn(
+                                `[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_legacy_getTargetedChunkCount] Warning for entry. Failed to get level chunk meta data hash for chunk even though the LevelChunkMetaDataDictionary is present, but the height range is able to be inferred from the Data3D biome subchunk array's length (inferred minimum subchunk index: ${minSubchunkIndex}). entry:`,
                                 entry,
                                 "error:",
                                 e
                             );
-                            targetedChunkCountData.errorTypes.unableToGetLevelChunkMetaData++;
+                            targetedChunkCountData.warningTypes.metaDataHashMissing++;
+                            targetedChunkCountData.warnings++;
+                        } else {
+                            console.error(
+                                "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_legacy_getTargetedChunkCount] Skipping entry. Failed to get level chunk meta data hash for chunk even though the LevelChunkMetaDataDictionary is present, and the height range is unable to be inferred from the Data3D biome subchunk array's length. entry:",
+                                entry,
+                                "error:",
+                                e
+                            );
+                            targetedChunkCountData.errorTypes.metaDataHashMissingUninferrable++;
                             continue;
                         }
+                    } else {
+                        // REVIEW: Check if the game actually makes metadata hashes for ALL saved chunks when upgrading worlds to a version with the LevelChunkMetaDataDictionary.
+                        console.error(
+                            "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_legacy_getTargetedChunkCount] Skipping entry. Failed to get level chunk meta data for chunk even though the LevelChunkMetaDataDictionary is present. entry:",
+                            entry,
+                            "error:",
+                            e
+                        );
+                        targetedChunkCountData.errorTypes.unableToGetLevelChunkMetaData++;
+                        continue;
                     }
                 }
                 if (
@@ -244,7 +242,7 @@ async function action_command_setbiome_legacy_getTargetedChunkCount(
                             type: "list",
                             value: {
                                 type: "int",
-                                value: Array(16 ** 3).fill(0),
+                                value: Array<number>(16 ** 3).fill(0),
                             },
                         },
                     };
@@ -255,7 +253,7 @@ async function action_command_setbiome_legacy_getTargetedChunkCount(
                             y - minSubchunkIndex - (data3dValue.value.biomes.value.value.length - 1)
                         ).map((): (typeof data3dValue.value.biomes.value.value)[number] => ({
                             palette: { type: "list", value: { type: "int", value: [0] } },
-                            values: { type: "list", value: { type: "int", value: Array(16 ** 3).fill(0) } },
+                            values: { type: "list", value: { type: "int", value: Array<number>(16 ** 3).fill(0) } },
                         }))
                     );
                 }
@@ -320,6 +318,11 @@ async function action_command_setbiome_getTargetedChunkCount(
     ) as `biome,${`minecraft:${Dimension}` | `${string}:${string}` | `${bigint}`},${number}_${number}_${number}`[];
     const rawCustomBiomeIdMapping = await tab.db.get("BiomeIdsTable");
     try {
+        // TODO:
+        // Use this to actually validate the biome namespaced IDs to see if they are valid, and if they aren't, mark the chunk as errored.
+        // If the biomeIdsTable exists but failed to load and the biome isn't a valid vanilla biome ID (doesn't start with `minecraft:`),
+        // then mark it as a customBiomeMissingBiomeIdsTable error. If the biomeIdsTable exists and is loaded, mark it as an unknownCustomBiome error.
+        // If the ID starts with `minecraft:`, mark it as an unknownVanillaBiome error.
         var customBiomeIdMapping: (NBTSchemas.NBTSchemaTypes.BiomeIdsTable & NBT.NBT) | undefined =
             rawCustomBiomeIdMapping ?
                 ((await NBT.parse(rawCustomBiomeIdMapping, "little")).parsed as NBTSchemas.NBTSchemaTypes.BiomeIdsTable & NBT.NBT)
@@ -369,6 +372,7 @@ async function action_command_setbiome_getTargetedChunkCount(
             }
             let commandData: ScoreboardSetBiomeData;
             try {
+                // TODO: Actually validate this data, and validate the biome namespaced IDs too.
                 commandData = JSON.parse(dataString) as ScoreboardSetBiomeData;
             } catch (e) {
                 console.error(
@@ -454,42 +458,40 @@ async function action_command_setbiome_getTargetedChunkCount(
                         [8, 16].includes(data3dValue.value.biomes.value.value.length) ? 0
                         : data3dValue.value.biomes.value.value.length === 24 ? -4
                         : FALLBACK_MIN_SUBCHUNK_INDEX;
-                } else {
-                    if (e instanceof ReferenceError && e.message === "Level chunk meta data hash not found.") {
-                        if ([8, 16, 24].includes(data3dValue.value.biomes.value.value.length)) {
-                            minSubchunkIndex =
-                                [8, 16].includes(data3dValue.value.biomes.value.value.length) ? 0
-                                : data3dValue.value.biomes.value.value.length === 24 ? -4
-                                : NaN;
-                            console.warn(
-                                `[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_getTargetedChunkCount] Warning for entry. Failed to get level chunk meta data hash for chunk even though the LevelChunkMetaDataDictionary is present, but the height range is able to be inferred from the Data3D biome subchunk array's length (inferred minimum subchunk index: ${minSubchunkIndex}). entry:`,
-                                biomeChangeProperty,
-                                "error:",
-                                e
-                            );
-                            targetedChunkCountData.warningTypes.metaDataHashMissing++;
-                            targetedChunkCountData.warnings++;
-                        } else {
-                            console.error(
-                                "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_getTargetedChunkCount] Skipping entry. Failed to get level chunk meta data hash for chunk even though the LevelChunkMetaDataDictionary is present, and the height range is unable to be inferred from the Data3D biome subchunk array's length. entry:",
-                                biomeChangeProperty,
-                                "error:",
-                                e
-                            );
-                            targetedChunkCountData.errorTypes.metaDataHashMissingUninferrable++;
-                            continue;
-                        }
-                    } else {
-                        // REVIEW: Check if the game actually makes metadata hashes for ALL saved chunks when upgrading worlds to a version with the LevelChunkMetaDataDictionary.
-                        console.error(
-                            "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_getTargetedChunkCount] Skipping entry. Failed to get level chunk meta data for chunk even though the LevelChunkMetaDataDictionary is present. entry:",
+                } else if (e instanceof ReferenceError && e.message === "Level chunk meta data hash not found.") {
+                    if ([8, 16, 24].includes(data3dValue.value.biomes.value.value.length)) {
+                        minSubchunkIndex =
+                            [8, 16].includes(data3dValue.value.biomes.value.value.length) ? 0
+                            : data3dValue.value.biomes.value.value.length === 24 ? -4
+                            : NaN;
+                        console.warn(
+                            `[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_getTargetedChunkCount] Warning for entry. Failed to get level chunk meta data hash for chunk even though the LevelChunkMetaDataDictionary is present, but the height range is able to be inferred from the Data3D biome subchunk array's length (inferred minimum subchunk index: ${minSubchunkIndex}). entry:`,
                             biomeChangeProperty,
                             "error:",
                             e
                         );
-                        targetedChunkCountData.errorTypes.unableToGetLevelChunkMetaData++;
+                        targetedChunkCountData.warningTypes.metaDataHashMissing++;
+                        targetedChunkCountData.warnings++;
+                    } else {
+                        console.error(
+                            "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_getTargetedChunkCount] Skipping entry. Failed to get level chunk meta data hash for chunk even though the LevelChunkMetaDataDictionary is present, and the height range is unable to be inferred from the Data3D biome subchunk array's length. entry:",
+                            biomeChangeProperty,
+                            "error:",
+                            e
+                        );
+                        targetedChunkCountData.errorTypes.metaDataHashMissingUninferrable++;
                         continue;
                     }
+                } else {
+                    // REVIEW: Check if the game actually makes metadata hashes for ALL saved chunks when upgrading worlds to a version with the LevelChunkMetaDataDictionary.
+                    console.error(
+                        "[integration::WorldEdit_Bedrock::__INTERNAL__::action_command_setbiome_getTargetedChunkCount] Skipping entry. Failed to get level chunk meta data for chunk even though the LevelChunkMetaDataDictionary is present. entry:",
+                        biomeChangeProperty,
+                        "error:",
+                        e
+                    );
+                    targetedChunkCountData.errorTypes.unableToGetLevelChunkMetaData++;
+                    continue;
                 }
             }
             if (
@@ -520,7 +522,7 @@ async function action_command_setbiome_getTargetedChunkCount(
                         type: "list",
                         value: {
                             type: "int",
-                            value: Array(16 ** 3).fill(0),
+                            value: Array<number>(16 ** 3).fill(0),
                         },
                     },
                 };
@@ -531,7 +533,7 @@ async function action_command_setbiome_getTargetedChunkCount(
                         y - minSubchunkIndex - (data3dValue.value.biomes.value.value.length - 1)
                     ).map((): (typeof data3dValue.value.biomes.value.value)[number] => ({
                         palette: { type: "list", value: { type: "int", value: [0] } },
-                        values: { type: "list", value: { type: "int", value: Array(16 ** 3).fill(0) } },
+                        values: { type: "list", value: { type: "int", value: Array<number>(16 ** 3).fill(0) } },
                     }))
                 );
             }
@@ -607,7 +609,7 @@ async function action_export_structures_getStructures(tab: TabManagerTab, signal
             structures.push({
                 structureId,
                 scoreboardId: toLong(entry.ScoreboardId.value),
-                individualStructures: structureKeys.filter((key: Buffer): true | void => {
+                individualStructures: structureKeys.filter((key: Buffer): boolean => {
                     const k: string = key.toString();
                     if (k === `structuretemplate_${structureName[0]}:weditstructmeta_${structureName[1]}`) return true;
                     if (k === `structuretemplate_mystructure:weditstructref_${structureName[1]}`) return true;
@@ -617,8 +619,10 @@ async function action_export_structures_getStructures(tab: TabManagerTab, signal
                         new RegExp(
                             String.raw`^structuretemplate_${RegExp.escape(structureName[0])}:weditstructexport_${RegExp.escape(structureName[1])}(?:_\d+_\d+_\d+)?$`
                         ).test(k)
-                    )
+                    ) {
                         return true;
+                    }
+                    return false;
                 }),
             });
         }
@@ -697,7 +701,7 @@ const thisIntegration = {
                         if (!entry.FakePlayerName?.value) continue;
                         let commandData: LegacyScoreboardSetBiomeData;
                         try {
-                            commandData = JSON.parse(JSON.parse(`"${entry.FakePlayerName.value}"`)) as LegacyScoreboardSetBiomeData;
+                            commandData = JSON.parse(JSON.parse(`"${entry.FakePlayerName.value}"`) as string) as LegacyScoreboardSetBiomeData;
                         } catch (e) {
                             console.error(
                                 "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::checkIfApplicable] Invalid setbiome command data for entry:",
@@ -735,7 +739,7 @@ const thisIntegration = {
                             if (!entry.FakePlayerName?.value) continue;
                             let commandData: LegacyScoreboardSetBiomeData;
                             try {
-                                commandData = JSON.parse(JSON.parse(`"${entry.FakePlayerName.value}"`)) as LegacyScoreboardSetBiomeData;
+                                commandData = JSON.parse(JSON.parse(`"${entry.FakePlayerName.value}"`) as string) as LegacyScoreboardSetBiomeData;
                             } catch (e) {
                                 console.error(
                                     "[integration::WorldEdit_Bedrock::autoApplyActions::command_setbiome_legacy::apply] Invalid setbiome command data for entry:",
@@ -848,7 +852,7 @@ const thisIntegration = {
                                         type: "list",
                                         value: {
                                             type: "int",
-                                            value: Array(16 ** 3).fill(0),
+                                            value: Array<number>(16 ** 3).fill(0),
                                         },
                                     },
                                 };
@@ -859,7 +863,7 @@ const thisIntegration = {
                                         y - minSubchunkIndex - (data3dValue.value.biomes.value.value.length - 1)
                                     ).map((): (typeof data3dValue.value.biomes.value.value)[number] => ({
                                         palette: { type: "list", value: { type: "int", value: [0] } },
-                                        values: { type: "list", value: { type: "int", value: Array(16 ** 3).fill(0) } },
+                                        values: { type: "list", value: { type: "int", value: Array<number>(16 ** 3).fill(0) } },
                                     }))
                                 );
                             }
@@ -877,7 +881,7 @@ const thisIntegration = {
                                     data3dValue.value.biomes.value.value[i]?.values.value.value.length === 0
                                 ) {
                                     data3dValue.value.biomes.value.value[i]!.palette.value.value = [0];
-                                    data3dValue.value.biomes.value.value[i]!.values.value.value = Array(16 ** 3).fill(0);
+                                    data3dValue.value.biomes.value.value[i]!.values.value.value = Array<number>(16 ** 3).fill(0);
                                 }
                             }
                             const paletteMapping = new Map<number, number>();
@@ -1002,6 +1006,7 @@ const thisIntegration = {
                         );
                         continue;
                     }
+                    void commandData; // TEMP
                     return true;
                 }
                 return false;
@@ -1212,7 +1217,7 @@ const thisIntegration = {
                                     type: "list",
                                     value: {
                                         type: "int",
-                                        value: Array(16 ** 3).fill(0),
+                                        value: Array<number>(16 ** 3).fill(0),
                                     },
                                 },
                             };
@@ -1223,7 +1228,7 @@ const thisIntegration = {
                                     y - minSubchunkIndex - (data3dValue.value.biomes.value.value.length - 1)
                                 ).map((): (typeof data3dValue.value.biomes.value.value)[number] => ({
                                     palette: { type: "list", value: { type: "int", value: [0] } },
-                                    values: { type: "list", value: { type: "int", value: Array(16 ** 3).fill(0) } },
+                                    values: { type: "list", value: { type: "int", value: Array<number>(16 ** 3).fill(0) } },
                                 }))
                             );
                         }
@@ -1242,7 +1247,7 @@ const thisIntegration = {
                                 data3dValue.value.biomes.value.value[i]?.values.value.value.length === 0
                             ) {
                                 data3dValue.value.biomes.value.value[i]!.palette.value.value = [0];
-                                data3dValue.value.biomes.value.value[i]!.values.value.value = Array(16 ** 3).fill(0);
+                                data3dValue.value.biomes.value.value[i]!.values.value.value = Array<number>(16 ** 3).fill(0);
                             }
                         }
                         const paletteMapping = new Map<number, number>();
@@ -1335,7 +1340,7 @@ const thisIntegration = {
             name: "Repair Crashing Chunks",
             description: "Fixes chunks that are causing the world to crash after using the setbiome command on them.",
             waitToCheckUntilWorldLoaded: false,
-            async checkIfApplicable(_tab: TabManagerTab): Promise<boolean> {
+            checkIfApplicable(_tab: TabManagerTab): boolean {
                 return false;
             },
             async apply(tab: TabManagerTab, showResultDialog = false): Promise<void> {
@@ -1369,7 +1374,7 @@ const thisIntegration = {
                                 data3dValue.value.biomes.value.value[i]?.values.value.value.length === 0
                             ) {
                                 data3dValue.value.biomes.value.value[i]!.palette.value.value = [0];
-                                data3dValue.value.biomes.value.value[i]!.values.value.value = Array(16 ** 3).fill(0);
+                                data3dValue.value.biomes.value.value[i]!.values.value.value = Array<number>(16 ** 3).fill(0);
                                 repaired = true;
                             }
                         }
@@ -1395,7 +1400,7 @@ const thisIntegration = {
                 }
                 if (showResultDialog) {
                     if (repairedChunks === 0) {
-                        dialog.showMessageBox({
+                        void dialog.showMessageBox({
                             type: "info",
                             title: "No Corrupted Chunks Found",
                             message: `Scanned ${tab.cachedDBKeys.Data3D.length} Data3D entries. No Data3D entries that were corrupted by setbiome were found.`,
@@ -1403,7 +1408,7 @@ const thisIntegration = {
                             noLink: true,
                         });
                     } else {
-                        dialog.showMessageBox({
+                        void dialog.showMessageBox({
                             type: "info",
                             title: "Found and Repaired Chunks",
                             message: `Scanned ${tab.cachedDBKeys.Data3D.length} Data3D entries. Found ${repairedChunks} corrupted Data3D entries and repaired them.`,
@@ -1454,7 +1459,7 @@ const thisIntegration = {
         return false;
     },
     integrationMenu(this: unknown, props: IntegrationMenuProps): JSX.Element {
-        if (props.tab.type !== "world" && props.tab.type !== "leveldb")
+        if (props.tab.type !== "world" && props.tab.type !== "leveldb") {
             return (
                 <center>
                     <Notice
@@ -1465,6 +1470,7 @@ const thisIntegration = {
                     />
                 </center>
             );
+        }
         const tablesContainerRef: RefObject<HTMLTableElement> = useRef<HTMLTableElement>(null);
         const viewOptionsRefs = {
             viewOptionsContainer: useRef<HTMLDivElement>(null),
@@ -1507,15 +1513,16 @@ const thisIntegration = {
                                                     })
                                                 ) {
                                                     case 0:
-                                                        shell.openExternal(url);
+                                                        void shell.openExternal(url);
                                                         break;
                                                     case 1:
                                                         clipboard.writeText(url);
                                                         break;
+                                                    // no default
                                                 }
                                                 return;
                                             }
-                                            shell.openExternal(url);
+                                            void shell.openExternal(url);
                                         }}
                                     >
                                         {buttonLabel}
@@ -1673,24 +1680,30 @@ const thisIntegration = {
                             }
                             if (!loadingActions.includes("command_setbiome")) loadingActions.push("command_setbiome");
                             updateTablesContents();
-                            action_command_setbiome.checkIfApplicable(props.tab).then(async (result: boolean): Promise<void> => {
-                                abortController?.signal.throwIfAborted();
-                                if (result) {
-                                    applicableActions.push("command_setbiome");
-                                    actionData.command_setbiome.targetedChunkCountData = await action_command_setbiome_getTargetedChunkCount(
-                                        props.tab,
-                                        abortController?.signal
-                                    );
-                                }
-                                {
-                                    const loadingActionsIndex: number = loadingActions.indexOf("command_setbiome");
-                                    if (loadingActionsIndex !== -1) {
-                                        loadingActions.splice(loadingActionsIndex, 1);
-                                        if (!result && loadingActions.length === 0) updateTablesContents();
+                            action_command_setbiome.checkIfApplicable(props.tab).then(
+                                async (result: boolean): Promise<void> => {
+                                    abortController?.signal.throwIfAborted();
+                                    if (result) {
+                                        applicableActions.push("command_setbiome");
+                                        actionData.command_setbiome.targetedChunkCountData = await action_command_setbiome_getTargetedChunkCount(
+                                            props.tab,
+                                            abortController?.signal
+                                        );
                                     }
-                                    if (result) updateTablesContents();
+                                    {
+                                        const loadingActionsIndex: number = loadingActions.indexOf("command_setbiome");
+                                        if (loadingActionsIndex !== -1) {
+                                            loadingActions.splice(loadingActionsIndex, 1);
+                                            if (!result && loadingActions.length === 0) updateTablesContents();
+                                        }
+                                        if (result) updateTablesContents();
+                                    }
+                                },
+                                (reason: unknown): void => {
+                                    reportError(reason);
+                                    // TODO: Add a way to disaplay that an error occured while loading this action.
                                 }
-                            });
+                            );
                         }}
                     >
                         Apply Changes
@@ -1762,8 +1775,9 @@ const thisIntegration = {
                                     buttons: ["Yes", "No"],
                                     noLink: true,
                                 })
-                            )
+                            ) {
                                 return;
+                            }
                             event.currentTarget.blur();
                             event.currentTarget.disabled = true;
                             event.currentTarget.textContent = "Applying Changes...";
@@ -1789,24 +1803,30 @@ const thisIntegration = {
                             }
                             if (!loadingActions.includes("command_setbiome_legacy")) loadingActions.push("command_setbiome_legacy");
                             updateTablesContents();
-                            action_command_setbiome_legacy.checkIfApplicable(props.tab).then(async (result: boolean): Promise<void> => {
-                                abortController?.signal.throwIfAborted();
-                                if (result) {
-                                    applicableActions.push("command_setbiome_legacy");
-                                    actionData.command_setbiome_legacy.targetedChunkCountData = await action_command_setbiome_legacy_getTargetedChunkCount(
-                                        props.tab,
-                                        abortController?.signal
-                                    );
-                                }
-                                {
-                                    const loadingActionsIndex: number = loadingActions.indexOf("command_setbiome_legacy");
-                                    if (loadingActionsIndex !== -1) {
-                                        loadingActions.splice(loadingActionsIndex, 1);
-                                        if (!result && loadingActions.length === 0) updateTablesContents();
+                            action_command_setbiome_legacy.checkIfApplicable(props.tab).then(
+                                async (result: boolean): Promise<void> => {
+                                    abortController?.signal.throwIfAborted();
+                                    if (result) {
+                                        applicableActions.push("command_setbiome_legacy");
+                                        actionData.command_setbiome_legacy.targetedChunkCountData = await action_command_setbiome_legacy_getTargetedChunkCount(
+                                            props.tab,
+                                            abortController?.signal
+                                        );
                                     }
-                                    if (result) updateTablesContents();
+                                    {
+                                        const loadingActionsIndex: number = loadingActions.indexOf("command_setbiome_legacy");
+                                        if (loadingActionsIndex !== -1) {
+                                            loadingActions.splice(loadingActionsIndex, 1);
+                                            if (!result && loadingActions.length === 0) updateTablesContents();
+                                        }
+                                        if (result) updateTablesContents();
+                                    }
+                                },
+                                (reason: unknown): void => {
+                                    reportError(reason);
+                                    // TODO: Add a way to disaplay that an error occured while loading this action.
                                 }
-                            });
+                            );
                         }}
                     >
                         Apply Changes
@@ -1843,16 +1863,18 @@ const thisIntegration = {
                             });
                             if (result.canceled) return;
                             abortController?.signal.throwIfAborted();
-                            const results: (Error | void)[] = await Promise.all(
-                                structures.map(async (structureData): Promise<Error | void> => {
+                            // TODO: Make this handle non-Error instance errors properly (maybe with a type of ({error: unknown} | undefined)[]).
+                            const results: (Error | undefined)[] = await Promise.all(
+                                structures.map(async (structureData): Promise<Error | undefined> => {
                                     return await Promise.all(
-                                        structureData.individualStructures.map(async (structure): Promise<void> => {
-                                            const data: readonly [key: Buffer, data: Buffer | null] = [structure, await props.tab.db!.get(structure)!] as const;
+                                        structureData.individualStructures.map(async (structure): Promise<undefined> => {
+                                            const data: readonly [key: Buffer, data: Buffer | null] = [structure, await props.tab.db!.get(structure)] as const;
                                             abortController?.signal.throwIfAborted();
-                                            if (data[1] === null)
+                                            if (data[1] === null) {
                                                 throw new ReferenceError(
                                                     `Entry not found for structure ${structureData.structureId}: ${getKeyDisplayName(data[0])}`
                                                 );
+                                            }
                                             await result.window.webContents.executeJavaScript(
                                                 `{/* This is to make sure the contents are different so that it works each time. */"${Date.now()}_${Math.floor(
                                                     Math.random() * 1000000
@@ -1866,13 +1888,14 @@ const thisIntegration = {
                                             );
                                         })
                                     ).then(
-                                        (): void => void 0,
+                                        (): undefined => void 0,
+                                        // eslint-disable-next-line @typescript-eslint/use-unknown-in-catch-callback-variable
                                         (error: Error): Error => error
                                     );
                                 })
                             );
                             abortController?.signal.throwIfAborted();
-                            const errors: Error[] = results.filter((error: void | Error): error is Error => error instanceof Error);
+                            const errors: Error[] = results.filter((error: Error | undefined): error is Error => error instanceof Error);
                             if (errors.length > 0) {
                                 dialog.showErrorBox(
                                     "Failed to Transfer Some Structures",
@@ -1906,14 +1929,14 @@ const thisIntegration = {
 
                                     await Promise.all(
                                         structure.individualStructures.map(
-                                            (key: Buffer): Promise<void> =>
-                                                props.tab.db!.delete(key).then((): void => {
+                                            async (key: Buffer): Promise<void> =>
+                                                void (await props.tab.db!.delete(key).then((): void => {
                                                     if (!props.tab.cachedDBKeys) return;
                                                     const keyIndex: number = props.tab.cachedDBKeys.StructureTemplate.findIndex((targetKey: Buffer): boolean =>
                                                         targetKey.equals(key)
                                                     );
                                                     if (keyIndex !== -1) props.tab.cachedDBKeys.StructureTemplate.splice(keyIndex, 1);
-                                                })
+                                                }))
                                         )
                                     );
 
@@ -1951,20 +1974,22 @@ const thisIntegration = {
                             });
                             if (result.canceled) return;
                             abortController?.signal.throwIfAborted();
+                            // TODO: Make this handle non-Error instance errors properly (maybe with a type of {error: unknown}[]).
                             const errors: Error[] = (
                                 await Promise.all(
-                                    structures.map(async (structureData): Promise<Error | void> => {
+                                    structures.map(async (structureData): Promise<Error | undefined> => {
                                         return await Promise.all(
-                                            structureData.individualStructures.map(async (structure): Promise<void> => {
+                                            structureData.individualStructures.map(async (structure): Promise<undefined> => {
                                                 const data: readonly [key: Buffer, data: Buffer | null] = [
                                                     structure,
-                                                    await props.tab.db!.get(structure)!,
+                                                    await props.tab.db!.get(structure),
                                                 ] as const;
                                                 abortController?.signal.throwIfAborted();
-                                                if (data[1] === null)
+                                                if (data[1] === null) {
                                                     throw new ReferenceError(
                                                         `Entry not found for structure ${structureData.structureId}: ${getKeyDisplayName(data[0])}`
                                                     );
+                                                }
                                                 await result.window.webContents.executeJavaScript(
                                                     `{/* This is to make sure the contents are different so that it works each time. */"${Date.now()}_${Math.floor(
                                                         Math.random() * 1000000
@@ -1978,12 +2003,13 @@ const thisIntegration = {
                                                 );
                                             })
                                         ).then(
-                                            (): void => void 0,
+                                            (): undefined => void 0,
+                                            // eslint-disable-next-line @typescript-eslint/use-unknown-in-catch-callback-variable
                                             (error: Error): Error => error
                                         );
                                     })
                                 )
-                            ).filter((error: void | Error): error is Error => error instanceof Error);
+                            ).filter((error: Error | undefined): error is Error => error instanceof Error);
                             abortController?.signal.throwIfAborted();
                             if (errors.length > 0) {
                                 dialog.showErrorBox(
@@ -2008,8 +2034,9 @@ const thisIntegration = {
                                     buttons: ["Proceed", "Cancel"],
                                     noLink: true,
                                 })
-                            )
+                            ) {
                                 return;
+                            }
                             if (props.tab.type !== "world" && props.tab.type !== "leveldb") return;
                             if (!props.tab.db) return;
                             await props.tab.awaitDBOpen;
@@ -2040,14 +2067,14 @@ const thisIntegration = {
 
                                     await Promise.all(
                                         structure.individualStructures.map(
-                                            (key: Buffer): Promise<void> =>
-                                                props.tab.db!.delete(key).then((): void => {
+                                            async (key: Buffer): Promise<void> =>
+                                                void (await props.tab.db!.delete(key).then((): void => {
                                                     if (!props.tab.cachedDBKeys) return;
                                                     const keyIndex: number = props.tab.cachedDBKeys.StructureTemplate.findIndex((targetKey: Buffer): boolean =>
                                                         targetKey.equals(key)
                                                     );
                                                     if (keyIndex !== -1) props.tab.cachedDBKeys.StructureTemplate.splice(keyIndex, 1);
-                                                })
+                                                }))
                                         )
                                     );
 
@@ -2123,7 +2150,7 @@ const thisIntegration = {
                         loadingActions.length > 0 && <LoadingScreenContents message="Loading integration actions..." preserveTextOffset={true} />,
                     ]
                         .filter(Boolean as unknown as (v: false | JSX.Element) => v is JSX.Element)
-                        .flatMap((v: JSX.Element, i: number): JSX.Element | JSX.Element[] => [<hr />, v])}
+                        .flatMap((v: JSX.Element): JSX.Element | JSX.Element[] => [<hr />, v])}
                 </>,
                 tablesContainerRef.current
             );
@@ -2141,24 +2168,30 @@ const thisIntegration = {
                     if (loadingActionsIndex !== -1) loadingActions.splice(loadingActionsIndex, 1);
                     break command_setbiome;
                 }
-                action_command_setbiome.checkIfApplicable(props.tab).then(async (result: boolean): Promise<void> => {
-                    abortController.signal.throwIfAborted();
-                    if (result) {
-                        applicableActions.push("command_setbiome");
-                        actionData.command_setbiome.targetedChunkCountData = await action_command_setbiome_getTargetedChunkCount(
-                            props.tab,
-                            abortController.signal
-                        );
-                    }
-                    {
-                        const loadingActionsIndex: number = loadingActions.indexOf("command_setbiome");
-                        if (loadingActionsIndex !== -1) {
-                            loadingActions.splice(loadingActionsIndex, 1);
-                            if (!result && loadingActions.length === 0) updateTablesContents();
+                action_command_setbiome.checkIfApplicable(props.tab).then(
+                    async (result: boolean): Promise<void> => {
+                        abortController.signal.throwIfAborted();
+                        if (result) {
+                            applicableActions.push("command_setbiome");
+                            actionData.command_setbiome.targetedChunkCountData = await action_command_setbiome_getTargetedChunkCount(
+                                props.tab,
+                                abortController.signal
+                            );
                         }
-                        if (result) updateTablesContents();
+                        {
+                            const loadingActionsIndex: number = loadingActions.indexOf("command_setbiome");
+                            if (loadingActionsIndex !== -1) {
+                                loadingActions.splice(loadingActionsIndex, 1);
+                                if (!result && loadingActions.length === 0) updateTablesContents();
+                            }
+                            if (result) updateTablesContents();
+                        }
+                    },
+                    (reason: unknown): void => {
+                        reportError(reason);
+                        // TODO: Add a way to disaplay that an error occured while loading this action.
                     }
-                });
+                );
             }
             command_setbiome_legacy: {
                 const action_command_setbiome_legacy = thisIntegration.autoApplyActions?.find((a) => a.id === "command_setbiome_legacy");
@@ -2167,51 +2200,61 @@ const thisIntegration = {
                     if (loadingActionsIndex !== -1) loadingActions.splice(loadingActionsIndex, 1);
                     break command_setbiome_legacy;
                 }
-                action_command_setbiome_legacy.checkIfApplicable(props.tab).then(async (result: boolean): Promise<void> => {
-                    abortController.signal.throwIfAborted();
-                    if (result) {
-                        applicableActions.push("command_setbiome_legacy");
-                        actionData.command_setbiome_legacy.targetedChunkCountData = await action_command_setbiome_legacy_getTargetedChunkCount(
-                            props.tab,
-                            abortController.signal
-                        );
-                    }
-                    {
-                        const loadingActionsIndex: number = loadingActions.indexOf("command_setbiome_legacy");
-                        if (loadingActionsIndex !== -1) {
-                            loadingActions.splice(loadingActionsIndex, 1);
-                            if (!result && loadingActions.length === 0) updateTablesContents();
+                action_command_setbiome_legacy.checkIfApplicable(props.tab).then(
+                    async (result: boolean): Promise<void> => {
+                        abortController.signal.throwIfAborted();
+                        if (result) {
+                            applicableActions.push("command_setbiome_legacy");
+                            actionData.command_setbiome_legacy.targetedChunkCountData = await action_command_setbiome_legacy_getTargetedChunkCount(
+                                props.tab,
+                                abortController.signal
+                            );
                         }
-                        if (result) updateTablesContents();
+                        {
+                            const loadingActionsIndex: number = loadingActions.indexOf("command_setbiome_legacy");
+                            if (loadingActionsIndex !== -1) {
+                                loadingActions.splice(loadingActionsIndex, 1);
+                                if (!result && loadingActions.length === 0) updateTablesContents();
+                            }
+                            if (result) updateTablesContents();
+                        }
+                    },
+                    (reason: unknown): void => {
+                        reportError(reason);
+                        // TODO: Add a way to disaplay that an error occured while loading this action.
                     }
-                });
+                );
             }
             export_structures: {
                 let success: boolean = false;
                 action_export_structures_getStructures(props.tab, abortController.signal)
-                    .then((result: Action_Export_Structures_StructureData): void => {
-                        abortController.signal.throwIfAborted();
-                        applicableActions.push("export_structures");
-                        if (result.structures.length > 0) {
-                            actionData.export_structures.structureData = result;
-                            success = true;
-                        } else {
-                            actionData.export_structures.structureData = undefined;
-                        }
-                    })
-                    .finally((): void => {
-                        {
-                            const loadingActionsIndex: number = loadingActions.indexOf("export_structures");
-                            if (loadingActionsIndex !== -1) {
-                                loadingActions.splice(loadingActionsIndex, 1);
-                                if (!success && loadingActions.length === 0) updateTablesContents();
+                    .then(
+                        (result: Action_Export_Structures_StructureData): void => {
+                            abortController.signal.throwIfAborted();
+                            applicableActions.push("export_structures");
+                            if (result.structures.length > 0) {
+                                actionData.export_structures.structureData = result;
+                                success = true;
+                            } else {
+                                actionData.export_structures.structureData = undefined;
                             }
-                            if (success) updateTablesContents();
+                        },
+                        (reason: unknown): void => {
+                            reportError(reason);
+                            // TODO: Add a way to disaplay that an error occured while loading this action.
                         }
+                    )
+                    .finally((): void => {
+                        const loadingActionsIndex: number = loadingActions.indexOf("export_structures");
+                        if (loadingActionsIndex !== -1) {
+                            loadingActions.splice(loadingActionsIndex, 1);
+                            if (!success && loadingActions.length === 0) updateTablesContents();
+                        }
+                        if (success) updateTablesContents();
                     });
                 break export_structures;
             }
-            return (): void => abortController.abort("Effect cleanup");
+            return (): void => void abortController.abort("Effect cleanup");
         });
         return (
             <>
@@ -2282,7 +2325,7 @@ const thisIntegration = {
                             <h4 class="integrationMenu-integrationAuthor">
                                 by{" "}
                                 {typeof thisIntegration.author === "string" ?
-                                    (thisIntegration.author as Extract<Integration["author"], string>)
+                                    thisIntegration.author
                                 :   (thisIntegration.author as Exclude<Integration["author"], string>).join(", ")}
                             </h4>
                         </div>
