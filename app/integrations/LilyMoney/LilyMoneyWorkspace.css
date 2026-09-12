@@ -1,0 +1,162 @@
+.lilymoney-workspace {
+    font-family: Arial, Helvetica, sans-serif;
+    /* anoyed mumble from not useing the minecraft font for all texts */
+}
+
+.lilymoney-workspace .lilymoney-title,
+.lilymoney-workspace h1,
+.lilymoney-workspace h2,
+.lilymoney-workspace h3,
+.lilymoney-workspace h4,
+.lilymoney-workspace th {
+    font-family: "Minecraft-Five", "Minecraft Five v3", "Minecraft-Seven-v4", sans-serif;
+}
+
+.lilymoney-workspace button,
+.lilymoney-workspace input:not([type="checkbox"]),
+.lilymoney-workspace select,
+.lilymoney-workspace code {
+    border-radius: 0 !important;
+}
+
+.lilymoney-workspace button,
+.lilymoney-workspace select::picker-icon,
+.lilymoney-workspace img {
+    image-rendering: pixelated;
+}
+
+.lilymoney-workspace .lilymoney-mc-button,
+.lilymoney-workspace .lilymoney-nav-button,
+.lilymoney-workspace .lilymoney-input,
+.lilymoney-workspace .lilymoney-title,
+.lilymoney-workspace .lilymoney-header {
+    -webkit-user-select: none;
+    /* Safari */
+    -ms-user-select: none;
+    -moz-user-select: none;
+    /* IE 10 and IE 11 */
+    user-select: none;
+    /* Standard syntax */
+    -webkit-user-drag: none;
+}
+
+.lilymoney-workspace .lilymoney-mc-button {
+    margin: 0;
+    padding: 8px 12px;
+    border: 2px solid var(--table-outline-color);
+    background: var(--generic-button-bg-color);
+    color: var(--generic-button-text-color);
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow:
+        inset 0 2px 0 color-mix(in srgb, var(--generic-button-text-color) 18%, transparent),
+        inset 0 -3px 0 color-mix(in srgb, #000 35%, transparent);
+}
+
+.lilymoney-workspace .lilymoney-mc-button:hover:not(:disabled) {
+    background: var(--generic-button-hover-bg-color);
+    color: var(--generic-button-hover-text-color);
+}
+
+.lilymoney-workspace .lilymoney-mc-button:active:not(:disabled) {
+    transform: translateY(1px);
+    background: var(--generic-button-pressed-bg-color);
+    color: var(--generic-button-pressed-text-color);
+    box-shadow:
+        inset 0 2px 0 color-mix(in srgb, #000 25%, transparent),
+        inset 0 -1px 0 color-mix(in srgb, var(--generic-button-text-color) 12%, transparent);
+}
+
+.lilymoney-workspace .lilymoney-mc-button:disabled {
+    filter: contrast(0.5) brightness(0.5);
+    cursor: not-allowed;
+}
+
+.lilymoney-workspace input:not([type="checkbox"]),
+.lilymoney-workspace select {
+    font-family: inherit;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, #000 28%, transparent);
+}
+
+.lilymoney-workspace input:not([type="checkbox"]):focus,
+.lilymoney-workspace select:focus {
+    border-color: #00ff88 !important;
+    box-shadow: inset 0 0 0 1px #006b3c;
+}
+
+.lilymoney-workspace .lilymoney-select {
+    margin: 0;
+}
+
+.lilymoney-header {
+    box-shadow: inset 0 -3px 0 color-mix(in srgb, #000 30%, transparent);
+}
+
+.lilymoney-nav {
+    box-shadow: inset -3px 0 0 color-mix(in srgb, #000 24%, transparent);
+}
+
+.lilymoney-workspace .lilymoney-nav-button.active {
+    background: var(--alternating-bg-3);
+    color: var(--text-color);
+}
+
+.lilymoney-workspace .lilymoney-nav-button {
+    min-height: 44px;
+    line-height: 1.1;
+    margin: 0;
+    transition: none;
+    box-shadow: none;
+
+    background: var(--alternating-bg-2);
+    color: var(--text-color);
+}
+
+.lilymoney-workspace table {
+    border-width: 2px;
+}
+
+.lilymoney-workspace code {
+    font-family: Consolas, monospace;
+}
+
+/* .lilymoney-workspace svg text {
+    font-family: "Minecraft-Seven-v4", "Minecraft-Seven", sans-serif;
+} */
+
+.rankings-and-activity-grid-container {
+    container-type: inline-size;
+}
+
+.rankings-and-activity-grid {
+    display: grid;
+    gap: 16px;
+}
+
+/* 780px+16px (add the right padding) */
+@container (min-width: 796px) {
+    .rankings-and-activity-grid {
+        grid-template-columns: minmax(360px, 0.95fr) minmax(420px, 1.35fr);
+    }
+}
+
+@container (max-width: 795px) {
+    .rankings-and-activity-grid {
+        grid-template-columns: max(300px, 100%);
+    }
+}
+
+@media (max-width: 1200px) {
+    .lilymoney-nav:not(.active-nav) {
+        display: none !important;
+    }
+    .lilymoney-main > div {
+        margin-top: 46px !important;
+    }
+}
+
+@media not (max-width: 1200px) {
+    #lilymoney-show-sidebar-button {
+        display: none !important;
+    }
+}

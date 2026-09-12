@@ -1,5 +1,10 @@
 import type { JSX } from "preact";
 import WorldEdit_Bedrock from "./WorldEdit_Bedrock";
+import LilyMoney from "./LilyMoney";
+
+
+
+
 
 /**
  * An integration.
@@ -155,6 +160,7 @@ export interface IntegrationMenuProps {
  */
 export const integrations = {
     WorldEdit_Bedrock,
+    LilyMoney,
 } as const satisfies Record<string, Integration>;
 
 /**
