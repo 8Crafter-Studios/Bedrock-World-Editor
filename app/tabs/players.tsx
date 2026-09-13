@@ -12,7 +12,7 @@ import {
     type NBTSchemas,
 } from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
-import { testForObjectExtension } from "../../src/utils/miscUtils";
+import { stringifyError, testForObjectExtension } from "../../src/utils/miscUtils";
 // import { ControlledMenu, MenuItem } from "@szhsin/react-menu";
 import { LoadingScreenContents } from "../app";
 import type { SearchSyntaxHelpInfo } from "../components/SearchSyntaxHelpMenu";
@@ -352,12 +352,7 @@ export default function PlayersTab(props: PlayersTabProps): JSX.SpecificElement<
                 errorElement.style.color = "red";
                 errorElement.style.fontFamily = "monospace";
                 errorElement.style.whiteSpace = "pre";
-                errorElement.textContent =
-                    reason instanceof Error ?
-                        reason.stack?.startsWith(reason.toString()) ?
-                            reason.stack
-                        :   reason.toString() + reason.stack
-                    :   String(reason);
+                errorElement.textContent = stringifyError(reason);
                 render(null, containerRef.current);
                 containerRef.current.replaceChildren("Failed to load data:", errorElement);
             }
@@ -461,34 +456,7 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
                     image="generic_error"
                     style={{ height: "auto" }}
                 />
-                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
-                    {tab.errorOnDBOpen instanceof Error ?
-                        `${tab.errorOnDBOpen.stack ?? tab.errorOnDBOpen.toString()}${
-                            tab.errorOnDBOpen.cause !== undefined ?
-                                `\nCaused by: ${String(
-                                    ((): unknown => {
-                                        try {
-                                            return typeof tab.errorOnDBOpen.cause === "object" ?
-                                                    JSON.stringify(tab.errorOnDBOpen.cause)
-                                                :   tab.errorOnDBOpen.cause;
-                                        } catch {
-                                            return tab.errorOnDBOpen.cause;
-                                        }
-                                    })()
-                                )}`
-                            :   ""
-                        }`
-                    :   String(
-                            (function formatUnknownErrorValue(): unknown {
-                                try {
-                                    return typeof tab.errorOnDBOpen === "object" ? JSON.stringify(tab.errorOnDBOpen) : tab.errorOnDBOpen;
-                                } catch {
-                                    return tab.errorOnDBOpen;
-                                }
-                            })()
-                        )
-                    }
-                </div>
+                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(tab.errorOnDBOpen)}</div>
             </div>
         );
     }

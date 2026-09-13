@@ -82,6 +82,7 @@
     -   `MVillages`
     -   `Villages`
 -   The search entry data loading screen for the "View Files" tab now says "Reading LevelDB entry data #/#..." instead of "Reading NBT data #/#..." when a query that searches non-NBT data is provided.
+-   Improved error stringification throghout the app.
 
 ## Fixes
 

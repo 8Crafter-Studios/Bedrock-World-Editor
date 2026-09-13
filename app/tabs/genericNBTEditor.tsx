@@ -9,6 +9,7 @@ import PrismarineNBTEditor from "../components/PrismarineNBTEditor";
 import EditorWidgetOverlayBar, { type EditorWidgetOverlayBarWidgetRegistry } from "../components/EditorWidgetOverlayBar";
 import BinaryHexEditor, { initHexEditorDataStorageObjectProps, type HexEditorDataStorageObject } from "../components/BinaryHexEditor";
 import Notice from "../components/Notice";
+import { stringifyError } from "../../src/utils/miscUtils";
 
 /**
  * Props for the {@link GenericNBTEditorTab} component.
@@ -62,36 +63,7 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                     image="generic_error"
                     style={{ height: "auto" }}
                 />
-                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
-                    {props.tab.parentTab.errorOnDBOpen instanceof Error ?
-                        `${props.tab.parentTab.errorOnDBOpen.stack ?? props.tab.parentTab.errorOnDBOpen.toString()}${
-                            props.tab.parentTab.errorOnDBOpen.cause !== undefined ?
-                                `\nCaused by: ${String(
-                                    ((): unknown => {
-                                        try {
-                                            return typeof props.tab.parentTab.errorOnDBOpen.cause === "object" ?
-                                                    JSON.stringify(props.tab.parentTab.errorOnDBOpen.cause)
-                                                :   props.tab.parentTab.errorOnDBOpen.cause;
-                                        } catch {
-                                            return props.tab.parentTab.errorOnDBOpen.cause;
-                                        }
-                                    })()
-                                )}`
-                            :   ""
-                        }`
-                    :   String(
-                            (function formatUnknownErrorValue(): unknown {
-                                try {
-                                    return typeof props.tab.parentTab.errorOnDBOpen === "object" ?
-                                            JSON.stringify(props.tab.parentTab.errorOnDBOpen)
-                                        :   props.tab.parentTab.errorOnDBOpen;
-                                } catch {
-                                    return props.tab.parentTab.errorOnDBOpen;
-                                }
-                            })()
-                        )
-                    }
-                </div>
+                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(props.tab.parentTab.errorOnDBOpen)}</div>
             </div>
         );
     }
@@ -129,13 +101,7 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                 >
                     Load Data in Raw Mode
                 </button>
-                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
-                    {reason instanceof Error ?
-                        reason.stack?.startsWith(reason.toString()) ?
-                            reason.stack
-                        :   reason.toString() + reason.stack
-                    :   String(reason)}
-                </div>
+                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(reason)}</div>
             </div>
         );
     }

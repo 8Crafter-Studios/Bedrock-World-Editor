@@ -9,6 +9,7 @@ import EditorWidgetOverlayBar, { type EditorWidgetOverlayBarWidgetRegistry } fro
 import { initMapEditorDataStorageObjectProps, MapEditor } from "../components/MapEditor";
 import BinaryHexEditor, { initHexEditorDataStorageObjectProps, type HexEditorDataStorageObject } from "../components/BinaryHexEditor";
 import Notice from "../components/Notice";
+import { stringifyError } from "../../src/utils/miscUtils";
 
 /**
  * Props for the {@link MapEditorTab} component.
@@ -62,36 +63,7 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
                     image="generic_error"
                     style={{ height: "auto" }}
                 />
-                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
-                    {props.tab.parentTab.errorOnDBOpen instanceof Error ?
-                        `${props.tab.parentTab.errorOnDBOpen.stack ?? props.tab.parentTab.errorOnDBOpen.toString()}${
-                            props.tab.parentTab.errorOnDBOpen.cause !== undefined ?
-                                `\nCaused by: ${String(
-                                    ((): unknown => {
-                                        try {
-                                            return typeof props.tab.parentTab.errorOnDBOpen.cause === "object" ?
-                                                    JSON.stringify(props.tab.parentTab.errorOnDBOpen.cause)
-                                                :   props.tab.parentTab.errorOnDBOpen.cause;
-                                        } catch {
-                                            return props.tab.parentTab.errorOnDBOpen.cause;
-                                        }
-                                    })()
-                                )}`
-                            :   ""
-                        }`
-                    :   String(
-                            (function formatUnknownErrorValue(): unknown {
-                                try {
-                                    return typeof props.tab.parentTab.errorOnDBOpen === "object" ?
-                                            JSON.stringify(props.tab.parentTab.errorOnDBOpen)
-                                        :   props.tab.parentTab.errorOnDBOpen;
-                                } catch {
-                                    return props.tab.parentTab.errorOnDBOpen;
-                                }
-                            })()
-                        )
-                    }
-                </div>
+                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(props.tab.parentTab.errorOnDBOpen)}</div>
             </div>
         );
     }
@@ -129,13 +101,7 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
                 >
                     Load Data in Raw Mode
                 </button>
-                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
-                    {reason instanceof Error ?
-                        reason.stack?.startsWith(reason.toString()) ?
-                            reason.stack
-                        :   reason.toString() + reason.stack
-                    :   String(reason)}
-                </div>
+                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(reason)}</div>
             </div>
         );
     }

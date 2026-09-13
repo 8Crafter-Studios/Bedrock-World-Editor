@@ -2,6 +2,7 @@ import type { JSX, RefObject } from "preact";
 import _React, { render, useEffect, useRef } from "preact/compat";
 import { LoadingScreenContents } from "../app";
 import Notice from "../components/Notice";
+import { stringifyError } from "../../src/utils/miscUtils";
 
 /**
  * Props for the {@link RepairForcedWorldCorruptionTab} component.
@@ -67,33 +68,7 @@ export default function RepairForcedWorldCorruptionTab(props: RepairForcedWorldC
                             image="generic_error"
                             style={{ height: "auto" }}
                         />
-                        <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
-                            {reason instanceof Error ?
-                                `${reason.stack ?? reason.toString()}${
-                                    reason.cause !== undefined ?
-                                        // TODO: This does not work properly if the cause is an error, make this and all other places that add caused by use the same function which can recusively stringify it (to a point, so as to avoid infinite loops). Also make areas that don't show caused by show it too.
-                                        `\nCaused by: ${String(
-                                            ((): unknown => {
-                                                try {
-                                                    return typeof reason.cause === "object" ? JSON.stringify(reason.cause) : reason.cause;
-                                                } catch {
-                                                    return reason.cause;
-                                                }
-                                            })()
-                                        )}`
-                                    :   ""
-                                }`
-                            :   String(
-                                    (function formatUnknownErrorValue(): unknown {
-                                        try {
-                                            return typeof reason === "object" ? JSON.stringify(reason) : reason;
-                                        } catch {
-                                            return reason;
-                                        }
-                                    })()
-                                )
-                            }
-                        </div>
+                        <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(reason)}</div>
                     </div>
                 </>,
                 containerRef.current

@@ -19,6 +19,7 @@ import EditorWidgetOverlayBar from "../components/EditorWidgetOverlayBar";
 import { clipboard, dialog } from "@electron/remote";
 import type { MessageBoxReturnValue } from "electron";
 import Notice from "../components/Notice";
+import { stringifyError } from "../../src/utils/miscUtils";
 
 // TODO: Implement Async Mode for this tab.
 
@@ -300,12 +301,7 @@ export default function ViewFilesTab(props: ViewFilesTabProps): JSX.SpecificElem
                 errorElement.style.color = "red";
                 errorElement.style.fontFamily = "monospace";
                 errorElement.style.whiteSpace = "pre";
-                errorElement.textContent =
-                    reason instanceof Error ?
-                        reason.stack?.startsWith(reason.toString()) ?
-                            reason.stack
-                        :   reason.toString() + reason.stack
-                    :   String(reason);
+                errorElement.textContent = stringifyError(reason);
                 render(null, containerRef.current);
                 containerRef.current.replaceChildren("Failed to load data:", errorElement);
             }
@@ -396,34 +392,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                     image="generic_error"
                     style={{ height: "auto" }}
                 />
-                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
-                    {tab.errorOnDBOpen instanceof Error ?
-                        `${tab.errorOnDBOpen.stack ?? tab.errorOnDBOpen.toString()}${
-                            tab.errorOnDBOpen.cause !== undefined ?
-                                `\nCaused by: ${String(
-                                    ((): unknown => {
-                                        try {
-                                            return typeof tab.errorOnDBOpen.cause === "object" ?
-                                                    JSON.stringify(tab.errorOnDBOpen.cause)
-                                                :   tab.errorOnDBOpen.cause;
-                                        } catch {
-                                            return tab.errorOnDBOpen.cause;
-                                        }
-                                    })()
-                                )}`
-                            :   ""
-                        }`
-                    :   String(
-                            (function formatUnknownErrorValue(): unknown {
-                                try {
-                                    return typeof tab.errorOnDBOpen === "object" ? JSON.stringify(tab.errorOnDBOpen) : tab.errorOnDBOpen;
-                                } catch {
-                                    return tab.errorOnDBOpen;
-                                }
-                            })()
-                        )
-                    }
-                </div>
+                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(tab.errorOnDBOpen)}</div>
             </div>
         );
     }
@@ -1082,7 +1051,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                         type: "error",
                                         title: "Error",
                                         message: `An error occurred while creating the RandomTicks entry.`,
-                                        detail: e instanceof Error ? (e.stack ?? String(e)) : String(e),
+                                        detail: stringifyError(e),
                                         buttons: ["OK"],
                                         noLink: true,
                                     });

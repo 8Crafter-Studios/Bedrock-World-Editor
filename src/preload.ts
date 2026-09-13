@@ -12,6 +12,7 @@ import "./init/TabManager.ts";
 import "./utils/ProgressBar.ts";
 import { app, autoUpdater, dialog, Menu, nativeTheme, shell } from "@electron/remote";
 import { APP_DATA_FOLDER_PATH } from "./utils/URLs.ts";
+import { stringifyError } from "./utils/miscUtils.ts";
 /* import { Titlebar } from "custom-electron-titlebar";
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -378,7 +379,7 @@ const menu = Menu.buildFromTemplate([
                             type: "error",
                             title: "Error Checking for Updates",
                             message: "There was an error checking for updates.",
-                            detail: e instanceof Error ? (e.stack ?? e.toString()) : String(e),
+                            detail: stringifyError(e),
                             buttons: ["OK"],
                             noLink: true,
                         });

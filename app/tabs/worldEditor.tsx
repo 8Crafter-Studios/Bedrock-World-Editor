@@ -5,6 +5,7 @@ import EditorWidgetOverlayBar, { type EditorWidgetOverlayBarWidgetRegistry } fro
 import { initWorldEditor2DDataStorageObjectProps, WorldEditor2D, type WorldEditor2DDataStorageObject } from "../components/WorldEditor2D";
 import Notice from "../components/Notice";
 import UnderConstruction from "../components/UnderConstruction";
+import { stringifyError } from "../../src/utils/miscUtils";
 
 /**
  * Props for the {@link WorldEditorTab} component.
@@ -76,34 +77,7 @@ export default function WorldEditorTab(props: WorldEditorTabProps): JSX.Specific
                     image="generic_error"
                     style={{ height: "auto" }}
                 />
-                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
-                    {props.tab.errorOnDBOpen instanceof Error ?
-                        `${props.tab.errorOnDBOpen.stack ?? props.tab.errorOnDBOpen.toString()}${
-                            props.tab.errorOnDBOpen.cause !== undefined ?
-                                `\nCaused by: ${String(
-                                    ((): unknown => {
-                                        try {
-                                            return typeof props.tab.errorOnDBOpen.cause === "object" ?
-                                                    JSON.stringify(props.tab.errorOnDBOpen.cause)
-                                                :   props.tab.errorOnDBOpen.cause;
-                                        } catch {
-                                            return props.tab.errorOnDBOpen.cause;
-                                        }
-                                    })()
-                                )}`
-                            :   ""
-                        }`
-                    :   String(
-                            (function formatUnknownErrorValue(): unknown {
-                                try {
-                                    return typeof props.tab.errorOnDBOpen === "object" ? JSON.stringify(props.tab.errorOnDBOpen) : props.tab.errorOnDBOpen;
-                                } catch {
-                                    return props.tab.errorOnDBOpen;
-                                }
-                            })()
-                        )
-                    }
-                </div>
+                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(props.tab.errorOnDBOpen)}</div>
             </div>
         );
     }

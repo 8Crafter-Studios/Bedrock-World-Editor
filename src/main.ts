@@ -29,6 +29,7 @@ import { APP_DATA_FOLDER_PATH } from "./utils/URLs.ts";
 import { updateElectronApp } from "update-electron-app";
 import { Octokit } from "@octokit/rest";
 import semver from "semver";
+import { stringifyError } from "./utils/miscUtils.ts";
 const mime = require("mime-types") as typeof import("mime-types");
 // import { setupTitlebar, attachTitlebarToWindow } from "custom-electron-titlebar/main";
 const openAboutWindow_function = (require("about-window") as typeof import("about-window")).default;
@@ -228,7 +229,7 @@ if (process.platform === "win32") {
     //                         console.log(4);
     //                         appendFileSync(
     //                             path.join(APP_DATA_FOLDER_PATH, `INSTALL_ERRORS_${dateISOString}.LOG`),
-    //                             `[${new Date().toISOString()}] [ERROR] ${e}${e?.stack}\n${process.argv[1]}\n${process.env.NODE_ENV}\n`
+    //                             `[${new Date().toISOString()}] [ERROR] ${stringifyError(e)}\n${process.argv[1]}\n${process.env.NODE_ENV}\n`
     //                         );
     //                     }
     //                 }
@@ -249,7 +250,7 @@ if (process.platform === "win32") {
     //                     } catch (e: any) {
     //                         appendFileSync(
     //                             path.join(APP_DATA_FOLDER_PATH, `UNINSTALL_ERRORS_${dateISOString}.LOG`),
-    //                             `[${new Date().toISOString()}] [ERROR] ${e}${e?.stack}\n${process.argv[1]}\n${process.env.NODE_ENV}\n`
+    //                             `[${new Date().toISOString()}] [ERROR] ${stringifyError(e)}\n${process.argv[1]}\n${process.env.NODE_ENV}\n`
     //                         );
     //                     }
     //                 }
@@ -272,7 +273,7 @@ if (process.platform === "win32") {
     //                     .catch((e: any): void => {
     //                         appendFileSync(
     //                             path.join(APP_DATA_FOLDER_PATH, `UNINSTALL_ERRORS_${dateISOString}.LOG`),
-    //                             `[${new Date().toISOString()}] [ERROR] ${e}${e?.stack}\n${process.argv[1]}\n${process.env.NODE_ENV}\n`
+    //                             `[${new Date().toISOString()}] [ERROR] ${stringifyError(e)}\n${process.argv[1]}\n${process.env.NODE_ENV}\n`
     //                         );
     //                     });
     //             }
@@ -1148,8 +1149,7 @@ if (!startup && !started) {
                         type: "error",
                         title: "Error Opening File",
                         message: `There was an error opening the file at ${filePath}.`,
-                        // TEMP: This is temporary until the stringifyError function is implemented.
-                        detail: e instanceof Error ? e.message + e?.stack : String(e),
+                        detail: stringifyError(e),
                         buttons: ["Okay"],
                         noLink: true,
                     });
@@ -1263,7 +1263,7 @@ if (!startup && !started) {
                         type: "error",
                         title: "Error Reading Taskbar User Tasks",
                         message: `There was an error reading the taskbar user tasks from ${path.join(APP_DATA_FOLDER_PATH, "taskbar_user_tasks.json")}.`,
-                        detail: e instanceof Error ? (e.stack ?? e.toString()) : String(e),
+                        detail: stringifyError(e),
                         buttons: ["OK"],
                         noLink: true,
                     });
@@ -1276,7 +1276,7 @@ if (!startup && !started) {
                         type: "error",
                         title: "Error Setting Taskbar User Tasks",
                         message: `There was an error setting the taskbar user tasks from ${path.join(APP_DATA_FOLDER_PATH, "taskbar_user_tasks.json")}.`,
-                        detail: e instanceof Error ? (e.stack ?? e.toString()) : String(e),
+                        detail: stringifyError(e),
                         buttons: ["OK"],
                         noLink: true,
                     });

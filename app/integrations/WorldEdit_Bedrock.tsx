@@ -26,6 +26,7 @@ import type { ShowSelectOpenTabDialogResult } from "../components/SelectOpenTabD
 import showSelectOpenTabDialog from "../components/SelectOpenTabDialog";
 import type { LevelDB } from "@8crafter/leveldb-zlib";
 import Notice from "../components/Notice";
+import { stringifyError } from "../../src/utils/miscUtils";
 
 type LegacyScoreboardSetBiomeData = [
     `wedit:biome,minecraft:${Dimension},${number}_${number}_${number}`,
@@ -1897,10 +1898,8 @@ const thisIntegration = {
                             abortController?.signal.throwIfAborted();
                             const errors: Error[] = results.filter((error: Error | undefined): error is Error => error instanceof Error);
                             if (errors.length > 0) {
-                                dialog.showErrorBox(
-                                    "Failed to Transfer Some Structures",
-                                    errors.map((error: Error): string => `${error.message}\n\n${error.stack}`).join("\n\n")
-                                );
+                                console.error(errors.map((error: Error): string => stringifyError(error)));
+                                dialog.showErrorBox("Failed to Transfer Some Structures", errors.map(String).join("\n\n"));
                             }
                             if (errors.length === structures.length) return;
                             const data = await props.tab.db.get("scoreboard");
@@ -2012,10 +2011,8 @@ const thisIntegration = {
                             ).filter((error: Error | undefined): error is Error => error instanceof Error);
                             abortController?.signal.throwIfAborted();
                             if (errors.length > 0) {
-                                dialog.showErrorBox(
-                                    "Failed to Copy Some Structures",
-                                    errors.map((error: Error): string => `${error.message}\n\n${error.stack}`).join("\n\n")
-                                );
+                                console.error(errors.map((error: Error): string => stringifyError(error)));
+                                dialog.showErrorBox("Failed to Copy Some Structures", errors.map(String).join("\n\n"));
                             }
                         }}
                     >

@@ -4,6 +4,7 @@ import { entryContentTypeToFormatMap, type EntryContentTypeFormatData } from "mc
 import { LoadingScreenContents } from "../app";
 import TextEditor from "../components/TextEditor";
 import EditorWidgetOverlayBar, { type EditorWidgetOverlayBarWidgetRegistry } from "../components/EditorWidgetOverlayBar";
+import { stringifyError } from "../../src/utils/miscUtils";
 
 /**
  * Props for the {@link TextEditorTab} component.
@@ -87,12 +88,7 @@ export default function TextEditorTab(props: TextEditorTabProps): JSX.SpecificEl
                     errorElement.style.color = "red";
                     errorElement.style.fontFamily = "monospace";
                     errorElement.style.whiteSpace = "pre";
-                    errorElement.textContent =
-                        reason instanceof Error ?
-                            reason.stack?.startsWith(reason.toString()) ?
-                                reason.stack
-                            :   reason.toString() + reason.stack
-                        :   String(reason);
+                    errorElement.textContent = stringifyError(reason);
                     containerRef.current.replaceChildren("Failed to load data:", errorElement);
                 }
                 console.error(reason);

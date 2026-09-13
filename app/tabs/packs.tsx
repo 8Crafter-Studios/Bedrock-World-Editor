@@ -9,7 +9,7 @@ import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef, useState } from "preact/compat";
 import semver from "semver";
 import type { ManifestJSONSchema } from "../../src/schemaTypes/manifest.json.schema";
-import { createObservable, type Observable } from "../../src/utils/miscUtils";
+import { createObservable, stringifyError, type Observable } from "../../src/utils/miscUtils";
 import { LoadingScreenContents } from "../app";
 // import Notice from "../components/Notice";
 import { PageNavigation } from "../components/PageNavigation";
@@ -54,12 +54,7 @@ export default function PacksTab(props: PacksTabProps): JSX.SpecificElement<"div
                 errorElement.style.color = "red";
                 errorElement.style.fontFamily = "monospace";
                 errorElement.style.whiteSpace = "pre";
-                errorElement.textContent =
-                    reason instanceof Error ?
-                        reason.stack?.startsWith(reason.toString()) ?
-                            reason.stack
-                        :   reason.toString() + reason.stack
-                    :   String(reason);
+                errorElement.textContent = stringifyError(reason);
                 render(null, containerRef.current);
                 containerRef.current.replaceChildren("Failed to load data:", errorElement);
             }

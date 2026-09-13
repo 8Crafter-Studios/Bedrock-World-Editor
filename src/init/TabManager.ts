@@ -29,6 +29,7 @@ import { defaultWorldIconDataURI } from "../utils/preloadImages";
 import { checkIsURIOrPath } from "../utils/pathUtils";
 import type { HexEditorDataStorageObject } from "../../app/components/BinaryHexEditor";
 import type { WorldEditorDataStorageObject } from "../../app/tabs/worldEditor";
+import { stringifyError } from "../utils/miscUtils";
 
 namespace exports {
     // type DefaultEventMap = [never];
@@ -1232,7 +1233,7 @@ namespace exports {
                     progressBar._window?.setClosable(true);
                     progressBar.close();
                 }, 1);
-                dialog.showErrorBox("Error Saving", e instanceof Error ? `${e.name}: ${e.message}` : String(e));
+                dialog.showErrorBox("Error Saving", stringifyError(e));
                 // progressBar.maxValue = 100;
                 // progressBar.value = 100;
                 throw e;

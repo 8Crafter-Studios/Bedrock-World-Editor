@@ -12,7 +12,7 @@ import {
     type EntryContentTypeFormatData,
 } from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
-import { createObservable, type Observable } from "../../src/utils/miscUtils";
+import { createObservable, stringifyError, type Observable } from "../../src/utils/miscUtils";
 import { ControlledMenu, MenuItem, SubMenu, type ClickEvent as ContextMenu_ClickEvent } from "@szhsin/react-menu";
 import { LoadingScreenContents } from "../app";
 import SearchString from "search-string";
@@ -263,12 +263,7 @@ export default function MapsTab(props: MapsTabProps): JSX.SpecificElement<"div">
                 errorElement.style.color = "red";
                 errorElement.style.fontFamily = "monospace";
                 errorElement.style.whiteSpace = "pre";
-                errorElement.textContent =
-                    reason instanceof Error ?
-                        reason.stack?.startsWith(reason.toString()) ?
-                            reason.stack
-                        :   reason.toString() + reason.stack
-                    :   String(reason);
+                errorElement.textContent = stringifyError(reason);
                 render(null, containerRef.current);
                 containerRef.current.replaceChildren("Failed to load data:", errorElement);
             }
@@ -356,34 +351,7 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
                     image="generic_error"
                     style={{ height: "auto" }}
                 />
-                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
-                    {tab.errorOnDBOpen instanceof Error ?
-                        `${tab.errorOnDBOpen.stack ?? tab.errorOnDBOpen.toString()}${
-                            tab.errorOnDBOpen.cause !== undefined ?
-                                `\nCaused by: ${String(
-                                    ((): unknown => {
-                                        try {
-                                            return typeof tab.errorOnDBOpen.cause === "object" ?
-                                                    JSON.stringify(tab.errorOnDBOpen.cause)
-                                                :   tab.errorOnDBOpen.cause;
-                                        } catch {
-                                            return tab.errorOnDBOpen.cause;
-                                        }
-                                    })()
-                                )}`
-                            :   ""
-                        }`
-                    :   String(
-                            (function formatUnknownErrorValue(): unknown {
-                                try {
-                                    return typeof tab.errorOnDBOpen === "object" ? JSON.stringify(tab.errorOnDBOpen) : tab.errorOnDBOpen;
-                                } catch {
-                                    return tab.errorOnDBOpen;
-                                }
-                            })()
-                        )
-                    }
-                </div>
+                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(tab.errorOnDBOpen)}</div>
             </div>
         );
     }
@@ -446,14 +414,12 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
             return await getMapsTabContentsRows({
                 tab,
                 keys: await Promise.all(
-                    targetKeys
-                        .slice(start, end)
-                        .map(
-                            async (key: KeyData): Promise<KeyData> => ({
-                                ...key,
-                                data: (await NBT.parse((await tab.db!.get(key.rawKey))!).catch((): null => null)) as KeyData["data"],
-                            })
-                        )
+                    targetKeys.slice(start, end).map(
+                        async (key: KeyData): Promise<KeyData> => ({
+                            ...key,
+                            data: (await NBT.parse((await tab.db!.get(key.rawKey))!).catch((): null => null)) as KeyData["data"],
+                        })
+                    )
                 ),
                 // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- There is only one section atm, if another section is ever added, remove this disable comment.
                 mode: sectionID === null ? mode : `${mode}_${sectionID}`,
