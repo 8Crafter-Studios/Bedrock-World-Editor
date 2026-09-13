@@ -440,7 +440,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                 ConfigConstants.views.Structures.structuresTabModeToSectionIDs[mode][sectionIndex]!;
             return await getStructuresTabContentsRows({
                 tab,
-                // REVIEW // TEST: Make sure this won't crash the tab if an entry with invalid data is present.
+                // BUG: This crashes the tab if an entry with invalid data is present.
                 keys: await Promise.all(
                     targetKeys
                         .slice(start, end)

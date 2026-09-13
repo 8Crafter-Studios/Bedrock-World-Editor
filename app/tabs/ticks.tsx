@@ -354,7 +354,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                 ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode][sectionIndex]!;
             return await getTicksTabContentsRows({
                 tab,
-                // REVIEW // TEST: Make sure this won't crash the tab if an entry with invalid data is present.
+                // BUG: This crashes the tab if an entry with invalid data is present.
                 randomTickKeys: await Promise.all(
                     targetKeys.randomTicks.slice(start, end).map(
                         async (key: RandomTickKeyData): Promise<RandomTickKeyData> => ({
@@ -363,7 +363,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                         })
                     )
                 ),
-                // REVIEW // TEST: Make sure this won't crash the tab if an entry with invalid data is present.
+                // BUG: This crashes the tab if an entry with invalid data is present.
                 pendingTickKeys: await Promise.all(
                     targetKeys.pendingTicks.slice(start, end).map(
                         async (key: PendingTickKeyData): Promise<PendingTickKeyData> => ({
@@ -400,7 +400,9 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
             );
         }
         function TablesContents(): JSX.Element {
-            const localTablesContents: Observable<JSX.Element[][]> = createObservable([[]]);
+            const localTablesContents: Observable<JSX.Element[][]> = createObservable(
+                ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode].map((): JSX.Element[] => [])
+            );
             if (asyncMode) {
                 // TODO: Add an error handler to this.
                 void Promise.all(

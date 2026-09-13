@@ -360,7 +360,7 @@ async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSigna
                 ConfigConstants.views.TickingAreas.tickingAreasTabModeToSectionIDs[mode][sectionIndex]!;
             return await getTickingAreasTabContentsRows({
                 tab,
-                // REVIEW // TEST: Make sure this won't crash the tab if an entry with invalid data is present.
+                // BUG: This crashes the tab if an entry with invalid data is present.
                 keys: await Promise.all(
                     targetKeys
                         .slice(start, end)
