@@ -358,13 +358,6 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
         :   await getEntityDimensionMappings(tab);
     let targetKeys: KeyData[] = keys;
     // globalThis.a = keys;
-    const dynamicProperties: NBT.NBT | undefined = await tab.db
-        .get("DynamicProperties")
-        .then((data: Buffer | null): Promise<NBT.NBT> | undefined =>
-            data ? NBT.parse(data).then((data: { parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata }): NBT.NBT => data.parsed) : undefined
-        )
-        .catch((e: unknown): undefined => (console.error(e), undefined));
-    // console.log(dynamicProperties);
     let mode: ConfigConstants.views.Entities.EntitiesTabMode = config.views.entities.mode;
     let emptyTablesContents: JSX.Element[][] =
         asyncMode ?
@@ -375,7 +368,6 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                         await getEntitiesTabContentsRows({
                             tab,
                             keys,
-                            dynamicProperties,
                             // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- There is only one section atm, if another section is ever added, remove this disable comment.
                             mode: sectionID === null ? mode : `${mode}_${sectionID}`,
                             entityDimensionMappings,
@@ -410,7 +402,6 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                         })
                     )
                 ),
-                dynamicProperties,
                 // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- There is only one section atm, if another section is ever added, remove this disable comment.
                 mode: sectionID === null ? mode : `${mode}_${sectionID}`,
                 entityDimensionMappings,
@@ -661,7 +652,6 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                                                 .toArray()
                                                 .map((key): KeyData => key.originalObject.data)
                                         :   keys,
-                                    dynamicProperties,
                                     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- There is only one section atm, if another section is ever added, remove this disable comment.
                                     mode: sectionID === null ? mode : `${mode}_${sectionID}`,
                                     entityDimensionMappings,
@@ -1148,7 +1138,6 @@ async function getEntitiesTabContentsRows(data: {
      * The full list of key data to display.
      */
     keys: KeyData[];
-    dynamicProperties?: NBT.NBT | undefined;
     /**
      * The mode of the tab.
      */

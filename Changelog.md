@@ -126,6 +126,7 @@
 -   The "Ticking Areas" tab now no longer unnecessarily loads the dynamic properties data.
 -   The "Structures" tab now no longer unnecessarily loads the dynamic properties data.
 -   The "View Files" tab now no longer unnecessarily loads the dynamic properties data.
+-   The "Entities" tab now no longer unnecessarily loads the dynamic properties data.
 
 # v1.0.0-beta.34
 
