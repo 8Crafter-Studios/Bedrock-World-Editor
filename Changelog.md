@@ -40,6 +40,7 @@
 -   Added Async Mode to the "Ticks" tab ([#57](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/57)).
 -   Added Async Mode to the "Ticking Areas" tab ([#57](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/57)).
 -   Added Async Mode to the "Structures" tab ([#57](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/57)).
+-   The `~local_player.Editor` LevelDB key is now detected as the `Player` content type.
 
 ## Changes
 
@@ -88,7 +89,7 @@
 
 -   Fixed a bug where CTRL+S did not work while the Prismarine-NBT, SNBT, or text editor was focused.
 -   Fixed an issue where deleting chunks in the 2D world map did not mark the tab as unsaved ([#52](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/52)).
--   Many major NBT schema fixes, see the `mcbe-leveldb` changelog for more details (v1.0.0-beta.34 used v1.20.1 of `mcbe-leveldb`, this version uses v1.22.2).
+-   Many major NBT schema fixes, see the `mcbe-leveldb` changelog for more details (v1.0.0-beta.34 used v1.20.1 of `mcbe-leveldb`, this version uses v1.23.0).
 -   The NBT schema for entity entries in the `Entity` content type now no longer has an `internalComponents` field.
 -   Fixed an issue where there were many random useless `"name": ""` entries in the Prismarine-NBT editor.
 -   The Node editor now renders entries of lists of type `"end"` correctly.

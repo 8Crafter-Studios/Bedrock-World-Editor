@@ -1245,10 +1245,10 @@ export function WorldEditorTabRenderer(props: {
                         }
                     case "ASCII":
                     case "UTF-8":
+                    case "SNBT": // TODO: Add SNBT editor tab.
+                    case "JSON": // TODO: Add JSON editor tab.
                         return <TextEditorTab tab={props.tab} />;
                     case "int": // TODO: Add int editor tab.
-                    case "JSON": // TODO: Add JSON editor tab.
-                    case "SNBT": // TODO: Add SNBT editor tab.
                     case "binary":
                     case "binaryPlainText":
                     case "hex":
