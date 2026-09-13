@@ -500,19 +500,19 @@ function DebugOverlay_Basic(): JSX.Element {
                     }}
                 >
                     Process Uptime:{" "}
-                    {Math.round(processUptime / 60 / 60 / 24)
+                    {Math.floor(processUptime / 60 / 60 / 24)
                         .toString()
                         .padStart(2, "0")}
                     :
-                    {Math.round((processUptime / 60 / 60) % 24)
+                    {Math.floor((processUptime / 60 / 60) % 24)
                         .toString()
                         .padStart(2, "0")}
                     :
-                    {Math.round((processUptime / 60) % 60)
+                    {Math.floor((processUptime / 60) % 60)
                         .toString()
                         .padStart(2, "0")}
                     :
-                    {Math.round(processUptime % 60)
+                    {Math.floor(processUptime % 60)
                         .toString()
                         .padStart(2, "0")}
                 </span>
@@ -523,19 +523,19 @@ function DebugOverlay_Basic(): JSX.Element {
                     }}
                 >
                     System Uptime:{" "}
-                    {Math.round(systemUptime / 60 / 60 / 24)
+                    {Math.floor(systemUptime / 60 / 60 / 24)
                         .toString()
                         .padStart(2, "0")}
                     :
-                    {Math.round((systemUptime / 60 / 60) % 24)
+                    {Math.floor((systemUptime / 60 / 60) % 24)
                         .toString()
                         .padStart(2, "0")}
                     :
-                    {Math.round((systemUptime / 60) % 60)
+                    {Math.floor((systemUptime / 60) % 60)
                         .toString()
                         .padStart(2, "0")}
                     :
-                    {Math.round(systemUptime % 60)
+                    {Math.floor(systemUptime % 60)
                         .toString()
                         .padStart(2, "0")}
                 </span>

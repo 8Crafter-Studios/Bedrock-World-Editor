@@ -117,6 +117,7 @@
 -   Fixed a bug where the "Maps" tab would crash if an entry with invalid data was present while in Async Mode.
 -   Fixed a bug where the "Entities" tab would crash if an entry with invalid data was present while in Async Mode.
 -   Fixed a bug where the app's URI protocol was not functional for any purpose other than opening the app on Windows ([#66](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/66)).
+-   Fixed a bug where the units for the system and process uptime in the "Basic" debug overlay were rounded instead of floored, resulting in inaccurate values.
 
 ## Performance Improvements
 
