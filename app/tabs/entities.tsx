@@ -403,9 +403,12 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
             return await getEntitiesTabContentsRows({
                 tab,
                 keys: await Promise.all(
-                    targetKeys
-                        .slice(start, end)
-                        .map(async (key: KeyData): Promise<KeyData> => ({ ...key, data: await NBT.parse((await tab.db!.get(key.rawKey))!) }))
+                    targetKeys.slice(start, end).map(
+                        async (key: KeyData): Promise<KeyData> => ({
+                            ...key,
+                            data: await NBT.parse((await tab.db!.get(key.rawKey))!).catch((): null => null),
+                        })
+                    )
                 ),
                 dynamicProperties,
                 // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- There is only one section atm, if another section is ever added, remove this disable comment.
