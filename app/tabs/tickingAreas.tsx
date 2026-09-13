@@ -1,6 +1,15 @@
 import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef } from "preact/compat";
-import { dimensions, entryContentTypeToFormatMap, getKeyDisplayName, NBTSchemas, prettyPrintSNBT, prismarineToSNBT, toLong } from "mcbe-leveldb";
+import {
+    dimensions,
+    entryContentTypeToFormatMap,
+    getKeyDisplayName,
+    NBTSchemas,
+    prettyPrintSNBT,
+    prismarineToSNBT,
+    toLong,
+    type EntryContentTypeFormatData,
+} from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
 import { LoadingScreenContents } from "../app";
 import SearchString from "search-string";
@@ -9,6 +18,7 @@ import type { SearchSyntaxHelpInfo } from "../components/SearchSyntaxHelpMenu";
 import SearchSyntaxHelpMenu from "../components/SearchSyntaxHelpMenu";
 import { viewFilesTabSearchSyntax } from "./viewFiles";
 import Notice from "../components/Notice";
+import { createObservable, type Observable } from "../../src/utils/miscUtils";
 
 // TODO: Implement Async Mode for this tab.
 
@@ -228,12 +238,14 @@ export default function TickingAreasTab(props: TickingAreasTabProps): JSX.Specif
 interface KeyData {
     rawKey: Buffer;
     displayKey: string;
-    // UNDONE: Uncomment the `?` and ` | undefined` when async mode is implemented.
-    data /* ? */: {
-        parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.TickingArea;
-        type: NBT.NBTFormat;
-        metadata: NBT.Metadata;
-    } | null /* | undefined */;
+    data?:
+        | {
+              parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.TickingArea;
+              type: NBT.NBTFormat;
+              metadata: NBT.Metadata;
+          }
+        | null
+        | undefined;
 }
 
 async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSignal): Promise<JSX.Element> {
@@ -292,36 +304,45 @@ async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSigna
     if (!tab.cachedDBKeys) await tab.awaitCachedDBKeys!;
     signal.throwIfAborted();
     const rawKeys: Buffer[] = tab.cachedDBKeys!.TickingArea;
+    const asyncMode: boolean =
+        "__FORCE_ASYNC_KEY_MODE__" in window ? !!window.__FORCE_ASYNC_KEY_MODE__
+        : config.useAsyncModeInEntryViews === "auto" ?
+            rawKeys.length >= config.asyncModeEntryThreshold ||
+            Object.values(tab.cachedDBKeys!).reduce((a: number, b: Buffer[]): number => a + b.length, 0) >= config.asyncModeTotalKeyCountThreshold
+        :   config.useAsyncModeInEntryViews;
     const keys: KeyData[] = await Promise.all(
         rawKeys.map(
             async (key: Buffer): Promise<KeyData> => ({
                 rawKey: key,
                 displayKey: getKeyDisplayName(key),
-                data: (await NBT.parse((await tab.db!.get(key))!).catch((): null => null)) as KeyData["data"] | null,
+                data: asyncMode ? undefined : ((await NBT.parse((await tab.db!.get(key))!).catch((): null => null)) as KeyData["data"]),
             })
         )
     );
+    let targetKeys: KeyData[] = keys;
     // globalThis.a = keys;
-    const dynamicProperties: NBT.NBT | undefined = await tab.db
-        .get("DynamicProperties")
-        .then((data: Buffer | null): Promise<NBT.NBT> | undefined =>
-            data ? NBT.parse(data).then((data: { parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata }): NBT.NBT => data.parsed) : undefined
-        )
-        .catch((e: unknown): undefined => (console.error(e), undefined));
-    // console.log(dynamicProperties);
     let mode: ConfigConstants.views.TickingAreas.TickingAreasTabMode = config.views.tickingAreas.mode;
-    let tablesContents: JSX.Element[][] = await Promise.all(
-        ConfigConstants.views.TickingAreas.tickingAreasTabModeToSectionIDs[mode].map(
-            async (sectionID: (typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToSectionIDs)[typeof mode][number]): Promise<JSX.Element[]> =>
-                await getTickingAreasTabContentsRows({
-                    tab,
-                    keys,
-                    dynamicProperties,
-                    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- There is only one section atm, if another section is ever added, remove this disable comment.
-                    mode: sectionID === null ? mode : `${mode}_${sectionID}`,
-                })
-        )
-    );
+    let currentUpdateTablesContentsFunction: ((reloadData: boolean) => Promise<void>) | null = null;
+    let emptyTablesContents: JSX.Element[][] =
+        asyncMode ?
+            [[]]
+        :   await Promise.all(
+                ConfigConstants.views.TickingAreas.tickingAreasTabModeToSectionIDs[mode].map(
+                    async (
+                        sectionID: (typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToSectionIDs)[typeof mode][number]
+                    ): Promise<JSX.Element[]> =>
+                        await getTickingAreasTabContentsRows({
+                            tab,
+                            keys,
+                            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- There is only one section atm, if another section is ever added, remove this disable comment.
+                            mode: sectionID === null ? mode : `${mode}_${sectionID}`,
+                            get updateTablesContents(): ((reloadData: boolean) => Promise<void>) | null {
+                                return currentUpdateTablesContentsFunction;
+                            },
+                        })
+                )
+            );
+    let tablesContents: JSX.Element[][] = emptyTablesContents;
     function Contents(): JSX.Element {
         const tablesContainerRef: RefObject<HTMLTableElement> = useRef<HTMLTableElement>(null);
         const loadingScreenMessageContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
@@ -336,7 +357,61 @@ async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSigna
         //     viewOptionsContainer: useRef<HTMLDivElement>(null),
         //     viewOptionsTabbedSelector: useRef<HTMLDivElement>(null),
         // };
+        async function getTablesContentsInRange(sectionIndex: number, start: number, end: number): Promise<JSX.Element[]> {
+            const sectionID: (typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToSectionIDs)[typeof mode][number] =
+                ConfigConstants.views.TickingAreas.tickingAreasTabModeToSectionIDs[mode][sectionIndex]!;
+            return await getTickingAreasTabContentsRows({
+                tab,
+                // REVIEW // TEST: Make sure this won't crash the tab if an entry with invalid data is present.
+                keys: await Promise.all(
+                    targetKeys
+                        .slice(start, end)
+                        .map(
+                            async (key: KeyData): Promise<KeyData> => ({ ...key, data: (await NBT.parse((await tab.db!.get(key.rawKey))!)) as KeyData["data"] })
+                        )
+                ),
+                // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- There is only one section atm, if another section is ever added, remove this disable comment.
+                mode: sectionID === null ? mode : `${mode}_${sectionID}`,
+                get updateTablesContents(): ((reloadData: boolean) => Promise<void>) | null {
+                    return currentUpdateTablesContentsFunction;
+                },
+            });
+        }
+        async function _loadTablesContentsInRange(sectionIndex: number, start: number, end: number): Promise<void> {
+            if (!asyncMode) return;
+            // const sectionID: (typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToSectionIDs)[typeof mode][number] =
+            //     ConfigConstants.views.TickingAreas.tickingAreasTabModeToSectionIDs[mode][sectionIndex]!;
+            tablesContents = [...tablesContents];
+            tablesContents[sectionIndex] = [...emptyTablesContents[sectionIndex]!];
+            tablesContents[sectionIndex].splice(start, end - start, ...(await getTablesContentsInRange(sectionIndex, start, end)));
+        }
+        function getSectionEntryCounts(): number[] {
+            return ConfigConstants.views.TickingAreas.tickingAreasTabModeToSectionIDs[mode].map(
+                (sectionID: (typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToSectionIDs)[typeof mode][number]): number => {
+                    switch (sectionID) {
+                        case null:
+                            return targetKeys.length;
+                        default:
+                            return NaN;
+                    }
+                }
+            );
+        }
         function TablesContents(): JSX.Element {
+            const localTablesContents: Observable<JSX.Element[][]> = createObservable([[]]);
+            if (asyncMode) {
+                // TODO: Add an error handler to this.
+                void Promise.all(
+                    ConfigConstants.views.Maps.mapsTabModeToSectionIDs[mode].map(
+                        async (
+                            _sectionID: (typeof ConfigConstants.views.Maps.mapsTabModeToSectionIDs)[typeof mode][number],
+                            index: number
+                        ): Promise<JSX.Element[]> => await getTablesContentsInRange(index, 0, 20)
+                    )
+                ).then((tablesContents: JSX.Element[][]): void => {
+                    localTablesContents.set(tablesContents);
+                });
+            }
             return (
                 <>
                     {...ConfigConstants.views.TickingAreas.tickingAreasTabModeToSectionIDs[mode].map(
@@ -346,6 +421,13 @@ async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSigna
                         ): JSX.Element => {
                             function Test1(): JSX.Element {
                                 const bodyRef: RefObject<HTMLTableSectionElement> = useRef<HTMLTableSectionElement>(null);
+                                localTablesContents.observe((tablesContents: JSX.Element[][]): void => {
+                                    if (!asyncMode || !bodyRef.current) return;
+                                    // const tempElement: HTMLDivElement = document.createElement("div");
+                                    render(null, bodyRef.current);
+                                    render(<>{...tablesContents[index]!}</>, bodyRef.current /* tempElement */);
+                                    // bodyRef.current.replaceChildren(...tempElement.children);
+                                });
                                 // const [columnHeadersContextMenu_isOpen, columnHeadersContextMenu_setOpen] = useState(false);
                                 // const [columnHeadersContextMenu_anchorPoint, columnHeadersContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
                                 const headerName = ConfigConstants.views.TickingAreas.tickingAreasTabModeSectionHeaderNames[mode][index];
@@ -404,13 +486,24 @@ async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSigna
                                                 <tr class="table-footer-row-page-navigation">
                                                     <td colSpan={ConfigConstants.views.TickingAreas.tickingAreasTabModeToColumnIDs[sectionMode].length}>
                                                         <PageNavigation
-                                                            totalPages={Math.ceil(tablesContents[index]!.length / 20)}
-                                                            onPageChange={(page: number): void => {
+                                                            totalPages={Math.ceil(getSectionEntryCounts()[index]! / 20)}
+                                                            onPageChange={async (page: number): Promise<void> => {
                                                                 if (!bodyRef.current) return;
+                                                                if (asyncMode) {
+                                                                    localTablesContents.get()[index] = await getTablesContentsInRange(
+                                                                        index,
+                                                                        (page - 1) * 20,
+                                                                        page * 20
+                                                                    );
+                                                                }
                                                                 // let tempElement: HTMLDivElement = document.createElement("div");
                                                                 render(null, bodyRef.current);
                                                                 render(
-                                                                    <>{...tablesContents[index]!.slice((page - 1) * 20, page * 20)}</>,
+                                                                    <>
+                                                                        {...asyncMode ?
+                                                                            localTablesContents.get()[index]!
+                                                                        :   tablesContents[index]!.slice((page - 1) * 20, page * 20)}
+                                                                    </>,
                                                                     bodyRef.current /* tempElement */
                                                                 );
                                                                 // bodyRef.current.replaceChildren(...tempElement.children);
@@ -429,7 +522,7 @@ async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSigna
                 </>
             );
         }
-        const query: Omit<TabManagerTab_LevelDBSearchQuery, "searchTargets"> & {
+        const query: Omit<TabManagerTab_LevelDBSearchQuery<true>, "searchTargets"> & {
             searchTargets: {
                 key: Buffer<ArrayBufferLike>;
                 displayKey: string;
@@ -439,11 +532,14 @@ async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSigna
                           type: NBT.NBTFormat;
                           metadata: NBT.Metadata;
                       }
+                    | (() => Promise<{ parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata } | null | undefined>)
                     | null
                     | undefined;
-                valueType: {
-                    readonly type: "NBT";
-                };
+                valueType:
+                    | {
+                          readonly type: "NBT";
+                      }
+                    | Extract<EntryContentTypeFormatData, { type: "custom"; resultType: "JSONNBT" }>;
                 contentType: "TickingArea";
                 data: KeyData;
                 searchableContents: string[];
@@ -454,7 +550,11 @@ async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSigna
                     ({
                         key: key.rawKey,
                         displayKey: key.displayKey,
-                        value: key.data,
+                        value:
+                            asyncMode ?
+                                async (): Promise<NonNullable<KeyData["data"]>> =>
+                                    (await NBT.parse((await tab.db!.get(key.rawKey))!)) as NonNullable<KeyData["data"]>
+                            :   key.data!,
                         valueType: entryContentTypeToFormatMap.TickingArea,
                         contentType: "TickingArea",
                         data: key,
@@ -473,16 +573,25 @@ async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSigna
                         customDataFields: {
                             // TODO: Uncomment the below line and implement a search query for checking for entries with invalid data.
                             // hasInvalidData: key.data === null,
-                            contents: ((): string => {
-                                if (key.data === null) return "";
-                                try {
-                                    return prettyPrintSNBT(prismarineToSNBT(key.data.parsed), { indent: 0 });
-                                } catch {
-                                    return "";
-                                }
-                            })(),
+                            contents:
+                                asyncMode ?
+                                    async (): Promise<string> => {
+                                        try {
+                                            return prettyPrintSNBT(prismarineToSNBT((await NBT.parse((await tab.db!.get(key.rawKey))!)).parsed), { indent: 0 });
+                                        } catch {
+                                            return "";
+                                        }
+                                    }
+                                :   ((): string => {
+                                        if (key.data === null) return "";
+                                        try {
+                                            return prettyPrintSNBT(prismarineToSNBT(key.data!.parsed), { indent: 0 });
+                                        } catch {
+                                            return "";
+                                        }
+                                    })(),
                         },
-                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
+                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery<true>["searchTargets"]>[number]
             ),
         };
         async function updateTablesContents(reloadData: boolean): Promise<void> {
@@ -491,31 +600,63 @@ async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSigna
             if (reloadData) {
                 mode = config.views.tickingAreas.mode;
                 console.debug(query);
-                tablesContents = await Promise.all(
-                    ConfigConstants.views.TickingAreas.tickingAreasTabModeToSectionIDs[mode].map(
-                        async (
-                            sectionID: (typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToSectionIDs)[typeof mode][number]
-                        ): Promise<JSX.Element[]> =>
-                            await getTickingAreasTabContentsRows({
-                                tab,
-                                keys:
-                                    Object.keys(query).length > 1 ?
-                                        tab
-                                            .dbSearch!.search(query)
-                                            .toArray()
-                                            .map((key): KeyData => key.originalObject.data)
-                                    :   keys,
-                                dynamicProperties,
-                                // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- There is only one section atm, if another section is ever added, remove this disable comment.
-                                mode: sectionID === null ? mode : `${mode}_${sectionID}`,
-                            })
-                    )
-                );
+                if (asyncMode) {
+                    targetKeys =
+                        Object.keys(query).length > 1 ?
+                            await (async (): Promise<KeyData[]> => {
+                                const iterator = tab.dbSearch!.searchAsync(query, true);
+                                let i: number = 0;
+                                let t: number = Date.now();
+                                const results: KeyData[] = [];
+                                const formatter = new Intl.NumberFormat();
+                                for await (const value of iterator) {
+                                    i++;
+                                    if (t + 15 < Date.now()) {
+                                        if (loadingScreenMessageContainerRef.current) {
+                                            loadingScreenMessageContainerRef.current.textContent = `Searching LevelDB: ${formatter.format(i)}/${formatter.format(keys.length)} (${formatter.format(results.length)} results)...`;
+                                        }
+                                        signal.throwIfAborted();
+                                        await sleep(5);
+                                        t = Date.now();
+                                    }
+                                    if (!value) continue;
+                                    results.push(value.originalObject.data);
+                                }
+                                return results;
+                            })()
+                        :   keys;
+                } else {
+                    emptyTablesContents = await Promise.all(
+                        ConfigConstants.views.TickingAreas.tickingAreasTabModeToSectionIDs[mode].map(
+                            async (
+                                sectionID: (typeof ConfigConstants.views.TickingAreas.tickingAreasTabModeToSectionIDs)[typeof mode][number]
+                            ): Promise<JSX.Element[]> =>
+                                await getTickingAreasTabContentsRows({
+                                    tab,
+                                    keys:
+                                        Object.keys(query).length > 1 ?
+                                            tab
+                                                .dbSearch!.search(query)
+                                                .toArray()
+                                                .map((key): KeyData => key.originalObject.data)
+                                        :   keys,
+                                    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- There is only one section atm, if another section is ever added, remove this disable comment.
+                                    mode: sectionID === null ? mode : `${mode}_${sectionID}`,
+                                    get updateTablesContents(): ((reloadData: boolean) => Promise<void>) | null {
+                                        return currentUpdateTablesContentsFunction;
+                                    },
+                                })
+                        )
+                    );
+                    tablesContents = emptyTablesContents;
+                }
             }
-            const tempElement: HTMLDivElement = document.createElement("div");
-            render(<TablesContents />, tempElement);
-            tablesContainerRef.current.replaceChildren(...tempElement.children);
+            // const tempElement: HTMLDivElement = document.createElement("div");
+            render(null, tablesContainerRef.current);
+            render(<TablesContents />, tablesContainerRef.current /* tempElement */);
+            // tablesContainerRef.current.replaceChildren(...tempElement.children);
         }
+        currentUpdateTablesContentsFunction = updateTablesContents;
         useEffect((): (() => void) => {
             function onModeChanged(): void {
                 void updateTablesContents(true);
@@ -900,11 +1041,11 @@ async function getTickingAreasTabContentsRows(data: {
      * The full list of key data to display.
      */
     keys: KeyData[];
-    dynamicProperties?: NBT.NBT | undefined;
     /**
      * The mode of the tab.
      */
     mode: ConfigConstants.views.TickingAreas.TickingAreasTabSectionMode;
+    get updateTablesContents(): ((reloadData: boolean) => Promise<void>) | null; // TODO
 }): Promise<JSX.Element[]> {
     // const columns = config
     switch (data.mode) {

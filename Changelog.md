@@ -37,7 +37,8 @@
     -   `hex`
     -   `custom/SNBT`
 -   An error message now appears below the search bar on the "View Files" tab when an invalid NBT query is provided, like it does on other tabs.
--   Added Async Mode to the "Ticks" tab.
+-   Added Async Mode to the "Ticks" tab ([#57](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/57)).
+-   Added Async Mode to the "Ticking Areas" tab ([#57](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/57)).
 
 ## Changes
 
@@ -111,6 +112,7 @@
 -   Fixed a bug where the error dialogs for opening files with the app would display the path as `[object Object]` instead of the actual path.
 -   Fixed a bug where the contents of entries with a data type of `NBT` or `custom/JSONNBT` could not be searched with the `contents` query in the "View Files" tab.
 -   Fixed a bug where if a search in the "View Files" tab that did not include an `nbt` or `contents` query was performed prior to performing a search with an `nbt` or `contents` query, without switching off of the tab in between the two searches, the NBT data for the entries would not be loaded, resulting in the `nbt` or `contents` query not matching any NBT search results.
+-   The "Ticking Areas" tab now no longer unnecessarily loads the dynamic properties data.
 
 ## Performance Improvements
 

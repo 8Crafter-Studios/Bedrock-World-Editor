@@ -657,6 +657,7 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
                                     }
                                 :   ((): string => {
                                         try {
+                                            if (key.data === null) return "";
                                             return prettyPrintSNBT(prismarineToSNBT(key.data!.parsed), { indent: 0 });
                                         } catch {
                                             return "";
