@@ -440,13 +440,13 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                 ConfigConstants.views.Structures.structuresTabModeToSectionIDs[mode][sectionIndex]!;
             return await getStructuresTabContentsRows({
                 tab,
-                // BUG: This crashes the tab if an entry with invalid data is present.
                 keys: await Promise.all(
-                    targetKeys
-                        .slice(start, end)
-                        .map(
-                            async (key: KeyData): Promise<KeyData> => ({ ...key, data: (await NBT.parse((await tab.db!.get(key.rawKey))!)) as KeyData["data"] })
-                        )
+                    targetKeys.slice(start, end).map(
+                        async (key: KeyData): Promise<KeyData> => ({
+                            ...key,
+                            data: (await NBT.parse((await tab.db!.get(key.rawKey))!).catch((): null => null)) as KeyData["data"],
+                        })
+                    )
                 ),
                 // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- There is only one section atm, if another section is ever added, remove this disable comment.
                 mode: sectionID === null ? mode : `${mode}_${sectionID}`,
