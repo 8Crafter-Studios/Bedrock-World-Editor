@@ -525,19 +525,11 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
     //     }
     // }
     let keyValuesLoaded: boolean = false;
-    const dynamicProperties: NBT.NBT | undefined = await tab.db
-        .get("DynamicProperties")
-        .then((data: Buffer | null): Promise<NBT.NBT> | undefined =>
-            data ? NBT.parse(data).then((data: { parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata }): NBT.NBT => data.parsed) : undefined
-        )
-        .catch((e: unknown): undefined => (console.error(e), undefined));
-    // console.log(dynamicProperties);
     let currentUpdateTablesContentsFunction: ((reloadData: boolean) => Promise<void>) | null = null;
     let tablesContents: JSX.Element[][] = [
         await getViewFilesTabContentsRows({
             tab,
             keys,
-            dynamicProperties,
             get updateTablesContents(): ((reloadData: boolean) => Promise<void>) | null {
                 return currentUpdateTablesContentsFunction;
             },
@@ -927,7 +919,6 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                             return results;
                                         })()
                                     :   (keySearchResults = keys),
-                                dynamicProperties,
                                 get updateTablesContents(): ((reloadData: boolean) => Promise<void>) | null {
                                     return currentUpdateTablesContentsFunction;
                                 },
@@ -1593,7 +1584,6 @@ async function getViewFilesTabContentsRows(data: {
      * The full list of client key data (including what isn't going to be displayed).
      */
     keys: KeyData[];
-    dynamicProperties?: NBT.NBT | undefined;
     get updateTablesContents(): ((reloadData: boolean) => Promise<void>) | null;
 }): Promise<JSX.Element[]> {
     const columns = ConfigConstants.views.ViewFiles.viewFilesTabModeToColumnIDs.simple;
