@@ -354,21 +354,19 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                 ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode][sectionIndex]!;
             return await getTicksTabContentsRows({
                 tab,
-                // BUG: This crashes the tab if an entry with invalid data is present.
                 randomTickKeys: await Promise.all(
                     targetKeys.randomTicks.slice(start, end).map(
                         async (key: RandomTickKeyData): Promise<RandomTickKeyData> => ({
                             ...key,
-                            data: (await NBT.parse((await tab.db!.get(key.rawKey))!)) as RandomTickKeyData["data"],
+                            data: (await NBT.parse((await tab.db!.get(key.rawKey))!).catch((): null => null)) as RandomTickKeyData["data"],
                         })
                     )
                 ),
-                // BUG: This crashes the tab if an entry with invalid data is present.
                 pendingTickKeys: await Promise.all(
                     targetKeys.pendingTicks.slice(start, end).map(
                         async (key: PendingTickKeyData): Promise<PendingTickKeyData> => ({
                             ...key,
-                            data: (await NBT.parse((await tab.db!.get(key.rawKey))!)) as PendingTickKeyData["data"],
+                            data: (await NBT.parse((await tab.db!.get(key.rawKey))!).catch((): null => null)) as PendingTickKeyData["data"],
                         })
                     )
                 ),
