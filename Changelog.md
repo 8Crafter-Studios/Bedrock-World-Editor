@@ -115,6 +115,7 @@
 -   Fixed a bug where if a search in the "View Files" tab that did not include an `nbt` or `contents` query was performed prior to performing a search with an `nbt` or `contents` query, without switching off of the tab in between the two searches, the NBT data for the entries would not be loaded, resulting in the `nbt` or `contents` query not matching any NBT search results.
 -   Fixed a bug where the "Maps" tab would crash if an entry with invalid data was present while in Async Mode.
 -   Fixed a bug where the "Entities" tab would crash if an entry with invalid data was present while in Async Mode.
+-   Fixed a bug where the app's URI protocol was not functional for any purpose other than opening the app on Windows ([#66](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/66)).
 
 ## Performance Improvements
 
