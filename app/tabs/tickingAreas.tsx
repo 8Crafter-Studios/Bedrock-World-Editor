@@ -20,8 +20,6 @@ import { viewFilesTabSearchSyntax } from "./viewFiles";
 import Notice from "../components/Notice";
 import { createObservable, type Observable } from "../../src/utils/miscUtils";
 
-// TODO: Implement Async Mode for this tab.
-
 /**
  * Props for the {@link TickingAreasTab} component.
  */
