@@ -185,7 +185,7 @@ export default function SearchSyntaxHelpMenu(props: SearchSyntaxHelpMenuProps): 
                                                     <a
                                                         href=""
                                                         aria-label="See more"
-                                                        class="emerald-green-link"
+                                                        class="emerald-green-link ndrg"
                                                         onClick={(event: JSX.TargetedMouseEvent<HTMLAnchorElement>): void => {
                                                             event.preventDefault();
                                                             if (containerRef.current && mainHelpInfoPageRef.current) {
@@ -258,7 +258,7 @@ export default function SearchSyntaxHelpMenu(props: SearchSyntaxHelpMenuProps): 
                                                         <a
                                                             href=""
                                                             aria-label="See more"
-                                                            class="emerald-green-link"
+                                                            class="emerald-green-link ndrg"
                                                             onClick={(event: JSX.TargetedMouseEvent<HTMLAnchorElement>): void => {
                                                                 event.preventDefault();
                                                                 if (containerRef.current && mainHelpInfoPageRef.current) {
