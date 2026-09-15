@@ -1,3 +1,9 @@
+<!-- # v1.0.0
+
+## Additions
+
+-   Windows builds are now code signed. -->
+
 # v1.0.0-beta.35
 
 ## Critical Fixes
@@ -8,11 +14,12 @@
 
 ## Additions
 
--   Windows builds are now code signed.
 -   The add tag buttons in the Node editor are now functional ([#2](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/2)).
 -   Added the paths to the world folder locations for the Minecraft Education Edition desktop version to the config.
 -   Added the paths to the world folder locations for Minecraft Education Edition on macOS to the config.
 -   Added paths to the extra world folder locations for Minecraft Education Edition, Minecraft Education Edition Preview, and the desktop version of Minecraft Education Edition, that are inside of mounted Windows volumes, to the config.
+-   Added the Current Tick and Tick Count columns to the "Ticks" tab.
+-   Added a `currenttick` search query to the "Ticks" tab.
 -   The "Create LevelDB Entry" button in sub-tabs now properly reloads the data of the sub-tab after creating the LevelDB entry.
 -   The "Create LevelDB Entry" button in sub-tabs now attemps to use a default value based on the content type for the new LevelDB entry, rather than an empty NBT object or empty data.
 -   When the associated LevelDB key for a `Map` sub-tab does not exist, there is now a "Create LevelDB Entry" button.
@@ -83,7 +90,7 @@
     -   `MVillages`
     -   `Villages`
 -   The search entry data loading screen for the "View Files" tab now says "Reading LevelDB entry data #/#..." instead of "Reading NBT data #/#..." when a query that searches non-NBT data is provided.
--   Improved error stringification throghout the app.
+-   Improved error stringification throughout the app.
 
 ## Fixes
 

@@ -72,6 +72,38 @@ const ticksTabSearchSyntax: SearchSyntaxHelpInfo = {
         dbkey: {
             description: "Searches the human-readable LevelDB key (the one displayed in the DB Key column) for the text.",
         },
+        currenttick: {
+            // REVIEW: Make sure this is actually what currentTick is.
+            description: "Searches for ticks by what the current tick was the last time they were updated.",
+            extendedDescription: (
+                <>
+                    <p>Searches for ticks by what the current tick was the last time they were updated.</p>
+                    <p>
+                        Supported prefix operators:
+                        <ul>
+                            <li>"|" - Any Of</li>
+                            <li>"-" - None Of</li>
+                            <li>"^" - One Of</li>
+                            <li>"&" - All Of</li>
+                        </ul>
+                    </p>
+                </>
+            ),
+            examples: [
+                <p>
+                    <code>currenttick:11788</code> - Searches for ticks with a current tick of <code>11788</code>.
+                </p>,
+                <p>
+                    <code>|currenttick:12128</code> - Searches for ticks with a current tick of <code>12128</code>.
+                </p>,
+                <p>
+                    <code>currenttick:15083 currenttick:14292</code> - Searches for ticks with a current tick of <code>15083</code> or <code>14292</code>.
+                </p>,
+                <p>
+                    <code>-currenttick:0 -currenttick:796</code> - Searches for maps that do not have a current tick of <code>0</code> or <code>796</code>.
+                </p>,
+            ],
+        },
         contents: {
             description: "Searches the LevelDB entry value as SNBT.",
         },
@@ -1083,7 +1115,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                     // noneOf
                                     "-",
                                 ] as const;
-                                const keywords = ["nbt", "contents"] as const;
+                                const keywords = ["currenttick", "nbt", "contents"] as const;
                                 function getKeywordedOperators<T extends string, O extends string = "" | (typeof keywordPrefixOperators)[number]>(
                                     keywords: readonly T[],
                                     operators: readonly O[] = ["", ...keywordPrefixOperators] as O[]
@@ -1124,7 +1156,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                 }
                                 for (const key in queryData) {
                                     if (!Object.hasOwn(queryData, key)) continue;
-                                    if ([...getKeywordedOperators(["nbt", "contents"])].includes(key as never)) continue;
+                                    if ([...getKeywordedOperators(["currenttick", "nbt", "contents"])].includes(key as never)) continue;
                                     if (
                                         !keywordPrefixOperators.includes(key.slice(0, 1) as never) &&
                                         keywords.includes(key.slice(1) as never) &&
@@ -1140,7 +1172,16 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                     }
                                     return;
                                 }
-                                if (getKeywordedOperators(["nbt"]).some((key: string): boolean => key in queryData)) {
+                                if (getKeywordedOperators(["currenttick", "nbt"]).some((key: string): boolean => key in queryData)) {
+                                    function parseCurrentTickQueries(queries: string[]): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery[] {
+                                        return queries.map((v: string): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery => {
+                                            return {
+                                                path: ["currentTick"],
+                                                value: Number(v),
+                                                caseSensitivePath: true,
+                                            };
+                                        });
+                                    }
                                     function parseNBTQueries(queries: string[]): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery[] {
                                         return queries
                                             .map((v: string): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery | undefined => {
@@ -1209,9 +1250,13 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                     }
                                     pendingTickQuery.nbtTags = {};
                                     randomTickQuery.nbtTags = {};
-                                    if (["-nbt"].some((key: string): boolean => key in queryData)) {
+                                    if (["-currenttick", "-nbt"].some((key: string): boolean => key in queryData)) {
                                         pendingTickQuery.nbtTags.noneOf = [];
                                         randomTickQuery.nbtTags.noneOf = [];
+                                        if (queryData["-currenttick"]) {
+                                            pendingTickQuery.nbtTags.noneOf.push(...parseCurrentTickQueries(queryData["-currenttick"]));
+                                            randomTickQuery.nbtTags.noneOf.push(...parseCurrentTickQueries(queryData["-currenttick"]));
+                                        }
                                         if (queryData["-nbt"]) {
                                             pendingTickQuery.nbtTags.noneOf.push(...parseNBTQueries(queryData["-nbt"]));
                                             randomTickQuery.nbtTags.noneOf.push(...parseNBTQueries(queryData["-nbt"]));
@@ -1220,6 +1265,10 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                     if (keywords.some((v: string): boolean => v in queryData)) {
                                         pendingTickQuery.nbtTags.anyOf = [];
                                         randomTickQuery.nbtTags.anyOf = [];
+                                        if (queryData.currenttick) {
+                                            pendingTickQuery.nbtTags.anyOf.push(...parseCurrentTickQueries(queryData.currenttick));
+                                            randomTickQuery.nbtTags.anyOf.push(...parseCurrentTickQueries(queryData.currenttick));
+                                        }
                                         if (queryData.nbt) {
                                             pendingTickQuery.nbtTags.anyOf.push(...parseNBTQueries(queryData.nbt));
                                             randomTickQuery.nbtTags.anyOf.push(...parseNBTQueries(queryData.nbt));
@@ -1228,6 +1277,10 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                     if (getKeywordedOperators(keywords, ["^"]).some((v: string): boolean => v in queryData)) {
                                         pendingTickQuery.nbtTags.oneOf = [];
                                         randomTickQuery.nbtTags.oneOf = [];
+                                        if (queryData["^currenttick"]) {
+                                            pendingTickQuery.nbtTags.oneOf.push(...parseCurrentTickQueries(queryData["^currenttick"]));
+                                            randomTickQuery.nbtTags.oneOf.push(...parseCurrentTickQueries(queryData["^currenttick"]));
+                                        }
                                         if (queryData["^nbt"]) {
                                             pendingTickQuery.nbtTags.oneOf.push(...parseNBTQueries(queryData["^nbt"]));
                                             randomTickQuery.nbtTags.oneOf.push(...parseNBTQueries(queryData["^nbt"]));
@@ -1236,6 +1289,10 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                     if (getKeywordedOperators(keywords, ["&"]).some((v: string): boolean => v in queryData)) {
                                         pendingTickQuery.nbtTags.allOf = [];
                                         randomTickQuery.nbtTags.allOf = [];
+                                        if (queryData["&currenttick"]) {
+                                            pendingTickQuery.nbtTags.allOf.push(...parseCurrentTickQueries(queryData["&currenttick"]));
+                                            randomTickQuery.nbtTags.allOf.push(...parseCurrentTickQueries(queryData["&currenttick"]));
+                                        }
                                         if (queryData["&nbt"]) {
                                             pendingTickQuery.nbtTags.allOf.push(...parseNBTQueries(queryData["&nbt"]));
                                             randomTickQuery.nbtTags.allOf.push(...parseNBTQueries(queryData["&nbt"]));
@@ -1493,9 +1550,52 @@ async function getTicksTabContentsRows(data: {
                             >
                                 {columns.map((column: (typeof columns)[number]): JSX.Element => {
                                     switch (column) {
-                                        // TODO: Add more columns here. #65
                                         case "DBKey":
                                             return <td>{randomTickKey.displayKey}</td>;
+                                        case "CurrentTick":
+                                            if (randomTickKey.data === undefined) {
+                                                return (
+                                                    <td>
+                                                        <span style="color: yellow;">Loading...</span>
+                                                    </td>
+                                                );
+                                            }
+                                            if (randomTickKey.data === null) {
+                                                return (
+                                                    <td>
+                                                        <span style="color: red;">N/A</span>
+                                                    </td>
+                                                );
+                                            }
+                                            return (
+                                                <td>
+                                                    {randomTickKey.data.parsed.value.currentTick?.type === "int" ?
+                                                        randomTickKey.data.parsed.value.currentTick.value
+                                                    :   <span style="color: red;">null</span>}
+                                                </td>
+                                            );
+                                        case "TickCount":
+                                            if (randomTickKey.data === undefined) {
+                                                return (
+                                                    <td>
+                                                        <span style="color: yellow;">Loading...</span>
+                                                    </td>
+                                                );
+                                            }
+                                            if (randomTickKey.data === null) {
+                                                return (
+                                                    <td>
+                                                        <span style="color: red;">N/A</span>
+                                                    </td>
+                                                );
+                                            }
+                                            return (
+                                                <td>
+                                                    {randomTickKey.data.parsed.value.tickList?.type === "list" ?
+                                                        randomTickKey.data.parsed.value.tickList.value.value.length
+                                                    :   <span style="color: red;">null</span>}
+                                                </td>
+                                            );
                                         default:
                                             return (
                                                 <td>
@@ -1596,9 +1696,52 @@ async function getTicksTabContentsRows(data: {
                             >
                                 {columns.map((column: (typeof columns)[number]): JSX.Element => {
                                     switch (column) {
-                                        // TODO: Add more columns here. #65
                                         case "DBKey":
                                             return <td>{pendingTickKey.displayKey}</td>;
+                                        case "CurrentTick":
+                                            if (pendingTickKey.data === undefined) {
+                                                return (
+                                                    <td>
+                                                        <span style="color: yellow;">Loading...</span>
+                                                    </td>
+                                                );
+                                            }
+                                            if (pendingTickKey.data === null) {
+                                                return (
+                                                    <td>
+                                                        <span style="color: red;">N/A</span>
+                                                    </td>
+                                                );
+                                            }
+                                            return (
+                                                <td>
+                                                    {pendingTickKey.data.parsed.value.currentTick?.type === "int" ?
+                                                        pendingTickKey.data.parsed.value.currentTick.value
+                                                    :   <span style="color: red;">null</span>}
+                                                </td>
+                                            );
+                                        case "TickCount":
+                                            if (pendingTickKey.data === undefined) {
+                                                return (
+                                                    <td>
+                                                        <span style="color: yellow;">Loading...</span>
+                                                    </td>
+                                                );
+                                            }
+                                            if (pendingTickKey.data === null) {
+                                                return (
+                                                    <td>
+                                                        <span style="color: red;">N/A</span>
+                                                    </td>
+                                                );
+                                            }
+                                            return (
+                                                <td>
+                                                    {pendingTickKey.data.parsed.value.tickList?.type === "list" ?
+                                                        pendingTickKey.data.parsed.value.tickList.value.value.length
+                                                    :   <span style="color: red;">null</span>}
+                                                </td>
+                                            );
                                         default:
                                             return (
                                                 <td>

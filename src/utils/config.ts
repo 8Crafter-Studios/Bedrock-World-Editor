@@ -356,10 +356,10 @@ namespace exports {
                         simple: {
                             sections: {
                                 randomTicks: {
-                                    columns: ["DBKey"],
+                                    columns: ["DBKey", "CurrentTick", "TickCount"],
                                 },
                                 pendingTicks: {
-                                    columns: ["DBKey"],
+                                    columns: ["DBKey", "CurrentTick", "TickCount"],
                                 },
                             },
                         },
@@ -615,6 +615,26 @@ namespace exports {
                         if (!currentExtraMinecraftDataFolders.includes(path)) currentExtraMinecraftDataFolders.push(path);
                     }
                     if (currentExtraMinecraftDataFolders.length !== originalLength) this.extraMinecraftDataFolders = currentExtraMinecraftDataFolders;
+                }
+            }
+            if (semver.compareBuild(currentConfigVersion, "1.0.0-beta.35+BUILD.3") < 0) {
+                {
+                    const currentRandomTicksColumns = this.views.ticks.modeSettings.simple.sections.randomTicks.columns;
+                    const originalLength: number = currentRandomTicksColumns.length;
+                    for (const path of ["CurrentTick", "TickCount"] as const) {
+                        if (!currentRandomTicksColumns.includes(path)) currentRandomTicksColumns.push(path);
+                    }
+                    if (currentRandomTicksColumns.length !== originalLength)
+                        this.views.ticks.modeSettings.simple.sections.randomTicks.columns = currentRandomTicksColumns;
+                }
+                {
+                    const currentPendingTicksColumns = this.views.ticks.modeSettings.simple.sections.pendingTicks.columns;
+                    const originalLength: number = currentPendingTicksColumns.length;
+                    for (const path of ["CurrentTick", "TickCount"] as const) {
+                        if (!currentPendingTicksColumns.includes(path)) currentPendingTicksColumns.push(path);
+                    }
+                    if (currentPendingTicksColumns.length !== originalLength)
+                        this.views.ticks.modeSettings.simple.sections.pendingTicks.columns = currentPendingTicksColumns;
                 }
             }
             // TODO: Uncomment this at add the correct version number when grouped search mode for the raw players tab mode is implemented.
@@ -3161,6 +3181,8 @@ namespace exports {
             export namespace Ticks {
                 export const columnIDToDisplayName = {
                     DBKey: "DB Key",
+                    CurrentTick: "Current Tick",
+                    TickCount: "Tick Count",
                 } as const satisfies { [key in TicksTabModeToColumnType[TicksTabSectionMode]]: string | { optionLabel: string; headerLabel: string } };
 
                 export const ticksTabModeToSectionIDs = {
@@ -3172,8 +3194,8 @@ namespace exports {
                 } as const satisfies { [key in TicksTabMode]: (string | null)[] };
 
                 export const ticksTabModeToColumnIDs = {
-                    simple_randomTicks: ["DBKey"],
-                    simple_pendingTicks: ["DBKey"],
+                    simple_randomTicks: ["DBKey", "CurrentTick", "TickCount"],
+                    simple_pendingTicks: ["DBKey", "CurrentTick", "TickCount"],
                 } as const;
 
                 export type TicksTabMode = "simple";
