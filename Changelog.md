@@ -14,6 +14,7 @@
 
 ## Additions
 
+-   Added an integration with the [Lily's Money](https://www.curseforge.com/minecraft-bedrock/scripts/lilys-money) add-on.
 -   The add tag buttons in the Node editor are now functional ([#2](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/2)).
 -   Added the paths to the world folder locations for the Minecraft Education Edition desktop version to the config.
 -   Added the paths to the world folder locations for Minecraft Education Edition on macOS to the config.
