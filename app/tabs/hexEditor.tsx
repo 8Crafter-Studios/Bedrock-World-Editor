@@ -1,15 +1,26 @@
-import type { JSX, RefObject } from "preact";
+import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useRef } from "preact/compat";
 import { LoadingScreenContents } from "../app";
 import EditorWidgetOverlayBar, { type EditorWidgetOverlayBarWidgetRegistry } from "../components/EditorWidgetOverlayBar";
 import BinaryHexEditor, { initHexEditorDataStorageObjectProps, type HexEditorDataStorageObject } from "../components/BinaryHexEditor";
 import Notice from "../components/Notice";
 import { entryContentTypeToFormatMap, type EntryContentTypeFormatData } from "mcbe-leveldb";
+import { shell } from "@electron/remote";
+import { stringifyError } from "../../src/utils/miscUtils";
 
+/**
+ * Props for the {@link HexEditorTab} component.
+ */
 export interface HexEditorTabProps {
     tab: TabManagerSubTab;
 }
 
+/**
+ * The hex editor tab.
+ *
+ * @param props The props for the component.
+ * @returns The JSX element.
+ */
 export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElement<"div"> {
     const containerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     const viewOptionsRefs = {
@@ -19,13 +30,18 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
     const widgetRegistryRef: RefObject<EditorWidgetOverlayBarWidgetRegistry> = useRef<EditorWidgetOverlayBarWidgetRegistry>(null);
     function fakeAssertIsValidOptionsType(
         options: typeof props.tab.currentState.options
-    ): asserts options is Extract<typeof props.tab.currentState.options, { viewMode?: any }> {}
+    ): asserts options is Extract<typeof props.tab.currentState.options, { viewMode?: any }> {
+        void options;
+    }
     const asyncMode: boolean = !props.tab.currentState.options.dataStorageObject;
     fakeAssertIsValidOptionsType(props.tab.currentState.options);
     props.tab.currentState.options.viewMode ??= "raw";
+    let dataLoadFailureNoticeReasonExists: boolean = false;
+    let dataLoadFailureNoticeReason: unknown = null;
     let levelDBOpenFailure: boolean = false;
+    let missingLevelDBKey: boolean = false;
     function LevelDBOpenFailureNotice(): JSX.Element {
-        if (props.tab.parentTab.errorDueToEncryptedLevelDB)
+        if (props.tab.parentTab.errorDueToEncryptedLevelDB) {
             return (
                 <Notice
                     title="Encrypted LevelDB"
@@ -34,6 +50,7 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
                     image="access_denied"
                 />
             );
+        }
         return (
             <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
                 <Notice
@@ -43,108 +60,101 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
                     image="generic_error"
                     style={{ height: "auto" }}
                 />
-                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
-                    {props.tab.parentTab.errorOnDBOpen instanceof Error ?
-                        `${props.tab.parentTab.errorOnDBOpen.stack !== undefined ? props.tab.parentTab.errorOnDBOpen.stack : props.tab.parentTab.errorOnDBOpen.toString()}${
-                            props.tab.parentTab.errorOnDBOpen.cause !== undefined ?
-                                `\nCaused by: ${((): unknown => {
-                                    try {
-                                        return typeof props.tab.parentTab.errorOnDBOpen.cause === "object" ?
-                                                JSON.stringify(props.tab.parentTab.errorOnDBOpen.cause)
-                                            :   props.tab.parentTab.errorOnDBOpen.cause;
-                                    } catch {
-                                        return props.tab.parentTab.errorOnDBOpen.cause;
-                                    }
-                                })()}`
-                            :   ""
-                        }`
-                    :   String(
-                            (function (): unknown {
-                                try {
-                                    return typeof props.tab.parentTab.errorOnDBOpen === "object" ?
-                                            JSON.stringify(props.tab.parentTab.errorOnDBOpen)
-                                        :   props.tab.parentTab.errorOnDBOpen;
-                                } catch {
-                                    return props.tab.parentTab.errorOnDBOpen;
-                                }
-                            })()
-                        )
-                    }
-                </div>
+                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(props.tab.parentTab.errorOnDBOpen)}</div>
             </div>
         );
     }
-    if (!props.tab.currentState.options.dataStorageObject) {
-        async function loadData(): Promise<void> {
-            if (props.tab.target.type === "LevelDBEntry" && !props.tab.parentTab.db?.isOpen() && !((await props.tab.parentTab.awaitDBOpen) ?? true)) {
-                throw new Error("LevelDB open failure.");
-            }
-            await props.tab.loadData(true);
-            if (props.tab.currentState.options.dataStorageObject) {
-                initHexEditorDataStorageObjectProps(props.tab.currentState.options.dataStorageObject);
-            }
+    function DataLoadFailureNotice({ reason }: { reason: unknown }): JSX.SpecificElement<"div"> {
+        return (
+            <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: center;">
+                <Notice
+                    title="Failed to Load Data"
+                    subtitle={null}
+                    detail="An unexpected error occured while loading the data, please report this bug."
+                    image="generic_error"
+                    style={{ height: "auto" }}
+                />
+                <button
+                    type="button"
+                    title="Opens the GitHub bug report issue creation page."
+                    class="genericRoundButton"
+                    onClick={(event: TargetedMouseEvent<HTMLButtonElement>): void => {
+                        event.preventDefault();
+                        if (event.currentTarget.disabled) return;
+                        event.currentTarget.blur();
+                        void shell.openExternal("https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/new?template=bug_report.md");
+                    }}
+                >
+                    Report Bug
+                </button>
+                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(reason)}</div>
+            </div>
+        );
+    }
+    // TODO: Style this better.
+    function MissingLevelDBKeyNotice(): JSX.SpecificElement<"div"> {
+        return (
+            <div>
+                <h2>The LevelDB key associated with this sub-tab does not exist.</h2>
+                {((): boolean => {
+                    if (props.tab.target.type === "File") return false;
+                    return true;
+                })() && (
+                    <button
+                        type="button"
+                        onClick={async (): Promise<void> => {
+                            if (props.tab.target.type === "File") return;
+                            const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[props.tab.contentType];
+                            await props.tab.parentTab.db!.put(props.tab.target.key, format.defaultValue ?? Buffer.alloc(0));
+                            triggerLoadData();
+                        }}
+                    >
+                        Create LevelDB Entry
+                    </button>
+                )}
+            </div>
+        );
+    }
+    async function loadData(): Promise<void> {
+        if (props.tab.target.type === "LevelDBEntry" && !props.tab.parentTab.db?.isOpen() && !((await props.tab.parentTab.awaitDBOpen) ?? true)) {
+            throw new Error("LevelDB open failure.");
         }
-        function triggerLoadData(): void {
-            loadData().then(
-                (): void => {
-                    reloadContents();
-                },
-                (reason: any): void => {
-                    if (containerRef.current) {
-                        if (reason instanceof Error && reason.message === "LevelDB open failure.") {
-                            render(null, containerRef.current);
-                            render(<LevelDBOpenFailureNotice />, containerRef.current);
-                            levelDBOpenFailure = true;
-                            return;
-                        }
-                        if (reason instanceof Error && reason.message === "The LevelDB key associated with this sub-tab does not exist.") {
-                            render(null, containerRef.current);
-                            render(
-                                <div>
-                                    <h2>The LevelDB key associated with this sub-tab does not exist.</h2>
-                                    {((): boolean => {
-                                        if (props.tab.target.type === "File") return false;
-                                        return true;
-                                    })() && (
-                                        <button
-                                            type="button"
-                                            onClick={async (): Promise<void> => {
-                                                if (props.tab.target.type === "File") return;
-                                                const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[props.tab.contentType];
-                                                await props.tab.parentTab.db!.put(props.tab.target.key, format.defaultValue ?? Buffer.alloc(0));
-                                                triggerLoadData();
-                                            }}
-                                        >
-                                            Create LevelDB Entry
-                                        </button>
-                                    )}
-                                </div>,
-                                containerRef.current
-                            );
-                            return;
-                        }
-                        const errorElement: HTMLDivElement = document.createElement("div");
-                        errorElement.style.color = "red";
-                        errorElement.style.fontFamily = "monospace";
-                        errorElement.style.whiteSpace = "pre";
-                        errorElement.textContent =
-                            reason instanceof Error ?
-                                reason.stack?.startsWith(reason.toString()) ?
-                                    reason.stack
-                                :   reason.toString() + reason.stack
-                            :   reason;
-                        render(null, containerRef.current);
-                        containerRef.current.replaceChildren("Failed to load data:", errorElement);
-                    }
-                    console.error(reason);
-                }
-            );
-        }
-        triggerLoadData();
-    } else {
-        if (!props.tab.currentState.options.dataStorageObject.hexEditor) {
+        await props.tab.loadData(true);
+        if (props.tab.currentState.options.dataStorageObject) {
             initHexEditorDataStorageObjectProps(props.tab.currentState.options.dataStorageObject);
         }
+    }
+    function triggerLoadData(): void {
+        loadData().then(
+            (): void => {
+                reloadContents();
+            },
+            (reason: unknown): void => {
+                if (containerRef.current) {
+                    if (reason instanceof Error && reason.message === "LevelDB open failure.") {
+                        render(null, containerRef.current);
+                        render(<LevelDBOpenFailureNotice />, containerRef.current);
+                        levelDBOpenFailure = true;
+                        return;
+                    }
+                    if (reason instanceof Error && reason.message === "The LevelDB key associated with this sub-tab does not exist.") {
+                        render(null, containerRef.current);
+                        render(<MissingLevelDBKeyNotice />, containerRef.current);
+                        missingLevelDBKey = true;
+                        return;
+                    }
+                    render(null, containerRef.current);
+                    render(<DataLoadFailureNotice reason={reason} />, containerRef.current);
+                    dataLoadFailureNoticeReasonExists = true;
+                    dataLoadFailureNoticeReason = reason;
+                }
+                console.error(reason);
+            }
+        );
+    }
+    if (!props.tab.currentState.options.dataStorageObject) triggerLoadData();
+    else if (!props.tab.currentState.options.dataStorageObject.hexEditor) {
+        initHexEditorDataStorageObjectProps(props.tab.currentState.options.dataStorageObject);
     }
     function reloadContents(): void {
         if (!containerRef.current) return;
@@ -155,6 +165,16 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
             render(<LevelDBOpenFailureNotice />, containerRef.current);
             return;
         }
+        if (dataLoadFailureNoticeReasonExists && !props.tab.currentState.options.dataStorageObject) {
+            render(null, containerRef.current);
+            render(<DataLoadFailureNotice reason={dataLoadFailureNoticeReason} />, containerRef.current);
+            return;
+        }
+        if (missingLevelDBKey && !props.tab.currentState.options.dataStorageObject) {
+            render(null, containerRef.current);
+            render(<MissingLevelDBKeyNotice />, containerRef.current);
+            return;
+        }
         render(<Contents props={props} options={props.tab.currentState.options} />, containerRef.current /* tempElement */);
         // containerRef.current.replaceChildren(...tempElement.children);
     }
@@ -162,6 +182,7 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
         props: HexEditorTabProps;
         options: Extract<HexEditorTabProps["tab"]["currentState"]["options"], { viewMode?: any }>;
     }): JSX.Element {
+        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
         switch (props.options.viewMode) {
             case "raw":
                 return (

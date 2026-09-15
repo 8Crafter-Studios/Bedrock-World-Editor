@@ -1,31 +1,15 @@
 import type { JSX, RefObject, TargetedMouseEvent } from "preact";
-import _React, { render, useEffect, useRef, useState } from "preact/compat";
-import TreeEditor from "../components/TreeEditor";
-import {
-    DBEntryContentTypes,
-    dimensions,
-    entryContentTypeToFormatMap,
-    gameModes,
-    getKeyDisplayName,
-    getKeysOfType,
-    NBTSchemas,
-    prettyPrintSNBT,
-    prismarineToSNBT,
-    toLong,
-    type DBEntryContentType,
-    type Vector3,
-} from "mcbe-leveldb";
+import _React, { render, useEffect, useRef } from "preact/compat";
+import { entryContentTypeToFormatMap, getKeyDisplayName, NBTSchemas, prettyPrintSNBT, prismarineToSNBT, type EntryContentTypeFormatData } from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
 import { existsSync, type Dirent } from "node:fs";
 import path from "node:path";
-import { testForObjectExtension } from "../../src/utils/miscUtils";
-import { ControlledMenu, MenuItem } from "@szhsin/react-menu";
+// import { ControlledMenu, MenuItem } from "@szhsin/react-menu";
 import { LoadingScreenContents } from "../app";
 import SearchString from "search-string";
 import { PageNavigation } from "../components/PageNavigation";
 import type { SearchSyntaxHelpInfo } from "../components/SearchSyntaxHelpMenu";
 import SearchSyntaxHelpMenu from "../components/SearchSyntaxHelpMenu";
-import { viewFilesTabSearchSyntax } from "./viewFiles";
 import EditorWidgetOverlayBar from "../components/EditorWidgetOverlayBar";
 import { dialog } from "@electron/remote";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -33,9 +17,11 @@ import { readdirRecursiveSafe } from "../../src/utils/folderContentsUtils";
 import type { ShowSelectOpenTabDialogResult } from "../components/SelectOpenTabDialog";
 import showSelectOpenTabDialog from "../components/SelectOpenTabDialog";
 import Notice from "../components/Notice";
+import { createObservable, stringifyError, type Observable } from "../../src/utils/miscUtils";
 
-// TODO: Implement Async Mode for this tab.
-
+/**
+ * Props for the {@link StructuresTab} component.
+ */
 export interface StructuresTabProps {
     tab: TabManagerTab;
 }
@@ -233,6 +219,14 @@ const structuresTabSearchSyntax: SearchSyntaxHelpInfo = {
     },
 };
 
+/**
+ * The structures tab.
+ *
+ * This tab is used to manage structures from things such as structure blocks, commands, and the scripting API.
+ *
+ * @param props The props for the component.
+ * @returns The JSX element.
+ */
 export default function StructuresTab(props: StructuresTabProps): JSX.SpecificElement<"div"> {
     if (!props.tab.db) return <div>The structures sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
     const containerRef: RefObject<HTMLTableElement> = useRef<HTMLTableElement>(null);
@@ -248,19 +242,15 @@ export default function StructuresTab(props: StructuresTabProps): JSX.SpecificEl
             render(null, containerRef.current);
             render(element, containerRef.current);
         },
-        (reason: any): void => {
+        (reason: unknown): void => {
             if (reason instanceof DOMException && reason.name === "AbortError" && reason.message === "Tab switched.") return;
             if (containerRef.current) {
+                // TODO: Replace this with a better error screen.
                 const errorElement: HTMLDivElement = document.createElement("div");
                 errorElement.style.color = "red";
                 errorElement.style.fontFamily = "monospace";
                 errorElement.style.whiteSpace = "pre";
-                errorElement.textContent =
-                    reason instanceof Error ?
-                        reason.stack?.startsWith(reason.toString()) ?
-                            reason.stack
-                        :   reason.toString() + reason.stack
-                    :   reason;
+                errorElement.textContent = stringifyError(reason);
                 render(null, containerRef.current);
                 containerRef.current.replaceChildren("Failed to load data:", errorElement);
             }
@@ -269,7 +259,7 @@ export default function StructuresTab(props: StructuresTabProps): JSX.SpecificEl
     );
     const loadingScreenMessageContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     if (!props.tab.db.isOpen()) {
-        props.tab.awaitDBOpen!.then(async (): Promise<void> => {
+        void props.tab.awaitDBOpen!.then(async (): Promise<void> => {
             if (loadingScreenMessageContainerRef.current && !props.tab.cachedDBKeys) {
                 const formatter = new Intl.NumberFormat();
                 loadingScreenMessageContainerRef.current.textContent = `Reading LevelDB keys${props.tab.loadedCachedDBKeysProgress !== undefined ? `: ${formatter.format(props.tab.loadedCachedDBKeysProgress)}` : ""}...`;
@@ -301,7 +291,7 @@ export default function StructuresTab(props: StructuresTabProps): JSX.SpecificEl
                 await sleep(20);
             }
         });
-        props.tab.awaitCachedDBKeys!.then((): void => {
+        void props.tab.awaitCachedDBKeys!.then((): void => {
             if (loadingScreenMessageContainerRef.current) loadingScreenMessageContainerRef.current.textContent = "";
         });
         return (
@@ -323,18 +313,20 @@ export default function StructuresTab(props: StructuresTabProps): JSX.SpecificEl
 interface KeyData {
     rawKey: Buffer;
     displayKey: string;
-    // UNDONE: Uncomment the `?` and ` | undefined` when async mode is implemented.
-    data /* ? */: {
-        parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.StructureTemplate;
-        type: NBT.NBTFormat;
-        metadata: NBT.Metadata;
-    } | null /* | undefined */;
+    data?:
+        | {
+              parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.StructureTemplate;
+              type: NBT.NBTFormat;
+              metadata: NBT.Metadata;
+          }
+        | null
+        | undefined;
 }
 
 async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal): Promise<JSX.Element> {
     if (!tab.db) return <div>The structures sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
-    if (!tab.db.isOpen() && !(await tab.awaitDBOpen ?? true)) {
-        if (tab.errorDueToEncryptedLevelDB)
+    if (!tab.db.isOpen() && !((await tab.awaitDBOpen) ?? true)) {
+        if (tab.errorDueToEncryptedLevelDB) {
             return (
                 <Notice
                     title="Encrypted LevelDB"
@@ -343,6 +335,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                     image="access_denied"
                 />
             );
+        }
         return (
             <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
                 <Notice
@@ -352,65 +345,50 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                     image="generic_error"
                     style={{ height: "auto" }}
                 />
-                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
-                    {tab.errorOnDBOpen instanceof Error ?
-                        `${tab.errorOnDBOpen.stack !== undefined ? tab.errorOnDBOpen.stack : tab.errorOnDBOpen.toString()}${
-                            tab.errorOnDBOpen.cause !== undefined ?
-                                `\nCaused by: ${((): unknown => {
-                                    try {
-                                        return typeof tab.errorOnDBOpen.cause === "object" ? JSON.stringify(tab.errorOnDBOpen.cause) : tab.errorOnDBOpen.cause;
-                                    } catch {
-                                        return tab.errorOnDBOpen.cause;
-                                    }
-                                })()}`
-                            :   ""
-                        }`
-                    :   String(
-                            (function (): unknown {
-                                try {
-                                    return typeof tab.errorOnDBOpen === "object" ? JSON.stringify(tab.errorOnDBOpen) : tab.errorOnDBOpen;
-                                } catch {
-                                    return tab.errorOnDBOpen;
-                                }
-                            })()
-                        )
-                    }
-                </div>
+                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(tab.errorOnDBOpen)}</div>
             </div>
         );
     }
     if (!tab.cachedDBKeys) await tab.awaitCachedDBKeys!;
     signal.throwIfAborted();
     const rawKeys: Buffer[] = tab.cachedDBKeys!.StructureTemplate;
+    const asyncMode: boolean =
+        "__FORCE_ASYNC_KEY_MODE__" in window ? !!window.__FORCE_ASYNC_KEY_MODE__
+        : config.useAsyncModeInEntryViews === "auto" ?
+            rawKeys.length >= config.asyncModeEntryThreshold ||
+            Object.values(tab.cachedDBKeys!).reduce((a: number, b: Buffer[]): number => a + b.length, 0) >= config.asyncModeTotalKeyCountThreshold
+        :   config.useAsyncModeInEntryViews;
     let keys: KeyData[] = await Promise.all(
         rawKeys.map(
             async (key: Buffer): Promise<KeyData> => ({
                 rawKey: key,
                 displayKey: getKeyDisplayName(key),
-                data: (await NBT.parse((await tab.db!.get(key))!).catch((): null => null)) as any,
+                data: (await NBT.parse((await tab.db!.get(key))!).catch((): null => null)) as KeyData["data"],
             })
         )
     );
+    let targetKeys: KeyData[] = keys;
     // globalThis.a = keys;
-    let dynamicProperties: NBT.NBT | undefined = await tab
-        .db!.get("DynamicProperties")
-        .then((data: Buffer | null): Promise<NBT.NBT> | undefined =>
-            data ? NBT.parse(data!).then((data: { parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata }): NBT.NBT => data.parsed) : undefined
-        )
-        .catch((e: any): undefined => (console.error(e), undefined));
-    // console.log(dynamicProperties);
     let mode: ConfigConstants.views.Structures.StructuresTabMode = config.views.structures.mode;
-    let tablesContents: JSX.Element[][] = await Promise.all(
-        ConfigConstants.views.Structures.structuresTabModeToSectionIDs[mode].map(
-            (sectionID: (typeof ConfigConstants.views.Structures.structuresTabModeToSectionIDs)[typeof mode][number]): Promise<JSX.Element[]> =>
-                getStructuresTabContentsRows({
-                    tab,
-                    keys,
-                    dynamicProperties,
-                    mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Structures.StructuresTabSectionMode,
-                })
-        )
-    );
+    let currentUpdateTablesContentsFunction: ((reloadData: boolean) => Promise<void>) | null = null;
+    let emptyTablesContents: JSX.Element[][] =
+        asyncMode ?
+            [[]]
+        :   await Promise.all(
+                ConfigConstants.views.Structures.structuresTabModeToSectionIDs[mode].map(
+                    async (sectionID: (typeof ConfigConstants.views.Structures.structuresTabModeToSectionIDs)[typeof mode][number]): Promise<JSX.Element[]> =>
+                        await getStructuresTabContentsRows({
+                            tab,
+                            keys,
+                            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- There is only one section atm, if another section is ever added, remove this disable comment.
+                            mode: sectionID === null ? mode : `${mode}_${sectionID}`,
+                            get updateTablesContents(): ((reloadData: boolean) => Promise<void>) | null {
+                                return currentUpdateTablesContentsFunction;
+                            },
+                        })
+                )
+            );
+    let tablesContents: JSX.Element[][] = emptyTablesContents;
     function Contents(): JSX.Element {
         const tablesContainerRef: RefObject<HTMLTableElement> = useRef<HTMLTableElement>(null);
         const loadingScreenMessageContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
@@ -421,11 +399,65 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
             searchButton: useRef<HTMLButtonElement>(null),
             helpButton: useRef<HTMLButtonElement>(null),
         };
-        const viewOptionsRefs = {
-            viewOptionsContainer: useRef<HTMLDivElement>(null),
-            viewOptionsTabbedSelector: useRef<HTMLDivElement>(null),
-        };
+        // const viewOptionsRefs = {
+        //     viewOptionsContainer: useRef<HTMLDivElement>(null),
+        //     viewOptionsTabbedSelector: useRef<HTMLDivElement>(null),
+        // };
+        async function getTablesContentsInRange(sectionIndex: number, start: number, end: number): Promise<JSX.Element[]> {
+            const sectionID: (typeof ConfigConstants.views.Structures.structuresTabModeToSectionIDs)[typeof mode][number] =
+                ConfigConstants.views.Structures.structuresTabModeToSectionIDs[mode][sectionIndex]!;
+            return await getStructuresTabContentsRows({
+                tab,
+                keys: await Promise.all(
+                    targetKeys.slice(start, end).map(
+                        async (key: KeyData): Promise<KeyData> => ({
+                            ...key,
+                            data: (await NBT.parse((await tab.db!.get(key.rawKey))!).catch((): null => null)) as KeyData["data"],
+                        })
+                    )
+                ),
+                // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- There is only one section atm, if another section is ever added, remove this disable comment.
+                mode: sectionID === null ? mode : `${mode}_${sectionID}`,
+                get updateTablesContents(): ((reloadData: boolean) => Promise<void>) | null {
+                    return currentUpdateTablesContentsFunction;
+                },
+            });
+        }
+        async function _loadTablesContentsInRange(sectionIndex: number, start: number, end: number): Promise<void> {
+            if (!asyncMode) return;
+            // const sectionID: (typeof ConfigConstants.views.Structures.structuresTabModeToSectionIDs)[typeof mode][number] =
+            //     ConfigConstants.views.Structures.structuresTabModeToSectionIDs[mode][sectionIndex]!;
+            tablesContents = [...tablesContents];
+            tablesContents[sectionIndex] = [...emptyTablesContents[sectionIndex]!];
+            tablesContents[sectionIndex].splice(start, end - start, ...(await getTablesContentsInRange(sectionIndex, start, end)));
+        }
+        function getSectionEntryCounts(): number[] {
+            return ConfigConstants.views.Structures.structuresTabModeToSectionIDs[mode].map(
+                (sectionID: (typeof ConfigConstants.views.Structures.structuresTabModeToSectionIDs)[typeof mode][number]): number => {
+                    switch (sectionID) {
+                        case null:
+                            return targetKeys.length;
+                        default:
+                            return NaN;
+                    }
+                }
+            );
+        }
         function TablesContents(): JSX.Element {
+            const localTablesContents: Observable<JSX.Element[][]> = createObservable([[]]);
+            if (asyncMode) {
+                // TODO: Add an error handler to this.
+                void Promise.all(
+                    ConfigConstants.views.Maps.mapsTabModeToSectionIDs[mode].map(
+                        async (
+                            _sectionID: (typeof ConfigConstants.views.Maps.mapsTabModeToSectionIDs)[typeof mode][number],
+                            index: number
+                        ): Promise<JSX.Element[]> => await getTablesContentsInRange(index, 0, 20)
+                    )
+                ).then((tablesContents: JSX.Element[][]): void => {
+                    localTablesContents.set(tablesContents);
+                });
+            }
             return (
                 <>
                     {...ConfigConstants.views.Structures.structuresTabModeToSectionIDs[mode].map(
@@ -435,11 +467,19 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                         ): JSX.Element => {
                             function Test1(): JSX.Element {
                                 const bodyRef: RefObject<HTMLTableSectionElement> = useRef<HTMLTableSectionElement>(null);
+                                localTablesContents.observe((tablesContents: JSX.Element[][]): void => {
+                                    if (!asyncMode || !bodyRef.current) return;
+                                    // const tempElement: HTMLDivElement = document.createElement("div");
+                                    render(null, bodyRef.current);
+                                    render(<>{...tablesContents[index]!}</>, bodyRef.current /* tempElement */);
+                                    // bodyRef.current.replaceChildren(...tempElement.children);
+                                });
                                 // const [columnHeadersContextMenu_isOpen, columnHeadersContextMenu_setOpen] = useState(false);
                                 // const [columnHeadersContextMenu_anchorPoint, columnHeadersContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
                                 const headerName = ConfigConstants.views.Structures.structuresTabModeSectionHeaderNames[mode][index];
-                                const sectionMode: ConfigConstants.views.Structures.StructuresTabSectionMode = (
-                                    sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Structures.StructuresTabSectionMode;
+                                const sectionMode: ConfigConstants.views.Structures.StructuresTabSectionMode =
+                                    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- There is only one section atm, if another section is ever added, remove this disable comment.
+                                    sectionID === null ? mode : `${mode}_${sectionID}`;
                                 return (
                                     <>
                                         {/* TO-DO: Add in this context menu once the bug with it is fixed. https://github.com/szhsin/react-menu/issues/1591 */}
@@ -476,7 +516,13 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                                             columnID: (typeof ConfigConstants.views.Structures.structuresTabModeToColumnIDs)[typeof sectionMode][number]
                                                         ): JSX.SpecificElement<"th"> => {
                                                             const displayName = ConfigConstants.views.Structures.columnIDToDisplayName[columnID];
-                                                            return <th>{typeof displayName === "string" ? displayName : (displayName as any).headerLabel}</th>;
+                                                            return (
+                                                                <th>
+                                                                    {typeof displayName === "string" ?
+                                                                        displayName
+                                                                    :   (displayName as { optionLabel: string; headerLabel: string }).headerLabel}
+                                                                </th>
+                                                            );
                                                         }
                                                     )}
                                                 </tr>
@@ -486,13 +532,24 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                                 <tr class="table-footer-row-page-navigation">
                                                     <td colSpan={ConfigConstants.views.Structures.structuresTabModeToColumnIDs[sectionMode].length}>
                                                         <PageNavigation
-                                                            totalPages={Math.ceil(tablesContents[index]!.length / 20)}
-                                                            onPageChange={(page: number): void => {
+                                                            totalPages={Math.ceil(getSectionEntryCounts()[index]! / 20)}
+                                                            onPageChange={async (page: number): Promise<void> => {
                                                                 if (!bodyRef.current) return;
+                                                                if (asyncMode) {
+                                                                    localTablesContents.get()[index] = await getTablesContentsInRange(
+                                                                        index,
+                                                                        (page - 1) * 20,
+                                                                        page * 20
+                                                                    );
+                                                                }
                                                                 // let tempElement: HTMLDivElement = document.createElement("div");
                                                                 render(null, bodyRef.current);
                                                                 render(
-                                                                    <>{...tablesContents[index]!.slice((page - 1) * 20, page * 20)}</>,
+                                                                    <>
+                                                                        {...asyncMode ?
+                                                                            localTablesContents.get()[index]!
+                                                                        :   tablesContents[index]!.slice((page - 1) * 20, page * 20)}
+                                                                    </>,
                                                                     bodyRef.current /* tempElement */
                                                                 );
                                                                 // bodyRef.current.replaceChildren(...tempElement.children);
@@ -511,7 +568,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                 </>
             );
         }
-        let query: Omit<TabManagerTab_LevelDBSearchQuery, "searchTargets"> & {
+        const query: Omit<TabManagerTab_LevelDBSearchQuery<true>, "searchTargets"> & {
             searchTargets: {
                 key: Buffer<ArrayBufferLike>;
                 displayKey: string;
@@ -521,11 +578,14 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                           type: NBT.NBTFormat;
                           metadata: NBT.Metadata;
                       }
+                    | (() => Promise<{ parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata } | null | undefined>)
                     | null
                     | undefined;
-                valueType: {
-                    readonly type: "NBT";
-                };
+                valueType:
+                    | {
+                          readonly type: "NBT";
+                      }
+                    | Extract<EntryContentTypeFormatData, { type: "custom"; resultType: "JSONNBT" }>;
                 contentType: "StructureTemplate";
                 data: KeyData;
                 searchableContents: string[];
@@ -536,7 +596,11 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                     ({
                         key: key.rawKey,
                         displayKey: key.displayKey,
-                        value: key.data,
+                        value:
+                            asyncMode ?
+                                async (): Promise<NonNullable<KeyData["data"]>> =>
+                                    (await NBT.parse((await tab.db!.get(key.rawKey))!)) as NonNullable<KeyData["data"]>
+                            :   key.data!,
                         valueType: entryContentTypeToFormatMap.StructureTemplate,
                         contentType: "StructureTemplate",
                         data: key,
@@ -556,52 +620,97 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                             structureid: key.displayKey.replace(/^structuretemplate_/, ""),
                             // TODO: Uncomment the below line and implement a search query for checking for entries with invalid data.
                             // hasInvalidData: key.data === null,
-                            contents: ((): string => {
-                                if (key.data === null) return "";
-                                try {
-                                    return prettyPrintSNBT(prismarineToSNBT(key.data.parsed), { indent: 0 });
-                                } catch {
-                                    return "";
-                                }
-                            })(),
+                            contents:
+                                asyncMode ?
+                                    async (): Promise<string> => {
+                                        try {
+                                            return prettyPrintSNBT(prismarineToSNBT((await NBT.parse((await tab.db!.get(key.rawKey))!)).parsed), { indent: 0 });
+                                        } catch {
+                                            return "";
+                                        }
+                                    }
+                                :   ((): string => {
+                                        if (key.data === null) return "";
+                                        try {
+                                            return prettyPrintSNBT(prismarineToSNBT(key.data!.parsed), { indent: 0 });
+                                        } catch {
+                                            return "";
+                                        }
+                                    })(),
                         },
-                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
+                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery<true>["searchTargets"]>[number]
             ),
         };
         async function updateTablesContents(reloadData: boolean): Promise<void> {
+            // TODO: Add an error handler to this function.
             if (!tablesContainerRef.current) return;
             if (reloadData) {
                 mode = config.views.structures.mode;
                 console.debug(query);
-                tablesContents = await Promise.all(
-                    ConfigConstants.views.Structures.structuresTabModeToSectionIDs[mode].map(
-                        (sectionID: (typeof ConfigConstants.views.Structures.structuresTabModeToSectionIDs)[typeof mode][number]): Promise<JSX.Element[]> =>
-                            getStructuresTabContentsRows({
-                                tab,
-                                keys:
-                                    Object.keys(query).length > 1 ?
-                                        tab
-                                            .dbSearch!.search(query)
-                                            .toArray()
-                                            .map((key): KeyData => key.originalObject.data)
-                                    :   keys,
-                                dynamicProperties,
-                                mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Structures.StructuresTabSectionMode,
-                            })
-                    )
-                );
+                if (asyncMode) {
+                    targetKeys =
+                        Object.keys(query).length > 1 ?
+                            await (async (): Promise<KeyData[]> => {
+                                const iterator = tab.dbSearch!.searchAsync(query, true);
+                                let i: number = 0;
+                                let t: number = Date.now();
+                                const results: KeyData[] = [];
+                                const formatter = new Intl.NumberFormat();
+                                for await (const value of iterator) {
+                                    i++;
+                                    if (t + 15 < Date.now()) {
+                                        if (loadingScreenMessageContainerRef.current) {
+                                            loadingScreenMessageContainerRef.current.textContent = `Searching LevelDB: ${formatter.format(i)}/${formatter.format(keys.length)} (${formatter.format(results.length)} results)...`;
+                                        }
+                                        signal.throwIfAborted();
+                                        await sleep(5);
+                                        t = Date.now();
+                                    }
+                                    if (!value) continue;
+                                    results.push(value.originalObject.data);
+                                }
+                                return results;
+                            })()
+                        :   keys;
+                } else {
+                    emptyTablesContents = await Promise.all(
+                        ConfigConstants.views.Structures.structuresTabModeToSectionIDs[mode].map(
+                            async (
+                                sectionID: (typeof ConfigConstants.views.Structures.structuresTabModeToSectionIDs)[typeof mode][number]
+                            ): Promise<JSX.Element[]> =>
+                                await getStructuresTabContentsRows({
+                                    tab,
+                                    keys:
+                                        Object.keys(query).length > 1 ?
+                                            tab
+                                                .dbSearch!.search(query)
+                                                .toArray()
+                                                .map((key): KeyData => key.originalObject.data)
+                                        :   keys,
+                                    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions -- There is only one section atm, if another section is ever added, remove this disable comment.
+                                    mode: sectionID === null ? mode : `${mode}_${sectionID}`,
+                                    get updateTablesContents(): ((reloadData: boolean) => Promise<void>) | null {
+                                        return currentUpdateTablesContentsFunction;
+                                    },
+                                })
+                        )
+                    );
+                    tablesContents = emptyTablesContents;
+                }
             }
-            const tempElement: HTMLDivElement = document.createElement("div");
-            render(<TablesContents />, tempElement);
-            tablesContainerRef.current.replaceChildren(...tempElement.children);
+            // const tempElement: HTMLDivElement = document.createElement("div");
+            render(null, tablesContainerRef.current);
+            render(<TablesContents />, tablesContainerRef.current /* tempElement */);
+            // tablesContainerRef.current.replaceChildren(...tempElement.children);
         }
+        currentUpdateTablesContentsFunction = updateTablesContents;
         useEffect((): (() => void) => {
             function onModeChanged(): void {
-                updateTablesContents(true);
+                void updateTablesContents(true);
             }
             function onSimpleModeColumnsChanged(): void {
                 if (mode !== "simple") return;
-                updateTablesContents(false);
+                void updateTablesContents(false);
             }
             config.on("settingChanged:views.structures.mode", onModeChanged);
             config.on("settingChanged:views.structures.modeSettings.simple.columns", onSimpleModeColumnsChanged);
@@ -610,7 +719,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                 config.off("settingChanged:views.structures.modeSettings.simple.columns", onSimpleModeColumnsChanged);
             };
         });
-        let lastHideErrorPopupFunction: (() => void) | undefined = undefined;
+        let lastHideErrorPopupFunction: (() => void) | undefined;
         return (
             <>
                 {/* <div
@@ -651,15 +760,15 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                     properties: ["openFile", "multiSelections", "showHiddenFiles", "treatPackageAsDirectory"],
                                 });
                                 if (result.canceled) return;
-                                let failedImports: [filePath: string, error?: any][] = [];
-                                let importPromises: Promise<void>[] = [];
+                                const failedImports: [filePath: string, error?: any][] = [];
+                                const importPromises: Promise<void>[] = [];
                                 for (const filePath of result.filePaths) {
                                     try {
                                         const fileData: Buffer = await readFile(filePath);
                                         const structureData = await NBT.parse(fileData);
                                         if (structureData.type === "little") {
                                             function checkIsBedrock_mcstructure(): boolean {
-                                                let structure: NBTSchemas.NBTSchemaTypes.StructureTemplate = structureData.parsed as any;
+                                                const structure = structureData.parsed as NBTSchemas.NBTSchemaTypes.StructureTemplate & NBT.NBT;
                                                 if (!structure) return false;
                                                 if (structure.type !== "compound") return false;
                                                 if (typeof structure.value !== "object") return false;
@@ -683,7 +792,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                                                 tab.setLevelDBIsModified();
                                                             }
                                                         })
-                                                        .catch((e: any): void => void failedImports.push([filePath, e]))
+                                                        .catch((e: unknown): void => void failedImports.push([filePath, e]))
                                                 );
                                             } else {
                                                 failedImports.push([filePath, new Error("Unsupported Structure Format")]);
@@ -701,7 +810,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                 await Promise.all(importPromises);
                                 if (failedImports.length > 0) {
                                     console.error("Failed to import some structures:", failedImports);
-                                    dialog
+                                    void dialog
                                         .showMessageBox(getCurrentWindow(), {
                                             type: "error",
                                             title: "Failed to Import Some Structures",
@@ -741,13 +850,13 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                     properties: ["openDirectory", "multiSelections", "showHiddenFiles", "treatPackageAsDirectory"],
                                 });
                                 if (result.canceled) return;
-                                let failedImports: [filePath: string, error?: any][] = [];
-                                let importPromises: Promise<void>[] = [];
+                                const failedImports: [filePath: string, error?: any][] = [];
+                                const importPromises: Promise<void>[] = [];
                                 for (const folderPath of result.filePaths) {
                                     if (!existsSync(folderPath)) continue;
                                     importPromises.push(
                                         (async function importStructuresFromFolder(): Promise<void> {
-                                            let innerImportPromises: Promise<void>[] = [];
+                                            const innerImportPromises: Promise<void>[] = [];
                                             const filePaths: Dirent[] = await readdirRecursiveSafe(folderPath);
                                             for (const filePathDirent of filePaths) {
                                                 if (!filePathDirent.isFile()) continue;
@@ -756,8 +865,9 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                                     !["mcstructure" /* , "nbt", "schem", "schematic" */].includes(
                                                         path.extname(filePathDirent.name).toLowerCase().slice(1)
                                                     )
-                                                )
+                                                ) {
                                                     continue;
+                                                }
                                                 const filePath: string = path.join(filePathDirent.parentPath, filePathDirent.name);
                                                 const relativePath: string = path.relative(folderPath, filePath).replaceAll("\\", "/");
                                                 const structureID: string = `structuretemplate_${
@@ -771,7 +881,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                                     const structureData = await NBT.parse(fileData);
                                                     if (structureData.type === "little") {
                                                         function checkIsBedrock_mcstructure(): boolean {
-                                                            let structure: NBTSchemas.NBTSchemaTypes.StructureTemplate = structureData.parsed as any;
+                                                            const structure = structureData.parsed as NBTSchemas.NBTSchemaTypes.StructureTemplate & NBT.NBT;
                                                             if (!structure) return false;
                                                             if (structure.type !== "compound") return false;
                                                             if (typeof structure.value !== "object") return false;
@@ -792,7 +902,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                                                             tab.setLevelDBIsModified();
                                                                         }
                                                                     })
-                                                                    .catch((e: any): void => void failedImports.push([filePath, e]))
+                                                                    .catch((e: unknown): void => void failedImports.push([filePath, e]))
                                                             );
                                                         } else {
                                                             failedImports.push([filePath, new Error("Unsupported Structure Format")]);
@@ -811,7 +921,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                 await Promise.all(importPromises);
                                 if (failedImports.length > 0) {
                                     console.error("Failed to import some structures:", failedImports);
-                                    dialog
+                                    void dialog
                                         .showMessageBox(getCurrentWindow(), {
                                             type: "error",
                                             title: "Failed to Import Some Structures",
@@ -862,15 +972,20 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                 const refreshBeforeExporting: boolean = false;
                                 if (refreshBeforeExporting) {
                                     await tab.refreshCachedDBKeys();
+                                    const targetKeysIsKeys: boolean = targetKeys === keys;
+                                    void keys;
+                                    // eslint-disable-next-line require-atomic-updates -- This is a false positive.
                                     keys = await Promise.all(
                                         rawKeys.map(
                                             async (key: Buffer): Promise<KeyData> => ({
                                                 rawKey: key,
                                                 displayKey: getKeyDisplayName(key),
-                                                data: (await NBT.parse((await tab.db!.get(key))!)) as any,
+                                                data: (await NBT.parse((await tab.db!.get(key))!)) as KeyData["data"],
                                             })
                                         )
                                     );
+                                    void targetKeys;
+                                    if (targetKeysIsKeys) targetKeys = keys;
                                 }
                                 const structureKeys: KeyData[] =
                                     filterExportsBySearchQuery && Object.keys(query).length > 1 ?
@@ -879,24 +994,25 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                             .toArray()
                                             .map((key): KeyData => key.originalObject.data)
                                     :   keys;
-                                let failedExports: [filePath: string, error?: any][] = [];
+                                const failedExports: [filePath: string, error?: any][] = [];
                                 await Promise.all(
                                     structureKeys.map(async function exportStructureToFile(key: KeyData): Promise<void> {
                                         try {
                                             const stringKey: string = key.rawKey.toString("utf-8");
                                             const destinationPath: string = `${
                                                 stringKey.startsWith("structuretemplate_mystructure:") ? "" : (
-                                                    stringKey.replace(/^structuretemplate_/, "").split(":")[0] + "/"
+                                                    `${stringKey.replace(/^structuretemplate_/, "").split(":")[0]}/`
                                                 )
                                             }${stringKey.replace(/^structuretemplate_[^:]*:/, "")}.mcstructure`.replace(
                                                 /[:*?"<>|\x00-\x1F]/g,
                                                 (char: string): string => {
-                                                    return "%" + char.charCodeAt(0).toString(16).padStart(2, "0");
+                                                    return `%${char.charCodeAt(0).toString(16).padStart(2, "0")}`;
                                                 }
                                             );
-                                            if (!existsSync(path.dirname(path.join(result.filePaths[0]!, destinationPath))))
+                                            if (!existsSync(path.dirname(path.join(result.filePaths[0]!, destinationPath)))) {
                                                 await mkdir(path.join(result.filePaths[0]!, path.dirname(destinationPath)), { recursive: true });
-                                            const data: Buffer | null = await tab.db!.get(key.rawKey)!;
+                                            }
+                                            const data: Buffer | null = await tab.db!.get(key.rawKey);
                                             if (!data) throw new ReferenceError(`Entry not found: ${stringKey}`);
                                             await writeFile(path.join(result.filePaths[0]!, destinationPath), data);
                                         } catch (e) {
@@ -906,7 +1022,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                 );
                                 if (failedExports.length > 0) {
                                     console.error("Failed to export some structures:", failedExports);
-                                    dialog
+                                    void dialog
                                         .showMessageBox(getCurrentWindow(), {
                                             type: "error",
                                             title: "Failed to Export Some Structures",
@@ -960,7 +1076,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                             async (key: Buffer): Promise<KeyData> => ({
                                                 rawKey: key,
                                                 displayKey: getKeyDisplayName(key),
-                                                data: (await NBT.parse((await tab.db!.get(key))!)) as any,
+                                                data: (await NBT.parse((await tab.db!.get(key))!)) as KeyData["data"],
                                             })
                                         )
                                     );
@@ -973,10 +1089,11 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                             .map((key): KeyData => key.originalObject.data)
                                     :   keys;
                                 console.log(`Transferring ${structureKeys.length} structure(s) to tab ${result.tabID} in window ${result.window.id}.`);
+                                // TODO: Make this handle non-Error instance errors properly (maybe with a type of {error: unknown}[]).
                                 const errors: Error[] = (
                                     await Promise.all(
-                                        structureKeys.map(async (key: KeyData): Promise<Error | void> => {
-                                            const data: readonly [key: Buffer, data: Buffer | null] = [key.rawKey, await tab.db!.get(key.rawKey)!] as const;
+                                        structureKeys.map(async (key: KeyData): Promise<Error | undefined> => {
+                                            const data: readonly [key: Buffer, data: Buffer | null] = [key.rawKey, await tab.db!.get(key.rawKey)] as const;
                                             if (data[1] === null) return new ReferenceError(`Entry not found: ${key.displayKey}`);
                                             await result.window.webContents.executeJavaScript(
                                                 `{/* This is to make sure the contents are different so that it works each time. */"${Date.now()}_${Math.floor(
@@ -991,12 +1108,10 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                             );
                                         })
                                     )
-                                ).filter((error: void | Error): error is Error => error instanceof Error);
+                                ).filter((error: Error | undefined): error is Error => error instanceof Error);
                                 if (errors.length > 0) {
-                                    dialog.showErrorBox(
-                                        "Failed to Transfer Some Structures",
-                                        errors.map((error: Error): string => `${error.message}\n\n${error.stack}`).join("\n\n")
-                                    );
+                                    console.error(errors.map((error: Error): string => stringifyError(error)));
+                                    dialog.showErrorBox("Failed to Transfer Some Structures", errors.map(String).join("\n\n"));
                                 }
                             }}
                         >
@@ -1093,16 +1208,17 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                     });
                                 }
                                 for (const key in queryData) {
-                                    if ([...getKeywordedOperators(["dbkey", "structureid", "nbt", "contents"])].includes(key as any)) continue;
+                                    if (!Object.hasOwn(queryData, key)) continue;
+                                    if ([...getKeywordedOperators(["dbkey", "structureid", "nbt", "contents"])].includes(key as never)) continue;
                                     if (
-                                        !keywordPrefixOperators.includes(key.slice(0, 1) as any) &&
-                                        keywords.includes(key.slice(1) as any) &&
+                                        !keywordPrefixOperators.includes(key.slice(0, 1) as never) &&
+                                        keywords.includes(key.slice(1) as never) &&
                                         /^[^a-z0-9]$/i.test(key.slice(0, 1))
                                     ) {
                                         showError({ message: `Unknown operator: ${key.slice(0, 1)}` });
-                                    } else if (!keywordedOperators.includes(key as any)) {
+                                    } else if (!keywordedOperators.includes(key as never)) {
                                         showError({
-                                            message: `Unknown filter: ${keywordPrefixOperators.includes(key.slice(0, 1) as any) ? key.slice(1) : key}`,
+                                            message: `Unknown filter: ${keywordPrefixOperators.includes(key.slice(0, 1) as never) ? key.slice(1) : key}`,
                                         });
                                     } else {
                                         showError({ message: `Operator ${key.slice(0, 1)} is not supported for filter: ${key.slice(1)}` });
@@ -1113,17 +1229,19 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                     function parseNBTQueries(queries: string[]): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery[] {
                                         return queries
                                             .map((v: string): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery | undefined => {
-                                                let data: TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery | undefined = undefined;
+                                                let data: TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery | undefined;
                                                 try {
-                                                    const val: any = JSON.parse(v);
+                                                    const val: unknown = JSON.parse(v);
                                                     if (typeof val !== "object") {
+                                                        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
                                                         switch (typeof val) {
                                                             // case "string":
                                                             //     if ()
                                                             default:
-                                                                throw new Error();
+                                                                throw new SyntaxError(`Expected a JSON object for NBT query, but got ${typeof val} instead.`);
                                                         }
                                                     } else {
+                                                        if (val === null) throw new SyntaxError("Expected a JSON object for NBT query, but got null instead.");
                                                         if (
                                                             [
                                                                 "path",
@@ -1137,13 +1255,13 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                                         ) {
                                                             data = val;
                                                         } else {
-                                                            throw new Error();
+                                                            throw new SyntaxError("Missing known fields for NBT query.");
                                                         }
                                                     }
-                                                } catch {
+                                                } catch (e) {
                                                     if (v.split("=").length === 2) {
                                                         let [key, value] = v.split("=");
-                                                        let tagType: NBT.TagType | undefined = undefined;
+                                                        let tagType: NBT.TagType | undefined;
                                                         if (key?.includes(":")) {
                                                             let preKey: string;
                                                             [preKey, key] = key.split(":") as [preKey: string, key: string, ...string[]];
@@ -1153,15 +1271,17 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                                                 }
                                                             }
                                                         }
-                                                        let path: string[] | undefined = key?.split("/");
+                                                        const path: string[] | undefined = key?.split("/");
                                                         data = {};
                                                         data.key = key;
                                                         data.value = value;
                                                         data.path = path;
                                                         data.tagType = tagType;
                                                     } else {
+                                                        // TODO: The actual error should be displayed in the error message. #54
+                                                        reportError(e); // TEMP: Remove this once the actual error is included in the error message.
                                                         showError({ message: `Invalid NBT query: ${v}` });
-                                                        throw new Error("Error to return but already handled.");
+                                                        throw new Error("Error to return but already handled.", { cause: e });
                                                     }
                                                 }
                                                 return data;
@@ -1307,7 +1427,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                     );
                                     tablesContainerRef.current.replaceChildren(...tempElement.children);
                                 }
-                                updateTablesContents(true);
+                                void updateTablesContents(true);
                             } catch (e) {
                                 if (e instanceof Error && e.message === "Error to return but already handled.") return;
                                 throw e;
@@ -1322,7 +1442,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                         class="search-help-button piximg invert_on_light_theme"
                         title="Help"
                         onClick={(): void => {
-                            let containerElement: HTMLDivElement = document.createElement("div");
+                            const containerElement: HTMLDivElement = document.createElement("div");
                             containerElement.style.display = "contents";
                             function OverlaySearchSyntaxHelpMenu(): JSX.SpecificElement<"div"> {
                                 const overlayElementRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
@@ -1357,6 +1477,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
     return <Contents />;
 }
 
+// eslint-disable-next-line @typescript-eslint/require-await -- TEMP
 async function getStructuresTabContentsRows(data: {
     /**
      * The tab manager tab.
@@ -1366,11 +1487,11 @@ async function getStructuresTabContentsRows(data: {
      * The full list of key data to display.
      */
     keys: KeyData[];
-    dynamicProperties?: NBT.NBT | undefined;
     /**
      * The mode of the tab.
      */
     mode: ConfigConstants.views.Structures.StructuresTabSectionMode;
+    get updateTablesContents(): ((reloadData: boolean) => Promise<void>) | null; // TODO
 }): Promise<JSX.Element[]> {
     // const columns = config
     switch (data.mode) {
@@ -1519,6 +1640,12 @@ async function getStructuresTabContentsRows(data: {
                                                 :   <span style="color: red;">null</span>}
                                             </td>
                                         );
+                                    default:
+                                        return (
+                                            <td>
+                                                <span style="color: red;">ERROR: MISSING COLUMN HANDLER</span>
+                                            </td>
+                                        );
                                 }
                             })}
                         </tr>
@@ -1556,5 +1683,7 @@ async function getStructuresTabContentsRows(data: {
                 }
             });
         }
+        // TODO: Maybe add an error message here?
+        // no default
     }
 }

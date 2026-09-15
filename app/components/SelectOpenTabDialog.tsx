@@ -2,6 +2,9 @@ import { BrowserWindow } from "@electron/remote";
 import type { JSX, RefObject } from "preact";
 import { render, useEffect, useRef } from "preact/compat";
 
+/**
+ * Options for the {@link showSelectOpenTabDialog} function.
+ */
 export interface ShowSelectOpenTabDialogOptions {
     excludedTabs: { windowID: number; tabID: bigint }[];
     // /**
@@ -32,6 +35,9 @@ export interface ShowSelectOpenTabDialogOptions {
     tabTargetTypeFilter?: TabManagerTab["type"][] | undefined;
 }
 
+/**
+ * The result of the {@link showSelectOpenTabDialog} function.
+ */
 export type ShowSelectOpenTabDialogResult =
     | {
           canceled: false;
@@ -42,23 +48,33 @@ export type ShowSelectOpenTabDialogResult =
           canceled: true;
       };
 
+/**
+ * Props for the {@link SelectOpenTabDialog} component.
+ */
 export interface SelectOpenTabDialogProps extends ShowSelectOpenTabDialogOptions {
-    onTabSelected(window: Electron.BrowserWindow, tabID: bigint): void;
-    onCancel(): void;
+    onTabSelected(this: void, window: Electron.BrowserWindow, tabID: bigint): void;
+    onCancel(this: void): void;
 }
 
+/**
+ * Renders a dialog for selecting an open tab.
+ *
+ * @param props The props for the component.
+ * @returns The JSX element.
+ */
 export function SelectOpenTabDialog(props: SelectOpenTabDialogProps): JSX.Element {
     const containerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     const windowListRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     useEffect((): void => {
-        (async function loadSelectOpenTabDialogContents(): Promise<void> {
+        void (async function loadSelectOpenTabDialogContents(): Promise<void> {
+            // TODO: Add an error handler to this function.
             if (!containerRef.current || !windowListRef.current) return;
             const openWindows: Electron.BrowserWindow[] = BrowserWindow.getAllWindows();
             const includedOpenWindows: Electron.BrowserWindow[] = (
                 await Promise.all(
                     openWindows.map(
-                        (targetWindow: Electron.BrowserWindow): Promise<boolean> =>
-                            targetWindow.webContents.executeJavaScript(`typeof tabManager !== "undefined" && tabManager.openTabs.length > 0`)
+                        async (targetWindow: Electron.BrowserWindow): Promise<boolean> =>
+                            (await targetWindow.webContents.executeJavaScript(`typeof tabManager !== "undefined" && tabManager.openTabs.length > 0`)) as boolean
                     )
                 )
             )
@@ -68,12 +84,12 @@ export function SelectOpenTabDialog(props: SelectOpenTabDialogProps): JSX.Elemen
             const includedTabs: { windowID: number; tabID: bigint; name: string }[][] = (
                 await Promise.all(
                     includedOpenWindows.map(
-                        (targetWindow: Electron.BrowserWindow): Promise<{ windowID: number; tabID: bigint; name: string }[]> =>
-                            targetWindow.webContents.executeJavaScript(
+                        async (targetWindow: Electron.BrowserWindow): Promise<{ windowID: number; tabID: bigint; name: string }[]> =>
+                            (await targetWindow.webContents.executeJavaScript(
                                 `tabManager.openTabs${
                                     props.tabTargetTypeFilter ? `.filter((tab) => ${JSON.stringify(props.tabTargetTypeFilter)}.includes(tab.type))` : ""
                                 }.map((tab) => ({ windowID: ${targetWindow.id}, tabID: tab.id, name: tab.name }))`
-                            )
+                            )) as { windowID: number; tabID: bigint; name: string }[]
                     )
                 )
             )
@@ -137,8 +153,14 @@ export function SelectOpenTabDialog(props: SelectOpenTabDialogProps): JSX.Elemen
     );
 }
 
+/**
+ * Shows a dialog for selecting an open tab.
+ *
+ * @param options The options for the dialog.
+ * @returns A promise that resolves with the result of the dialog.
+ */
 export default async function showSelectOpenTabDialog(options: ShowSelectOpenTabDialogOptions): Promise<ShowSelectOpenTabDialogResult> {
-    return new Promise((resolve: (value: ShowSelectOpenTabDialogResult) => void): void => {
+    return await new Promise((resolve: (value: ShowSelectOpenTabDialogResult) => void): void => {
         const container: HTMLDivElement = document.createElement("div");
         container.style.position = "fixed";
         container.style.zIndex = "1200000";

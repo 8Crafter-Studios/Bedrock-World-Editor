@@ -1,5 +1,6 @@
 /**
  * src/utils/deepMerge.ts
+ *
  * @module
  * @description A file containing a deep merge function.
  * @supports Main, Preload, Renderer
@@ -18,7 +19,7 @@ function isObject(item: any): boolean {
 
 /**
  * Deep merge multiple objects.
- * 
+ *
  * @param target The target object.
  * @param sources The source objects.
  * @returns The merged object.
@@ -32,9 +33,9 @@ export function deepMerge<T extends object, U extends object[]>(target: T, ...so
             if (Object.prototype.hasOwnProperty.call(source, key)) {
                 const sourceValue = source[key];
                 if (isObject(sourceValue) && isObject(target[key])) {
-                    target[key] = deepMerge(target[key] as any, sourceValue as any);
+                    target[key] = deepMerge(target[key] as any, sourceValue as any) as never;
                 } else {
-                    (target as any)[key] = sourceValue;
+                    target[key] = sourceValue as never;
                 }
             }
         }

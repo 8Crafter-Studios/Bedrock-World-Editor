@@ -1,4 +1,5 @@
-import React from "react";
+import type { BrowserWindow } from "electron";
+import { RefCallback as Preact_RefCallback } from "preact";
 
 declare module "electron-progressbar" {
     import { app, BrowserWindowConstructorOptions } from "electron";
@@ -22,6 +23,7 @@ declare module "electron-progressbar" {
         public value: number;
         public text: string;
         public detail: string;
+        // eslint-disable-next-line @typescript-eslint/related-getter-setter-pairs
         public get title(): undefined;
         public set title(title: string);
         public _options: ProgressBarOptions;
@@ -52,6 +54,13 @@ declare module "electron-progressbar" {
     }
 
     export = ProgressBar;
+}
+
+declare module "preact/compat" {
+    /**
+     * @deprecated This is an alias for `Preact.RefCallback`.
+     */
+    export type RefCallback<T> = Preact_RefCallback<T>;
 }
 
 // declare module "search-query-parser" {
@@ -122,9 +131,10 @@ declare module "electron-progressbar" {
 declare global {
     namespace React {
         /**
-         * An alias for {@link FunctionComponent | FunctionComponent\<P\>} to fix the component types of {@link https://www.npmjs.com/package/@szhsin/react-menu | @szhsin/react-menu}.
+         * An alias for {@link FunctionComponent | FunctionComponent\<P\>} to fix the component types of {@link https://www.npmjs.com/package/@szhsin/react-menu | \@szhsin/react-menu}.
          */
-        export type NamedExoticComponent<P = {}> =  FunctionComponent<P> & {
+        // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+        export type NamedExoticComponent<P = {}> = FunctionComponent<P> & {
             displayName?: string;
         };
     }

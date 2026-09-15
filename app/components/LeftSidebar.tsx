@@ -1,5 +1,5 @@
 import type { JSX } from "preact";
-import _React, { render, useEffect } from "preact/compat";
+import _React, { useEffect } from "preact/compat";
 
 /**
  * Props for the {@link LeftSidebar} component.
@@ -33,6 +33,7 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.Element {
         if (tab === null) return null;
         switch (tab.contentType) {
             case "ActorPrefix":
+            case "Entity":
                 return "entities";
             case "BlockEntity":
                 return "block-entities";
@@ -60,10 +61,59 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.Element {
                 return "world";
             case "TickingArea":
                 return "ticking-areas";
-            case "AABBVolumes":
+            case "Data3D":
+            case "Version":
+            case "Data2D":
+            case "Data2DLegacy":
+            case "LegacyTerrain":
+            case "LegacyBlockExtraData":
+            case "BiomeState":
+            case "FinalizedState":
+            case "ConversionData":
+            case "BorderBlocks":
+            case "HardcodedSpawners":
+            case "Checksums":
+            case "GenerationSeed":
+            case "GeneratedPreCavesAndCliffsBlending":
+            case "BlendingBiomeHeight":
+            case "MetaDataHash":
+            case "BlendingData":
             case "ActorDigestVersion":
+            case "LegacyVersion":
+            case "AABBVolumes":
+            case "Digest":
+                return "world";
+            case "VillageDwellers":
+            case "VillageInfo":
+            case "VillagePOI":
+            case "VillagePlayers":
+            case "VillageRaid":
+            case "MVillages":
+            case "Villages":
+                return "villages";
+
             case "AutonomousEntities":
             case "FlatWorldLayers":
+            case "ForcedWorldCorruption":
+            case "LegacyOverworld":
+            case "LegacyNether":
+            case "LegacyTheEnd":
+            case "LevelSpawnWasFixed":
+            case "Overworld":
+            case "Nether":
+            case "TheEnd":
+            case "CustomDimension":
+            case "BiomeData":
+            case "BiomeIdsTable":
+            case "DimensionNameIdTable":
+            case "ChunkLoadedRequest":
+            case "PositionTrackingDB":
+            case "PositionTrackingLastId":
+            case "MobEvents":
+            case "LevelChunkMetaDataDictionary":
+            case "RealmsStoriesData":
+            case "WorldClocks":
+            case "Unknown":
             default:
                 return "view-files";
         }
@@ -83,51 +133,53 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.Element {
             props.tab.switchTab(event.currentTarget.dataset.pathId as TabManagerTabGenericSubTabID);
         });
         if (!keyCacheAlreadyLoaded) {
-            (props.tab.awaitCachedDBKeys ?? props.tab.awaitDBOpen?.then((): Promise<boolean> | undefined => props.tab.awaitCachedDBKeys))?.then((): void => {
-                if (!((props.tab.cachedDBKeys?.ForcedWorldCorruption?.length ?? 0) > 0) || tabManager.selectedTab !== props.tab) return;
-                const leftSidebarElement: HTMLDivElement | null = document.getElementById("left_sidebar") as HTMLDivElement | null;
-                if (!leftSidebarElement) return;
-                const repairForcedWorldCorruptionButton: HTMLElement | null = document.querySelector(
-                    '.sidebar_button[data-path-id="repair-forced-world-corruption"]'
-                );
-                if (!repairForcedWorldCorruptionButton) return;
-                repairForcedWorldCorruptionButton.hidden = false;
-                // const tab = {
-                //     icon: "resource://images/ui/glyphs/anvil-hammer.png",
-                //     id: "repair-forced-world-corruption",
-                //     name: "Repair Forced World Corruption",
-                //     resolution: 16,
-                // };
-                // const tempElement: HTMLDivElement = document.createElement("div");
-                // render(
-                //     <div
-                //         class="sidebar_button nsel"
-                //         data-path-id={tab.id}
-                //         // onMouseDown={(event: JSX.TargetedMouseEvent<HTMLDivElement>): void => {
-                //         //     if (event.currentTarget.hasAttribute("disabled")) return;
-                //         //     SoundEffects.popB();
-                //         // }}
-                //         style={{ paddingRight: "1px", lineHeight: "1em", textAlign: "left", flexShrink: 0 }}
-                //     >
-                //         <div style="display: inline-block; vertical-align: middle; width: 36px; height: 36px; text-align: center;">
-                //             <img
-                //                 aria-hidden="true"
-                //                 src={tab.icon}
-                //                 class="nsel ndrg"
-                //                 style={`display: inline-block; vertical-align: middle; width: auto; height: ${36 - (36 % tab.resolution)}px; margin: ${
-                //                     (36 % tab.resolution) / 2
-                //                 }px 0;`}
-                //             />
-                //         </div>
-                //         {tab.name}
-                //     </div>,
-                //     tempElement
-                // );
-                // $(tempElement.children[0] as HTMLDivElement).on("click", (event: JQuery.ClickEvent<HTMLElement, undefined, HTMLElement, HTMLElement>): void => {
-                //     props.tab.switchTab(event.currentTarget.dataset.pathId as TabManagerTabGenericSubTabID);
-                // });
-                // leftSidebarElement.append(...tempElement.children);
-            });
+            void (props.tab.awaitCachedDBKeys ?? props.tab.awaitDBOpen?.then((): Promise<boolean> | undefined => props.tab.awaitCachedDBKeys))?.then(
+                (): void => {
+                    if (!((props.tab.cachedDBKeys?.ForcedWorldCorruption?.length ?? 0) > 0) || tabManager.selectedTab !== props.tab) return;
+                    const leftSidebarElement: HTMLDivElement | null = document.getElementById("left_sidebar") as HTMLDivElement | null;
+                    if (!leftSidebarElement) return;
+                    const repairForcedWorldCorruptionButton: HTMLElement | null = document.querySelector(
+                        '.sidebar_button[data-path-id="repair-forced-world-corruption"]'
+                    );
+                    if (!repairForcedWorldCorruptionButton) return;
+                    repairForcedWorldCorruptionButton.hidden = false;
+                    // const tab = {
+                    //     icon: "resource://images/ui/glyphs/anvil-hammer.png",
+                    //     id: "repair-forced-world-corruption",
+                    //     name: "Repair Forced World Corruption",
+                    //     resolution: 16,
+                    // };
+                    // const tempElement: HTMLDivElement = document.createElement("div");
+                    // render(
+                    //     <div
+                    //         class="sidebar_button nsel"
+                    //         data-path-id={tab.id}
+                    //         // onMouseDown={(event: JSX.TargetedMouseEvent<HTMLDivElement>): void => {
+                    //         //     if (event.currentTarget.hasAttribute("disabled")) return;
+                    //         //     SoundEffects.popB();
+                    //         // }}
+                    //         style={{ paddingRight: "1px", lineHeight: "1em", textAlign: "left", flexShrink: 0 }}
+                    //     >
+                    //         <div style="display: inline-block; vertical-align: middle; width: 36px; height: 36px; text-align: center;">
+                    //             <img
+                    //                 aria-hidden="true"
+                    //                 src={tab.icon}
+                    //                 class="nsel ndrg"
+                    //                 style={`display: inline-block; vertical-align: middle; width: auto; height: ${36 - (36 % tab.resolution)}px; margin: ${
+                    //                     (36 % tab.resolution) / 2
+                    //                 }px 0;`}
+                    //             />
+                    //         </div>
+                    //         {tab.name}
+                    //     </div>,
+                    //     tempElement
+                    // );
+                    // $(tempElement.children[0] as HTMLDivElement).on("click", (event: JQuery.ClickEvent<HTMLElement, undefined, HTMLElement, HTMLElement>): void => {
+                    //     props.tab.switchTab(event.currentTarget.dataset.pathId as TabManagerTabGenericSubTabID);
+                    // });
+                    // leftSidebarElement.append(...tempElement.children);
+                }
+            );
         }
         return (): void => {
             props.tab.off("switchTab", onSubTabSwitch);

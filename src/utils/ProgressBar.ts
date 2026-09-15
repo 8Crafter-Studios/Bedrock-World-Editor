@@ -1,5 +1,6 @@
 /**
  * src/utils/ProgressBar.ts
+ *
  * @module
  * @description A file that defines the global ProgressBar class.
  * @supports Main, Preload, Renderer
@@ -10,10 +11,10 @@ import { app as app_main, BrowserWindow as BrowserWindow_main, type BrowserWindo
 import ElectronProgressBar from "electron-progressbar";
 
 let BrowserWindow: typeof Electron.CrossProcessExports.BrowserWindow = BrowserWindow_main;
-BrowserWindow ??= require("@electron/remote").BrowserWindow as typeof import("@electron/remote").BrowserWindow;
+BrowserWindow ??= (require("@electron/remote") as typeof import("@electron/remote")).BrowserWindow;
 
 let app: typeof Electron.CrossProcessExports.app = app_main;
-app ??= require("@electron/remote").app as typeof import("@electron/remote").app;
+app ??= (require("@electron/remote") as typeof import("@electron/remote")).app;
 
 // use 'extend' because 'Object.assign' doesn't work for deep copy
 import extend from "extend";
@@ -42,7 +43,7 @@ namespace exports {
         };
         public _inProgress: boolean;
         public _options: ProgressBarOptions;
-        public _realValue: any;
+        public _realValue: number;
         public _window: Electron.CrossProcessExports.BrowserWindow | null;
         public _manuallyCompleted: boolean = false;
         public progressBarMode: Electron.ProgressBarOptions["mode"] = "none";
@@ -133,7 +134,7 @@ namespace exports {
 
             this._inProgress = true;
             this._options = this._parseOptions(options);
-            this._realValue = this._options.initialValue;
+            this._realValue = this._options.initialValue!;
             this._window = null;
             this.completionEnabled = this._options.completionEnabled!;
 
@@ -141,7 +142,7 @@ namespace exports {
                 if (electronApp.isReady()) {
                     this._createWindow();
                 } else {
-                    electronApp.on("ready", () => this._createWindow.call(this));
+                    electronApp.on("ready", () => void this._createWindow.call(this));
                 }
             } else {
                 this._createWindow();
@@ -159,8 +160,8 @@ namespace exports {
                 this._error("Invalid call: trying to set value but the progress bar is already completed.");
             } else if (this._options.indeterminate) {
                 this._error("Invalid call: setting value on an indeterminate progress bar is not allowed.");
-            } else if (typeof value != "number") {
-                this._error(`Invalid call: 'value' must be of type 'number' (type found: '` + typeof value + `').`);
+            } else if (typeof value !== "number") {
+                this._error(`Invalid call: 'value' must be of type 'number' (type found: '${typeof value}').`);
             } else {
                 this._realValue = Math.max(this._options.initialValue!, value);
                 this._realValue = Math.min(this._options.maxValue!, this._realValue);
@@ -194,7 +195,7 @@ namespace exports {
                 this.setProgressBarMode("indeterminate");
             } else if (!indeterminate && (this.progressBarMode === "indeterminate" || this._options.indeterminate)) {
                 this._options.indeterminate = indeterminate;
-                this.progressBarMode === "indeterminate" ? this.setProgressBarMode("normal") : this.setProgressBarMode(this.progressBarMode);
+                this.setProgressBarMode(this.progressBarMode === "indeterminate" ? "normal" : this.progressBarMode);
             }
         }
 
@@ -253,7 +254,7 @@ namespace exports {
                 return;
             }
 
-            this._realValue = this._options.maxValue;
+            this._realValue = this._options.maxValue!;
 
             this._manuallyCompleted = true;
 
@@ -288,7 +289,7 @@ namespace exports {
         public _error(message: string): void {
             if (this._options.abortOnError) {
                 if (this._window && !this._window.isDestroyed()) {
-                    this._window && this._window.destroy();
+                    this._window.destroy();
                 }
 
                 throw Error(message);
@@ -297,11 +298,10 @@ namespace exports {
             }
         }
 
-        public _fire(event: keyof ProgressBar["_callbacks"], params?: [value?: number] | undefined): void {
-            this._callbacks[event] &&
-                this._callbacks[event].forEach((cb: (value: number) => void): void => {
-                    cb.apply(cb, (params || []) as [number]);
-                });
+        public _fire(event: keyof ProgressBar["_callbacks"], params?: [value?: number]): void {
+            this._callbacks[event]?.forEach((cb: (value: number) => void): void => {
+                cb.apply(cb, (params ?? []) as [number]);
+            });
         }
 
         public _parseOptions(originalOptions: ProgressBarOptions): ProgressBarOptions {
@@ -329,6 +329,7 @@ namespace exports {
                 }
 
                 style.push(`${styleSelector[el]}{`);
+                // eslint-disable-next-line guard-for-in -- TEMP
                 for (const prop in this._options.style![el]) {
                     style.push(`${prop}:${this._options.style![el][prop as keyof NonNullable<ProgressBar["_options"]["style"]>[typeof el]]} !important;`);
                 }
@@ -336,7 +337,7 @@ namespace exports {
             });
 
             if (this._options.indeterminate) {
-                if (this._options.style && this._options.style.value && this._options.style.value.background) {
+                if (this._options.style?.value?.background) {
                     style.push(`
                     .completed${this._styleSelector.indeterminate.bar},
                     .completed${this._styleSelector.indeterminate.value}{
@@ -376,7 +377,7 @@ namespace exports {
 
             const langAttribute = this._options.lang ? `lang="${this._options.lang}"` : "";
             const $htmlContent = this._options.customHTML ? this._options.customHTML.replace(/<html ([^>]*)>/, "<html lang='{{REPLACE:LANG}}>") : htmlContent;
-            this._window.loadURL("data:text/html;charset=UTF8," + encodeURIComponent($htmlContent.replace("{{REPLACE:LANG}}", langAttribute)));
+            void this._window.loadURL(`data:text/html;charset=UTF8,${encodeURIComponent($htmlContent.replace("{{REPLACE:LANG}}", langAttribute))}`);
 
             this._window.webContents.on("did-finish-load", () => {
                 if (this._options.text !== null) {
@@ -387,7 +388,7 @@ namespace exports {
                     this.detail = this._options.detail!;
                 }
 
-                this._window!.webContents.insertCSS(this._parseStyle());
+                void this._window!.webContents.insertCSS(this._parseStyle());
 
                 if (this._options.maxValue !== null) {
                     this._window!.webContents.send("CREATE_PROGRESS_BAR", {
@@ -403,10 +404,10 @@ namespace exports {
             this._updateTaskbarProgress();
         }
 
-        _updateTaskbarProgress() {
+        public _updateTaskbarProgress(): void {
             let mainWindow;
 
-            if (this._options.browserWindow && this._options.browserWindow.parent) {
+            if (this._options.browserWindow?.parent) {
                 mainWindow = this._options.browserWindow.parent;
             } else {
                 mainWindow = this._window;
@@ -419,7 +420,7 @@ namespace exports {
             if (!this.isInProgress() || this.isCompleted()) {
                 // remove the progress bar from taskbar
                 this.progressBarMode = "none";
-                return mainWindow.setProgressBar(-1, { mode: "none" });
+                return void mainWindow.setProgressBar(-1, { mode: "none" });
             }
 
             if (this._options.indeterminate) {
@@ -440,8 +441,8 @@ namespace exports {
             }
         }
 
-        _execWhenCompleted() {
-            if (!this.isInProgress() || !this.isCompleted() || !this._window || !this._window.webContents || !this.completionEnabled) {
+        public _execWhenCompleted(): void {
+            if (!this.isInProgress() || !this.isCompleted() || !this._window?.webContents || !this.completionEnabled) {
                 return;
             }
 
@@ -455,7 +456,7 @@ namespace exports {
 
             if (this._options.closeOnComplete) {
                 const delayToFinishAnimation = 500;
-                setTimeout(() => this.close(), delayToFinishAnimation);
+                setTimeout(() => void this.close(), delayToFinishAnimation);
             }
         }
     }

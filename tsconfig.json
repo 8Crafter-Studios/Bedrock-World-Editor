@@ -15,10 +15,9 @@
         "strict": true,
         "exactOptionalPropertyTypes": true,
         "allowSyntheticDefaultImports": true,
-        "checkJs": true,
+        "checkJs": true
     },
     "files": [],
     "exclude": ["deprecated/*", "*.asar"],
-    "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }]
+    "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }, { "path": "./tsconfig.root.json" }]
 }
-

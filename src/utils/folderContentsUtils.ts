@@ -6,10 +6,10 @@ import { readdir } from "node:fs/promises";
 /**
  * Recursively add the contents of the zip folder to a destination folder.
  *
- * @param {zip.ZipDirectoryEntry} directoryEntry The zip directory entry to extract the contents from.
- * @param {string} basePath The base path to extract the contents to.
- * @param {string} destinationFolder The subfolder of the zip and base path to extract the contents from and to respectively.
- * @returns {Promise<void>} A promise that resolves when the contents are extracted.
+ * @param directoryEntry The zip directory entry to extract the contents from.
+ * @param basePath The base path to extract the contents to.
+ * @param destinationFolder The subfolder of the zip and base path to extract the contents from and to respectively.
+ * @returns A promise that resolves when the contents are extracted.
  */
 export async function addFolderContentsReversed(
     directoryEntry: zip.ZipDirectoryEntry,
@@ -61,8 +61,8 @@ export async function readdirRecursiveSafe(dir: string, results: Dirent[] = []):
 
     try {
         entries = await readdir(dir, { withFileTypes: true });
-    } catch (err: any) {
-        if (err.code === "EACCES" || err.code === "EPERM") {
+    } catch (err: unknown) {
+        if (typeof err === "object" && err && "code" in err && (err.code === "EACCES" || err.code === "EPERM")) {
             return results;
         }
         throw err;
@@ -72,7 +72,7 @@ export async function readdirRecursiveSafe(dir: string, results: Dirent[] = []):
 
     const subdirs = entries.filter((entry) => entry.isDirectory()).map((entry) => path.join(dir, entry.name));
 
-    await Promise.all(subdirs.map((subdir) => readdirRecursiveSafe(subdir, results)));
+    await Promise.all(subdirs.map(async (subdir) => await readdirRecursiveSafe(subdir, results)));
 
     return results;
 }

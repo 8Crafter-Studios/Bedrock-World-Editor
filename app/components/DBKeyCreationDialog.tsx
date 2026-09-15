@@ -1,4 +1,3 @@
-import { BrowserWindow } from "@electron/remote";
 import {
     DBChunkKeyEntryContentTypes,
     DBEntryContentTypes,
@@ -6,10 +5,9 @@ import {
     type DBChunkKeyEntryContentType,
     type DBEntryContentType,
     type Dimension,
-    type SubChunkIndexDimensionVectorXZ,
 } from "mcbe-leveldb";
 import type { JSX, RefObject, TargetedEvent } from "preact";
-import { render, useEffect, useRef } from "preact/compat";
+import { render, useRef } from "preact/compat";
 
 /**
  * Options for the {@link showDBKeyCreationDialog} function.
@@ -100,8 +98,8 @@ export type ShowDBKeyCreationDialogResult<O extends DBKeyCreationPromptOptionIte
  * Props for the {@link DBKeyCreationDialog} component.
  */
 export interface DBKeyCreationDialogProps<O extends DBKeyCreationPromptOptionItemType> extends ShowDBKeyCreationDialogOptions<O> {
-    onSubmit(data: DBKeyCreationPromptOptionItemsToDataObject<O>): void;
-    onCancel(): void;
+    onSubmit(this: void, data: DBKeyCreationPromptOptionItemsToDataObject<O>): void;
+    onCancel(this: void): void;
 }
 
 /**
@@ -127,7 +125,10 @@ export function DBKeyCreationDialog<O extends DBKeyCreationPromptOptionItemType>
                         function fakeAssertOptionType<T extends DBKeyCreationPromptOptionItemType>(
                             option: DBKeyCreationPromptOptionItemType | DBKeyCreationPromptOptionItemWithProperties<DBKeyCreationPromptOptionItemType>,
                             optionType: T
-                        ): asserts option is T | DBKeyCreationPromptOptionItemWithProperties<T> {}
+                        ): asserts option is T | DBKeyCreationPromptOptionItemWithProperties<T> {
+                            void option;
+                            void optionType;
+                        }
                         const optionElementId = `DBKeyCreationDialogOptionList_optionItem_${dialogTimestamp}_${index}_${optionId}`;
                         switch (optionId) {
                             case "chunkX":
@@ -304,6 +305,8 @@ export function DBKeyCreationDialog<O extends DBKeyCreationPromptOptionItemType>
                                         </select>
                                     </div>
                                 );
+                            default:
+                                throw new Error(`Unknown option ID: ${optionId as string}.`);
                         }
                     }
                 )}
@@ -336,6 +339,8 @@ export function DBKeyCreationDialog<O extends DBKeyCreationPromptOptionItemType>
                                             return [optionId, optionElement.dataset.optionvalue];
                                         case "number":
                                             return [optionId, Number(optionElement.dataset.optionvalue)];
+                                        default:
+                                            throw new Error(`Unknown option value type ${optionValueType as string}.`);
                                     }
                                 }
                             )
@@ -359,7 +364,7 @@ export function DBKeyCreationDialog<O extends DBKeyCreationPromptOptionItemType>
 export default async function showDBKeyCreationDialog<O extends DBKeyCreationPromptOptionItemType>(
     options: ShowDBKeyCreationDialogOptions<O>
 ): Promise<ShowDBKeyCreationDialogResult<O>> {
-    return new Promise((resolve: (value: ShowDBKeyCreationDialogResult<O>) => void): void => {
+    return await new Promise((resolve: (value: ShowDBKeyCreationDialogResult<O>) => void): void => {
         const container: HTMLDivElement = document.createElement("div");
         container.style.position = "fixed";
         container.style.zIndex = "1200000";

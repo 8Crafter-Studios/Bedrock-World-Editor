@@ -119,8 +119,8 @@ declare namespace tinycolor {
          * Given a base color and a list of possible foreground or background colors for that base,
          *  returns the most readable color. Optionally returns Black or White if the most readable color is unreadable.
          *
-         * @param color - the base color.
-         * @param colorsToCompare - array of colors to pick the most readable one from.
+         * @param baseColor - the base color.
+         * @param colorList - array of colors to pick the most readable one from.
          * @param args - and object with extra arguments
          */
         mostReadable(baseColor: ColorInput, colorList: ColorInput[], args?: MostReadableArgs): Instance;

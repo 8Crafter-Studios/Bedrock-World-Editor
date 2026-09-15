@@ -1,14 +1,17 @@
-import { type JSX, type RefObject, type TargetedMouseEvent } from "preact";
+import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef, useState } from "preact/compat";
 import { checkIsURIOrPath } from "../../src/utils/pathUtils";
 const mime = require("mime-types") as typeof import("mime-types");
 import { readFileSync, writeFileSync } from "node:fs";
-import { entryContentTypeToFormatMap, prettyPrintSNBT, prismarineToSNBT, type EntryContentTypeFormatData, type Vector2 } from "mcbe-leveldb";
-import { ControlledMenu, MenuDivider, MenuItem, SubMenu, type SubMenuProps } from "@szhsin/react-menu";
+import { prettyPrintSNBT, prismarineToSNBT, type Vector2 } from "mcbe-leveldb";
+import { ControlledMenu, MenuDivider, MenuItem, SubMenu } from "@szhsin/react-menu";
 import { app, dialog } from "@electron/remote";
 import type { MessageBoxReturnValue, SaveDialogReturnValue } from "electron";
 import path from "node:path";
 
+/**
+ * Props for the {@link SubTabBar} component.
+ */
 export interface SubTabBarProps {
     tab: TabManagerTab;
 }
@@ -45,27 +48,30 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
             window.removeEventListener("mousedown", hideAddTabPopup);
         };
     }, []);
-    interface PopupTab {
-        icon: string;
-        name: string;
-        resolution: number;
-        onClick?(event: JSX.TargetedMouseEvent<HTMLDivElement>): void;
-    }
-    const popupTabs: PopupTab[] = (
-        [
-            {
-                icon: "resource://images/ui/glyphs/world_glyph_color.png",
-                name: "World",
-                resolution: 17,
-                onClick(event) {
-                    tab.switchTab(null);
-                },
-            },
-            { icon: "resource://images/ui/glyphs/Data-Empty.png", name: "NBT File", resolution: 12 },
-            { icon: "resource://images/ui/glyphs/Data-Empty.png", name: "JSON File", resolution: 12 },
-            { icon: "resource://images/ui/glyphs/Data-Empty.png", name: "Raw File", resolution: 12 },
-        ] as const satisfies (PopupTab | false | undefined)[]
-    ).filter((tab: PopupTab | false | undefined): tab is PopupTab => !!tab) as PopupTab[];
+    // interface PopupTab {
+    //     icon: string;
+    //     name: string;
+    //     resolution: number;
+    //     onClick?(event: TargetedMouseEvent<HTMLDivElement>): void;
+    // }
+    // const popupTabs: PopupTab[] = (
+    //     [
+    //         {
+    //             icon: "resource://images/ui/glyphs/world_glyph_color.png",
+    //             name: "World",
+    //             resolution: 17,
+    //             onClick(_event: TargetedMouseEvent<HTMLDivElement>): void {
+    //                 tab.switchTab(null);
+    //             },
+    //         },
+    //         { icon: "resource://images/ui/glyphs/Data-Empty.png", name: "NBT File", resolution: 12 },
+    //         { icon: "resource://images/ui/glyphs/Data-Empty.png", name: "JSON File", resolution: 12 },
+    //         { icon: "resource://images/ui/glyphs/Data-Empty.png", name: "Raw File", resolution: 12 },
+    //     ] as const satisfies (PopupTab | false | undefined)[]
+    // ).filter((tab: PopupTab | false | undefined): tab is PopupTab => !!tab);
+    /**
+     * Props for the {@link Tab} component.
+     */
     interface TabProps {
         tab: TabManagerSubTab;
     }
@@ -82,10 +88,10 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
             let index: number = 0;
             const elementRect: DOMRect = clonedElement?.getBoundingClientRect();
             const lastTabY: number =
-                Array.from(containerRef.current!.parentElement!.children)
+                Array.from(containerRef.current.parentElement!.children)
                     .findLast((tab: Element): boolean => !tab.hasAttribute("data-immovable"))
                     ?.getBoundingClientRect().top ?? 0;
-            for (const tab of containerRef.current!.parentElement!.children) {
+            for (const tab of containerRef.current.parentElement!.children) {
                 if (tab.hasAttribute("data-immovable")) continue;
                 const rect: DOMRect = tab.getBoundingClientRect();
                 if (rect.left + rect.width / 2 < elementRect.left) index++;
@@ -201,13 +207,13 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
         });
         const [tabContextMenu_isOpen, tabContextMenu_setOpen] = useState(false);
         const [tabContextMenu_anchorPoint, tabContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
-        function onTabRightClick(event: JSX.TargetedMouseEvent<HTMLLIElement>): void {
+        function onTabRightClick(event: TargetedMouseEvent<HTMLLIElement>): void {
             event.preventDefault();
             event.stopPropagation();
-            const clickPosition: { x: number; y: number } = {
-                x: event.clientX,
-                y: event.clientY,
-            };
+            // const clickPosition: { x: number; y: number } = {
+            //     x: event.clientX,
+            //     y: event.clientY,
+            // };
             // console.log(clickPosition);
 
             tabContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
@@ -217,7 +223,7 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
             if (props.tab.isModified()) {
                 if (event.shiftKey) {
                     if (event.ctrlKey) await props.tab.save();
-                    await props.tab.close();
+                    props.tab.close();
                     return;
                 }
                 const result: MessageBoxReturnValue = await dialog.showMessageBox(getCurrentWindow(), {
@@ -236,11 +242,12 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                         break;
                     case 2:
                         return;
+                    // no default
                 }
             }
             props.tab.close();
         }
-        const tabContentsFormat: EntryContentTypeFormatData = entryContentTypeToFormatMap[props.tab.contentType] as EntryContentTypeFormatData;
+        // const tabContentsFormat: EntryContentTypeFormatData = entryContentTypeToFormatMap[props.tab.contentType] as EntryContentTypeFormatData;
         let tabDataStorageObject: DataStorageObject | undefined = props.tab.currentState.options.dataStorageObject;
         return (
             <>
@@ -249,11 +256,11 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                     onClick={(event: TargetedMouseEvent<HTMLLIElement>): void => {
                         // Treat Alt+Click as a middle click.
                         if (!event.altKey) return;
-                        onTabMiddleClick(event);
+                        void onTabMiddleClick(event);
                     }}
                     onAuxClick={(event: TargetedMouseEvent<HTMLLIElement>): void => {
                         if (event.button !== 1) return;
-                        onTabMiddleClick(event);
+                        void onTabMiddleClick(event);
                     }}
                     onContextMenu={(event: TargetedMouseEvent<HTMLLIElement>): void => void onTabRightClick(event)}
                     ref={containerRef}
@@ -395,13 +402,15 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                                             case "NBTCompound":
                                                 writeFileSync(saveResult.filePath, JSON.stringify(tabDataStorageObject.data, null, 0));
                                                 break;
+                                            default:
+                                                throw new Error(`Unsupported data type: ${(tabDataStorageObject as GenericDataStorageObject).dataType}`);
                                         }
                                     }}
                                 >
                                     Prismarine-NBT JSON
                                 </MenuItem>
                             )}
-                            {tabDataStorageObject && tabDataStorageObject.dataType === "NBT" && (
+                            {tabDataStorageObject?.dataType === "NBT" && (
                                 <MenuItem
                                     onClick={async (): Promise<void> => {
                                         tabDataStorageObject = props.tab.currentState.options.dataStorageObject;
@@ -440,6 +449,8 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                                             case "NBT":
                                                 writeFileSync(saveResult.filePath, JSON.stringify(tabDataStorageObject.data, null, 0));
                                                 break;
+                                            default:
+                                                throw new Error(`Unsupported data type: ${(tabDataStorageObject as GenericDataStorageObject).dataType}`);
                                         }
                                     }}
                                 >
@@ -491,13 +502,15 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                                             case "NBTCompound":
                                                 writeFileSync(saveResult.filePath, prettyPrintSNBT(prismarineToSNBT(tabDataStorageObject.data), { indent: 4 }));
                                                 break;
+                                            default:
+                                                throw new Error(`Unsupported data type: ${(tabDataStorageObject as GenericDataStorageObject).dataType}`);
                                         }
                                     }}
                                 >
                                     SNBT
                                 </MenuItem>
                             )}
-                            {tabDataStorageObject && tabDataStorageObject.dataType === "JSON" && (
+                            {tabDataStorageObject?.dataType === "JSON" && (
                                 <MenuItem
                                     onClick={async (): Promise<void> => {
                                         tabDataStorageObject = props.tab.currentState.options.dataStorageObject;
@@ -536,6 +549,8 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                                             case "JSON":
                                                 writeFileSync(saveResult.filePath, JSON.stringify(tabDataStorageObject.data.parsed, null, 0));
                                                 break;
+                                            default:
+                                                throw new Error(`Unsupported data type: ${(tabDataStorageObject as GenericDataStorageObject).dataType}`);
                                         }
                                     }}
                                 >
@@ -591,8 +606,16 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                                                 case "UTF-8":
                                                 case "binaryPlainText":
                                                 case "hex":
-                                                    writeFileSync(saveResult.filePath, tabDataStorageObject.data);
+                                                    writeFileSync(
+                                                        saveResult.filePath,
+                                                        tabDataStorageObject.data,
+                                                        tabDataStorageObject.dataType === "UTF-8" ? "utf-8"
+                                                        : tabDataStorageObject.dataType === "ASCII" ? "ascii"
+                                                        : "binary"
+                                                    );
                                                     break;
+                                                default:
+                                                    throw new Error(`Unsupported data type: ${(tabDataStorageObject as GenericDataStorageObject).dataType}`);
                                             }
                                         }}
                                     >
@@ -622,13 +645,14 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                     </ControlledMenu>
                     <a
                         title={props.tab.name}
-                        onMouseDown={(event: JSX.TargetedMouseEvent<HTMLAnchorElement>): void => {
+                        onMouseDown={(event: TargetedMouseEvent<HTMLAnchorElement>): void => {
                             if (
                                 !containerRef.current ||
                                 event.currentTarget.querySelector(".closebtn")?.contains(event.target as Node) ||
                                 event.currentTarget.querySelector(".unpinbtn")?.contains(event.target as Node)
-                            )
+                            ) {
                                 return;
+                            }
                             dragging = true;
                             cursorOffset = { x: event.offsetX, y: event.offsetY };
                             absoluteCursorOffset = { x: event.clientX, y: event.clientY };
@@ -653,9 +677,9 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                             </div>
                         )}
                         {props.tab.name.length > 40 ?
-                            props.tab.name.slice(0, 30 - Math.min(10, Math.max(0, props.tab.name.length - 45))) +
-                            "..." +
-                            props.tab.name.slice(30 + Math.max(0, props.tab.name.length - 40))
+                            `${props.tab.name.slice(0, 30 - Math.min(10, Math.max(0, props.tab.name.length - 45)))}...${props.tab.name.slice(
+                                30 + Math.max(0, props.tab.name.length - 40)
+                            )}`
                         :   props.tab.name}
                         {props.tab.readonly && (
                             <img
@@ -683,7 +707,7 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                                 src="resource://images/ui/glyphs/Pin.png"
                                 style="margin-left: 0.5em; width: 18px; height: 18px; vertical-align: middle;"
                                 class="unpinbtn"
-                                onClick={async (event: JSX.TargetedMouseEvent<HTMLImageElement>): Promise<void> => {
+                                onClick={(event: TargetedMouseEvent<HTMLImageElement>): void => {
                                     event.stopPropagation();
                                     props.tab.isPinned = false;
                                     triggerUpdate?.();
@@ -694,7 +718,7 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                                 src="resource://images/ui/glyphs/Close.png"
                                 style="margin-left: 0.5em; width: 10px; height: 10px; vertical-align: middle;"
                                 class="closebtn piximg"
-                                onClick={async (event: JSX.TargetedMouseEvent<HTMLImageElement>): Promise<void> => {
+                                onClick={async (event: TargetedMouseEvent<HTMLImageElement>): Promise<void> => {
                                     event.stopPropagation();
                                     if (!event.shiftKey && props.tab.isModified()) await props.tab.save();
                                     props.tab.close();

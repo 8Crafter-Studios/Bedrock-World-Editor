@@ -1,5 +1,5 @@
 // @ts-nocheck This file is not ready for use yet, it should be ignored for now.
-// @eslint-ignore
+/* eslint-disable */
 
 export interface LevelDBEntryListTabContentsProps<T extends { [key: string]: object }, K extends { [key: string]: object }> {
     keys: T;

@@ -1,22 +1,27 @@
 import type { JSX, RefObject } from "preact";
 import _React, { render, useRef } from "preact/compat";
-import TreeEditor from "../components/TreeEditor";
-import { entryContentTypeToFormatMap, getKeyDisplayName, type EntryContentTypeFormatData } from "mcbe-leveldb";
-import NBT from "prismarine-nbt";
-import { readFileSync } from "node:fs";
-import path from "node:path";
+import { entryContentTypeToFormatMap, type EntryContentTypeFormatData } from "mcbe-leveldb";
 import { LoadingScreenContents } from "../app";
 import TextEditor from "../components/TextEditor";
-import PrismarineNBTEditor from "../components/PrismarineNBTEditor";
 import EditorWidgetOverlayBar, { type EditorWidgetOverlayBarWidgetRegistry } from "../components/EditorWidgetOverlayBar";
-import { MapEditor } from "../components/MapEditor";
+import { stringifyError } from "../../src/utils/miscUtils";
 
+/**
+ * Props for the {@link TextEditorTab} component.
+ */
 export interface TextEditorTabProps {
     tab: TabManagerSubTab;
 }
 
 // TODO: Add an option to edit the data in raw mode.
+// TODO: Add the update data loading failure notices.
 
+/**
+ * The text editor tab.
+ *
+ * @param props The props for the component.
+ * @returns The JSX element.
+ */
 export default function TextEditorTab(props: TextEditorTabProps): JSX.SpecificElement<"div"> {
     const containerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     const viewOptionsRefs = {
@@ -24,9 +29,14 @@ export default function TextEditorTab(props: TextEditorTabProps): JSX.SpecificEl
         viewOptionsTabbedSelector: useRef<HTMLDivElement>(null),
     };
     const widgetRegistryRef: RefObject<EditorWidgetOverlayBarWidgetRegistry> = useRef<EditorWidgetOverlayBarWidgetRegistry>(null);
+    void viewOptionsRefs; // TEMP
+    void widgetRegistryRef; // TEMP
+    void EditorWidgetOverlayBar; // TEMP
     function fakeAssertIsValidOptionsType(
         options: typeof props.tab.currentState.options
-    ): asserts options is Extract<typeof props.tab.currentState.options, { viewMode?: any }> {}
+    ): asserts options is Extract<typeof props.tab.currentState.options, { viewMode?: any }> {
+        void options;
+    }
     const asyncMode: boolean = !props.tab.currentState.options.dataStorageObject;
     fakeAssertIsValidOptionsType(props.tab.currentState.options);
     props.tab.currentState.options.viewMode ??= "map";
@@ -38,12 +48,17 @@ export default function TextEditorTab(props: TextEditorTabProps): JSX.SpecificEl
                 case "UTF-8":
                 case "binaryPlainText": {
                     await props.tab.loadData();
-                    if (props.tab.currentState.options.dataStorageObject)
+                    if (props.tab.currentState.options.dataStorageObject) {
                         props.tab.currentState.options.dataStorageObject.treeEditor = { scrollTop: 0, expansionData: {} };
+                    }
                     break;
                 }
                 case "custom": {
                     switch (format.resultType) {
+                        case "JSONNBT":
+                        case "SNBT":
+                        case "buffer":
+                        case "unknown":
                         default:
                             throw new TypeError(
                                 `The content type "${props.tab.contentType}" is not supported in the text editor. (format type: ${format.type}, result type: ${format.resultType})`
@@ -52,6 +67,13 @@ export default function TextEditorTab(props: TextEditorTabProps): JSX.SpecificEl
                             break formatTypeSwitch;
                     }
                 }
+                case "JSON":
+                case "NBT":
+                case "SNBT":
+                case "binary":
+                case "hex":
+                case "int":
+                case "unknown":
                 default:
                     throw new TypeError(`The content type "${props.tab.contentType}" is not supported in the text editor. (format type: ${format.type})`);
             }
@@ -60,18 +82,13 @@ export default function TextEditorTab(props: TextEditorTabProps): JSX.SpecificEl
             (): void => {
                 reloadContents();
             },
-            (reason: any): void => {
+            (reason: unknown): void => {
                 if (containerRef.current) {
                     const errorElement: HTMLDivElement = document.createElement("div");
                     errorElement.style.color = "red";
                     errorElement.style.fontFamily = "monospace";
                     errorElement.style.whiteSpace = "pre";
-                    errorElement.textContent =
-                        reason instanceof Error ?
-                            reason.stack?.startsWith(reason.toString()) ?
-                                reason.stack
-                            :   reason.toString() + reason.stack
-                        :   reason;
+                    errorElement.textContent = stringifyError(reason);
                     containerRef.current.replaceChildren("Failed to load data:", errorElement);
                 }
                 console.error(reason);
@@ -104,7 +121,7 @@ export default function TextEditorTab(props: TextEditorTabProps): JSX.SpecificEl
                 path={`tab://${props.props.tab.parentTab.id}/${props.props.tab.id}/text`}
                 contentType={props.options.type}
                 triggerSave={(): void => {
-                    props.props.tab.parentTab.save();
+                    void props.props.tab.parentTab.save();
                 }}
             />
         );

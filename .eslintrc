@@ -7,28 +7,87 @@
     "extends": [
         "eslint:recommended",
         "plugin:@typescript-eslint/eslint-recommended",
-        "plugin:@typescript-eslint/recommended",
+        "plugin:@typescript-eslint/recommended-type-checked",
+        "plugin:@typescript-eslint/stylistic-type-checked",
         "plugin:import/recommended",
         "plugin:import/electron",
         "plugin:import/typescript",
         "plugin:jsdoc/recommended-typescript"
-        // TODO: Enable @typescript-eslint/recommended-type-checked at some point and disable the unwanted rules.
     ],
     "plugins": ["no-restricted-syntax"],
     "parser": "@typescript-eslint/parser",
     "rules": {
         "eslint-plugin-import/no-unresolved": "off",
+        "import/no-unresolved": "off",
         "@typescript-eslint/no-non-null-assertion": "off",
         "@typescript-eslint/no-explicit-any": "off",
         "@typescript-eslint/no-var-requires": "off",
         "@typescript-eslint/no-namespace": "off",
-        "@typescript-eslint/no-unused-vars": "off",
+        "@typescript-eslint/no-unused-vars": [
+            "warn",
+            {
+                "args": "all",
+                "argsIgnorePattern": "(?:^_|^args)",
+                "caughtErrors": "all",
+                "caughtErrorsIgnorePattern": "^_",
+                "destructuredArrayIgnorePattern": "^_",
+                "vars": "local",
+                "varsIgnorePattern": "^_",
+                "ignoreRestSiblings": true
+            }
+        ],
         "@typescript-eslint/no-inferrable-types": "off",
-        "@typescript-eslint/no-empty-function": "off",
+        "@typescript-eslint/no-empty-function": ["warn", { "allow": ["arrowFunctions", "constructors", "decoratedFunctions"] }],
         "@typescript-eslint/no-empty-interface": "off",
-        "@typescript-eslint/ban-ts-comment": "off",
+        // IDEA: Find a way to make this only allow single extends on interfaces if there is a type parameter specified on the extended interface or type.
+        "@typescript-eslint/no-empty-object-type": ["warn", { "allowInterfaces": "with-single-extends" }],
+        // "@typescript-eslint/no-generated-empty-object-type": "error", // UNDONE: This shows errors for NonNullable<unknown> too.
+        "@typescript-eslint/ban-ts-comment": [
+            "warn",
+            {
+                "ts-check": false,
+                "ts-expect-error": "allow-with-description",
+                "ts-ignore": "allow-with-description",
+                "ts-nocheck": "allow-with-description"
+            }
+        ],
         "@typescript-eslint/no-non-null-asserted-optional-chain": "off",
+        "@typescript-eslint/no-unnecessary-type-assertion": ["error", { "typesToIgnore": ["EntryContentTypeFormatData"] }],
         "@typescript-eslint/no-unnecessary-type-constraint": "off",
+        "@typescript-eslint/consistent-indexed-object-style": "off",
+        "@typescript-eslint/no-confusing-non-null-assertion": "off",
+        "@typescript-eslint/prefer-nullish-coalescing": [1, { "ignoreMixedLogicalExpressions": true }],
+        "@typescript-eslint/triple-slash-reference": "off",
+        "@typescript-eslint/explicit-function-return-type": "error",
+        "@typescript-eslint/explicit-member-accessibility": "error",
+        "@typescript-eslint/no-confusing-void-expression": ["error", { "ignoreVoidOperator": true }],
+        "@typescript-eslint/no-import-type-side-effects": "error",
+        "@typescript-eslint/no-invalid-void-type": ["error", { "allowAsThisParameter": true, "allowInGenericTypeArguments": true }],
+        // "@typescript-eslint/no-loop-func": "error", // Too buggy to use atm.
+        // "@typescript-eslint/no-meaningless-void-operator": "error", // UNDONE: This disallows using void to temporarily mark a variable as used.
+        "@typescript-eslint/no-misused-promises": "off", // REVIEW: Maybe this should be on?
+        "@typescript-eslint/no-misused-spread": "error",
+        // "@typescript-eslint/no-unnecessary-condition": "warn", // TODO: Enable this and fix all the warnings from it.
+        "@typescript-eslint/no-unnecessary-parameter-property-assignment": "warn",
+        "@typescript-eslint/no-unnecessary-qualifier": "error",
+        "@typescript-eslint/no-unsafe-enum-comparison": "off", // REVIEW: Maybe enable this in the future, rn it is disabled because the prismarine-nbt types are causing some issues with it..
+        "@typescript-eslint/prefer-reduce-type-parameter": "error",
+        "@typescript-eslint/prefer-return-this-type": "error",
+        "@typescript-eslint/promise-function-async": "error",
+        "@typescript-eslint/related-getter-setter-pairs": "warn",
+        "@typescript-eslint/require-array-sort-compare": "error",
+        "@typescript-eslint/return-await": ["error", "always"],
+        // "@typescript-eslint/strict-boolean-expressions": "error", // TODO: Find a way to enable this while allowing unnecessary falsy checks on non-nullable objects.
+        // "@typescript-eslint/strict-void-return": "error", // UNDONE: This forces the same effect as no-misused-promises.
+        "@typescript-eslint/switch-exhaustiveness-check": ["error", { "requireDefaultForNonUnion": true }],
+        "@typescript-eslint/unified-signatures": [
+            "error",
+            {
+                "ignoreDifferentlyNamedParameters": true,
+                "ignoreOverloadsWithDifferentJSDoc": true
+            }
+        ],
+        "@typescript-eslint/use-unknown-in-catch-callback-variable": "error",
         "@typescript-eslint/no-require-imports": "off",
         "@typescript-eslint/no-restricted-imports": [
             "error",
@@ -43,24 +102,47 @@
                         "name": "preact",
                         "importNames": ["hydrate"],
                         "message": "Please use hydrate from preact/compat instead."
+                    },
+                    {
+                        "name": "preact/compat",
+                        "importNames": ["RefCallback"],
+                        "message": "Please use RefCallback from preact instead."
                     }
                 ]
             }
         ],
-        "import/no-unresolved": "off",
-        "no-inner-declarations": "off",
-        "prefer-const": "off",
+        "array-callback-return": "error",
+        "curly": ["warn", "multi-line"],
+        "default-case": "warn",
+        "default-case-last": "error",
+        "eqeqeq": "error",
+        // "func-name-matching": ["warn", "always", { "considerPropertyDescriptor": true }],
+        "func-names": "warn",
+        "grouped-accessor-pairs": "error",
+        "guard-for-in": "warn",
+        "logical-assignment-operators": "error",
         "no-constant-condition": "off",
-        "no-var": "off",
-        "no-empty": "off",
-        "no-empty-function": "off",
-        "no-unused-vars": "off",
-        "no-debugger": "off",
-        "no-compare-neg-zero": "warn",
-        // Unnecessary as it is built in to TypeScript.
-        "no-fallthrough": "off",
+        "no-constructor-return": "warn",
         "no-control-regex": "off",
-        "preserve-caught-error": "warn",
+        "no-debugger": "warn",
+        "no-else-return": "warn",
+        "no-empty": ["warn", { "allowEmptyCatch": true }],
+        "no-extra-bind": "warn",
+        "no-extra-label": "warn",
+        // Only disallow double negation conversion (+ should be used instead).
+        "no-implicit-coercion": ["error", { "allow": ["~", "!!", "+", "-", "*"] }],
+        "no-inner-declarations": "off",
+        "no-irregular-whitespace": ["error", { "skipComments": true }],
+        "no-iterator": "error",
+        "no-lone-blocks": "warn",
+        "no-lonely-if": "warn",
+        "no-promise-executor-return": ["error", { "allowVoid": true }],
+        "no-sparse-arrays": "off",
+        "no-template-curly-in-string": "warn",
+        "no-undef-init": "error",
+        "no-unreachable-loop": "error",
+        "no-useless-computed-key": "warn",
+        "no-useless-concat": "warn",
         "no-restricted-syntax/warn": [
             "warn",
             {
@@ -93,6 +175,28 @@
                 "message": "Use -- instead of -= +1."
             }
         ],
+        "no-var": "off",
+        "no-compare-neg-zero": "warn",
+        // Unnecessary as it is built in to TypeScript.
+        "no-fallthrough": "off",
+        "object-shorthand": ["error", "properties"],
+        "operator-assignment": "error",
+        "prefer-const": [
+            "warn",
+            {
+                "destructuring": "all",
+                "ignoreReadBeforeAssign": true
+            }
+        ],
+        "prefer-exponentiation-operator": "error",
+        "prefer-numeric-literals": "error",
+        "prefer-object-spread": "warn",
+        "prefer-rest-params": "off",
+        "prefer-template": "warn",
+        "preserve-caught-error": "warn",
+        "require-atomic-updates": "error",
+        "symbol-description": "error",
+        "yoda": ["error", "never", { "exceptRange": true }],
         "jsdoc/tag-lines": [
             "warn",
             "any",
@@ -141,5 +245,23 @@
             }
         ]
     },
-    "root": true
+    "root": true,
+    "parserOptions": {
+        "ecmaVersion": "latest",
+        "sourceType": "module",
+        "project": ["tsconfig.app.json", "tsconfig.node.json", "tsconfig.root.json", "tsconfig.json"]
+    },
+    "overrides": [
+        {
+            "files": [
+                // This is to stop missing TSConfig errors on untitled files in VSCode.
+                "./test.ts",
+                // This disables TypeScript config resolution for JS files.
+                "**/*.js"
+            ],
+            "parserOptions": {
+                "project": false
+            }
+        }
+    ]
 }

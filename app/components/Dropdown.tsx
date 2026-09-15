@@ -1,3 +1,7 @@
+// DEPRECATED
+//#vignore
+/* eslint-disable */
+// @ts-nocheck
 import mergeRefs from "merge-refs";
 import type { JSX, RefObject } from "preact";
 import _React, { useRef, useEffect, Component } from "preact/compat";
@@ -191,3 +195,4 @@ export interface DropdownOption<T extends string = string> {
     default?: boolean;
     ref?: RefObject<HTMLDivElement>;
 }
+//#endvignore

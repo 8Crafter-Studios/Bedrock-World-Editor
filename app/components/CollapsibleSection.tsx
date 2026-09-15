@@ -1,3 +1,7 @@
+// DEPRECATED
+//#vignore
+/* eslint-disable */
+// @ts-nocheck
 import type { RefObject, JSX } from "preact";
 
 /**
@@ -81,3 +85,4 @@ export default function CollapsibleSection(props: CollapsibleSectionProps): JSX.
         </div>
     );
 }
+//#endvignore

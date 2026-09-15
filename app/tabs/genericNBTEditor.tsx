@@ -9,11 +9,21 @@ import PrismarineNBTEditor from "../components/PrismarineNBTEditor";
 import EditorWidgetOverlayBar, { type EditorWidgetOverlayBarWidgetRegistry } from "../components/EditorWidgetOverlayBar";
 import BinaryHexEditor, { initHexEditorDataStorageObjectProps, type HexEditorDataStorageObject } from "../components/BinaryHexEditor";
 import Notice from "../components/Notice";
+import { stringifyError } from "../../src/utils/miscUtils";
 
+/**
+ * Props for the {@link GenericNBTEditorTab} component.
+ */
 export interface GenericNBTEditorTabProps {
     tab: TabManagerSubTab;
 }
 
+/**
+ * The generic NBT editor tab.
+ *
+ * @param props The props for the component.
+ * @returns The JSX element.
+ */
 export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JSX.SpecificElement<"div"> {
     const containerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     const viewOptionsRefs = {
@@ -23,15 +33,18 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
     const widgetRegistryRef: RefObject<EditorWidgetOverlayBarWidgetRegistry> = useRef<EditorWidgetOverlayBarWidgetRegistry>(null);
     function fakeAssertIsValidOptionsType(
         options: typeof props.tab.currentState.options
-    ): asserts options is Extract<typeof props.tab.currentState.options, { viewMode?: any }> {}
+    ): asserts options is Extract<typeof props.tab.currentState.options, { viewMode?: any }> {
+        void options;
+    }
     const asyncMode: boolean = !props.tab.currentState.options.dataStorageObject;
     fakeAssertIsValidOptionsType(props.tab.currentState.options);
     props.tab.currentState.options.viewMode ??= "node";
     let dataLoadFailureNoticeReasonExists: boolean = false;
-    let dataLoadFailureNoticeReason: any = null;
+    let dataLoadFailureNoticeReason: unknown = null;
     let levelDBOpenFailure: boolean = false;
+    let missingLevelDBKey: boolean = false;
     function LevelDBOpenFailureNotice(): JSX.Element {
-        if (props.tab.parentTab.errorDueToEncryptedLevelDB)
+        if (props.tab.parentTab.errorDueToEncryptedLevelDB) {
             return (
                 <Notice
                     title="Encrypted LevelDB"
@@ -40,6 +53,7 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                     image="access_denied"
                 />
             );
+        }
         return (
             <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
                 <Notice
@@ -49,38 +63,11 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                     image="generic_error"
                     style={{ height: "auto" }}
                 />
-                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
-                    {props.tab.parentTab.errorOnDBOpen instanceof Error ?
-                        `${props.tab.parentTab.errorOnDBOpen.stack !== undefined ? props.tab.parentTab.errorOnDBOpen.stack : props.tab.parentTab.errorOnDBOpen.toString()}${
-                            props.tab.parentTab.errorOnDBOpen.cause !== undefined ?
-                                `\nCaused by: ${((): unknown => {
-                                    try {
-                                        return typeof props.tab.parentTab.errorOnDBOpen.cause === "object" ?
-                                                JSON.stringify(props.tab.parentTab.errorOnDBOpen.cause)
-                                            :   props.tab.parentTab.errorOnDBOpen.cause;
-                                    } catch {
-                                        return props.tab.parentTab.errorOnDBOpen.cause;
-                                    }
-                                })()}`
-                            :   ""
-                        }`
-                    :   String(
-                            (function (): unknown {
-                                try {
-                                    return typeof props.tab.parentTab.errorOnDBOpen === "object" ?
-                                            JSON.stringify(props.tab.parentTab.errorOnDBOpen)
-                                        :   props.tab.parentTab.errorOnDBOpen;
-                                } catch {
-                                    return props.tab.parentTab.errorOnDBOpen;
-                                }
-                            })()
-                        )
-                    }
-                </div>
+                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(props.tab.parentTab.errorOnDBOpen)}</div>
             </div>
         );
     }
-    function DataLoadFailureNotice({ reason }: { reason: any }): JSX.SpecificElement<"div"> {
+    function DataLoadFailureNotice({ reason }: { reason: unknown }): JSX.SpecificElement<"div"> {
         return (
             <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: center;">
                 <Notice
@@ -94,14 +81,14 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                     type="button"
                     title="Reopens the editor in raw mode, allowing you to edit unparseable data as binary data in the hex editor."
                     class="genericRoundButton"
-                    onClick={async (event: TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
+                    onClick={(event: TargetedMouseEvent<HTMLButtonElement>): void => {
                         if (!props.tab) throw new ReferenceError("props.tab is undefined.");
                         event.preventDefault();
                         if (event.currentTarget.disabled) return;
                         event.currentTarget.blur();
                         event.currentTarget.disabled = true;
                         try {
-                            await props.tab.loadData(true);
+                            // await props.tab.loadData(true);
                             props.tab.rawMode = true;
                             fakeAssertIsValidOptionsType(props.tab.currentState.options);
                             props.tab.currentState.options.viewMode = "raw";
@@ -114,168 +101,163 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                 >
                     Load Data in Raw Mode
                 </button>
-                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
-                    {reason instanceof Error ?
-                        reason.stack?.startsWith(reason.toString()) ?
-                            reason.stack
-                        :   reason.toString() + reason.stack
-                    :   reason}
-                </div>
+                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(reason)}</div>
             </div>
         );
     }
-    if (!props.tab.currentState.options.dataStorageObject) {
-        const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[props.tab.contentType] as EntryContentTypeFormatData;
-        async function loadData(): Promise<void> {
-            if (props.tab.target.type === "LevelDBEntry" && !props.tab.parentTab.db?.isOpen() && !((await props.tab.parentTab.awaitDBOpen) ?? true)) {
-                throw new Error("LevelDB open failure.");
-            }
-            formatTypeSwitch: switch (format.type) {
-                case "NBT": {
-                    // props.tab.currentState.options.dataStorageObject = {
-                    //     treeEditor: { scrollTop: 0, expansionData: {} },
-                    //     dataType: "NBT",
-                    //     data: await NBT.parse(
-                    //         props.tab.target.type === "LevelDBEntry"
-                    //             ? (await props.tab.parentTab.db!.get(props.tab.target.key)) ??
-                    //                   ((): never => {
-                    //                       throw new ReferenceError(
-                    //                           `Entry not found: ${getKeyDisplayName(props.tab.target.key)} (${JSON.stringify(
-                    //                               props.tab.target.key.toString("binary")
-                    //                           )})`,
-                    //                           {
-                    //                               cause: props.tab,
-                    //                           }
-                    //                       );
-                    //                   })()
-                    //             : readFileSync(
-                    //                   path.isAbsolute(props.tab.target.path)
-                    //                       ? props.tab.target.path
-                    //                       : path.join(props.tab.parentTab.tempPath ?? props.tab.parentTab.path, props.tab.target.path)
-                    //               )
-                    //     ),
-                    // };
-                    await props.tab.loadData();
-                    if (props.tab.currentState.options.dataStorageObject) {
-                        initHexEditorDataStorageObjectProps(props.tab.currentState.options.dataStorageObject);
-                        props.tab.currentState.options.dataStorageObject.treeEditor = { scrollTop: 0, expansionData: {} };
-                    }
-                    break;
-                }
-                case "custom": {
-                    switch (format.resultType) {
-                        case "JSONNBT": {
-                            // props.tab.currentState.options.dataStorageObject = {
-                            //     treeEditor: { scrollTop: 0, expansionData: {} },
-                            //     dataType: "NBTCompound",
-                            //     data: await format.parse(
-                            //         props.tab.target.type === "LevelDBEntry"
-                            //             ? (await props.tab.parentTab.db!.get(props.tab.target.key)) ??
-                            //                   ((): never => {
-                            //                       throw new ReferenceError(
-                            //                           `Entry not found: ${getKeyDisplayName(props.tab.target.key)} (${JSON.stringify(
-                            //                               props.tab.target.key.toString("binary")
-                            //                           )})`,
-                            //                           {
-                            //                               cause: props.tab,
-                            //                           }
-                            //                       );
-                            //                   })()
-                            //             : readFileSync(
-                            //                   path.isAbsolute(props.tab.target.path)
-                            //                       ? props.tab.target.path
-                            //                       : path.join(props.tab.parentTab.tempPath ?? props.tab.parentTab.path, props.tab.target.path)
-                            //               )
-                            //     ),
-                            // };
-                            await props.tab.loadData();
-                            if (props.tab.currentState.options.dataStorageObject) {
-                                initHexEditorDataStorageObjectProps(props.tab.currentState.options.dataStorageObject);
-                                props.tab.currentState.options.dataStorageObject.treeEditor = { scrollTop: 0, expansionData: {} };
-                            }
-                            break formatTypeSwitch;
-                        }
-                        default:
-                            throw new TypeError(
-                                `The content type "${props.tab.contentType}" is not supported in the NBT editor. (format type: ${format.type}, result type: ${format.resultType})`
+    // TODO: Style this better.
+    function MissingLevelDBKeyNotice(): JSX.SpecificElement<"div"> {
+        return (
+            <div>
+                <h2>The LevelDB key associated with this sub-tab does not exist.</h2>
+                {((): boolean => {
+                    if (props.tab.target.type === "File") return false;
+                    const contentType = props.tab.contentType === "Unknown" ? getContentTypeFromDBKey(props.tab.target.key) : props.tab.contentType;
+                    const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[contentType];
+                    if (!((format.type === "NBT") /*  || (format.type === "custom" && format.resultType === "JSONNBT") */)) return false;
+                    return true;
+                })() && (
+                    <button
+                        type="button"
+                        onClick={async (): Promise<void> => {
+                            if (props.tab.target.type === "File") return;
+                            const contentType = props.tab.contentType === "Unknown" ? getContentTypeFromDBKey(props.tab.target.key) : props.tab.contentType;
+                            const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[contentType];
+                            if (!((format.type === "NBT") /*  || (format.type === "custom" && format.resultType === "JSONNBT") */)) return;
+                            // TODO: Make this determine the default values dynamically (if possible for the current content type) so as not to insert invalid data.
+                            await props.tab.parentTab.db!.put(
+                                props.tab.target.key,
+                                format.defaultValue ??
+                                    NBT.writeUncompressed(
+                                        {
+                                            name: "",
+                                            type: "compound",
+                                            value: {},
+                                        },
+                                        format.type === "NBT" ? ({ BE: "big", LE: "little", LEV: "littleVarint" } as const)[format.format ?? "LE"] : "little"
+                                    )
                             );
-                    }
-                }
-                default:
-                    throw new TypeError(`The content type "${props.tab.contentType}" is not supported in the NBT editor. (format type: ${format.type})`);
-            }
-        }
-        function triggerLoadData(): void {
-            loadData().then(
-                (): void => {
-                    reloadContents();
-                },
-                (reason: any): void => {
-                    if (containerRef.current) {
-                        if (reason instanceof Error && reason.message === "LevelDB open failure.") {
-                            render(null, containerRef.current);
-                            render(<LevelDBOpenFailureNotice />, containerRef.current);
-                            levelDBOpenFailure = true;
-                            return;
-                        }
-                        if (reason instanceof Error && reason.message === "The LevelDB key associated with this sub-tab does not exist.") {
-                            render(null, containerRef.current);
-                            render(
-                                <div>
-                                    <h2>The LevelDB key associated with this sub-tab does not exist.</h2>
-                                    {((): boolean => {
-                                        if (props.tab.target.type === "File") return false;
-                                        const contentType =
-                                            props.tab.contentType === "Unknown" ? getContentTypeFromDBKey(props.tab.target.key) : props.tab.contentType;
-                                        const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[contentType];
-                                        if (!((format.type === "NBT") /*  || (format.type === "custom" && format.resultType === "JSONNBT") */)) return false;
-                                        return true;
-                                    })() && (
-                                        <button
-                                            type="button"
-                                            onClick={async (): Promise<void> => {
-                                                if (props.tab.target.type === "File") return;
-                                                const contentType =
-                                                    props.tab.contentType === "Unknown" ? getContentTypeFromDBKey(props.tab.target.key) : props.tab.contentType;
-                                                const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[contentType];
-                                                if (!((format.type === "NBT") /*  || (format.type === "custom" && format.resultType === "JSONNBT") */)) return;
-                                                // TODO: Make this determine the default values dynamically (if possible for the current content type) so as not to insert invalid data.
-                                                await props.tab.parentTab.db!.put(
-                                                    props.tab.target.key,
-                                                    format.defaultValue ??
-                                                        NBT.writeUncompressed(
-                                                            {
-                                                                name: "",
-                                                                type: "compound",
-                                                                value: {},
-                                                            },
-                                                            format.type === "NBT" ?
-                                                                ({ BE: "big", LE: "little", LEV: "littleVarint" } as const)[format.format ?? "LE"]
-                                                            :   "little"
-                                                        )
-                                                );
-                                                triggerLoadData();
-                                            }}
-                                        >
-                                            Create LevelDB Entry
-                                        </button>
-                                    )}
-                                </div>,
-                                containerRef.current
-                            );
-                            return;
-                        }
-                        render(null, containerRef.current);
-                        render(<DataLoadFailureNotice reason={reason} />, containerRef.current);
-                        dataLoadFailureNoticeReasonExists = true;
-                        dataLoadFailureNoticeReason = reason;
-                    }
-                    console.error(reason);
-                }
-            );
-        }
-        triggerLoadData();
+                            missingLevelDBKey = false;
+                            triggerLoadData();
+                        }}
+                    >
+                        Create LevelDB Entry
+                    </button>
+                )}
+            </div>
+        );
     }
+    const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[props.tab.contentType] as EntryContentTypeFormatData;
+    async function loadData(): Promise<void> {
+        if (props.tab.target.type === "LevelDBEntry" && !props.tab.parentTab.db?.isOpen() && !((await props.tab.parentTab.awaitDBOpen) ?? true)) {
+            throw new Error("LevelDB open failure.");
+        }
+        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
+        formatTypeSwitch: switch (format.type) {
+            case "NBT": {
+                // props.tab.currentState.options.dataStorageObject = {
+                //     treeEditor: { scrollTop: 0, expansionData: {} },
+                //     dataType: "NBT",
+                //     data: await NBT.parse(
+                //         props.tab.target.type === "LevelDBEntry"
+                //             ? (await props.tab.parentTab.db!.get(props.tab.target.key)) ??
+                //                   ((): never => {
+                //                       throw new ReferenceError(
+                //                           `Entry not found: ${getKeyDisplayName(props.tab.target.key)} (${JSON.stringify(
+                //                               props.tab.target.key.toString("binary")
+                //                           )})`,
+                //                           {
+                //                               cause: props.tab,
+                //                           }
+                //                       );
+                //                   })()
+                //             : readFileSync(
+                //                   path.isAbsolute(props.tab.target.path)
+                //                       ? props.tab.target.path
+                //                       : path.join(props.tab.parentTab.tempPath ?? props.tab.parentTab.path, props.tab.target.path)
+                //               )
+                //     ),
+                // };
+                await props.tab.loadData();
+                if (props.tab.currentState.options.dataStorageObject) {
+                    initHexEditorDataStorageObjectProps(props.tab.currentState.options.dataStorageObject);
+                    props.tab.currentState.options.dataStorageObject.treeEditor = { scrollTop: 0, expansionData: {} };
+                }
+                break;
+            }
+            case "custom": {
+                // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
+                switch (format.resultType) {
+                    case "JSONNBT": {
+                        // props.tab.currentState.options.dataStorageObject = {
+                        //     treeEditor: { scrollTop: 0, expansionData: {} },
+                        //     dataType: "NBTCompound",
+                        //     data: await format.parse(
+                        //         props.tab.target.type === "LevelDBEntry"
+                        //             ? (await props.tab.parentTab.db!.get(props.tab.target.key)) ??
+                        //                   ((): never => {
+                        //                       throw new ReferenceError(
+                        //                           `Entry not found: ${getKeyDisplayName(props.tab.target.key)} (${JSON.stringify(
+                        //                               props.tab.target.key.toString("binary")
+                        //                           )})`,
+                        //                           {
+                        //                               cause: props.tab,
+                        //                           }
+                        //                       );
+                        //                   })()
+                        //             : readFileSync(
+                        //                   path.isAbsolute(props.tab.target.path)
+                        //                       ? props.tab.target.path
+                        //                       : path.join(props.tab.parentTab.tempPath ?? props.tab.parentTab.path, props.tab.target.path)
+                        //               )
+                        //     ),
+                        // };
+                        await props.tab.loadData();
+                        if (props.tab.currentState.options.dataStorageObject) {
+                            initHexEditorDataStorageObjectProps(props.tab.currentState.options.dataStorageObject);
+                            props.tab.currentState.options.dataStorageObject.treeEditor = { scrollTop: 0, expansionData: {} };
+                        }
+                        break formatTypeSwitch;
+                    }
+                    default:
+                        throw new TypeError(
+                            `The content type "${props.tab.contentType}" is not supported in the NBT editor. (format type: ${format.type}, result type: ${format.resultType})`
+                        );
+                }
+            }
+            default:
+                throw new TypeError(`The content type "${props.tab.contentType}" is not supported in the NBT editor. (format type: ${format.type})`);
+        }
+    }
+    function triggerLoadData(): void {
+        loadData().then(
+            (): void => {
+                reloadContents();
+            },
+            (reason: unknown): void => {
+                if (containerRef.current) {
+                    if (reason instanceof Error && reason.message === "LevelDB open failure.") {
+                        render(null, containerRef.current);
+                        render(<LevelDBOpenFailureNotice />, containerRef.current);
+                        levelDBOpenFailure = true;
+                        return;
+                    }
+                    if (reason instanceof Error && reason.message === "The LevelDB key associated with this sub-tab does not exist.") {
+                        render(null, containerRef.current);
+                        render(<MissingLevelDBKeyNotice />, containerRef.current);
+                        missingLevelDBKey = true;
+                        return;
+                    }
+                    render(null, containerRef.current);
+                    render(<DataLoadFailureNotice reason={reason} />, containerRef.current);
+                    dataLoadFailureNoticeReasonExists = true;
+                    dataLoadFailureNoticeReason = reason;
+                }
+                console.error(reason);
+            }
+        );
+    }
+    if (!props.tab.currentState.options.dataStorageObject) triggerLoadData();
     function reloadContents(): void {
         if (!containerRef.current) return;
         fakeAssertIsValidOptionsType(props.tab.currentState.options);
@@ -290,6 +272,11 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
             render(<DataLoadFailureNotice reason={dataLoadFailureNoticeReason} />, containerRef.current);
             return;
         }
+        if (missingLevelDBKey && !props.tab.currentState.options.dataStorageObject) {
+            render(null, containerRef.current);
+            render(<MissingLevelDBKeyNotice />, containerRef.current);
+            return;
+        }
         render(<Contents props={props} options={props.tab.currentState.options} />, containerRef.current /* tempElement */);
         // containerRef.current.replaceChildren(...tempElement.children);
     }
@@ -297,11 +284,12 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
         props: GenericNBTEditorTabProps;
         options: Extract<GenericNBTEditorTabProps["tab"]["currentState"]["options"], { viewMode?: any }>;
     }): JSX.Element {
+        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
         switch (props.options.viewMode) {
             case "node":
                 return (
                     <TreeEditor
-                        dataStorageObject={props.props.tab.currentState.options.dataStorageObject! as any}
+                        dataStorageObject={props.props.tab.currentState.options.dataStorageObject! as never}
                         onValueChange={(): undefined => {
                             props.props.tab.hasUnsavedChanges = true;
                             if (props.props.tab.target.type === "LevelDBEntry") {
@@ -331,7 +319,7 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                         path={`tab://${props.props.tab.parentTab.id}/${props.props.tab.id}/jsonnbt`}
                         contentType={props.options.type}
                         triggerSave={(): void => {
-                            props.props.tab.parentTab.save();
+                            void props.props.tab.parentTab.save();
                         }}
                         tab={props.props.tab}
                     />
@@ -352,7 +340,7 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                         path={`tab://${props.props.tab.parentTab.id}/${props.props.tab.id}/snbt`}
                         contentType={props.options.type}
                         triggerSave={(): void => {
-                            props.props.tab.parentTab.save();
+                            void props.props.tab.parentTab.save();
                         }}
                         tab={props.props.tab}
                     />

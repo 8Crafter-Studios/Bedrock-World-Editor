@@ -12,6 +12,7 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { existsSync, renameSync, rmSync } from "node:fs";
 import path from "node:path";
 import { loadEnvFile } from "node:process";
+import type { ConfigEnv } from "vite";
 
 if (existsSync(path.join(__dirname, ".env"))) loadEnvFile(path.join(__dirname, ".env"));
 
@@ -38,14 +39,14 @@ const config: ForgeConfig = {
                 {
                     identity: "Developer ID Application: Alexander Zahn (3FUJBBPY76)",
                 }
-            :   undefined,
+            :   undefined!,
         osxNotarize: /* osxSigningEnabled ?
                 {
                     appleId: process.env.APPLE_ID!,
                     appleIdPassword: process.env.APPLE_ID_APP_SPECIFIC_PASSWORD!,
                     teamId: process.env.APPLE_TEAM_ID!,
                 }
-            :   */ undefined,
+            :   */ undefined!,
         appBundleId: "com.8crafter.bedrock-world-editor",
         appCategoryType: "public.app-category.developer-tools",
         appCopyright: "Copyright © 2025-2026 8Crafter Studios",
@@ -135,10 +136,10 @@ const config: ForgeConfig = {
         }),
     ],
     hooks: {
-        packageAfterPrune: async (config: ResolvedForgeConfig, build_path: string): Promise<void> => {
+        packageAfterPrune: async (_config: ResolvedForgeConfig, build_path: string): Promise<void> => {
             const vite_config = await import("./vite.main.config.ts");
-            let external: Exclude<NonNullable<NonNullable<ReturnType<typeof vite_config.default>["build"]>["rollupOptions"]>["external"], undefined> | [] =
-                vite_config?.default({ command: "build", mode: "production" } as any)?.build?.rollupOptions?.external || [];
+            const external: Exclude<NonNullable<NonNullable<ReturnType<typeof vite_config.default>["build"]>["rollupOptions"]>["external"], undefined> | [] =
+                (vite_config?.default({ command: "build", mode: "production" } as ConfigEnv<"build">)?.build?.rollupOptions?.external ?? []) || [];
             const commands: string[] = [
                 "install",
                 "--no-package-lock",
@@ -152,7 +153,7 @@ const config: ForgeConfig = {
                 :   []),
             ];
 
-            return new Promise((resolve: (value: void) => void, reject: (reason?: any) => void): void => {
+            return void (await new Promise((resolve: (value?: never) => void, reject: (reason?: any) => void): void => {
                 const npm: ChildProcess = spawn("npm", commands, {
                     cwd: build_path,
                     stdio: "inherit",
@@ -160,7 +161,7 @@ const config: ForgeConfig = {
                 });
 
                 npm.on("close", (code: number | null): void => {
-                    if (0 === code) {
+                    if (code === 0) {
                         /* writeFileSync(
                             path.join(build_path, "node_modules/leveldb-zlib/binding.js"),
                             `const helper = require('./helpers/buildPath.js')
@@ -237,11 +238,12 @@ module.exports = bindings
                         return;
                     }
 
+                    // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
                     reject(`Process exited with code: ${code}`);
                 });
 
                 npm.on("error", reject);
-            });
+            }));
         } /* 
         postMake: async (forgeConfig: ResolvedForgeConfig, results: ForgeMakeResult[]): Promise<void> => {
             const version = require("./package.json").version;
@@ -283,9 +285,9 @@ module.exports = bindings
             if (!osxSigningEnabled) return;
             const { spawn } = require("child_process") as typeof import("child_process");
 
-            await new Promise((resolve: (value: void) => void, reject) => {
+            await new Promise((resolve: (value?: never) => void, reject) => {
                 const p = spawn("./scripts/notarize.sh", [], { stdio: "inherit" });
-                p.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`notarize failed: ${code}`))));
+                p.on("exit", (code) => (code === 0 ? void resolve() : void reject(new Error(`notarize failed: ${code}`))));
             });
         },
     },

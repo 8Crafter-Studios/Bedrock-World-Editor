@@ -1,7 +1,6 @@
 import { Editor, type Monaco } from "@monaco-editor/react";
-import { prettyPrintSNBT, prismarineToSNBT, type DBEntryContentType } from "mcbe-leveldb";
+import { prismarineToSNBT, type DBEntryContentType } from "mcbe-leveldb";
 import * as monaco from "monaco-editor";
-import type { IMarkdownString } from "monaco-editor";
 import type { JSX } from "preact";
 import { LoadingScreenContents } from "../app";
 import { useRef } from "preact/compat";
@@ -67,7 +66,7 @@ export interface PrismarineNBTEditorProps {
 export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JSX.Element {
     if (props.dataStorageObject?.dataType === "JSON") return <p style="color: red;">JSON is not supported.</p>;
     const editorRef = useRef<typeof Editor>(null);
-    let currentEditor: monaco.editor.IStandaloneCodeEditor | undefined = undefined;
+    let currentEditor: monaco.editor.IStandaloneCodeEditor | undefined;
     function handleEditorDidMount(editor: monaco.editor.IStandaloneCodeEditor, monaco: Monaco): void {
         currentEditor = editor;
         // editor.getid
@@ -117,7 +116,7 @@ export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JS
     let editorValue: string | undefined;
     let lastChangeTime: number = Date.now() - 1000;
     let lastChangeStartTime: number = Date.now() - 1000;
-    function handleEditorValueChanged(value: string | undefined, ev: monaco.editor.IModelContentChangedEvent): void {
+    function handleEditorValueChanged(value: string | undefined, _ev: monaco.editor.IModelContentChangedEvent): void {
         if (value === undefined || !dataLoaded) return;
         const currentChangeTime: number = Date.now();
         editorValue = value;
@@ -129,20 +128,20 @@ export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JS
                 lastChangeTime = Date.now();
                 try {
                     if (props.dataStorageObject.dataType === "NBTCompound") {
-                        const v = JSON.parse(editorValue);
-                        prismarineToSNBT(v);
+                        const v = JSON.parse(editorValue) as NBT.Compound["value"];
+                        prismarineToSNBT({ type: "compound", value: v });
                         props.dataStorageObject.data.value = v;
                     } else if (props.dataStorageObject.dataType === "NBT") {
-                        const v = JSON.parse(editorValue);
-                        prismarineToSNBT(v);
-                        (props.dataStorageObject.data.parsed as NBT.NBT)!.value = v;
+                        const v = JSON.parse(editorValue) as NBT.NBT["value"];
+                        prismarineToSNBT({ type: "compound", value: v });
+                        props.dataStorageObject.data.parsed.value = v;
                     }
 
                     const model = currentEditor?.getModel();
                     if (model) {
                         props.dataStorageObject.lastEditedInModel = model.id;
                         props.dataStorageObject.lastSavedDataObjectForModel ??= new Map();
-                        props.dataStorageObject.lastSavedDataObjectForModel.set(model.id, new WeakRef(props.dataStorageObject.data));
+                        props.dataStorageObject.lastSavedDataObjectForModel.set(model.id, new WeakRef(props.dataStorageObject.data as object));
                     }
                     props.onValueChange?.(props.dataStorageObject, { newValue: value, type: "changeContents" });
                 } catch (e) {
@@ -154,20 +153,20 @@ export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JS
             lastChangeTime = currentChangeTime;
             try {
                 if (props.dataStorageObject.dataType === "NBTCompound") {
-                    const v = JSON.parse(editorValue);
-                    prismarineToSNBT(v);
+                    const v = JSON.parse(editorValue) as NBT.Compound["value"];
+                    prismarineToSNBT({ type: "compound", value: v });
                     props.dataStorageObject.data.value = v;
                 } else if (props.dataStorageObject.dataType === "NBT") {
-                    const v = JSON.parse(editorValue);
-                    prismarineToSNBT(v);
-                    (props.dataStorageObject.data.parsed as NBT.NBT)!.value = v;
+                    const v = JSON.parse(editorValue) as NBT.NBT["value"];
+                    prismarineToSNBT({ type: "compound", value: v });
+                    props.dataStorageObject.data.parsed.value = v;
                 }
 
                 const model = currentEditor?.getModel();
                 if (model) {
                     props.dataStorageObject.lastEditedInModel = model.id;
                     props.dataStorageObject.lastSavedDataObjectForModel ??= new Map();
-                    props.dataStorageObject.lastSavedDataObjectForModel.set(model.id, new WeakRef(props.dataStorageObject.data));
+                    props.dataStorageObject.lastSavedDataObjectForModel.set(model.id, new WeakRef(props.dataStorageObject.data as object));
                 }
                 props.onValueChange?.(props.dataStorageObject, { newValue: value, type: "changeContents" });
             } catch (e) {
@@ -180,7 +179,9 @@ export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JS
     let startingEditorValue: string | undefined =
         dataLoaded ?
             JSON.stringify(
-                props.dataStorageObject.data.type === "compound" ? props.dataStorageObject.data.value : props.dataStorageObject.data.parsed.value,
+                props.dataStorageObject.dataType === "NBTCompound" ? props.dataStorageObject.data.value
+                : props.dataStorageObject.dataType === "NBT" ? props.dataStorageObject.data.parsed.value
+                : props.dataStorageObject.data,
                 null,
                 4
             )
@@ -201,7 +202,7 @@ export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JS
             // }}
             onMount={handleEditorDidMount}
             options={{
-                readOnly: props.readonly || !dataLoaded,
+                readOnly: !!props.readonly || !dataLoaded,
                 readOnlyMessage:
                     props.readonly ? props.readonlyMessage!
                     : !dataLoaded ? { value: "Data is not loaded." }
@@ -219,8 +220,8 @@ export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JS
                 props.path ?
                     (props.path.includes("/ContentType:") ? props.path
                     : props.path.includes("?") ?
-                        props.path.split("?")[0] + `/ContentType:${props.contentType ?? "Unknown"}` + props.path.split("?").slice(1).join("")
-                    :   props.path + `/ContentType:${props.contentType ?? "Unknown"}`) +
+                        `${props.path.split("?")[0]}/ContentType:${props.contentType ?? "Unknown"}${props.path.split("?").slice(1).join("")}`
+                    :   `${props.path}/ContentType:${props.contentType ?? "Unknown"}`) +
                     (props.path.includes("?") ? "&?" : "?") +
                     editorParams.toString()
                 :   `unlinked-editor://${Date.now()}/ContentType:${props.contentType ?? "Unknown"}?${editorParams.toString()}`

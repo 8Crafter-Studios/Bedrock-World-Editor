@@ -4,11 +4,12 @@ import {
     entryContentTypeToFormatMap,
     generateChunkKeyFromIndices,
     getDimensionTypes,
-    getDimensionTypesSync,
     getKeyDisplayName,
     prettyPrintSNBT,
     prismarineToSNBT,
     type Dimension,
+    type EntryContentTypeFormatData,
+    type NBTSchemas,
 } from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
 import { ControlledMenu, MenuItem } from "@szhsin/react-menu";
@@ -22,9 +23,11 @@ import EditorWidgetOverlayBar from "../components/EditorWidgetOverlayBar";
 import { dialog } from "@electron/remote";
 import showDBKeyCreationDialog from "../components/DBKeyCreationDialog";
 import Notice from "../components/Notice";
+import { createObservable, stringifyError, type Observable } from "../../src/utils/miscUtils";
 
-// TODO: Implement Async Mode for this tab.
-
+/**
+ * Props for the {@link TicksTab} component.
+ */
 export interface TicksTabProps {
     tab: TabManagerTab;
 }
@@ -69,6 +72,38 @@ const ticksTabSearchSyntax: SearchSyntaxHelpInfo = {
         dbkey: {
             description: "Searches the human-readable LevelDB key (the one displayed in the DB Key column) for the text.",
         },
+        currenttick: {
+            // REVIEW: Make sure this is actually what currentTick is.
+            description: "Searches for ticks by what the current tick was the last time they were updated.",
+            extendedDescription: (
+                <>
+                    <p>Searches for ticks by what the current tick was the last time they were updated.</p>
+                    <p>
+                        Supported prefix operators:
+                        <ul>
+                            <li>"|" - Any Of</li>
+                            <li>"-" - None Of</li>
+                            <li>"^" - One Of</li>
+                            <li>"&" - All Of</li>
+                        </ul>
+                    </p>
+                </>
+            ),
+            examples: [
+                <p>
+                    <code>currenttick:11788</code> - Searches for ticks with a current tick of <code>11788</code>.
+                </p>,
+                <p>
+                    <code>|currenttick:12128</code> - Searches for ticks with a current tick of <code>12128</code>.
+                </p>,
+                <p>
+                    <code>currenttick:15083 currenttick:14292</code> - Searches for ticks with a current tick of <code>15083</code> or <code>14292</code>.
+                </p>,
+                <p>
+                    <code>-currenttick:0 -currenttick:796</code> - Searches for maps that do not have a current tick of <code>0</code> or <code>796</code>.
+                </p>,
+            ],
+        },
         contents: {
             description: "Searches the LevelDB entry value as SNBT.",
         },
@@ -76,6 +111,14 @@ const ticksTabSearchSyntax: SearchSyntaxHelpInfo = {
     },
 };
 
+/**
+ * The ticks tab.
+ *
+ * This tab is used to manage random ticks and pending ticks.
+ *
+ * @param props The props for the component.
+ * @returns The JSX element.
+ */
 export default function TicksTab(props: TicksTabProps): JSX.SpecificElement<"div"> {
     if (!props.tab.db) return <div>The ticks sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
     const containerRef: RefObject<HTMLTableElement> = useRef<HTMLTableElement>(null);
@@ -86,26 +129,22 @@ export default function TicksTab(props: TicksTabProps): JSX.SpecificElement<"div
         };
     });
     getTicksTabContents(props.tab, abortController.signal).then(
-        async (element: JSX.Element): Promise<void> => {
+        (element: JSX.Element): void => {
             if (!containerRef.current) return;
             // const tempElement: HTMLDivElement = document.createElement("div");
             render(null, containerRef.current);
             render(element, containerRef.current /* tempElement */);
             // containerRef.current?.replaceChildren(...tempElement.children);
         },
-        (reason: any): void => {
+        (reason: unknown): void => {
             if (reason instanceof DOMException && reason.name === "AbortError" && reason.message === "Tab switched.") return;
             if (containerRef.current) {
+                // TODO: Replace this with a better error screen.
                 const errorElement: HTMLDivElement = document.createElement("div");
                 errorElement.style.color = "red";
                 errorElement.style.fontFamily = "monospace";
                 errorElement.style.whiteSpace = "pre";
-                errorElement.textContent =
-                    reason instanceof Error ?
-                        reason.stack?.startsWith(reason.toString()) ?
-                            reason.stack
-                        :   reason.toString() + reason.stack
-                    :   reason;
+                errorElement.textContent = stringifyError(reason);
                 render(null, containerRef.current);
                 containerRef.current.replaceChildren("Failed to load data:", errorElement);
             }
@@ -114,7 +153,7 @@ export default function TicksTab(props: TicksTabProps): JSX.SpecificElement<"div
     );
     const loadingScreenMessageContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     if (!props.tab.db.isOpen()) {
-        props.tab.awaitDBOpen!.then(async (): Promise<void> => {
+        void props.tab.awaitDBOpen!.then(async (): Promise<void> => {
             if (loadingScreenMessageContainerRef.current && !props.tab.cachedDBKeys) {
                 const formatter = new Intl.NumberFormat();
                 loadingScreenMessageContainerRef.current.textContent = `Reading LevelDB keys${props.tab.loadedCachedDBKeysProgress !== undefined ? `: ${formatter.format(props.tab.loadedCachedDBKeysProgress)}` : ""}...`;
@@ -146,7 +185,7 @@ export default function TicksTab(props: TicksTabProps): JSX.SpecificElement<"div
                 await sleep(20);
             }
         });
-        props.tab.awaitCachedDBKeys!.then((): void => {
+        void props.tab.awaitCachedDBKeys!.then((): void => {
             if (loadingScreenMessageContainerRef.current) loadingScreenMessageContainerRef.current.textContent = "";
         });
         return (
@@ -168,23 +207,27 @@ export default function TicksTab(props: TicksTabProps): JSX.SpecificElement<"div
 interface RandomTickKeyData {
     rawKey: Buffer;
     displayKey: string;
-    // UNDONE: Uncomment the `?` and ` | undefined` when async mode is implemented.
-    data /* ? */: {
-        parsed: NBT.NBT;
-        type: NBT.NBTFormat;
-        metadata: NBT.Metadata;
-    } | null /* | undefined */;
+    data?:
+        | {
+              parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.RandomTicks;
+              type: NBT.NBTFormat;
+              metadata: NBT.Metadata;
+          }
+        | null
+        | undefined;
 }
 
 interface PendingTickKeyData {
     rawKey: Buffer;
     displayKey: string;
-    // UNDONE: Uncomment the `?` and ` | undefined` when async mode is implemented.
-    data /* ? */: {
-        parsed: NBT.NBT;
-        type: NBT.NBTFormat;
-        metadata: NBT.Metadata;
-    } | null /* | undefined */;
+    data?:
+        | {
+              parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.PendingTicks;
+              type: NBT.NBTFormat;
+              metadata: NBT.Metadata;
+          }
+        | null
+        | undefined;
 }
 
 enum UpdateTablesContentsMode {
@@ -197,7 +240,7 @@ enum UpdateTablesContentsMode {
 async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Promise<JSX.Element> {
     if (!tab.db) return <div>The ticks sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
     if (!tab.db.isOpen() && !((await tab.awaitDBOpen) ?? true)) {
-        if (tab.errorDueToEncryptedLevelDB)
+        if (tab.errorDueToEncryptedLevelDB) {
             return (
                 <Notice
                     title="Encrypted LevelDB"
@@ -206,6 +249,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                     image="access_denied"
                 />
             );
+        }
         return (
             <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
                 <Notice
@@ -215,35 +259,18 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                     image="generic_error"
                     style={{ height: "auto" }}
                 />
-                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>
-                    {tab.errorOnDBOpen instanceof Error ?
-                        `${tab.errorOnDBOpen.stack !== undefined ? tab.errorOnDBOpen.stack : tab.errorOnDBOpen.toString()}${
-                            tab.errorOnDBOpen.cause !== undefined ?
-                                `\nCaused by: ${((): unknown => {
-                                    try {
-                                        return typeof tab.errorOnDBOpen.cause === "object" ? JSON.stringify(tab.errorOnDBOpen.cause) : tab.errorOnDBOpen.cause;
-                                    } catch {
-                                        return tab.errorOnDBOpen.cause;
-                                    }
-                                })()}`
-                            :   ""
-                        }`
-                    :   String(
-                            (function (): unknown {
-                                try {
-                                    return typeof tab.errorOnDBOpen === "object" ? JSON.stringify(tab.errorOnDBOpen) : tab.errorOnDBOpen;
-                                } catch {
-                                    return tab.errorOnDBOpen;
-                                }
-                            })()
-                        )
-                    }
-                </div>
+                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(tab.errorOnDBOpen)}</div>
             </div>
         );
     }
     if (!tab.cachedDBKeys) await tab.awaitCachedDBKeys!;
     signal.throwIfAborted();
+    const asyncMode: boolean =
+        "__FORCE_ASYNC_KEY_MODE__" in window ? !!window.__FORCE_ASYNC_KEY_MODE__
+        : config.useAsyncModeInEntryViews === "auto" ?
+            tab.cachedDBKeys!.RandomTicks.length + tab.cachedDBKeys!.PendingTicks.length >= config.asyncModeEntryThreshold ||
+            Object.values(tab.cachedDBKeys!).reduce((a: number, b: Buffer[]): number => a + b.length, 0) >= config.asyncModeTotalKeyCountThreshold
+        :   config.useAsyncModeInEntryViews;
     const keys = {
         randomTicks: [] as Buffer[],
         pendingTicks: [] as Buffer[],
@@ -252,16 +279,14 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
     let pendingTickKeys: PendingTickKeyData[] = [];
     async function reloadKeys(): Promise<void> {
         keys.randomTicks = tab.cachedDBKeys!.RandomTicks;
-        keys.pendingTicks = tab.cachedDBKeys!.PendingTicks.toSorted((a: Buffer, _b: Buffer): number =>
-            a.equals(Buffer.from("~local_tick", "utf-8")) ? -1 : 0
-        );
+        keys.pendingTicks = tab.cachedDBKeys!.PendingTicks;
         await Promise.all([
             Promise.all(
                 keys.randomTicks.map(
                     async (key: Buffer): Promise<RandomTickKeyData> => ({
                         rawKey: key,
                         displayKey: getKeyDisplayName(key),
-                        data: await NBT.parse((await tab.db!.get(key))!).catch((): null => null),
+                        data: asyncMode ? undefined : ((await NBT.parse((await tab.db!.get(key))!).catch((): null => null)) as RandomTickKeyData["data"]),
                     })
                 )
             ).then((data: RandomTickKeyData[]): void => void (randomTickKeys = data)),
@@ -270,29 +295,37 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                     async (key: Buffer): Promise<PendingTickKeyData> => ({
                         rawKey: key,
                         displayKey: getKeyDisplayName(key),
-                        data: await NBT.parse((await tab.db!.get(key))!).catch((): null => null),
+                        data: asyncMode ? undefined : ((await NBT.parse((await tab.db!.get(key))!).catch((): null => null)) as PendingTickKeyData["data"]),
                     })
                 )
             ).then((data: PendingTickKeyData[]): void => void (pendingTickKeys = data)),
         ]);
     }
     await reloadKeys();
+    const targetKeys = {
+        randomTicks: randomTickKeys,
+        pendingTicks: pendingTickKeys,
+    };
     let currentUpdateTablesContentsFunction: ((mode: UpdateTablesContentsMode) => Promise<void>) | null = null;
     let mode: ConfigConstants.views.Ticks.TicksTabMode = config.views.ticks.mode;
-    let tablesContents: JSX.Element[][] = await Promise.all(
-        ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode].map(
-            async (sectionID: (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[typeof mode][number]): Promise<JSX.Element[]> =>
-                await getTicksTabContentsRows({
-                    tab,
-                    randomTickKeys,
-                    pendingTickKeys,
-                    mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Ticks.TicksTabSectionMode,
-                    get updateTablesContents(): ((mode: UpdateTablesContentsMode) => Promise<void>) | null {
-                        return currentUpdateTablesContentsFunction;
-                    },
-                })
-        )
-    );
+    let emptyTablesContents: JSX.Element[][] =
+        asyncMode ?
+            [[]]
+        :   await Promise.all(
+                ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode].map(
+                    async (sectionID: (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[typeof mode][number]): Promise<JSX.Element[]> =>
+                        await getTicksTabContentsRows({
+                            tab,
+                            randomTickKeys,
+                            pendingTickKeys,
+                            mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Ticks.TicksTabSectionMode,
+                            get updateTablesContents(): ((mode: UpdateTablesContentsMode) => Promise<void>) | null {
+                                return currentUpdateTablesContentsFunction;
+                            },
+                        })
+                )
+            );
+    let tablesContents: JSX.Element[][] = emptyTablesContents;
     function Contents(): JSX.Element {
         const tablesContainerRef: RefObject<HTMLTableElement> = useRef<HTMLTableElement>(null);
         const loadingScreenMessageContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
@@ -303,10 +336,10 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
             searchButton: useRef<HTMLButtonElement>(null),
             helpButton: useRef<HTMLButtonElement>(null),
         };
-        const viewOptionsRefs = {
-            viewOptionsContainer: useRef<HTMLDivElement>(null),
-            viewOptionsTabbedSelector: useRef<HTMLDivElement>(null),
-        };
+        // const viewOptionsRefs = {
+        //     viewOptionsContainer: useRef<HTMLDivElement>(null),
+        //     viewOptionsTabbedSelector: useRef<HTMLDivElement>(null),
+        // };
         // const [data, setData] = useState<{
         //     randomTickKeys: RandomTickKeyData[];
         //     pendingTickKeys: PendingTickKeyData[];
@@ -316,18 +349,89 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
         //     pendingTickKeys,
         //     mode,
         // });
+        async function getTablesContentsInRange(sectionIndex: number, start: number, end: number): Promise<JSX.Element[]> {
+            const sectionID: (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[typeof mode][number] =
+                ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode][sectionIndex]!;
+            return await getTicksTabContentsRows({
+                tab,
+                randomTickKeys: await Promise.all(
+                    targetKeys.randomTicks.slice(start, end).map(
+                        async (key: RandomTickKeyData): Promise<RandomTickKeyData> => ({
+                            ...key,
+                            data: (await NBT.parse((await tab.db!.get(key.rawKey))!).catch((): null => null)) as RandomTickKeyData["data"],
+                        })
+                    )
+                ),
+                pendingTickKeys: await Promise.all(
+                    targetKeys.pendingTicks.slice(start, end).map(
+                        async (key: PendingTickKeyData): Promise<PendingTickKeyData> => ({
+                            ...key,
+                            data: (await NBT.parse((await tab.db!.get(key.rawKey))!).catch((): null => null)) as PendingTickKeyData["data"],
+                        })
+                    )
+                ),
+                mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Ticks.TicksTabSectionMode,
+                get updateTablesContents(): ((mode: UpdateTablesContentsMode) => Promise<void>) | null {
+                    return currentUpdateTablesContentsFunction;
+                },
+            });
+        }
+        async function _loadTablesContentsInRange(sectionIndex: number, start: number, end: number): Promise<void> {
+            if (!asyncMode) return;
+            // const sectionID: (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[typeof mode][number] =
+            //     ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode][sectionIndex]!;
+            tablesContents = [...tablesContents];
+            tablesContents[sectionIndex] = [...emptyTablesContents[sectionIndex]!];
+            tablesContents[sectionIndex].splice(start, end - start, ...(await getTablesContentsInRange(sectionIndex, start, end)));
+        }
+        function getSectionEntryCounts(): number[] {
+            return ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode].map(
+                (sectionID: (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[typeof mode][number]): number => {
+                    switch (sectionID) {
+                        case "randomTicks":
+                        case "pendingTicks":
+                            return targetKeys[sectionID].length;
+                        default:
+                            return NaN;
+                    }
+                }
+            );
+        }
         function TablesContents(): JSX.Element {
+            const localTablesContents: Observable<JSX.Element[][]> = createObservable(
+                ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode].map((): JSX.Element[] => [])
+            );
+            if (asyncMode) {
+                // TODO: Add an error handler to this.
+                void Promise.all(
+                    ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode].map(
+                        async (
+                            _sectionID: (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[typeof mode][number],
+                            index: number
+                        ): Promise<JSX.Element[]> => await getTablesContentsInRange(index, 0, 20)
+                    )
+                ).then((tablesContents: JSX.Element[][]): void => {
+                    localTablesContents.set(tablesContents);
+                });
+            }
             return (
                 <>
                     {...ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode].map(
                         (sectionID: (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[typeof mode][number], index: number): JSX.Element => {
                             function Test1(): JSX.Element {
                                 const bodyRef: RefObject<HTMLTableSectionElement> = useRef<HTMLTableSectionElement>(null);
+                                localTablesContents.observe((tablesContents: JSX.Element[][]): void => {
+                                    if (!asyncMode || !bodyRef.current) return;
+                                    // const tempElement: HTMLDivElement = document.createElement("div");
+                                    render(null, bodyRef.current);
+                                    render(<>{...tablesContents[index]!}</>, bodyRef.current /* tempElement */);
+                                    // bodyRef.current.replaceChildren(...tempElement.children);
+                                });
                                 // const [columnHeadersContextMenu_isOpen, columnHeadersContextMenu_setOpen] = useState(false);
                                 // const [columnHeadersContextMenu_anchorPoint, columnHeadersContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
                                 const headerName = ConfigConstants.views.Ticks.ticksTabModeSectionHeaderNames[mode][index];
-                                const sectionMode: ConfigConstants.views.Ticks.TicksTabSectionMode = (
-                                    sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Ticks.TicksTabSectionMode;
+                                const sectionMode: ConfigConstants.views.Ticks.TicksTabSectionMode =
+                                    sectionID === null ? (mode as null extends typeof sectionID ? typeof mode : never) : `${mode}_${sectionID}`;
                                 return (
                                     <>
                                         {/* TO-DO: Add in this context menu once the bug with it is fixed. https://github.com/szhsin/react-menu/issues/1591 */}
@@ -365,23 +469,42 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                                             columnID: (typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs)[typeof sectionMode][number]
                                                         ): JSX.SpecificElement<"th"> => {
                                                             const displayName = ConfigConstants.views.Ticks.columnIDToDisplayName[columnID];
-                                                            return <th>{typeof displayName === "string" ? displayName : (displayName as any).headerLabel}</th>;
+                                                            return (
+                                                                <th>
+                                                                    {typeof displayName === "string" ?
+                                                                        displayName
+                                                                    :   (displayName as { optionLabel: string; headerLabel: string }).headerLabel}
+                                                                </th>
+                                                            );
                                                         }
                                                     )}
                                                 </tr>
                                             </thead>
-                                            <tbody ref={bodyRef}>{...tablesContents[index]!.slice(0, 20)}</tbody>
+                                            <tbody ref={bodyRef}>
+                                                {...asyncMode ? localTablesContents.get()[index]! : tablesContents[index]!.slice(0, 20)}
+                                            </tbody>
                                             <tfoot>
                                                 <tr class="table-footer-row-page-navigation">
                                                     <td colSpan={ConfigConstants.views.Ticks.ticksTabModeToColumnIDs[sectionMode].length}>
                                                         <PageNavigation
-                                                            totalPages={Math.ceil(tablesContents[index]!.length / 20)}
-                                                            onPageChange={(page: number): void => {
+                                                            totalPages={Math.ceil(getSectionEntryCounts()[index]! / 20)}
+                                                            onPageChange={async (page: number): Promise<void> => {
                                                                 if (!bodyRef.current) return;
+                                                                if (asyncMode) {
+                                                                    localTablesContents.get()[index] = await getTablesContentsInRange(
+                                                                        index,
+                                                                        (page - 1) * 20,
+                                                                        page * 20
+                                                                    );
+                                                                }
                                                                 // let tempElement: HTMLDivElement = document.createElement("div");
                                                                 render(null, bodyRef.current);
                                                                 render(
-                                                                    <>{...tablesContents[index]!.slice((page - 1) * 20, page * 20)}</>,
+                                                                    <>
+                                                                        {...asyncMode ?
+                                                                            localTablesContents.get()[index]!
+                                                                        :   tablesContents[index]!.slice((page - 1) * 20, page * 20)}
+                                                                    </>,
                                                                     bodyRef.current /* tempElement */
                                                                 );
                                                                 // bodyRef.current.replaceChildren(...tempElement.children);
@@ -401,6 +524,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
             );
         }
         async function updateTablesContents(updateMode: UpdateTablesContentsMode): Promise<void> {
+            // TODO: Add an error handler to this function.
             if (!tablesContainerRef.current) return;
             if (updateMode >= 3) {
                 await tab.refreshCachedDBKeys();
@@ -410,32 +534,71 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
             }
             if (updateMode >= 1) {
                 mode = config.views.ticks.mode;
-                tablesContents = await Promise.all(
-                    ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode].map(
-                        async (sectionID: (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[typeof mode][number]): Promise<JSX.Element[]> =>
-                            await getTicksTabContentsRows({
-                                tab,
-                                randomTickKeys:
-                                    Object.keys(randomTickQuery).length > 1 ?
-                                        tab
-                                            .dbSearch!.search(randomTickQuery)
-                                            .toArray()
-                                            .map((key): RandomTickKeyData => key.originalObject.data)
-                                    :   randomTickKeys,
-                                pendingTickKeys:
-                                    Object.keys(pendingTickQuery).length > 1 ?
-                                        tab
-                                            .dbSearch!.search(pendingTickQuery)
-                                            .toArray()
-                                            .map((key): PendingTickKeyData => key.originalObject.data)
-                                    :   pendingTickKeys,
-                                mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Ticks.TicksTabSectionMode,
-                                get updateTablesContents(): ((mode: UpdateTablesContentsMode) => Promise<void>) | null {
-                                    return currentUpdateTablesContentsFunction;
-                                },
-                            })
-                    )
-                );
+                if (asyncMode) {
+                    const sectionIDToQueryMap = {
+                        randomTicks: randomTickQuery,
+                        pendingTicks: pendingTickQuery,
+                    } as const satisfies Record<(typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[typeof mode][number], unknown>;
+                    const sectionIDToKeysMap = {
+                        randomTicks: randomTickKeys,
+                        pendingTicks: pendingTickKeys,
+                    } as const satisfies Record<(typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[typeof mode][number], unknown>;
+                    for (const sectionID of ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode]) {
+                        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- This is necessary.
+                        (targetKeys[sectionID] as (typeof sectionIDToKeysMap)[typeof sectionID]) =
+                            Object.keys(sectionIDToQueryMap[sectionID]).length > 1 ?
+                                await (async (): Promise<(typeof sectionIDToKeysMap)[typeof sectionID]> => {
+                                    const iterator = tab.dbSearch!.searchAsync(sectionIDToQueryMap[sectionID], true);
+                                    let i: number = 0;
+                                    let t: number = Date.now();
+                                    const results: (typeof sectionIDToKeysMap)[typeof sectionID][number][] = [];
+                                    const formatter = new Intl.NumberFormat();
+                                    for await (const value of iterator) {
+                                        i++;
+                                        if (t + 15 < Date.now()) {
+                                            if (loadingScreenMessageContainerRef.current) {
+                                                loadingScreenMessageContainerRef.current.textContent = `Searching LevelDB: ${formatter.format(i)}/${formatter.format(sectionIDToKeysMap[sectionID].length)} (${formatter.format(results.length)} results)...`;
+                                            }
+                                            signal.throwIfAborted();
+                                            await sleep(5);
+                                            t = Date.now();
+                                        }
+                                        if (!value) continue;
+                                        results.push(value.originalObject.data);
+                                    }
+                                    return results;
+                                })()
+                            :   sectionIDToKeysMap[sectionID];
+                    }
+                } else {
+                    emptyTablesContents = await Promise.all(
+                        ConfigConstants.views.Ticks.ticksTabModeToSectionIDs[mode].map(
+                            async (sectionID: (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[typeof mode][number]): Promise<JSX.Element[]> =>
+                                await getTicksTabContentsRows({
+                                    tab,
+                                    randomTickKeys:
+                                        Object.keys(randomTickQuery).length > 1 ?
+                                            tab
+                                                .dbSearch!.search(randomTickQuery)
+                                                .toArray()
+                                                .map((key): RandomTickKeyData => key.originalObject.data)
+                                        :   randomTickKeys,
+                                    pendingTickKeys:
+                                        Object.keys(pendingTickQuery).length > 1 ?
+                                            tab
+                                                .dbSearch!.search(pendingTickQuery)
+                                                .toArray()
+                                                .map((key): PendingTickKeyData => key.originalObject.data)
+                                        :   pendingTickKeys,
+                                    mode: (sectionID === null ? mode : `${mode}_${sectionID}`) as ConfigConstants.views.Ticks.TicksTabSectionMode,
+                                    get updateTablesContents(): ((mode: UpdateTablesContentsMode) => Promise<void>) | null {
+                                        return currentUpdateTablesContentsFunction;
+                                    },
+                                })
+                        )
+                    );
+                    tablesContents = emptyTablesContents;
+                }
             }
             // const tempElement: HTMLDivElement = document.createElement("div");
             render(null, tablesContainerRef.current);
@@ -443,21 +606,28 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
             // tablesContainerRef.current.replaceChildren(...tempElement.children);
         }
         currentUpdateTablesContentsFunction = updateTablesContents;
-        let randomTickQuery: Omit<TabManagerTab_LevelDBSearchQuery, "searchTargets"> & {
+        let randomTickQuery: Omit<TabManagerTab_LevelDBSearchQuery<true>, "searchTargets"> & {
             searchTargets: {
                 key: Buffer<ArrayBufferLike>;
                 displayKey: string;
                 value:
                     | {
-                          parsed: NBT.NBT;
+                          parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.RandomTicks;
                           type: NBT.NBTFormat;
                           metadata: NBT.Metadata;
                       }
+                    | (() => Promise<
+                          | { parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.RandomTicks; type: NBT.NBTFormat; metadata: NBT.Metadata }
+                          | null
+                          | undefined
+                      >)
                     | null
                     | undefined;
-                valueType: {
-                    readonly type: "NBT";
-                };
+                valueType:
+                    | {
+                          readonly type: "NBT";
+                      }
+                    | Extract<EntryContentTypeFormatData, { type: "custom"; resultType: "JSONNBT" }>;
                 contentType: "RandomTicks";
                 data: RandomTickKeyData;
                 searchableContents: string[];
@@ -468,7 +638,11 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                     ({
                         key: key.rawKey,
                         displayKey: key.displayKey,
-                        value: key.data,
+                        value:
+                            asyncMode ?
+                                async (): Promise<NonNullable<RandomTickKeyData["data"]>> =>
+                                    (await NBT.parse((await tab.db!.get(key.rawKey))!)) as NonNullable<RandomTickKeyData["data"]>
+                            :   key.data!,
                         valueType: entryContentTypeToFormatMap.RandomTicks,
                         contentType: "RandomTicks",
                         data: key,
@@ -487,33 +661,49 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                         customDataFields: {
                             // TODO: Uncomment the below line and implement a search query for checking for entries with invalid data.
                             // hasInvalidData: key.data === null,
-                            contents: ((): string => {
-                                if (key.data === null) return "";
-                                try {
-                                    return prettyPrintSNBT(prismarineToSNBT(key.data.parsed), { indent: 0 });
-                                } catch {
-                                    return "";
-                                }
-                            })(),
+                            contents:
+                                asyncMode ?
+                                    async (): Promise<string> => {
+                                        try {
+                                            return prettyPrintSNBT(prismarineToSNBT((await NBT.parse((await tab.db!.get(key.rawKey))!)).parsed), { indent: 0 });
+                                        } catch {
+                                            return "";
+                                        }
+                                    }
+                                :   ((): string => {
+                                        if (key.data === null) return "";
+                                        try {
+                                            return prettyPrintSNBT(prismarineToSNBT(key.data!.parsed), { indent: 0 });
+                                        } catch {
+                                            return "";
+                                        }
+                                    })(),
                         },
-                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
+                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery<true>["searchTargets"]>[number]
             ),
         };
-        let pendingTickQuery: Omit<TabManagerTab_LevelDBSearchQuery, "searchTargets"> & {
+        let pendingTickQuery: Omit<TabManagerTab_LevelDBSearchQuery<true>, "searchTargets"> & {
             searchTargets: {
                 key: Buffer<ArrayBufferLike>;
                 displayKey: string;
                 value:
                     | {
-                          parsed: NBT.NBT;
+                          parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.PendingTicks;
                           type: NBT.NBTFormat;
                           metadata: NBT.Metadata;
                       }
+                    | (() => Promise<
+                          | { parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.PendingTicks; type: NBT.NBTFormat; metadata: NBT.Metadata }
+                          | null
+                          | undefined
+                      >)
                     | null
                     | undefined;
-                valueType: {
-                    readonly type: "NBT";
-                };
+                valueType:
+                    | {
+                          readonly type: "NBT";
+                      }
+                    | Extract<EntryContentTypeFormatData, { type: "custom"; resultType: "JSONNBT" }>;
                 contentType: "PendingTicks";
                 data: PendingTickKeyData;
                 searchableContents: string[];
@@ -524,7 +714,11 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                     ({
                         key: key.rawKey,
                         displayKey: key.displayKey,
-                        value: key.data,
+                        value:
+                            asyncMode ?
+                                async (): Promise<NonNullable<PendingTickKeyData["data"]>> =>
+                                    (await NBT.parse((await tab.db!.get(key.rawKey))!)) as NonNullable<PendingTickKeyData["data"]>
+                            :   key.data,
                         valueType: entryContentTypeToFormatMap.PendingTicks,
                         contentType: "PendingTicks",
                         data: key,
@@ -543,25 +737,34 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                         customDataFields: {
                             // TODO: Uncomment the below line and implement a search query for checking for entries with invalid data.
                             // hasInvalidData: key.data === null,
-                            contents: ((): string => {
-                                if (key.data === null) return "";
-                                try {
-                                    return prettyPrintSNBT(prismarineToSNBT(key.data.parsed), { indent: 0 });
-                                } catch {
-                                    return "";
-                                }
-                            })(),
+                            contents:
+                                asyncMode ?
+                                    async (): Promise<string> => {
+                                        try {
+                                            return prettyPrintSNBT(prismarineToSNBT((await NBT.parse((await tab.db!.get(key.rawKey))!)).parsed), { indent: 0 });
+                                        } catch {
+                                            return "";
+                                        }
+                                    }
+                                :   ((): string => {
+                                        if (key.data === null) return "";
+                                        try {
+                                            return prettyPrintSNBT(prismarineToSNBT(key.data!.parsed), { indent: 0 });
+                                        } catch {
+                                            return "";
+                                        }
+                                    })(),
                         },
-                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
+                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery<true>["searchTargets"]>[number]
             ),
         };
         useEffect((): (() => void) => {
             function onModeChanged(): void {
-                updateTablesContents(UpdateTablesContentsMode.ReloadTablesContents);
+                void updateTablesContents(UpdateTablesContentsMode.ReloadTablesContents);
             }
             function onSimpleModeColumnsChanged(): void {
                 if (mode !== "simple") return;
-                updateTablesContents(UpdateTablesContentsMode.None);
+                void updateTablesContents(UpdateTablesContentsMode.None);
             }
             config.on("settingChanged:views.ticks.mode", onModeChanged);
             config.on("settingChanged:views.ticks.modeSettings.simple.sections.randomTicks.columns", onSimpleModeColumnsChanged);
@@ -572,7 +775,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                 config.off("settingChanged:views.ticks.modeSettings.simple.sections.pendingTicks.columns", onSimpleModeColumnsChanged);
             };
         });
-        let lastHideErrorPopupFunction: (() => void) | undefined = undefined;
+        let lastHideErrorPopupFunction: (() => void) | undefined;
         return (
             <>
                 {/* <div
@@ -604,8 +807,8 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                 if (!tab.cachedDBKeys) return;
                                 await Promise.all(
                                     tab.cachedDBKeys.RandomTicks.map(
-                                        (key: Buffer): Promise<void> =>
-                                            tab.db!.delete(key).then((success: boolean): void => {
+                                        async (key: Buffer): Promise<void> =>
+                                            void (await tab.db!.delete(key).then((success: boolean): void => {
                                                 if (!success) return;
                                                 tab.setLevelDBIsModified();
                                                 if (tab.cachedDBKeys?.RandomTicks?.includes(key)) {
@@ -617,10 +820,10 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                                         1
                                                     );
                                                 }
-                                            })
+                                            }))
                                     )
                                 );
-                                updateTablesContents(UpdateTablesContentsMode.ReloadTablesContents);
+                                void updateTablesContents(UpdateTablesContentsMode.ReloadTablesContents);
                             }}
                         >
                             <img
@@ -640,8 +843,8 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                 if (!tab.cachedDBKeys) return;
                                 await Promise.all(
                                     tab.cachedDBKeys.PendingTicks.map(
-                                        (key: Buffer): Promise<void> =>
-                                            tab.db!.delete(key).then((success: boolean): void => {
+                                        async (key: Buffer): Promise<void> =>
+                                            void (await tab.db!.delete(key).then((success: boolean): void => {
                                                 if (!success) return;
                                                 tab.setLevelDBIsModified();
                                                 if (tab.cachedDBKeys?.PendingTicks?.includes(key)) {
@@ -653,10 +856,10 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                                         1
                                                     );
                                                 }
-                                            })
+                                            }))
                                     )
                                 );
-                                updateTablesContents(UpdateTablesContentsMode.ReloadTablesContents);
+                                void updateTablesContents(UpdateTablesContentsMode.ReloadTablesContents);
                             }}
                         >
                             <img
@@ -676,8 +879,8 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                 if (!tab.cachedDBKeys) return;
                                 await Promise.all([
                                     ...tab.cachedDBKeys.RandomTicks.map(
-                                        (key: Buffer): Promise<void> =>
-                                            tab.db!.delete(key).then((success: boolean): void => {
+                                        async (key: Buffer): Promise<void> =>
+                                            void (await tab.db!.delete(key).then((success: boolean): void => {
                                                 if (!success) return;
                                                 tab.setLevelDBIsModified();
                                                 if (tab.cachedDBKeys?.RandomTicks?.includes(key)) {
@@ -689,11 +892,11 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                                         1
                                                     );
                                                 }
-                                            })
+                                            }))
                                     ),
                                     ...tab.cachedDBKeys.PendingTicks.map(
-                                        (key: Buffer): Promise<void> =>
-                                            tab.db!.delete(key).then((success: boolean): void => {
+                                        async (key: Buffer): Promise<void> =>
+                                            void (await tab.db!.delete(key).then((success: boolean): void => {
                                                 if (!success) return;
                                                 tab.setLevelDBIsModified();
                                                 if (tab.cachedDBKeys?.PendingTicks?.includes(key)) {
@@ -705,10 +908,10 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                                         1
                                                     );
                                                 }
-                                            })
+                                            }))
                                     ),
                                 ]);
-                                updateTablesContents(UpdateTablesContentsMode.ReloadTablesContents);
+                                void updateTablesContents(UpdateTablesContentsMode.ReloadTablesContents);
                             }}
                         >
                             <img
@@ -746,7 +949,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                         "RandomTicks"
                                     );
                                     if (await tab.db.get(key)) {
-                                        dialog.showMessageBox({
+                                        void dialog.showMessageBox({
                                             type: "error",
                                             title: "Duplicate Key",
                                             message: `Unable to create a new RandomTicks entry at chunk ${creationOptions.data.chunkX} ${creationOptions.data.chunkZ} in dimension ${creationOptions.data.dimension}.`,
@@ -770,11 +973,11 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                         },
                                     });
                                 } catch (e) {
-                                    dialog.showMessageBox({
+                                    void dialog.showMessageBox({
                                         type: "error",
                                         title: "Error",
                                         message: `An error occurred while creating the RandomTicks entry.`,
-                                        detail: e instanceof Error ? (e.stack ?? String(e)) : String(e),
+                                        detail: stringifyError(e),
                                         buttons: ["OK"],
                                         noLink: true,
                                     });
@@ -816,7 +1019,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                         "PendingTicks"
                                     );
                                     if (await tab.db.get(key)) {
-                                        dialog.showMessageBox({
+                                        void dialog.showMessageBox({
                                             type: "error",
                                             title: "Duplicate Key",
                                             message: `Unable to create a new PendingTicks entry at chunk ${creationOptions.data.chunkX} ${creationOptions.data.chunkZ} in dimension ${creationOptions.data.dimension}.`,
@@ -840,11 +1043,11 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                         },
                                     });
                                 } catch (e) {
-                                    dialog.showMessageBox({
+                                    void dialog.showMessageBox({
                                         type: "error",
                                         title: "Error",
                                         message: `An error occurred while creating the PendingTicks entry.`,
-                                        detail: e instanceof Error ? (e.stack ?? String(e)) : String(e),
+                                        detail: stringifyError(e),
                                         buttons: ["OK"],
                                         noLink: true,
                                     });
@@ -912,7 +1115,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                     // noneOf
                                     "-",
                                 ] as const;
-                                const keywords = ["nbt", "contents"] as const;
+                                const keywords = ["currenttick", "nbt", "contents"] as const;
                                 function getKeywordedOperators<T extends string, O extends string = "" | (typeof keywordPrefixOperators)[number]>(
                                     keywords: readonly T[],
                                     operators: readonly O[] = ["", ...keywordPrefixOperators] as O[]
@@ -952,37 +1155,49 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                     });
                                 }
                                 for (const key in queryData) {
-                                    if ([...getKeywordedOperators(["nbt", "contents"])].includes(key as any)) continue;
+                                    if (!Object.hasOwn(queryData, key)) continue;
+                                    if ([...getKeywordedOperators(["currenttick", "nbt", "contents"])].includes(key as never)) continue;
                                     if (
-                                        !keywordPrefixOperators.includes(key.slice(0, 1) as any) &&
-                                        keywords.includes(key.slice(1) as any) &&
+                                        !keywordPrefixOperators.includes(key.slice(0, 1) as never) &&
+                                        keywords.includes(key.slice(1) as never) &&
                                         /^[^a-z0-9]$/i.test(key.slice(0, 1))
                                     ) {
                                         showError({ message: `Unknown operator: ${key.slice(0, 1)}` });
-                                    } else if (!keywordedOperators.includes(key as any)) {
+                                    } else if (!keywordedOperators.includes(key as never)) {
                                         showError({
-                                            message: `Unknown filter: ${keywordPrefixOperators.includes(key.slice(0, 1) as any) ? key.slice(1) : key}`,
+                                            message: `Unknown filter: ${keywordPrefixOperators.includes(key.slice(0, 1) as never) ? key.slice(1) : key}`,
                                         });
                                     } else {
                                         showError({ message: `Operator ${key.slice(0, 1)} is not supported for filter: ${key.slice(1)}` });
                                     }
                                     return;
                                 }
-                                if (getKeywordedOperators(["nbt"]).some((key: string): boolean => key in queryData)) {
+                                if (getKeywordedOperators(["currenttick", "nbt"]).some((key: string): boolean => key in queryData)) {
+                                    function parseCurrentTickQueries(queries: string[]): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery[] {
+                                        return queries.map((v: string): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery => {
+                                            return {
+                                                path: ["currentTick"],
+                                                value: Number(v),
+                                                caseSensitivePath: true,
+                                            };
+                                        });
+                                    }
                                     function parseNBTQueries(queries: string[]): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery[] {
                                         return queries
                                             .map((v: string): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery | undefined => {
-                                                let data: TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery | undefined = undefined;
+                                                let data: TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery | undefined;
                                                 try {
-                                                    const val: any = JSON.parse(v);
+                                                    const val: unknown = JSON.parse(v);
                                                     if (typeof val !== "object") {
+                                                        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
                                                         switch (typeof val) {
                                                             // case "string":
                                                             //     if ()
                                                             default:
-                                                                throw new Error();
+                                                                throw new SyntaxError(`Expected a JSON object for NBT query, but got ${typeof val} instead.`);
                                                         }
                                                     } else {
+                                                        if (val === null) throw new SyntaxError("Expected a JSON object for NBT query, but got null instead.");
                                                         if (
                                                             [
                                                                 "path",
@@ -996,13 +1211,13 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                                         ) {
                                                             data = val;
                                                         } else {
-                                                            throw new Error();
+                                                            throw new SyntaxError("Missing known fields for NBT query.");
                                                         }
                                                     }
-                                                } catch {
+                                                } catch (e) {
                                                     if (v.split("=").length === 2) {
                                                         let [key, value] = v.split("=");
-                                                        let tagType: NBT.TagType | undefined = undefined;
+                                                        let tagType: NBT.TagType | undefined;
                                                         if (key?.includes(":")) {
                                                             let preKey: string;
                                                             [preKey, key] = key.split(":") as [preKey: string, key: string, ...string[]];
@@ -1012,15 +1227,17 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                                                 }
                                                             }
                                                         }
-                                                        let path: string[] | undefined = key?.split("/");
+                                                        const path: string[] | undefined = key?.split("/");
                                                         data = {};
                                                         data.key = key;
                                                         data.value = value;
                                                         data.path = path;
                                                         data.tagType = tagType;
                                                     } else {
+                                                        // TODO: The actual error should be displayed in the error message. #54
+                                                        reportError(e); // TEMP: Remove this once the actual error is included in the error message.
                                                         showError({ message: `Invalid NBT query: ${v}` });
-                                                        throw new Error("Error to return but already handled.");
+                                                        throw new Error("Error to return but already handled.", { cause: e });
                                                     }
                                                 }
                                                 return data;
@@ -1033,9 +1250,13 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                     }
                                     pendingTickQuery.nbtTags = {};
                                     randomTickQuery.nbtTags = {};
-                                    if (["-nbt"].some((key: string): boolean => key in queryData)) {
+                                    if (["-currenttick", "-nbt"].some((key: string): boolean => key in queryData)) {
                                         pendingTickQuery.nbtTags.noneOf = [];
                                         randomTickQuery.nbtTags.noneOf = [];
+                                        if (queryData["-currenttick"]) {
+                                            pendingTickQuery.nbtTags.noneOf.push(...parseCurrentTickQueries(queryData["-currenttick"]));
+                                            randomTickQuery.nbtTags.noneOf.push(...parseCurrentTickQueries(queryData["-currenttick"]));
+                                        }
                                         if (queryData["-nbt"]) {
                                             pendingTickQuery.nbtTags.noneOf.push(...parseNBTQueries(queryData["-nbt"]));
                                             randomTickQuery.nbtTags.noneOf.push(...parseNBTQueries(queryData["-nbt"]));
@@ -1044,6 +1265,10 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                     if (keywords.some((v: string): boolean => v in queryData)) {
                                         pendingTickQuery.nbtTags.anyOf = [];
                                         randomTickQuery.nbtTags.anyOf = [];
+                                        if (queryData.currenttick) {
+                                            pendingTickQuery.nbtTags.anyOf.push(...parseCurrentTickQueries(queryData.currenttick));
+                                            randomTickQuery.nbtTags.anyOf.push(...parseCurrentTickQueries(queryData.currenttick));
+                                        }
                                         if (queryData.nbt) {
                                             pendingTickQuery.nbtTags.anyOf.push(...parseNBTQueries(queryData.nbt));
                                             randomTickQuery.nbtTags.anyOf.push(...parseNBTQueries(queryData.nbt));
@@ -1052,6 +1277,10 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                     if (getKeywordedOperators(keywords, ["^"]).some((v: string): boolean => v in queryData)) {
                                         pendingTickQuery.nbtTags.oneOf = [];
                                         randomTickQuery.nbtTags.oneOf = [];
+                                        if (queryData["^currenttick"]) {
+                                            pendingTickQuery.nbtTags.oneOf.push(...parseCurrentTickQueries(queryData["^currenttick"]));
+                                            randomTickQuery.nbtTags.oneOf.push(...parseCurrentTickQueries(queryData["^currenttick"]));
+                                        }
                                         if (queryData["^nbt"]) {
                                             pendingTickQuery.nbtTags.oneOf.push(...parseNBTQueries(queryData["^nbt"]));
                                             randomTickQuery.nbtTags.oneOf.push(...parseNBTQueries(queryData["^nbt"]));
@@ -1060,6 +1289,10 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                     if (getKeywordedOperators(keywords, ["&"]).some((v: string): boolean => v in queryData)) {
                                         pendingTickQuery.nbtTags.allOf = [];
                                         randomTickQuery.nbtTags.allOf = [];
+                                        if (queryData["&currenttick"]) {
+                                            pendingTickQuery.nbtTags.allOf.push(...parseCurrentTickQueries(queryData["&currenttick"]));
+                                            randomTickQuery.nbtTags.allOf.push(...parseCurrentTickQueries(queryData["&currenttick"]));
+                                        }
                                         if (queryData["&nbt"]) {
                                             pendingTickQuery.nbtTags.allOf.push(...parseNBTQueries(queryData["&nbt"]));
                                             randomTickQuery.nbtTags.allOf.push(...parseNBTQueries(queryData["&nbt"]));
@@ -1160,7 +1393,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                     );
                                     // tablesContainerRef.current.replaceChildren(...tempElement.children);
                                 }
-                                updateTablesContents(UpdateTablesContentsMode.ReloadTablesContents);
+                                void updateTablesContents(UpdateTablesContentsMode.ReloadTablesContents);
                             } catch (e) {
                                 if (e instanceof Error && e.message === "Error to return but already handled.") return;
                                 throw e;
@@ -1175,7 +1408,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                         class="search-help-button piximg invert_on_light_theme"
                         title="Help"
                         onClick={(): void => {
-                            let containerElement: HTMLDivElement = document.createElement("div");
+                            const containerElement: HTMLDivElement = document.createElement("div");
                             containerElement.style.display = "contents";
                             function OverlaySearchSyntaxHelpMenu(): JSX.SpecificElement<"div"> {
                                 const overlayElementRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
@@ -1210,6 +1443,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
     return <Contents />;
 }
 
+// eslint-disable-next-line @typescript-eslint/require-await -- TEMP
 async function getTicksTabContentsRows(data: {
     /**
      * The tab manager tab.
@@ -1241,10 +1475,10 @@ async function getTicksTabContentsRows(data: {
                     function onEntryRightClick(event: JSX.TargetedMouseEvent<HTMLTableRowElement>): void {
                         event.preventDefault();
                         event.stopPropagation();
-                        const clickPosition: { x: number; y: number } = {
-                            x: event.clientX,
-                            y: event.clientY,
-                        };
+                        // const clickPosition: { x: number; y: number } = {
+                        //     x: event.clientX,
+                        //     y: event.clientY,
+                        // };
                         // console.log(clickPosition);
 
                         entryContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
@@ -1316,9 +1550,58 @@ async function getTicksTabContentsRows(data: {
                             >
                                 {columns.map((column: (typeof columns)[number]): JSX.Element => {
                                     switch (column) {
-                                        // TODO: Add more columns here.
                                         case "DBKey":
                                             return <td>{randomTickKey.displayKey}</td>;
+                                        case "CurrentTick":
+                                            if (randomTickKey.data === undefined) {
+                                                return (
+                                                    <td>
+                                                        <span style="color: yellow;">Loading...</span>
+                                                    </td>
+                                                );
+                                            }
+                                            if (randomTickKey.data === null) {
+                                                return (
+                                                    <td>
+                                                        <span style="color: red;">N/A</span>
+                                                    </td>
+                                                );
+                                            }
+                                            return (
+                                                <td>
+                                                    {randomTickKey.data.parsed.value.currentTick?.type === "int" ?
+                                                        randomTickKey.data.parsed.value.currentTick.value
+                                                    :   <span style="color: red;">null</span>}
+                                                </td>
+                                            );
+                                        case "TickCount":
+                                            if (randomTickKey.data === undefined) {
+                                                return (
+                                                    <td>
+                                                        <span style="color: yellow;">Loading...</span>
+                                                    </td>
+                                                );
+                                            }
+                                            if (randomTickKey.data === null) {
+                                                return (
+                                                    <td>
+                                                        <span style="color: red;">N/A</span>
+                                                    </td>
+                                                );
+                                            }
+                                            return (
+                                                <td>
+                                                    {randomTickKey.data.parsed.value.tickList?.type === "list" ?
+                                                        randomTickKey.data.parsed.value.tickList.value.value.length
+                                                    :   <span style="color: red;">null</span>}
+                                                </td>
+                                            );
+                                        default:
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">ERROR: MISSING COLUMN HANDLER</span>
+                                                </td>
+                                            );
                                     }
                                 })}
                             </tr>
@@ -1337,10 +1620,10 @@ async function getTicksTabContentsRows(data: {
                     function onEntryRightClick(event: JSX.TargetedMouseEvent<HTMLTableRowElement>): void {
                         event.preventDefault();
                         event.stopPropagation();
-                        const clickPosition: { x: number; y: number } = {
-                            x: event.clientX,
-                            y: event.clientY,
-                        };
+                        // const clickPosition: { x: number; y: number } = {
+                        //     x: event.clientX,
+                        //     y: event.clientY,
+                        // };
                         // console.log(clickPosition);
 
                         entryContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
@@ -1413,9 +1696,58 @@ async function getTicksTabContentsRows(data: {
                             >
                                 {columns.map((column: (typeof columns)[number]): JSX.Element => {
                                     switch (column) {
-                                        // TODO: Add more columns here.
                                         case "DBKey":
                                             return <td>{pendingTickKey.displayKey}</td>;
+                                        case "CurrentTick":
+                                            if (pendingTickKey.data === undefined) {
+                                                return (
+                                                    <td>
+                                                        <span style="color: yellow;">Loading...</span>
+                                                    </td>
+                                                );
+                                            }
+                                            if (pendingTickKey.data === null) {
+                                                return (
+                                                    <td>
+                                                        <span style="color: red;">N/A</span>
+                                                    </td>
+                                                );
+                                            }
+                                            return (
+                                                <td>
+                                                    {pendingTickKey.data.parsed.value.currentTick?.type === "int" ?
+                                                        pendingTickKey.data.parsed.value.currentTick.value
+                                                    :   <span style="color: red;">null</span>}
+                                                </td>
+                                            );
+                                        case "TickCount":
+                                            if (pendingTickKey.data === undefined) {
+                                                return (
+                                                    <td>
+                                                        <span style="color: yellow;">Loading...</span>
+                                                    </td>
+                                                );
+                                            }
+                                            if (pendingTickKey.data === null) {
+                                                return (
+                                                    <td>
+                                                        <span style="color: red;">N/A</span>
+                                                    </td>
+                                                );
+                                            }
+                                            return (
+                                                <td>
+                                                    {pendingTickKey.data.parsed.value.tickList?.type === "list" ?
+                                                        pendingTickKey.data.parsed.value.tickList.value.value.length
+                                                    :   <span style="color: red;">null</span>}
+                                                </td>
+                                            );
+                                        default:
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">ERROR: MISSING COLUMN HANDLER</span>
+                                                </td>
+                                            );
                                     }
                                 })}
                             </tr>
@@ -1425,5 +1757,7 @@ async function getTicksTabContentsRows(data: {
                 return <Row />;
             });
         }
+        // TODO: Maybe add an error message here?
+        // no default
     }
 }

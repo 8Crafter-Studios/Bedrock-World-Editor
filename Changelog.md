@@ -1,16 +1,25 @@
+<!-- # v1.0.0
+
+## Additions
+
+-   Windows builds are now code signed. -->
+
 # v1.0.0-beta.35
 
 ## Critical Fixes
 
 -   Fixed an issue where pasting in editors that used Monaco Editor did not work ([#1](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/1)).
 -   Fixed many issues where the parser and serializer for the `SubChunkPrefix` content type did not work properly in certain situations.
+-   Fixed a bug where nested arrays could crash the Node editor.
 
 ## Additions
 
--   Windows builds are now code signed.
+-   The add tag buttons in the Node editor are now functional ([#2](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/2)).
 -   Added the paths to the world folder locations for the Minecraft Education Edition desktop version to the config.
 -   Added the paths to the world folder locations for Minecraft Education Edition on macOS to the config.
 -   Added paths to the extra world folder locations for Minecraft Education Edition, Minecraft Education Edition Preview, and the desktop version of Minecraft Education Edition, that are inside of mounted Windows volumes, to the config.
+-   Added the Current Tick and Tick Count columns to the "Ticks" tab ([#65](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/65)).
+-   Added a `currenttick` search query to the "Ticks" tab ([#65](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/65)).
 -   The "Create LevelDB Entry" button in sub-tabs now properly reloads the data of the sub-tab after creating the LevelDB entry.
 -   The "Create LevelDB Entry" button in sub-tabs now attemps to use a default value based on the content type for the new LevelDB entry, rather than an empty NBT object or empty data.
 -   When the associated LevelDB key for a `Map` sub-tab does not exist, there is now a "Create LevelDB Entry" button.
@@ -18,20 +27,117 @@
 -   The state of the Prismarine-NBT and SNBT editors now persists across tab and mode switches (meaning undo history, scroll position, search, selection, etc. are preserved when you switch tabs or modes and then switch back).
 -   The start screen is now mobile/small window friendly.
 -   The app's left sidebar now can be hidden on smaller screens to make the app mobile/small window friendly.
+-   Added outline animations to the Node editor for key and value validation errors:
+    -   When there is invalid input in the Node editor, there is now a short red fading outline animation around the displayed value.
+    -   When renaming a property in the Node editor fails due to a property already existing with the name, there is now a unique red then purple fading outline animation around the displayed value.
+    -   When an internal error occurs in the Node editor, there is now a 3.2 second red and yellow fading outline animation around the displayed value.
+    -   When there is a warning in the Node editor, there is now a short yellow fading outline animation around the displayed value.
+-   Added the newer polished error screen for data loading/parsing errors to hex editor sub-tabs. Unlike with the other editors, the open in raw mode button is replaced with a report bug button.
+-   The "World" tab now has an error screen for when the LevelDB was unable to be opened, instead of just showing error textures for every chunk.
+-   Added an error screen to the "Repair Forced World Corruption" tab.
+-   The contents of keys with the following data types can now have their contents searched in the "View Files" tab:
+    -   `UTF-8`
+    -   `SNBT`
+    -   `binary`
+    -   `binaryPlainText`
+    -   `JSON`
+    -   `hex`
+    -   `custom/SNBT`
+-   An error message now appears below the search bar on the "View Files" tab when an invalid NBT query is provided, like it does on other tabs.
+-   Added Async Mode to the "Ticks" tab ([#57](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/57)).
+-   Added Async Mode to the "Ticking Areas" tab ([#57](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/57)).
+-   Added Async Mode to the "Structures" tab ([#57](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/57)).
+-   The `~local_player.Editor` LevelDB key is now detected as the `Player` content type.
 
 ## Changes
 
 -   Pressing `ALT` no longer focuses/unfocuses the menu bar.
 -   When the app recovers from a crash, it now closes and reopens the window, this fixes an issue where after a crash, the menu bar and many keybinds would not work.
 -   The `SubChunkPrefixLayer` NBT schema and the `layers` field of the `SubChunkPrefix` content type no longer include a `storageVersion` field.
+-   Special characters in the Node editor are now escaped, both in the text boxes and when displayed.
+-   Improved input validation in the Node editor.
+-   Minor table footer redesign.
+-   When there are no entries in a tab or tab section, the first page number in the page navigation footer of the table will now be `0` instead of `1`.
+-   When the active sub-tab's content type is `Entity`, the "Entities" left sidebar tab now renders as active.
+-   When the active sub-tab's content type is any of the following, the "World" left sidebar tab now renders as active:
+    -   `Data3D`
+    -   `Version`
+    -   `Data2D`
+    -   `Data2DLegacy`
+    -   `LegacyTerrain`
+    -   `LegacyBlockExtraData`
+    -   `BiomeState`
+    -   `FinalizedState`
+    -   `ConversionData`
+    -   `BorderBlocks`
+    -   `HardcodedSpawners`
+    -   `Checksums`
+    -   `GenerationSeed`
+    -   `GeneratedPreCavesAndCliffsBlending`
+    -   `BlendingBiomeHeight`
+    -   `MetaDataHash`
+    -   `BlendingData`
+    -   `ActorDigestVersion`
+    -   `LegacyVersion`
+    -   `AABBVolumes`
+    -   `Digest`
+-   When the active sub-tab's content type is any of the following, the "Villages" left sidebar tab now renders as active:
+    -   `VillageDwellers`
+    -   `VillageInfo`
+    -   `VillagePOI`
+    -   `VillagePlayers`
+    -   `VillageRaid`
+    -   `MVillages`
+    -   `Villages`
+-   The search entry data loading screen for the "View Files" tab now says "Reading LevelDB entry data #/#..." instead of "Reading NBT data #/#..." when a query that searches non-NBT data is provided.
+-   Improved error stringification throughout the app.
 
 ## Fixes
 
 -   Fixed a bug where CTRL+S did not work while the Prismarine-NBT, SNBT, or text editor was focused.
--   Fixed an issue where deleting chunks in the 2D world map did not work ([#52](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/52)).
--   Many major NBT schema fixes, see the `mcbe-leveldb` changelog for more details (v1.0.0-beta.34 used v1.20.1 of `mcbe-leveldb`, this version uses v1.22.2).
+-   Fixed an issue where deleting chunks in the 2D world map did not mark the tab as unsaved ([#52](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/52)).
+-   Many major NBT schema fixes, see the `mcbe-leveldb` changelog for more details (v1.0.0-beta.34 used v1.20.1 of `mcbe-leveldb`, this version uses v1.23.0).
 -   The NBT schema for entity entries in the `Entity` content type now no longer has an `internalComponents` field.
 -   Fixed an issue where there were many random useless `"name": ""` entries in the Prismarine-NBT editor.
+-   The Node editor now renders entries of lists of type `"end"` correctly.
+-   When deleting list entries in the Node editor, it now correctly splices the entries out of the array, instead of replacing them with empty entries.
+-   When hitting the `Enter` key while editing a key or value in the Node editor when the key or value has not been changed, it now correctly exits editing the key or value.
+-   Property keys that are an empty string `""` in the Node editor are no longer unable to be rendered or edited.
+-   The propery key text box in the Node editor now correctly always uses the `"text"` input mode.
+-   Values of type `"end"` in the Node editor are now unable to be edited.
+-   Keys and values in the Node editor now have a minimum amount of space that they take up, so that it is possible to select them if their value is an empty string `""`.
+-   When double-clicking a key or value in the Node editor to start editing it, the text box is now automatically focused.
+-   When double-clicking elsewhere to stop editing a key or value in the Node editor, the text box is now automatically updated to the correct width once its value is reset.
+-   Many miscellaneous minor fixes for the Node editor.
+-   Switching modes on sub-tabs where the associated LevelDB key is missing no longer causes errors ([#53](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/53)).
+-   The open in raw mode buttons no longer fail to work if an error occurs while trying to load the data as binary.
+-   Fixed a bug where on really old worlds that don't have the `NetherScale` field in the `level.dat` file, the "World" tab acted as if the Nether scale could not be determined, instead of assuming it to be `8`.
+-   Fixed a bug where the validation for the Prismarine-NBT editor to prevent errors when converting it to SNBT did not work properly.
+-   Fixed a race condition in the `Save & Close Others` tab context menu option.
+-   Fixed many minor miscellaneous race conditions.
+-   Fixed a bug where the `Close Others` tab context menu option would miss some tabs in many cases.
+-   Major fixes the the content type suggestions for the `type` search filter of the "View Files" tab.
+-   Fixed a bug where when exporting sub-tabs with a data type of `ASCII` as plain text, it would write with `utf-8` encoding instead of `ascii` encoding.
+-   Fixed a bug where when exporting sub-tabs with a data type of `binaryPlainText` as plain text, it would write with `utf-8` encoding instead of `binary` encoding.
+-   Fixed a bug where the error dialogs for opening files with the app would display the path as `[object Object]` instead of the actual path.
+-   Fixed a bug where the contents of entries with a data type of `NBT` or `custom/JSONNBT` could not be searched with the `contents` query in the "View Files" tab.
+-   Fixed a bug where if a search in the "View Files" tab that did not include an `nbt` or `contents` query was performed prior to performing a search with an `nbt` or `contents` query, without switching off of the tab in between the two searches, the NBT data for the entries would not be loaded, resulting in the `nbt` or `contents` query not matching any NBT search results.
+-   Fixed a bug where the "Maps" tab would crash if an entry with invalid data was present while in Async Mode.
+-   Fixed a bug where the "Entities" tab would crash if an entry with invalid data was present while in Async Mode.
+-   Fixed a bug where the app's URI protocol was not functional for any purpose other than opening the app on Windows ([#66](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/66)).
+-   Fixed a bug where the units for the system and process uptime in the "Basic" debug overlay were rounded instead of floored, resulting in inaccurate values.
+-   Fixed a bug where you could drag the "See more..." links in the search syntax help menu.
+
+## Performance Improvements
+
+-   Minor optimizations to the loading times of the "Players" tab.
+-   Minor performance improvements.
+-   Major load time improvements to the "View Files" tab, as it no longer unnecessarily reads and parses the data of all entries with a data type of `ascii` or `int` during the initial load.
+-   Improved the loading times of the "Ticks" tab by removing an unnecessary sort operation on the list of pending tick keys.
+-   The "Ticking Areas" tab now no longer unnecessarily loads the dynamic properties data.
+-   The "Structures" tab now no longer unnecessarily loads the dynamic properties data.
+-   The "View Files" tab now no longer unnecessarily loads the dynamic properties data.
+-   The "Entities" tab now no longer unnecessarily loads the dynamic properties data.
 
 # v1.0.0-beta.34
 
@@ -68,8 +174,11 @@
 
 -   Fixed small seams that could sometimes appear in bewteen chunks on the 2D world map.
 -   The "Replace Image" option of the map editor now correctly clears the existing map image before drawing the selected image onto the map.
--   The "Maps" tab now no longer unnecessarily loads the dynamic properties data.
 -   The zoom buttons on the 2D world map now keep the map centered on the same position.
+
+## Performance Improvements
+
+-   The "Maps" tab now no longer unnecessarily loads the dynamic properties data.
 
 # v1.0.0-beta.33
 
@@ -146,7 +255,7 @@
 -   Added a Clear Entries button to the "View Files" tab. This button deletes ALL entries from the LevelDB. When there is a search query, then the button only deletes the search results from the LevelDB rather than everything.
 -   Added a placeholder New Entry button to the "View Files" tab. The button is disabled and does not work as it is a placeholder.
 -   Added a `Reload Tab` context menu option to sub-tabs that do not have unsaved changes. This option behaves the same as the `Reset Tab` option (which appears when there are unsaved changes).
--   Added a new polished error screen for data loading/parsing error in sub-tabs, which includes a button to reopen the editor in raw mode, which should allow for bypassing the error.
+-   Added a new polished error screen for data loading/parsing errors in sub-tabs, which includes a button to reopen the editor in raw mode, which should allow for bypassing the error.
 -   Added an icon for sub-tabs of content type `AABBVolumes`.
 -   Added an icon for sub-tabs of content type `BorderBlocks`.
 -   Added an icon for sub-tabs of content type `DynamicProperties`.

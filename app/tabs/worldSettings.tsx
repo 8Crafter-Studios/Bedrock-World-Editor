@@ -12,6 +12,8 @@ export interface WorldSettingsTabProps {
 /**
  * The world settings tab.
  *
+ * This tab currently only allows you to edit `level.dat` but in the future is planned to have options for changing the world name, world icon, and other settings stored in other locations (like the `game_flatworldlayers` LevelDB key).
+ *
  * @param props The props for the component.
  * @returns The JSX element.
  */

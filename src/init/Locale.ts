@@ -100,7 +100,7 @@ namespace exports {
             if (locales.includes(normalized)) return normalized;
 
             const base: string | undefined = normalized.split("_")[0];
-            const fallback: LocaleID | undefined = locales.find((l: LocaleID): boolean => l.startsWith(base + "_"));
+            const fallback: LocaleID | undefined = locales.find((l: LocaleID): boolean => l.startsWith(`${base}_`));
             if (fallback) return fallback;
         }
 
@@ -109,7 +109,7 @@ namespace exports {
         if (sys !== null) {
             if (locales.includes(sys)) return sys;
             const base: string | undefined = sys.split("_")[0];
-            const fallback: LocaleID | undefined = locales.find((l: LocaleID): boolean => l.startsWith(base + "_"));
+            const fallback: LocaleID | undefined = locales.find((l: LocaleID): boolean => l.startsWith(`${base}_`));
             if (fallback) return fallback;
         }
         if (noFallbackIfNotReady && sys === null) return null;
@@ -129,25 +129,25 @@ namespace exports {
         const app = (require("electron") as typeof import("electron")).app ?? (require("@electron/remote") as typeof import("@electron/remote")).app;
 
         // 1. Primary: Chromium locale
-        const primary = app.getLocale().replace("-", "_") as string;
+        const primary: string = app.getLocale().replace("-", "_");
         if (localeOptions.includes(primary)) return primary;
 
         // 2. Secondary: preferred languages
         for (const lang of app.getPreferredSystemLanguages() ?? []) {
-            const normalized = lang.replace("-", "_").split(".")[0] as string;
+            const normalized: string = lang.replace("-", "_").split(".")[0]!;
             if (localeOptions.includes(normalized)) return normalized;
 
             const base: string | undefined = normalized.split("_")[0];
-            const fallback: string | undefined = localeOptions.find((l: string): boolean => l.startsWith(base + "_"));
+            const fallback: string | undefined = localeOptions.find((l: string): boolean => l.startsWith(`${base}_`));
             if (fallback) return fallback;
         }
 
         // 3. Optional: region hint (rarely needed)
-        const sys = app.isReady() ? (app.getSystemLocale()?.replace("-", "_") as string) : null;
+        const sys: string | null = app.isReady() ? app.getSystemLocale()?.replace("-", "_") : null;
         if (sys !== null) {
             if (localeOptions.includes(sys)) return sys;
             const base: string | undefined = sys.split("_")[0];
-            const fallback: string | undefined = localeOptions.find((l: string): boolean => l.startsWith(base + "_"));
+            const fallback: string | undefined = localeOptions.find((l: string): boolean => l.startsWith(`${base}_`));
             if (fallback) return fallback;
         }
 
@@ -155,7 +155,7 @@ namespace exports {
         if (localeOptions.includes("en_US")) return "en_US";
         {
             const base: string = "en";
-            const fallback: string | undefined = localeOptions.find((l: string): boolean => l.startsWith(base + "_"));
+            const fallback: string | undefined = localeOptions.find((l: string): boolean => l.startsWith(`${base}_`));
             if (fallback) return fallback;
         }
 
@@ -226,7 +226,7 @@ namespace exports {
                 console.warn("Could not detect system locale because app is not ready, falling back to default locale.");
                 loadLocale("en_US");
                 const app = (require("electron") as typeof import("electron")).app ?? (require("@electron/remote") as typeof import("@electron/remote")).app;
-                app.whenReady().then(refreshCurrentLocale);
+                void app.whenReady().then(refreshCurrentLocale);
             } else {
                 loadLocale(locale);
             }
@@ -241,7 +241,7 @@ namespace exports {
                     loadLocale("en_US");
                     const app =
                         (require("electron") as typeof import("electron")).app ?? (require("@electron/remote") as typeof import("@electron/remote")).app;
-                    app.whenReady().then(refreshCurrentLocale);
+                    void app.whenReady().then(refreshCurrentLocale);
                 } else {
                     loadLocale(locale);
                 }
@@ -251,7 +251,7 @@ namespace exports {
 
     refreshCurrentLocale();
 
-    config.on("settingChanged:locale", (locale: "auto" | LocaleID): void => loadLocale(locale === "auto" ? detectSystemLocale() : locale));
+    config.on("settingChanged:locale", (locale: "auto" | LocaleID): void => void loadLocale(locale === "auto" ? detectSystemLocale() : locale));
 
     /**
      * Translates a string.
@@ -293,7 +293,7 @@ namespace exports {
             params.length ?
                 typeof params[0] === "string" ?
                     (params as string[])
-                :   params[0]!
+                :   params[0]
             :   (params as []);
         let translation: string | undefined = translations[resolvedId]?.split("#")[0]?.trim();
         if (!translation) {
@@ -302,7 +302,7 @@ namespace exports {
         }
         if (/%\d+|$s/g.test(translation)) {
             for (let i = 1; i <= resolvedParams.length; i++) {
-                translation = translation?.replaceAll("%" + i + "$s", resolvedParams[i - 1]!);
+                translation = translation?.replaceAll(`%${i}$s`, resolvedParams[i - 1]!);
             }
         } else translation = translation?.replaceAll("%s", resolvedParams[0]!);
 

@@ -26,6 +26,7 @@
 -   Entities
     -   For editing:
         -   `db/actorprefix*`
+        -   `Entity` chunk entries
     -   Should allow searching for entities by:
         -   Local UUID
         -   Name Tag

@@ -1,3 +1,7 @@
+// DEPRECATED
+//#vignore
+/* eslint-disable */
+// @ts-nocheck
 import type { JSX, RefObject } from "preact";
 
 export interface ToggleProps extends JSX.HTMLAttributes<HTMLDivElement> {
@@ -29,15 +33,14 @@ export default function Toggle(options: ToggleProps): JSX.SpecificElement<"div">
             {options.description && (
                 <>
                     <br />
-                    {typeof options.description === "string" ? (
+                    {typeof options.description === "string" ?
                         <div class="mctoggledescription">{options.description}</div>
-                    ) : options.description instanceof Array ? (
+                    : options.description instanceof Array ?
                         options.description
-                    ) : (
-                        options.description
-                    )}
+                    :   options.description}
                 </>
             )}
         </div>
     );
 }
+//#endvignore

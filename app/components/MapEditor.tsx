@@ -8,7 +8,6 @@ import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import { useEffect, useRef, useState } from "preact/compat";
-import * as NBT from "prismarine-nbt";
 import type { EditorWidgetOverlayBarWidgetRegistry } from "./EditorWidgetOverlayBar";
 const mime = require("mime-types") as typeof import("mime-types");
 
@@ -73,17 +72,17 @@ export interface MapEditorInteraction {
  * @throws {Error} If the data type is invalid or not supported by the map editor.
  */
 export function MapEditor(props: MapRendererProps): JSX.Element {
-    const containerRef: RefObject<HTMLDivElement> = mergeRefs(useRef<HTMLDivElement>(null), props.containerRef);
-    const canvasRef: RefObject<HTMLCanvasElement> = mergeRefs(useRef<HTMLCanvasElement>(null), props.canvasRef);
+    const containerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
+    const canvasRef: RefObject<HTMLCanvasElement> = useRef<HTMLCanvasElement>(null);
     if (props.dataStorageObject.dataType !== "NBT" && props.dataStorageObject.dataType !== "NBTCompound") {
-        throw new Error("Invalid data type for MapEditor: " + props.dataStorageObject.dataType);
+        throw new Error(`Invalid data type for MapEditor: ${props.dataStorageObject.dataType}`);
     }
 
-    let stopCurrentInteraction: (() => void) | undefined = undefined;
+    let stopCurrentInteraction: (() => void) | undefined;
     let data: NBTSchemas.NBTSchemaTypes.Map = (
         props.dataStorageObject.dataType === "NBT" ? props.dataStorageObject.data.parsed
         : props.dataStorageObject.dataType === "NBTCompound" ? props.dataStorageObject.data
-        : (props.dataStorageObject as any).data) as NBTSchemas.NBTSchemaTypes.Map;
+        : (props.dataStorageObject as GenericDataStorageObject).data) as NBTSchemas.NBTSchemaTypes.Map;
     function updateMap(): void {
         data = (
             props.dataStorageObject.dataType === "NBT" ? props.dataStorageObject.data.parsed
@@ -105,7 +104,7 @@ export function MapEditor(props: MapRendererProps): JSX.Element {
     }
     if (props.interactionRef) {
         props.interactionRef.current = {
-            updateMap: updateMap,
+            updateMap,
         };
     }
     function markTabAsModified(): void {
@@ -168,17 +167,20 @@ export function MapEditor(props: MapRendererProps): JSX.Element {
     function onCanvasRightClick(event: JSX.TargetedMouseEvent<HTMLCanvasElement>): void {
         event.preventDefault();
         event.stopPropagation();
-        const clickPosition: { x: number; y: number } = {
-            x: event.clientX,
-            y: event.clientY,
-        };
+        // const clickPosition: { x: number; y: number } = {
+        //     x: event.clientX,
+        //     y: event.clientY,
+        // };
         // console.log(clickPosition);
 
         mapEditorCanvasContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
         mapEditorCanvasContextMenu_setOpen(true);
     }
     return (
-        <div style={{ display: "flex", height: "-webkit-fill-available", justifyContent: "center", flexDirection: "column" }} ref={containerRef}>
+        <div
+            style={{ display: "flex", height: "-webkit-fill-available", justifyContent: "center", flexDirection: "column" }}
+            ref={mergeRefs(containerRef, props.containerRef)}
+        >
             <ControlledMenu
                 anchorPoint={mapEditorCanvasContextMenu_anchorPoint}
                 state={mapEditorCanvasContextMenu_isOpen ? "open" : "closed"}
@@ -201,12 +203,13 @@ export function MapEditor(props: MapRendererProps): JSX.Element {
                         });
                         if (result.canceled) return;
                         const mimeType: string | false = mime.lookup(result.filePath);
-                        if (!mimeType)
+                        if (!mimeType) {
                             return void dialog.showErrorBox("Unsupported Image Type", `Unsupported image type: ${mimeType || path.extname(result.filePath)}`);
-                        const image: Blob | null = await new Promise((resolve: BlobCallback): void => canvasRef.current!.toBlob(resolve, mimeType));
+                        }
+                        const image: Blob | null = await new Promise((resolve: BlobCallback): void => void canvasRef.current!.toBlob(resolve, mimeType));
                         if (!image) return void dialog.showErrorBox("Failed to Save Image", "An error occurred while saving the image.");
                         if (image.type !== mimeType) return void dialog.showErrorBox("Unsupported Image Type", `Unsupported image type: ${mimeType}`);
-                        writeFile(result.filePath, Buffer.from(await image.arrayBuffer()));
+                        void writeFile(result.filePath, Buffer.from(await image.arrayBuffer())); // TODO: Add an error message if this fails.
                     }}
                 >
                     Save Image
@@ -223,7 +226,7 @@ export function MapEditor(props: MapRendererProps): JSX.Element {
                                     message: "Select an image to replace this map.",
                                     title: "Replace Map Image",
                                 });
-                                if (!result || !result[0]) return;
+                                if (!result?.[0]) return;
                                 const image: string = `data:${mime.lookup(result[0].split(".").at(-1)!)};base64,${readFileSync(result[0], "base64")}`;
                                 const imageElement = new Image();
                                 imageElement.src = image;
@@ -252,7 +255,7 @@ export function MapEditor(props: MapRendererProps): JSX.Element {
                                     message: "Select an image to replace this map.",
                                     title: "Replace Map Image",
                                 });
-                                if (!result || !result[0]) return;
+                                if (!result?.[0]) return;
                                 const image: string = `data:${mime.lookup(result[0].split(".").at(-1)!)};base64,${readFileSync(result[0], "base64")}`;
                                 const imageElement = new Image();
                                 imageElement.src = image;
@@ -281,7 +284,7 @@ export function MapEditor(props: MapRendererProps): JSX.Element {
                                     message: "Select an image to overlay on top of this map.",
                                     title: "Overlay Map Image",
                                 });
-                                if (!result || !result[0]) return;
+                                if (!result?.[0]) return;
                                 const image: string = `data:${mime.lookup(result[0].split(".").at(-1)!)};base64,${readFileSync(result[0], "base64")}`;
                                 const imageElement = new Image();
                                 imageElement.src = image;
@@ -309,7 +312,7 @@ export function MapEditor(props: MapRendererProps): JSX.Element {
                                     message: "Select an image to overlay on top of this map.",
                                     title: "Overlay Map Image",
                                 });
-                                if (!result || !result[0]) return;
+                                if (!result?.[0]) return;
                                 const image: string = `data:${mime.lookup(result[0].split(".").at(-1)!)};base64,${readFileSync(result[0], "base64")}`;
                                 const imageElement = new Image();
                                 imageElement.src = image;
@@ -367,7 +370,7 @@ export function MapEditor(props: MapRendererProps): JSX.Element {
                     height={128}
                     class="map-renderer-canvas piximg"
                     style="max-width: round(down, 100%, 128px); max-height: round(down, 100%, 128px);"
-                    ref={canvasRef}
+                    ref={mergeRefs(canvasRef, props.canvasRef)}
                     onContextMenu={(event: TargetedMouseEvent<HTMLCanvasElement>): void => void onCanvasRightClick(event)}
                 />
             </div>

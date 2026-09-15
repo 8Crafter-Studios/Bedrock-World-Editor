@@ -17,7 +17,7 @@ function escapeFilename(str: string): string {
 }
 
 function unescapeFilename(str: string): string {
-    return str.replace(new RegExp(`${ESCAPE_PREFIX}([0-9a-fA-F]{2})`, "g"), (_, hex) => {
+    return str.replace(new RegExp(`${ESCAPE_PREFIX}([0-9a-fA-F]{2})`, "g"), (_: string, hex: string): string => {
         return String.fromCharCode(parseInt(hex, 16));
     });
 }

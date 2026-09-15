@@ -9,9 +9,8 @@ import path from "path";
 export function checkIsURIOrPath(URIOrPath: string): "URI" | "Path" {
     if (/^[^:/\\]+:\/\//.test(URIOrPath)) {
         return "URI" as const;
-    } else {
-        return "Path" as const;
     }
+    return "Path" as const;
 }
 
 /**

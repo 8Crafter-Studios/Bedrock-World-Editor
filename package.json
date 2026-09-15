@@ -2,7 +2,7 @@
     "name": "bedrock-world-editor",
     "productName": "Bedrock World Editor",
     "version": "1.0.0-beta.35",
-    "build": "BUILD.2",
+    "build": "BUILD.3",
     "description": "An NBT editor for Minecraft Bedrock Edition.",
     "main": ".vite/build/main.js",
     "type": "commonjs",
@@ -79,7 +79,7 @@
         "prettier-plugin-markdown-list-tabwidth": "^1.2.0",
         "ts-node": "^10.9.2",
         "typescript": "^5.9.3",
-        "typescript-eslint": "^8.55.0",
+        "typescript-eslint": "^8.70.0",
         "vite": "^5.0.0",
         "vite-plugin-commonjs-externals": "^0.1.1"
     },
@@ -104,7 +104,7 @@
         "jquery": "^3.7.1",
         "jquery-ui": "^1.14.1",
         "json5": "^2.2.3",
-        "mcbe-leveldb": "^1.22.2",
+        "mcbe-leveldb": "^1.23.0",
         "merge-refs": "^2.0.0",
         "mime-types": "^3.0.1",
         "monaco-editor": "^0.54.0",
@@ -124,5 +124,12 @@
     "optionalDependencies": {
         "electron-installer-debian": "^3.2.0",
         "electron-installer-redhat": "^3.2.0"
+    },
+    "allowScripts": {
+        "@8crafter/leveldb-zlib": true,
+        "electron": true,
+        "electron-winstaller": true,
+        "esbuild": true,
+        "styled-components": true
     }
 }

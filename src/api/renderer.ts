@@ -6,7 +6,7 @@ import path from "node:path";
 import * as NBT from "prismarine-nbt";
 import type { NBTSchemas } from "mcbe-leveldb";
 
-ipcRenderer.on("console-action", function <
+ipcRenderer.on("console-action", function consoleActionHandler<
     // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     T extends Exclude<{ [k in keyof Console]: Console[k] extends Function ? k : never }[keyof Console], "Console">,
 >(_event: IpcRendererEvent, action: T, ...args: Parameters<Console[T]>): void {
@@ -15,9 +15,11 @@ ipcRenderer.on("console-action", function <
 
 ipcRenderer.on(
     "open-file",
-    async function (_event: IpcRendererEvent, filePath: string, type?: IpcRendererOpenFileType, tabMode?: TabManagerTabMode): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/require-await -- TEMP
+    async function openFileHandler(_event: IpcRendererEvent, filePath: string, type?: IpcRendererOpenFileType, tabMode?: TabManagerTabMode): Promise<void> {
         type ??= "unset";
         getCurrentWindow().focus();
+        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
         switch (true) {
             case type === "nbt":
             case type === "unset" && ["nbt", "mcstructure", "schem", "schematic", "snbt", "dat"].includes(path.extname(filePath).slice(1).toLowerCase()):
@@ -43,10 +45,10 @@ ipcRenderer.on(
                 break;
             // TEMP: This is just until JSONL support is added.
             case type === "unset" && ["jsonl"].includes(path.extname(filePath).slice(1).toLowerCase()):
-                dialog.showMessageBox({
+                void dialog.showMessageBox({
                     type: "warning",
                     title: "Feature Not Implemented",
-                    message: `Unable to open the file at ${path}.`,
+                    message: `Unable to open the file at ${filePath}.`,
                     detail: "The ability to open JSON Lines (.jsonl) files has not been implemented yet.",
                     buttons: ["OK"],
                     noLink: true,
@@ -87,11 +89,11 @@ ipcRenderer.on(
                 });
                 break;
             default:
-                dialog.showMessageBox({
+                void dialog.showMessageBox({
                     type: "error",
                     title: "Unknown Tab Type",
-                    message: `Unable to open the file at ${path}.`,
-                    detail: `The ability to open this type of file has not been implemented yet. Unknown type: ${type}`,
+                    message: `Unable to open the file at ${filePath}.`,
+                    detail: `The ability to open this type of file has not been implemented yet. Unknown type: ${type as string}`,
                     buttons: ["OK"],
                     noLink: true,
                 });
@@ -101,7 +103,7 @@ ipcRenderer.on(
 
 ipcRenderer.on(
     "open-world-folder",
-    async function (_event: IpcRendererEvent, folderPath: string, tabMode?: TabManagerTabMode, isolated?: boolean): Promise<void> {
+    async function openWorldFolderHandler(_event: IpcRendererEvent, folderPath: string, tabMode?: TabManagerTabMode, isolated?: boolean): Promise<void> {
         getCurrentWindow().focus();
         const containingFolderName: string = path.basename(path.dirname(folderPath));
         if (isolated === undefined) {
@@ -153,16 +155,20 @@ ipcRenderer.on(
     }
 );
 
-ipcRenderer.on("open-leveldb-folder", async function (_event: IpcRendererEvent, folderPath: string, tabMode?: TabManagerTabMode): Promise<void> {
-    getCurrentWindow().focus();
-    tabManager.openTab({
-        icon: "resource://images/ui/glyphs/icon_bookshelf.png", // TODO: Add supports for using the custom icon set for the folder if it exists.
-        name: path.basename(folderPath), // TODO: Implement something to get a better name for the tab (as it will often times just be `db`).
-        path: folderPath,
-        type: "leveldb",
-        mode: tabMode,
-    });
-});
+ipcRenderer.on(
+    "open-leveldb-folder",
+    // eslint-disable-next-line @typescript-eslint/require-await -- TEMP
+    async function openLevelDBFolderHandler(_event: IpcRendererEvent, folderPath: string, tabMode?: TabManagerTabMode): Promise<void> {
+        getCurrentWindow().focus();
+        tabManager.openTab({
+            icon: "resource://images/ui/glyphs/icon_bookshelf.png", // TODO: Add supports for using the custom icon set for the folder if it exists.
+            name: path.basename(folderPath), // TODO: Implement something to get a better name for the tab (as it will often times just be `db`).
+            path: folderPath,
+            type: "leveldb",
+            mode: tabMode,
+        });
+    }
+);
 
 declare global {
     type IpcRendererOpenFileType = "nbt" | "json" | "xml" | "text" | "binary" | "unset";
