@@ -18,8 +18,8 @@
 -   Added the paths to the world folder locations for the Minecraft Education Edition desktop version to the config.
 -   Added the paths to the world folder locations for Minecraft Education Edition on macOS to the config.
 -   Added paths to the extra world folder locations for Minecraft Education Edition, Minecraft Education Edition Preview, and the desktop version of Minecraft Education Edition, that are inside of mounted Windows volumes, to the config.
--   Added the Current Tick and Tick Count columns to the "Ticks" tab.
--   Added a `currenttick` search query to the "Ticks" tab.
+-   Added the Current Tick and Tick Count columns to the "Ticks" tab ([#65](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/65)).
+-   Added a `currenttick` search query to the "Ticks" tab ([#65](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/65)).
 -   The "Create LevelDB Entry" button in sub-tabs now properly reloads the data of the sub-tab after creating the LevelDB entry.
 -   The "Create LevelDB Entry" button in sub-tabs now attemps to use a default value based on the content type for the new LevelDB entry, rather than an empty NBT object or empty data.
 -   When the associated LevelDB key for a `Map` sub-tab does not exist, there is now a "Create LevelDB Entry" button.
@@ -126,6 +126,7 @@
 -   Fixed a bug where the "Entities" tab would crash if an entry with invalid data was present while in Async Mode.
 -   Fixed a bug where the app's URI protocol was not functional for any purpose other than opening the app on Windows ([#66](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/66)).
 -   Fixed a bug where the units for the system and process uptime in the "Basic" debug overlay were rounded instead of floored, resulting in inaccurate values.
+-   Fixed a bug where you could drag the "See more..." links in the search syntax help menu.
 
 ## Performance Improvements
 
