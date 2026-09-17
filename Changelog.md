@@ -13,7 +13,7 @@
 
 ## Removals
 
--   Removed the FPS entry from the 2D world map, as it was hurting performance by causing double frame rendering. You can see the FPS in the "Top" or "Basic" debug overlays instead.
+-   Removed the FPS line from the 2D world map's top right overlay info HUD, as it was hurting performance by causing double frame rendering. You can see the FPS in the "Top" or "Basic" debug overlays instead.
 
 ## Fixes
 
