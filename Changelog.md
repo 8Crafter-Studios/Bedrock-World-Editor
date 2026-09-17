@@ -23,7 +23,7 @@
 
 -   Frames are no longer rendered twice on the 2D world map while zooming or panning, resulting in a 2x FPS improvement.
 -   Major speed boost to the entire app. LevelDB searches, 2D world map chunk loading, world loading, and a lot of other stuff will now be much faster.
--   The "Basic" debug overlay is active no longer has a slight performance hit while resizing the window.
+-   The "Basic" debug overlay no longer causes a slight performance hit when active while resizing the window.
 -   Minor performance improvements to the "Top" and "Basic" debug overlays.
 
 # v1.0.0-beta.35
