@@ -9,6 +9,38 @@ import "jquery";
 // @ts-expect-error: #DEBUG
 globalThis.mcbeLeveldbUri = (async (): Promise<typeof import("mcbe-leveldb")> => await import("mcbe-leveldb")).toString().split('"')[1];
 
+// This makes everything in the app run faster, especially loading of things like chunks in the world map.
+// TODO: When the app is actively loading stuff, this should run even when the window isn't focuses.
+// TODO: Add a config option to set whether this should always be on, never be on, or only be on when the window is focused (default).
+{
+    const currentWindow: Electron.BrowserWindow = getCurrentWindow();
+    let lastFocusCheck: number = Date.now();
+    let lastFocusValue: boolean = currentWindow.isFocused();
+    currentWindow.on("focus", (): void => {
+        lastFocusCheck = Date.now();
+        if (!lastFocusValue && nextIdleCallback !== undefined) {
+            clearTimeout(nextIdleCallback);
+            preventIdle();
+        }
+        lastFocusValue = true;
+    });
+    let nextIdleCallback: number | undefined;
+    const preventIdle: () => void = (): void => {
+        if (lastFocusValue) {
+            if (lastFocusCheck + 1000 < Date.now()) {
+                lastFocusCheck = Date.now();
+                lastFocusValue = currentWindow.isFocused();
+            }
+        } else if (lastFocusCheck + 5000 < Date.now()) {
+            lastFocusCheck = Date.now();
+            lastFocusValue = currentWindow.isFocused();
+        }
+        if (lastFocusValue && !("__DISABLE_IDLE_PREVENTION__" in window && window.__DISABLE_IDLE_PREVENTION__)) setImmediate(preventIdle);
+        else nextIdleCallback = setTimeout(preventIdle, 5000);
+    };
+    preventIdle();
+}
+
 declare module "preact" {
     namespace JSX {
         interface SpecificElement<

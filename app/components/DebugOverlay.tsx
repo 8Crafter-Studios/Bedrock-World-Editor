@@ -6,6 +6,45 @@ import v8 from "node:v8";
 import { existsSync } from "node:fs";
 import { DBEntryContentTypesGrouping, type DBEntryContentType, type DBEntryContentTypeGroup } from "mcbe-leveldb";
 import { execSync } from "node:child_process";
+import { createObservable, type Observable } from "../../src/utils/miscUtils";
+
+const FPS_SAMPLE_SIZE = 10;
+
+export const currentFpsRaw: Observable<number> = createObservable(0);
+export const currentFps: Observable<number> = createObservable(0);
+let lastFrameTime: number = performance.now();
+const frameTimes: number[] = [];
+
+// let onFpsUpdate: (() => void) | undefined;
+
+{
+    function fpsLoop(): void {
+        const now: number = performance.now();
+        const delta: number = now - lastFrameTime;
+        lastFrameTime = now;
+
+        frameTimes.push(delta);
+        if (frameTimes.length > FPS_SAMPLE_SIZE) {
+            frameTimes.shift();
+        }
+
+        const avgDelta: number = frameTimes.reduce((a: number, b: number): number => a + b, 0) / frameTimes.length;
+        const newFpsRaw: number = 1000 / avgDelta;
+        const newFps: number = Number(newFpsRaw.toFixed(1));
+
+        // Only trigger update if FPS changed
+        if (newFps !== currentFps.get()) {
+            currentFps.set(newFps);
+            // onFpsUpdate?.();
+        }
+        if (newFpsRaw !== currentFpsRaw.get()) {
+            currentFpsRaw.set(newFpsRaw);
+        }
+
+        requestAnimationFrame(fpsLoop);
+    }
+    fpsLoop();
+}
 
 function getCleanOSInfo(): string {
     const platform = os.platform();
@@ -137,9 +176,11 @@ function DebugOverlayContents(props: DebugOverlayContentsProps): JSX.Element {
 function DebugOverlay_Top(): JSX.Element {
     const osInfo: string = getCleanOSInfo();
     const containerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
+    let process_memoryUsage: NodeJS.MemoryUsage = process.memoryUsage();
+    let v8_heapStatistics: v8.HeapInfo = v8.getHeapStatistics();
+    const osType: string = os.type();
+    const osArch: string = os.arch();
     function Contents(): JSX.Element {
-        const process_memoryUsage: NodeJS.MemoryUsage = process.memoryUsage();
-        const v8_heapStatistics: v8.HeapInfo = v8.getHeapStatistics();
         return (
             <>
                 <span
@@ -150,12 +191,12 @@ function DebugOverlay_Top(): JSX.Element {
                 >
                     v{VERSION_DISP_SHORT}
                     {process.env.NODE_ENV === "development" ? "*" : ""}{" "}
-                    {os.type() === "Windows_NT" ?
+                    {osType === "Windows_NT" ?
                         "Windows"
-                    : os.type() === "Darwin" ?
+                    : osType === "Darwin" ?
                         "macOS"
-                    :   os.type()}{" "}
-                    {os.arch()} Build, {osInfo}
+                    :   osType}{" "}
+                    {osArch} Build, {osInfo}
                 </span>
                 <span
                     class="crispy"
@@ -163,7 +204,7 @@ function DebugOverlay_Top(): JSX.Element {
                         display: "block",
                     }}
                 >
-                    Mem:{Math.round(process_memoryUsage.heapUsed / 1000 ** 2)}, Free Mem:
+                    FPS:{currentFps.get().toFixed(1)}, Mem:{Math.round(process_memoryUsage.heapUsed / 1000 ** 2)}, Free Mem:
                     {Math.round((v8_heapStatistics.heap_size_limit - process_memoryUsage.heapUsed) / 1000 ** 2)}
                 </span>
             </>
@@ -173,15 +214,28 @@ function DebugOverlay_Top(): JSX.Element {
         if (containerRef.current) {
             hydrate(<Contents />, containerRef.current);
         }
+        function onFpsUpdate(): void {
+            if (!containerRef.current) {
+                clearInterval(intervalID);
+                stopObservingFps();
+                return;
+            }
+            hydrate(<Contents />, containerRef.current);
+        }
+        const stopObservingFps: () => boolean = currentFps.observe(onFpsUpdate);
         const intervalID: number = setInterval((): void => {
             if (!containerRef.current) {
                 clearInterval(intervalID);
+                stopObservingFps();
                 return;
             }
+            process_memoryUsage = process.memoryUsage();
+            v8_heapStatistics = v8.getHeapStatistics();
             hydrate(<Contents />, containerRef.current);
         }, 1000);
         return (): void => {
             clearInterval(intervalID);
+            stopObservingFps();
         };
     });
     return (
@@ -407,11 +461,13 @@ function DebugOverlay_Basic(): JSX.Element {
             </>
         );
     }
+    let process_memoryUsage: NodeJS.MemoryUsage = process.memoryUsage();
+    let v8_heapStatistics: v8.HeapInfo = v8.getHeapStatistics();
+    let processUptime: number = Math.floor(process.uptime());
+    let systemUptime: number = Math.floor(os.uptime());
+    let cpus = os.cpus();
+    const osArch = os.arch();
     function RightContents(): JSX.Element {
-        const process_memoryUsage: NodeJS.MemoryUsage = process.memoryUsage();
-        const v8_heapStatistics: v8.HeapInfo = v8.getHeapStatistics();
-        const processUptime: number = Math.floor(process.uptime());
-        const systemUptime: number = Math.floor(os.uptime());
         return (
             <>
                 <span
@@ -462,7 +518,7 @@ function DebugOverlay_Basic(): JSX.Element {
                         display: "block",
                     }}
                 >
-                    CPU: {os.cpus().length}x {os.cpus()[0] ? `${os.cpus()[0]!.model} (${os.arch()})` : `Unknown (${os.arch()})`}
+                    CPU: {cpus.length}x {cpus[0] ? `${cpus[0].model} (${osArch})` : `Unknown (${osArch})`}
                 </span>
                 <span
                     class="crispy"
@@ -539,6 +595,14 @@ function DebugOverlay_Basic(): JSX.Element {
                         .toString()
                         .padStart(2, "0")}
                 </span>
+                <span
+                    class="crispy"
+                    style={{
+                        display: "block",
+                    }}
+                >
+                    FPS: {currentFps.get().toFixed(1)}
+                </span>
             </>
         );
     }
@@ -554,16 +618,32 @@ function DebugOverlay_Basic(): JSX.Element {
         if (rightContainerRef.current) {
             render(<RightContents />, rightContainerRef.current);
         }
+        function onFpsUpdate(): void {
+            if (!rightContainerRef.current) {
+                clearInterval(intervalID);
+                stopObservingFps();
+                return;
+            }
+            render(<RightContents />, rightContainerRef.current);
+        }
+        const stopObservingFps: () => boolean = currentFps.observe(onFpsUpdate);
         const intervalID: number = setInterval((): void => {
             if (!rightContainerRef.current) {
                 clearInterval(intervalID);
+                stopObservingFps();
                 return;
             }
+            process_memoryUsage = process.memoryUsage();
+            v8_heapStatistics = v8.getHeapStatistics();
+            processUptime = Math.floor(process.uptime());
+            systemUptime = Math.floor(os.uptime());
+            cpus = os.cpus();
             render(<RightContents />, rightContainerRef.current);
         }, 1000);
         return (): void => {
             window.removeEventListener("resize", handleWindowResize);
             clearInterval(intervalID);
+            stopObservingFps();
         };
     });
     return (

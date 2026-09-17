@@ -4,6 +4,28 @@
 
 -   Windows builds are now code signed. -->
 
+# v1.0.0-beta.36
+
+## Additions
+
+-   Added the FPS to the "Top" and "Basic" debug overlays.
+-   Added a "Delete Chunks in Range" button to the 2D world map.
+
+## Removals
+
+-   Removed the FPS entry from the 2D world map, as it was hurting performance by causing double frame rendering. You can see the FPS in the "Top" or "Basic" debug overlays instead.
+
+## Fixes
+
+-   Fixed a bug where the 2D world map would not render frames while the FPS (when rounded) was not changing.
+
+## Performance Improvements
+
+-   Frames are no longer rendered twice on the 2D world map while zooming or panning, resulting in a 2x FPS improvement.
+-   Major speed boost to the entire app. LevelDB searches, 2D world map chunk loading, world loading, and a lot of other stuff will now be much faster.
+-   The "Basic" debug overlay is active no longer has a slight performance hit while resizing the window.
+-   Minor performance improvements to the "Top" and "Basic" debug overlays.
+
 # v1.0.0-beta.35
 
 ## Critical Fixes

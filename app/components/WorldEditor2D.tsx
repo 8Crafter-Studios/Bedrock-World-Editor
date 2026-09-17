@@ -42,6 +42,9 @@ import type { LevelDB } from "@8crafter/leveldb-zlib";
 import Notice from "./Notice";
 import showNumberInputDialog, { type ShowNumberInputDialogResult } from "./NumberInputDialog";
 import showLocationInputDialog, { type ShowLocationInputDialogResult } from "./LocationInputDialog";
+import showLocationRangeInputDialog, { type ShowLocationRangeInputDialogResult } from "./LocationRangeInputDialog";
+import { stringifyError } from "../../src/utils/miscUtils";
+// import { currentFpsRaw } from "./DebugOverlay";
 // const mime = require("mime-types") as typeof import("mime-types");
 
 /**
@@ -248,6 +251,9 @@ const HEIGHT_MAP_MODE: "normalized" | "difference" = "difference";
 const HEIGHT_MAP_DIFFERENCE_MODE_STRENGTH: number = 1 / 10;
 const HEIGHT_MAP_DIFFERENCE_MODE_MIN_TINT: number = 0.2; /* 0.6 */
 const HEIGHT_MAP_DIFFERENCE_MODE_MAX_TINT: number = 1.8; /* 1.4 */
+
+// TODO (Important): This needs its own config option.
+const MAX_SIMULTANEOUS_CHUNK_DELETIONS = 2;
 
 /**
  * The background color of the map.
@@ -1162,6 +1168,223 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                         <div class="widget-overlay tabbed-selector float-right" style={{ float: "right" }}>
                             <button
                                 type="button"
+                                title="Delete Chunks in Range"
+                                class="image-only-button"
+                                onClick={async (event: TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
+                                    if (!containerRef.current) return;
+                                    if (!props.tab.cachedDBKeys) return;
+                                    // IDEA: Add a progress bar to the button, or maybe somewhere else.
+                                    // IDEA: Add an option to make it so that the button isn't disabled while the chunks are being deleted.
+                                    const elem: HTMLButtonElement = event.currentTarget;
+                                    elem.disabled = true;
+                                    try {
+                                        const t1: number = performance.now();
+                                        const chunksInDimension = new Set<`${number},${number}`>();
+                                        const currentDimension =
+                                            typeof props.dataStorageObject.worldEditor2D.dimension === "number" ?
+                                                intToDimensionVectorDimension(props.dataStorageObject.worldEditor2D.dimension)
+                                            :   props.dataStorageObject.worldEditor2D.dimension;
+                                        for (const key of props.tab.cachedDBKeys.Version) {
+                                            try {
+                                                const { dimension, x, z } = getChunkKeyIndices(key);
+                                                if (dimension === currentDimension) chunksInDimension.add(`${x},${z}`);
+                                            } catch {}
+                                        }
+                                        for (const key of props.tab.cachedDBKeys.LegacyVersion) {
+                                            try {
+                                                const { dimension, x, z } = getChunkKeyIndices(key);
+                                                if (dimension === currentDimension) chunksInDimension.add(`${x},${z}`);
+                                            } catch {}
+                                        }
+                                        // TODO: Maybe this needs to check other content types too, in case the version or legacy version keys were manually deleted.
+                                        if (chunksInDimension.size === 0) {
+                                            void dialog.showMessageBox({
+                                                type: "error",
+                                                title: "Error",
+                                                message: `No chunks with version or legacy version data in dimension ${currentDimension} were found.`,
+                                                buttons: ["OK"],
+                                                noLink: true,
+                                            });
+                                            return;
+                                        }
+                                        // IDEA: Add an option for specifying sub-chunk indices to clear only between certain sub-chunks.
+                                        const locationRangeDialogResult: ShowLocationRangeInputDialogResult<"chunkX" | "chunkZ"> =
+                                            await showLocationRangeInputDialog({
+                                                options: ["chunkX", "chunkZ"],
+                                                submitButtonText: "Delete Chunks",
+                                            });
+                                        if (locationRangeDialogResult.canceled) return;
+                                        // locationRangeDialogResult.data.from.chunkX
+                                        // const chunkPromises: Promise<undefined[]>[] = [];
+                                        const activeChunkDeletions: Promise<undefined[]>[] = [];
+                                        let totalChunksDeleted = 0;
+                                        let totalDBKeysDeleted = 0;
+                                        for (const currentChunk of chunksInDimension) {
+                                            const [x, z] = currentChunk.split(",").map(Number) as [x: number, z: number];
+                                            if (x < locationRangeDialogResult.data.from.chunkX || x > locationRangeDialogResult.data.to.chunkX) continue;
+                                            if (z < locationRangeDialogResult.data.from.chunkZ || z > locationRangeDialogResult.data.to.chunkZ) continue;
+                                            if (!props.tab.cachedDBKeys) {
+                                                void dialog.showMessageBox({
+                                                    type: "error",
+                                                    title: "Error",
+                                                    message: `The DB keys cache was reloaded while trying to delete chunks.`,
+                                                    buttons: ["OK"],
+                                                    noLink: true,
+                                                });
+                                                return;
+                                            }
+                                            function* getExistingChunkKeys(): Generator<[rawKey: Buffer, contentType: DBChunkLinkedContentType]> {
+                                                if (!props.tab.cachedDBKeys) return;
+                                                for (const contentType of DBChunkLinkedContentTypes) {
+                                                    switch (contentType) {
+                                                        case "AABBVolumes":
+                                                        case "ActorDigestVersion":
+                                                        case "BiomeState":
+                                                        case "BlendingBiomeHeight":
+                                                        case "BlendingData":
+                                                        case "BlockEntity":
+                                                        case "BorderBlocks":
+                                                        case "Checksums":
+                                                        case "ConversionData":
+                                                        case "Data2D":
+                                                        case "Data2DLegacy":
+                                                        case "Data3D":
+                                                        case "Entity":
+                                                        case "FinalizedState":
+                                                        case "GeneratedPreCavesAndCliffsBlending":
+                                                        case "GenerationSeed":
+                                                        case "HardcodedSpawners":
+                                                        case "LegacyBlockExtraData":
+                                                        case "LegacyTerrain":
+                                                        case "LegacyVersion":
+                                                        case "MetaDataHash":
+                                                        case "PendingTicks":
+                                                        case "RandomTicks":
+                                                        case "Version":
+                                                        case "Digest": {
+                                                            const key: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(
+                                                                { x, z, dimension: currentDimension },
+                                                                contentType
+                                                            );
+                                                            if (
+                                                                props.tab.cachedDBKeys[contentType].some((existingKey: Buffer): boolean =>
+                                                                    existingKey.equals(key)
+                                                                )
+                                                            ) {
+                                                                yield [key, contentType];
+                                                                if (!props.tab.cachedDBKeys) return;
+                                                            }
+                                                            break;
+                                                        }
+                                                        case "SubChunkPrefix": {
+                                                            const key: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(
+                                                                { x, z, dimension: currentDimension },
+                                                                contentType
+                                                            );
+                                                            for (const existingKey of props.tab.cachedDBKeys[contentType]) {
+                                                                if (existingKey.subarray(0, key.length).equals(key)) {
+                                                                    yield [existingKey, contentType];
+                                                                    if (!props.tab.cachedDBKeys) return;
+                                                                }
+                                                            }
+                                                            break;
+                                                        }
+                                                        default:
+                                                            throw new Error(`Missing handling for chunk key entry content type: ${contentType as string}`);
+                                                    }
+                                                }
+                                            }
+                                            const promises: Promise<undefined>[] = [];
+                                            let chunkHadKeyDeleted = false;
+                                            for (const [key, contentType] of getExistingChunkKeys()) {
+                                                promises.push(
+                                                    props.tab.db!.delete(key).then((success: boolean): undefined => {
+                                                        if (!success) return;
+                                                        if (!chunkHadKeyDeleted) {
+                                                            chunkHadKeyDeleted = true;
+                                                            totalChunksDeleted++;
+                                                        }
+                                                        totalDBKeysDeleted++;
+                                                        props.tab.setLevelDBIsModified();
+                                                        if (contentType === "Data3D" && data3dKeyCount) {
+                                                            data3dKeySet.delete(key.toString("hex"));
+                                                            data3dKeyCount = data3dKeySet.size;
+                                                            delete cachedChunkColorData[x]?.[z];
+                                                            delete cachedChunkImageBitmaps[x]?.[z];
+                                                        } else if (contentType === "Data2D" && data2dKeyCount) {
+                                                            data2dKeySet.delete(key.toString("hex"));
+                                                            data2dKeyCount = data2dKeySet.size;
+                                                            delete cachedChunkColorData[x]?.[z];
+                                                            delete cachedChunkImageBitmaps[x]?.[z];
+                                                        } else if (contentType === "Data2DLegacy" && data2dLegacyKeyCount) {
+                                                            data2dLegacyKeySet.delete(key.toString("hex"));
+                                                            data2dLegacyKeyCount = data2dLegacyKeySet.size;
+                                                            delete cachedChunkColorData[x]?.[z];
+                                                            delete cachedChunkImageBitmaps[x]?.[z];
+                                                        } else if (contentType === "LegacyTerrain" && legacyTerrainKeyCount) {
+                                                            legacyTerrainKeySet.delete(key.toString("hex"));
+                                                            legacyTerrainKeyCount = legacyTerrainKeySet.size;
+                                                            delete cachedChunkColorData[x]?.[z];
+                                                            delete cachedChunkImageBitmaps[x]?.[z];
+                                                        }
+                                                        if (!props.tab.cachedDBKeys) return;
+                                                        const keyIndex: number = props.tab.cachedDBKeys[contentType].findIndex((dbKey): boolean =>
+                                                            dbKey.equals(key)
+                                                        );
+                                                        if (keyIndex === -1) return;
+                                                        props.tab.cachedDBKeys[contentType].splice(keyIndex, 1);
+                                                    })
+                                                );
+                                            }
+                                            activeChunkDeletions.push(Promise.all(promises));
+                                            if (activeChunkDeletions.length >= MAX_SIMULTANEOUS_CHUNK_DELETIONS) {
+                                                await Promise.all(activeChunkDeletions.splice(0, MAX_SIMULTANEOUS_CHUNK_DELETIONS));
+                                            }
+                                            // chunkPromises.push(Promise.all(promises));
+                                        }
+                                        // await Promise.all(chunkPromises);
+                                        const t2: number = performance.now(); // DEBUG
+                                        console.debug(
+                                            `Deleting chunks in range ${locationRangeDialogResult.data.from.chunkX} ${locationRangeDialogResult.data.from.chunkZ} to ${locationRangeDialogResult.data.to.chunkX} ${locationRangeDialogResult.data.to.chunkZ} took ${t2 - t1}ms.`
+                                        ); // DEBUG
+                                        // IDEA: Add an option to disable this dialog.
+                                        void dialog.showMessageBox({
+                                            type: "info",
+                                            title: "Chunks Deleted",
+                                            message: `Deleted ${totalChunksDeleted} chunk${totalChunksDeleted === 1 ? "" : "s"} in ${t2 - t1}ms from ${locationRangeDialogResult.data.from.chunkX} ${locationRangeDialogResult.data.from.chunkZ} to ${locationRangeDialogResult.data.to.chunkX} ${locationRangeDialogResult.data.to.chunkZ}.`,
+                                            detail: `Deleted ${totalDBKeysDeleted} LevelDB entr${totalDBKeysDeleted === 1 ? "y" : "ies"}.`,
+                                            buttons: ["OK"],
+                                            noLink: true,
+                                        });
+                                    } catch (e) {
+                                        reportError(e);
+                                        void dialog.showMessageBox({
+                                            type: "error",
+                                            title: "Error",
+                                            message: "An error occurred while deleting chunks.",
+                                            detail: stringifyError(e),
+                                            buttons: ["OK"],
+                                            noLink: true,
+                                        });
+                                    } finally {
+                                        try {
+                                            elem.disabled = false;
+                                        } catch (e) {
+                                            reportError(e);
+                                        }
+                                    }
+                                }}
+                            >
+                                <img
+                                    src="resource://images/ui/glyphs/delete.png"
+                                    style={{ width: "12px", margin: "2px", imageRendering: "pixelated" }}
+                                    aria-hidden="true"
+                                />
+                            </button>
+                        </div>
+                        <div class="widget-overlay tabbed-selector float-right" style={{ float: "right" }}>
+                            <button
+                                type="button"
                                 title="Go to Random Chunk With Biome Data"
                                 class="image-only-button"
                                 onClick={(_event: TargetedMouseEvent<HTMLButtonElement>): void => {
@@ -1254,6 +1477,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                     aria-hidden="true"
                                 />
                             </button>
+                            {/* IDEA: Add a way to specify chunk coordinates instead of block coordinates in the teleport menu, maybe with a dropdown to select between chunk and block coordinates, and when changing it, maybe it adjusts the existing coordinate values to match the change. */}
                             <button
                                 type="button"
                                 title="Teleport"
@@ -1361,6 +1585,39 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                     -1
                 );
             }
+        }
+        {
+            let lastMapPositionDetails2: ComparisonMapPositionDetails | undefined;
+            // let lastFps: number = Math.round(currentFpsRaw.get());
+            function fpsLoop(): void {
+                if (!containerRef.current) return;
+
+                // const newFps: number = Math.round(currentFpsRaw.get());
+                // if (lastFps === newFps) engineRef.current?.render();
+                // else lastFps = newFps;
+
+                function areMapPositionDetailsDifferent(a: ComparisonMapPositionDetails, b: ComparisonMapPositionDetails): boolean {
+                    if (a.coords.x !== b.coords.x || a.coords.y !== b.coords.y) return true;
+                    if (a.scale !== b.scale) return true;
+                    if (a.size.width !== b.size.width || a.size.height !== b.size.height) return true;
+                    return false;
+                }
+
+                if (engineRef.current) {
+                    const config = engineRef.current.getConfig();
+                    const coords = engineRef.current.getCenterCoords();
+                    if (
+                        !lastMapPositionDetails2 ||
+                        !areMapPositionDetailsDifferent(lastMapPositionDetails2, { coords, scale: config.scale, size: config.size })
+                    ) {
+                        engineRef.current?.render();
+                    }
+                    lastMapPositionDetails2 = { coords, scale: config.scale, size: config.size };
+                }
+
+                requestAnimationFrame(fpsLoop);
+            }
+            fpsLoop();
         }
         return (): void => {
             stopCurrentInteraction?.();
@@ -3698,6 +3955,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 <MenuItem
                     title="Deletes this chunk's associated LevelDB entries"
                     onClick={async (): Promise<void> => {
+                        // FIXME: This does not delete entities that are in the Digest.
                         if (!props.tab.db) return;
                         if (config.views.world.modeSettings["2D"].showChunkDeletionWarnings) {
                             const confirmationResult: MessageBoxReturnValue = await dialog.showMessageBox({
@@ -3936,7 +4194,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                         coordinates: { enabled: true },
                         debug: {
                             enabled: true,
-                            hud: { enabled: true, coordinates: true, fps: true, scale: true, tilesInView: true, topLeftCoordinates: true },
+                            hud: { enabled: true, coordinates: true, fps: false /* true */, scale: true, tilesInView: true, topLeftCoordinates: true },
                         },
                         size: { width: 10000, height: 10000 },
                         backgroundColor: `#${MAP_BACKGROUND_COLOR.map((v: number): string => v.toString(16).padStart(2, "0")).join("")}`,
@@ -4084,17 +4342,19 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 max: { x: Math.ceil(bounds.max.x * 16), z: Math.ceil(bounds.max.y * 16) },
                             };
                             drawCachedChunks_v3(ctx, bounds, blockBounds, config.size, config.scale);
-                            function areMapPositionDetailsDifferent(a: ComparisonMapPositionDetails, b: ComparisonMapPositionDetails): boolean {
-                                if (a.coords.x !== b.coords.x || a.coords.y !== b.coords.y) return true;
-                                if (a.scale !== b.scale) return true;
-                                if (a.size.width !== b.size.width || a.size.height !== b.size.height) return true;
-                                return false;
-                            }
+                            // function areMapPositionDetailsDifferent(a: ComparisonMapPositionDetails, b: ComparisonMapPositionDetails): boolean {
+                            //     if (a.coords.x !== b.coords.x || a.coords.y !== b.coords.y) return true;
+                            //     if (a.scale !== b.scale) return true;
+                            //     if (a.size.width !== b.size.width || a.size.height !== b.size.height) return true;
+                            //     return false;
+                            // }
+                            void lastMapPositionDetails; // TEMP
                             if (
-                                lastMapDrawCall > Date.now() - 5 &&
+                                lastMapDrawCall >
+                                Date.now() - 5 /* &&
                                 (!lastMapPositionDetails ||
                                     areMapPositionDetailsDifferent(lastMapPositionDetails, { coords, scale: config.scale, size: config.size }) ||
-                                    lastMapDrawCall > Date.now() - 10)
+                                    lastMapDrawCall > Date.now() - 10) */
                             ) {
                                 return;
                             }
