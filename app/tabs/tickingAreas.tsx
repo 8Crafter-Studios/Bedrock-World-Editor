@@ -152,6 +152,7 @@ export default function TickingAreasTab(props: TickingAreasTabProps): JSX.Specif
     useEffect((): (() => void) => {
         return (): void => {
             abortController.abort(new DOMException("Tab switched.", "AbortError"));
+            if (containerRef.current) render(null, containerRef.current);
         };
     });
     getTickingAreasTabContents(props.tab, abortController.signal).then(
@@ -387,12 +388,15 @@ async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSigna
                         ): JSX.Element => {
                             function Test1(): JSX.Element {
                                 const bodyRef: RefObject<HTMLTableSectionElement> = useRef<HTMLTableSectionElement>(null);
+                                useEffect((): (() => void) => {
+                                    return (): void => {
+                                        if (bodyRef.current) render(null, bodyRef.current);
+                                    };
+                                });
                                 localTablesContents.observe((tablesContents: JSX.Element[][]): void => {
                                     if (!asyncMode || !bodyRef.current) return;
-                                    // const tempElement: HTMLDivElement = document.createElement("div");
                                     render(null, bodyRef.current);
-                                    render(<>{...tablesContents[index]!}</>, bodyRef.current /* tempElement */);
-                                    // bodyRef.current.replaceChildren(...tempElement.children);
+                                    render(<>{...tablesContents[index]!}</>, bodyRef.current);
                                 });
                                 // const [columnHeadersContextMenu_isOpen, columnHeadersContextMenu_setOpen] = useState(false);
                                 // const [columnHeadersContextMenu_anchorPoint, columnHeadersContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
@@ -462,7 +466,6 @@ async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSigna
                                                                         page * 20
                                                                     );
                                                                 }
-                                                                // let tempElement: HTMLDivElement = document.createElement("div");
                                                                 render(null, bodyRef.current);
                                                                 render(
                                                                     <>
@@ -470,9 +473,8 @@ async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSigna
                                                                             localTablesContents.get()[index]!
                                                                         :   tablesContents[index]!.slice((page - 1) * 20, page * 20)}
                                                                     </>,
-                                                                    bodyRef.current /* tempElement */
+                                                                    bodyRef.current
                                                                 );
-                                                                // bodyRef.current.replaceChildren(...tempElement.children);
                                                             }}
                                                         />
                                                     </td>
@@ -617,10 +619,8 @@ async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSigna
                     tablesContents = emptyTablesContents;
                 }
             }
-            // const tempElement: HTMLDivElement = document.createElement("div");
             render(null, tablesContainerRef.current);
-            render(<TablesContents />, tablesContainerRef.current /* tempElement */);
-            // tablesContainerRef.current.replaceChildren(...tempElement.children);
+            render(<TablesContents />, tablesContainerRef.current);
         }
         currentUpdateTablesContentsFunction = updateTablesContents;
         useEffect((): (() => void) => {
@@ -636,6 +636,7 @@ async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSigna
             return (): void => {
                 config.off("settingChanged:views.tickingAreas.mode", onModeChanged);
                 config.off("settingChanged:views.tickingAreas.modeSettings.simple.columns", onSimpleModeColumnsChanged);
+                if (tablesContainerRef.current) render(null, tablesContainerRef.current);
             };
         });
         let lastHideErrorPopupFunction: (() => void) | undefined;
@@ -938,14 +939,13 @@ async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSigna
                                 }
                                 if (searchRefs.searchTextBox.current) searchRefs.searchTextBox.current.blur();
                                 if (tablesContainerRef.current) {
-                                    const tempElement: HTMLDivElement = document.createElement("div");
+                                    render(null, tablesContainerRef.current);
                                     render(
                                         <div style="width: 100%; height: 100%; position: fixed; bottom: 0; left: 0; display: flex; flex-direction: row; overflow: auto;">
                                             <LoadingScreenContents messageContainerRef={loadingScreenMessageContainerRef} />
                                         </div>,
-                                        tempElement
+                                        tablesContainerRef.current
                                     );
-                                    tablesContainerRef.current.replaceChildren(...tempElement.children);
                                 }
                                 void updateTablesContents(true);
                             } catch (e) {

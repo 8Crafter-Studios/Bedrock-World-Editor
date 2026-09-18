@@ -1,5 +1,5 @@
 import type { JSX, RefObject } from "preact";
-import _React, { render, useRef } from "preact/compat";
+import _React, { render, useEffect, useRef } from "preact/compat";
 import { entryContentTypeToFormatMap, type EntryContentTypeFormatData } from "mcbe-leveldb";
 import { LoadingScreenContents } from "../app";
 import TextEditor from "../components/TextEditor";
@@ -95,12 +95,16 @@ export default function TextEditorTab(props: TextEditorTabProps): JSX.SpecificEl
             }
         );
     }
+    useEffect((): (() => void) => {
+        return (): void => {
+            if (containerRef.current) render(null, containerRef.current);
+        };
+    });
     function reloadContents(): void {
         if (!containerRef.current) return;
         fakeAssertIsValidOptionsType(props.tab.currentState.options);
-        // const tempElement: HTMLDivElement = document.createElement("div");
-        render(<Contents props={props} options={props.tab.currentState.options} />, containerRef.current /* tempElement */);
-        // containerRef.current.replaceChildren(...tempElement.children);
+        render(null, containerRef.current);
+        render(<Contents props={props} options={props.tab.currentState.options} />, containerRef.current);
     }
     function Contents(props: {
         props: TextEditorTabProps;

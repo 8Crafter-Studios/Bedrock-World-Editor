@@ -6,6 +6,10 @@
 
 # v1.0.0-beta.37
 
+## Critical Fixes
+
+-   Fixed bugs where many UI elements would fail to trigger their cleanup handlers upon unrendering in some cases. These bugs caused many issues, including the 2D world map sometimes leaving behind a permanent invisible copy that causes the same performance impact as if it was on screen, even after closing the tab, until the app was restarted.
+
 ## Additions
 
 -   Added validation to numeric inputs in the settings menu.

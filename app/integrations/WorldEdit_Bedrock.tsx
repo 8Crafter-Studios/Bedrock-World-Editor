@@ -2251,7 +2251,10 @@ const thisIntegration = {
                     });
                 break export_structures;
             }
-            return (): void => void abortController.abort("Effect cleanup");
+            return (): void => {
+                void abortController.abort("Effect cleanup");
+                if (tablesContainerRef.current) render(null, tablesContainerRef.current);
+            };
         });
         return (
             <>

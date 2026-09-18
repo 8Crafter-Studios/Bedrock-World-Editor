@@ -109,6 +109,7 @@ export default function EditorWidgetOverlayBar(props: EditorWidgetOverlayBarProp
                     registeredWidgets
                         .filter((registeredWidget: EditorWidgetOverlayBarRegisteredWidget): boolean => registeredWidget.id === id)
                         .forEach((registeredWidget: EditorWidgetOverlayBarRegisteredWidget): void => {
+                            if (registeredWidget.ref.current) render(null, registeredWidget.ref.current);
                             registeredWidget.ref.current?.remove();
                             if (registeredWidgets.includes(registeredWidget)) registeredWidgets.splice(registeredWidgets.indexOf(registeredWidget), 1);
                         });

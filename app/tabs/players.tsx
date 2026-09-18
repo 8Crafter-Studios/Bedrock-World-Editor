@@ -334,15 +334,14 @@ export default function PlayersTab(props: PlayersTabProps): JSX.SpecificElement<
     useEffect((): (() => void) => {
         return (): void => {
             abortController.abort(new DOMException("Tab switched.", "AbortError"));
+            if (containerRef.current) render(null, containerRef.current);
         };
     });
     getPlayersTabContents(props.tab, abortController.signal).then(
         (element: JSX.Element): void => {
             if (!containerRef.current) return;
-            // const tempElement: HTMLDivElement = document.createElement("div");
             render(null, containerRef.current);
-            render(element, containerRef.current /* tempElement */);
-            // containerRef.current?.replaceChildren(...tempElement.children);
+            render(element, containerRef.current);
         },
         (reason: unknown): void => {
             if (reason instanceof DOMException && reason.name === "AbortError" && reason.message === "Tab switched.") return;
@@ -555,6 +554,11 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
                         (sectionID: (typeof ConfigConstants.views.Players.playersTabModeToSectionIDs)[typeof mode][number], index: number): JSX.Element => {
                             function Test1(): JSX.Element {
                                 const bodyRef: RefObject<HTMLTableSectionElement> = useRef<HTMLTableSectionElement>(null);
+                                useEffect((): (() => void) => {
+                                    return (): void => {
+                                        if (bodyRef.current) render(null, bodyRef.current);
+                                    };
+                                });
                                 // const [columnHeadersContextMenu_isOpen, columnHeadersContextMenu_setOpen] = useState(false);
                                 // const [columnHeadersContextMenu_anchorPoint, columnHeadersContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
                                 const headerName = ConfigConstants.views.Players.playersTabModeSectionHeaderNames[mode][index];
@@ -612,13 +616,8 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
                                                             totalPages={Math.ceil(tablesContents[index]!.length / 20)}
                                                             onPageChange={(page: number): void => {
                                                                 if (!bodyRef.current) return;
-                                                                // let tempElement: HTMLDivElement = document.createElement("div");
                                                                 render(null, bodyRef.current);
-                                                                render(
-                                                                    <>{...tablesContents[index]!.slice((page - 1) * 20, page * 20)}</>,
-                                                                    bodyRef.current /* tempElement */
-                                                                );
-                                                                // bodyRef.current.replaceChildren(...tempElement.children);
+                                                                render(<>{...tablesContents[index]!.slice((page - 1) * 20, page * 20)}</>, bodyRef.current);
                                                             }}
                                                         />
                                                     </td>
@@ -686,10 +685,8 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
                     )
                 );
             }
-            // const tempElement: HTMLDivElement = document.createElement("div");
             render(null, tablesContainerRef.current);
-            render(<TablesContents />, tablesContainerRef.current /* tempElement */);
-            // tablesContainerRef.current.replaceChildren(...tempElement.children);
+            render(<TablesContents />, tablesContainerRef.current);
         }
         let clientQuery: Omit<TabManagerTab_LevelDBSearchQuery, "searchTargets"> & {
             searchTargets: {
@@ -897,6 +894,7 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
                 config.off("settingChanged:views.players.modeSettings.simple.columns", onSimpleModeColumnsChanged);
                 config.off("settingChanged:views.players.modeSettings.raw.sections.client.columns", onRawModeColumnsChanged);
                 config.off("settingChanged:views.players.modeSettings.raw.sections.server.columns", onRawModeColumnsChanged);
+                if (tablesContainerRef.current) render(null, tablesContainerRef.current);
             };
         });
         let lastHideErrorPopupFunction: (() => void) | undefined;
@@ -1515,15 +1513,13 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
                                 }
                                 if (searchRefs.searchTextBox.current) searchRefs.searchTextBox.current.blur();
                                 if (tablesContainerRef.current) {
-                                    // const tempElement: HTMLDivElement = document.createElement("div");
                                     render(null, tablesContainerRef.current);
                                     render(
                                         <div style="width: 100%; height: 100%; position: fixed; bottom: 0; left: 0; display: flex; flex-direction: row; overflow: auto;">
                                             <LoadingScreenContents messageContainerRef={loadingScreenMessageContainerRef} />
                                         </div>,
-                                        tablesContainerRef.current // tempElement
+                                        tablesContainerRef.current
                                     );
-                                    // tablesContainerRef.current.replaceChildren(...tempElement.children);
                                 }
                                 void updateTablesContents(true);
                             } catch (e) {

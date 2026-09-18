@@ -1,5 +1,5 @@
 import type { JSX, RefObject, TargetedMouseEvent } from "preact";
-import _React, { render, useRef } from "preact/compat";
+import _React, { render, useEffect, useRef } from "preact/compat";
 import { LoadingScreenContents } from "../app";
 import EditorWidgetOverlayBar, { type EditorWidgetOverlayBarWidgetRegistry } from "../components/EditorWidgetOverlayBar";
 import { initWorldEditor2DDataStorageObjectProps, WorldEditor2D, type WorldEditor2DDataStorageObject } from "../components/WorldEditor2D";
@@ -81,11 +81,15 @@ export default function WorldEditorTab(props: WorldEditorTabProps): JSX.Specific
             </div>
         );
     }
+    useEffect((): (() => void) => {
+        return (): void => {
+            if (containerRef.current) render(null, containerRef.current);
+        };
+    });
     function reloadContents(): void {
         if (!props.tab.currentState.worldTab) return;
         if (!containerRef.current) return;
         // fakeAssertIsValidOptionsType(props.tab.currentState.worldTab);
-        // const tempElement: HTMLDivElement = document.createElement("div");
         if (levelDBOpenFailure) {
             render(null, containerRef.current);
             render(<LevelDBOpenFailureNotice />, containerRef.current);
@@ -96,8 +100,8 @@ export default function WorldEditorTab(props: WorldEditorTabProps): JSX.Specific
         //     render(<DataLoadFailureNotice reason={dataLoadFailureNoticeReason} />, containerRef.current);
         //     return;
         // }
-        render(<Contents props={props} options={props.tab.currentState.worldTab} />, containerRef.current /* tempElement */);
-        // containerRef.current.replaceChildren(...tempElement.children);
+        render(null, containerRef.current);
+        render(<Contents props={props} options={props.tab.currentState.worldTab} />, containerRef.current);
     }
     function Contents(props: { props: WorldEditorTabProps; options: WorldEditorDataStorageObject }): JSX.Element {
         switch (props.options.viewMode) {

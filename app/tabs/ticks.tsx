@@ -126,15 +126,14 @@ export default function TicksTab(props: TicksTabProps): JSX.SpecificElement<"div
     useEffect((): (() => void) => {
         return (): void => {
             abortController.abort(new DOMException("Tab switched.", "AbortError"));
+            if (containerRef.current) render(null, containerRef.current);
         };
     });
     getTicksTabContents(props.tab, abortController.signal).then(
         (element: JSX.Element): void => {
             if (!containerRef.current) return;
-            // const tempElement: HTMLDivElement = document.createElement("div");
             render(null, containerRef.current);
-            render(element, containerRef.current /* tempElement */);
-            // containerRef.current?.replaceChildren(...tempElement.children);
+            render(element, containerRef.current);
         },
         (reason: unknown): void => {
             if (reason instanceof DOMException && reason.name === "AbortError" && reason.message === "Tab switched.") return;
@@ -420,12 +419,15 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                         (sectionID: (typeof ConfigConstants.views.Ticks.ticksTabModeToSectionIDs)[typeof mode][number], index: number): JSX.Element => {
                             function Test1(): JSX.Element {
                                 const bodyRef: RefObject<HTMLTableSectionElement> = useRef<HTMLTableSectionElement>(null);
+                                useEffect((): (() => void) => {
+                                    return (): void => {
+                                        if (bodyRef.current) render(null, bodyRef.current);
+                                    };
+                                });
                                 localTablesContents.observe((tablesContents: JSX.Element[][]): void => {
                                     if (!asyncMode || !bodyRef.current) return;
-                                    // const tempElement: HTMLDivElement = document.createElement("div");
                                     render(null, bodyRef.current);
-                                    render(<>{...tablesContents[index]!}</>, bodyRef.current /* tempElement */);
-                                    // bodyRef.current.replaceChildren(...tempElement.children);
+                                    render(<>{...tablesContents[index]!}</>, bodyRef.current);
                                 });
                                 // const [columnHeadersContextMenu_isOpen, columnHeadersContextMenu_setOpen] = useState(false);
                                 // const [columnHeadersContextMenu_anchorPoint, columnHeadersContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
@@ -497,7 +499,6 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                                                         page * 20
                                                                     );
                                                                 }
-                                                                // let tempElement: HTMLDivElement = document.createElement("div");
                                                                 render(null, bodyRef.current);
                                                                 render(
                                                                     <>
@@ -505,9 +506,8 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                                                             localTablesContents.get()[index]!
                                                                         :   tablesContents[index]!.slice((page - 1) * 20, page * 20)}
                                                                     </>,
-                                                                    bodyRef.current /* tempElement */
+                                                                    bodyRef.current
                                                                 );
-                                                                // bodyRef.current.replaceChildren(...tempElement.children);
                                                             }}
                                                         />
                                                     </td>
@@ -600,10 +600,8 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                     tablesContents = emptyTablesContents;
                 }
             }
-            // const tempElement: HTMLDivElement = document.createElement("div");
             render(null, tablesContainerRef.current);
-            render(<TablesContents />, tablesContainerRef.current /* tempElement */);
-            // tablesContainerRef.current.replaceChildren(...tempElement.children);
+            render(<TablesContents />, tablesContainerRef.current);
         }
         currentUpdateTablesContentsFunction = updateTablesContents;
         let randomTickQuery: Omit<TabManagerTab_LevelDBSearchQuery<true>, "searchTargets"> & {
@@ -773,6 +771,7 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                 config.off("settingChanged:views.ticks.mode", onModeChanged);
                 config.off("settingChanged:views.ticks.modeSettings.simple.sections.randomTicks.columns", onSimpleModeColumnsChanged);
                 config.off("settingChanged:views.ticks.modeSettings.simple.sections.pendingTicks.columns", onSimpleModeColumnsChanged);
+                if (tablesContainerRef.current) render(null, tablesContainerRef.current);
             };
         });
         let lastHideErrorPopupFunction: (() => void) | undefined;
@@ -1383,15 +1382,13 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                 }
                                 if (searchRefs.searchTextBox.current) searchRefs.searchTextBox.current.blur();
                                 if (tablesContainerRef.current) {
-                                    // const tempElement: HTMLDivElement = document.createElement("div");
                                     render(null, tablesContainerRef.current);
                                     render(
                                         <div style="width: 100%; height: 100%; position: fixed; bottom: 0; left: 0; display: flex; flex-direction: row; overflow: auto;">
                                             <LoadingScreenContents messageContainerRef={loadingScreenMessageContainerRef} />
                                         </div>,
-                                        tablesContainerRef.current // tempElement
+                                        tablesContainerRef.current
                                     );
-                                    // tablesContainerRef.current.replaceChildren(...tempElement.children);
                                 }
                                 void updateTablesContents(UpdateTablesContentsMode.ReloadTablesContents);
                             } catch (e) {

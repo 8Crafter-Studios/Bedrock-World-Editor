@@ -1,5 +1,5 @@
 import type { JSX, RefObject, TargetedMouseEvent } from "preact";
-import _React, { render, useRef } from "preact/compat";
+import _React, { render, useEffect, useRef } from "preact/compat";
 import { LoadingScreenContents } from "../app";
 import EditorWidgetOverlayBar, { type EditorWidgetOverlayBarWidgetRegistry } from "../components/EditorWidgetOverlayBar";
 import BinaryHexEditor, { initHexEditorDataStorageObjectProps, type HexEditorDataStorageObject } from "../components/BinaryHexEditor";
@@ -156,10 +156,14 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
     else if (!props.tab.currentState.options.dataStorageObject.hexEditor) {
         initHexEditorDataStorageObjectProps(props.tab.currentState.options.dataStorageObject);
     }
+    useEffect((): (() => void) => {
+        return (): void => {
+            if (containerRef.current) render(null, containerRef.current);
+        };
+    });
     function reloadContents(): void {
         if (!containerRef.current) return;
         fakeAssertIsValidOptionsType(props.tab.currentState.options);
-        // const tempElement: HTMLDivElement = document.createElement("div");
         if (levelDBOpenFailure && !props.tab.currentState.options.dataStorageObject) {
             render(null, containerRef.current);
             render(<LevelDBOpenFailureNotice />, containerRef.current);
@@ -175,8 +179,8 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
             render(<MissingLevelDBKeyNotice />, containerRef.current);
             return;
         }
-        render(<Contents props={props} options={props.tab.currentState.options} />, containerRef.current /* tempElement */);
-        // containerRef.current.replaceChildren(...tempElement.children);
+        render(null, containerRef.current);
+        render(<Contents props={props} options={props.tab.currentState.options} />, containerRef.current);
     }
     function Contents(props: {
         props: HexEditorTabProps;

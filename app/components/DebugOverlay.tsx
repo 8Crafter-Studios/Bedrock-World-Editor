@@ -106,7 +106,7 @@ export default function DebugOverlay(): JSX.SpecificElement<"div"> {
     useEffect((): (() => void) => {
         function debugHUDChangeCallback(mode: typeof config.debugHUD): void {
             if (!containerRef.current) return;
-            containerRef.current.replaceChildren();
+            render(null, containerRef.current);
             render(<DebugOverlayContents mode={mode} />, containerRef.current);
         }
         window.addEventListener(
@@ -135,6 +135,7 @@ export default function DebugOverlay(): JSX.SpecificElement<"div"> {
         config.on("settingChanged:debugHUD", debugHUDChangeCallback);
         return (): void => {
             config.off("settingChanged:debugHUD", debugHUDChangeCallback);
+            if (containerRef.current) render(null, containerRef.current);
         };
     }, []);
     return (

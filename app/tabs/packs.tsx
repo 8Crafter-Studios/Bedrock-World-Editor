@@ -38,6 +38,7 @@ export default function PacksTab(props: PacksTabProps): JSX.SpecificElement<"div
     useEffect((): (() => void) => {
         return (): void => {
             abortController.abort(new DOMException("Tab switched.", "AbortError"));
+            if (containerRef.current) render(null, containerRef.current);
         };
     });
     getPacksTabContents(props.tab, abortController.signal).then(
@@ -1360,11 +1361,15 @@ async function getPacksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                         (sectionID: (typeof ConfigConstants.views.Packs.packsTabModeToSectionIDs)[typeof mode][number], index: number): JSX.Element => {
                             function Test1(): JSX.Element {
                                 const bodyRef: RefObject<HTMLTableSectionElement> = useRef<HTMLTableSectionElement>(null);
+                                useEffect((): (() => void) => {
+                                    return (): void => {
+                                        if (bodyRef.current) render(null, bodyRef.current);
+                                    };
+                                });
                                 localTablesContents.observe((tablesContents: JSX.Element[][]): void => {
                                     if (!asyncMode || !bodyRef.current) return;
-                                    const tempElement: HTMLDivElement = document.createElement("div");
-                                    render(<>{...tablesContents[index]!}</>, tempElement);
-                                    bodyRef.current.replaceChildren(...tempElement.children);
+                                    render(null, bodyRef.current);
+                                    render(<>{...tablesContents[index]!}</>, bodyRef.current);
                                 });
                                 // const [columnHeadersContextMenu_isOpen, columnHeadersContextMenu_setOpen] = useState(false);
                                 // const [columnHeadersContextMenu_anchorPoint, columnHeadersContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
@@ -1433,7 +1438,6 @@ async function getPacksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                                                         page * 20
                                                                     );
                                                                 }
-                                                                // let tempElement: HTMLDivElement = document.createElement("div");
                                                                 render(null, bodyRef.current);
                                                                 render(
                                                                     <>
@@ -1441,9 +1445,8 @@ async function getPacksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                                                             localTablesContents.get()[index]!
                                                                         :   tablesContents[index]!.slice((page - 1) * 20, page * 20)}
                                                                     </>,
-                                                                    bodyRef.current /* tempElement */
+                                                                    bodyRef.current
                                                                 );
-                                                                // bodyRef.current.replaceChildren(...tempElement.children);
                                                             }}
                                                         />
                                                     </td>
@@ -1531,9 +1534,8 @@ async function getPacksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                     tablesContents = emptyTablesContents;
                 }
             }
-            const tempElement: HTMLDivElement = document.createElement("div");
-            render(<TablesContents />, tempElement);
-            tablesContainerRef.current.replaceChildren(...tempElement.children);
+            render(null, tablesContainerRef.current);
+            render(<TablesContents />, tablesContainerRef.current);
         }
         currentUpdateTablesContentsFunction = updateTablesContents;
         useEffect((): (() => void) => {
@@ -1559,6 +1561,7 @@ async function getPacksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                 config.off("settingChanged:views.packs.modeSettings.active.sections.behaviorPacks.columns", onActiveModeColumnsChanged);
                 config.off("settingChanged:views.packs.modeSettings.inactive.sections.resourcePacks.columns", onInactiveModeColumnsChanged);
                 config.off("settingChanged:views.packs.modeSettings.inactive.sections.behaviorPacks.columns", onInactiveModeColumnsChanged);
+                if (tablesContainerRef.current) render(null, tablesContainerRef.current);
             };
         });
         return (

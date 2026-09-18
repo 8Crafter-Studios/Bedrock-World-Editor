@@ -17,10 +17,8 @@ export default function TabBar(): JSX.Element {
     useEffect((): (() => void) => {
         function update(): void {
             if (tabContainerRef.current === null) return;
-            const element: HTMLUListElement = document.createElement("ul");
-            render(<RenderTabs />, element);
             render(null, tabContainerRef.current);
-            tabContainerRef.current.replaceChildren(...element.children);
+            render(<RenderTabs />, tabContainerRef.current);
         }
         function hideAddTabPopup(event: MouseEvent): void {
             if (popupRef.current === null || popupRef.current.contains(event.target as Node)) return;
@@ -32,6 +30,7 @@ export default function TabBar(): JSX.Element {
         tabManager.on("reorderTabs", update);
         window.addEventListener("mousedown", hideAddTabPopup);
         return (): void => {
+            if (tabContainerRef.current) render(null, tabContainerRef.current);
             tabManager.off("openTab", update);
             tabManager.off("closeTab", update);
             tabManager.off("switchTab", update);

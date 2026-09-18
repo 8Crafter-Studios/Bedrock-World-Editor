@@ -284,14 +284,14 @@ export default function ViewFilesTab(props: ViewFilesTabProps): JSX.SpecificElem
     useEffect((): (() => void) => {
         return (): void => {
             abortController.abort(new DOMException("Tab switched.", "AbortError"));
+            if (containerRef.current) render(null, containerRef.current);
         };
     });
     getViewFilesTabContents(props.tab, abortController.signal).then(
         (element: JSX.Element): void => {
             if (!containerRef.current) return;
-            const tempElement: HTMLDivElement = document.createElement("div");
-            render(element, tempElement);
-            containerRef.current?.replaceChildren(...tempElement.children);
+            render(null, containerRef.current);
+            render(element, containerRef.current);
         },
         (reason: unknown): void => {
             if (reason instanceof DOMException && reason.name === "AbortError" && reason.message === "Tab switched.") return;
@@ -522,8 +522,13 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
             return (
                 <>
                     {...(["simple"] as const).map((_sectionID: "simple", index: number): JSX.Element => {
-                        const bodyRef: RefObject<HTMLTableSectionElement> = useRef<HTMLTableSectionElement>(null);
                         function Test1(): JSX.Element {
+                            const bodyRef: RefObject<HTMLTableSectionElement> = useRef<HTMLTableSectionElement>(null);
+                            useEffect((): (() => void) => {
+                                return (): void => {
+                                    if (bodyRef.current) render(null, bodyRef.current);
+                                };
+                            });
                             // const [columnHeadersContextMenu_isOpen, columnHeadersContextMenu_setOpen] = useState(false);
                             // const [columnHeadersContextMenu_anchorPoint, columnHeadersContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
                             return (
@@ -568,9 +573,8 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                                         totalPages={Math.ceil(tablesContents[index]!.length / 20)}
                                                         onPageChange={(page: number): void => {
                                                             if (!bodyRef.current) return;
-                                                            const tempElement: HTMLDivElement = document.createElement("div");
-                                                            render(<>{...tablesContents[index]!.slice((page - 1) * 20, page * 20)}</>, tempElement);
-                                                            bodyRef.current.replaceChildren(...tempElement.children);
+                                                            render(null, bodyRef.current);
+                                                            render(<>{...tablesContents[index]!.slice((page - 1) * 20, page * 20)}</>, bodyRef.current);
                                                         }}
                                                     />
                                                 </td>
@@ -895,11 +899,15 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                     )
                 );
             }
-            const tempElement: HTMLDivElement = document.createElement("div");
-            render(<TablesContents />, tempElement);
-            tablesContainerRef.current.replaceChildren(...tempElement.children);
+            render(null, tablesContainerRef.current);
+            render(<TablesContents />, tablesContainerRef.current);
         }
         currentUpdateTablesContentsFunction = updateTablesContents;
+        useEffect((): (() => void) => {
+            return (): void => {
+                if (tablesContainerRef.current) render(null, tablesContainerRef.current);
+            };
+        });
         let lastHideErrorPopupFunction: (() => void) | undefined;
         return (
             <>
@@ -1449,14 +1457,13 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                 }
                                 if (searchRefs.searchTextBox.current) searchRefs.searchTextBox.current.blur();
                                 if (tablesContainerRef.current) {
-                                    const tempElement: HTMLDivElement = document.createElement("div");
+                                    render(null, tablesContainerRef.current);
                                     render(
                                         <div style="width: 100%; height: 100%; position: fixed; bottom: 0; left: 0; display: flex; flex-direction: row; overflow: auto;">
                                             <LoadingScreenContents messageContainerRef={loadingScreenMessageContainerRef} />
                                         </div>,
-                                        tempElement
+                                        tablesContainerRef.current
                                     );
-                                    tablesContainerRef.current.replaceChildren(...tempElement.children);
                                 }
                                 void updateTablesContents(true);
                             } catch (e) {

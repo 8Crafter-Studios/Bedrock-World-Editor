@@ -7,7 +7,7 @@ import { entryContentTypeToFormatMap, gameModes, toLong, type EntryContentTypeFo
 import { Dirent, existsSync, globSync, readdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import NBT from "prismarine-nbt";
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import WorldSettingsTab from "./tabs/worldSettings";
 import SubTabBar from "./components/SubTabBar";
 import PlayersTab from "./tabs/players";
@@ -537,7 +537,7 @@ export interface WorldSelectorProps {
  * @returns The JSX element for the component.
  */
 export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"div"> {
-    const renderWorldsContainerRef: RefObject<HTMLDivElement> = useRef(null);
+    const renderWorldsContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     const viewMode: "compact" | "detailed" | "grid" = "detailed";
     const [data, updateData] = useState<MinecraftWorldDisplayDetails[]>([]);
     const [showingMore, updateShowingMore] = useState(false);
@@ -998,7 +998,7 @@ export function StartScreen(): JSX.SpecificElement<"div"> {
  * @returns The JSX element for the start screen contents.
  */
 export function StartScreenContents(): JSX.Element {
-    const forceTriggerUpdateRef: RefObject<() => void> = useRef(null);
+    const forceTriggerUpdateRef: RefObject<() => void> = useRef<() => void>(null);
     return (
         <>
             <div
@@ -1100,10 +1100,16 @@ export function LoadingScreenContents(props: LoadingScreenContentsProps): JSX.El
  * @returns The JSX element for the main editor view.
  */
 export function MainEditor(): JSX.SpecificElement<"div"> {
+    const tabContentsContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
+    useEffect((): (() => void) => {
+        return (): void => {
+            if (tabContentsContainerRef.current) render(null, tabContentsContainerRef.current);
+        };
+    });
     return (
         <div style="width: 100vw; height: 100vh; position: fixed; bottom: 0; left: 0; display: flex; flex-direction: column;">
             <TabBar />
-            <div id="tab-contents-container" style="display: contents;" />
+            <div id="tab-contents-container" style="display: contents;" ref={tabContentsContainerRef} />
         </div>
     );
 }
@@ -1122,20 +1128,24 @@ export interface WorldEditorProps {
  * @returns The JSX element for the world editor.
  */
 export function WorldEditor(props: WorldEditorProps): JSX.SpecificElement<"div"> {
-    const containerRef: RefObject<HTMLDivElement> = useRef(null);
+    const containerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
+    useLayoutEffect((): void => {
+        if (containerRef.current) {
+            render(<WorldEditorTabRenderer tab={props.tab.selectedTab} parentTab={props.tab} />, containerRef.current);
+        }
+    });
     useEffect((): (() => void) => {
         function update(): void {
             if (containerRef.current === null) return;
-            // const element: HTMLDivElement = document.createElement("div");
             render(null, containerRef.current);
-            render(<WorldEditorTabRenderer tab={props.tab.selectedTab} parentTab={props.tab} />, containerRef.current /* element */);
-            // containerRef.current.replaceChildren(...element.children);
+            render(<WorldEditorTabRenderer tab={props.tab.selectedTab} parentTab={props.tab} />, containerRef.current);
         }
         props.tab.on("reloadCurrentSubTab", update);
         props.tab.on("switchTab", update);
         return (): void => {
             props.tab.off("reloadCurrentSubTab", update);
             props.tab.off("switchTab", update);
+            if (containerRef.current) render(null, containerRef.current);
         };
     }, []);
     return (
@@ -1144,7 +1154,8 @@ export function WorldEditor(props: WorldEditorProps): JSX.SpecificElement<"div">
             <div style="width: -webkit-fill-available; height: 0; flex: 1; display: flex; flex-direction: row;">
                 <LeftSidebar tab={props.tab} />
                 <main style="width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1;" id="main" ref={containerRef}>
-                    <WorldEditorTabRenderer tab={props.tab.selectedTab} parentTab={props.tab} />
+                    {/* Nothing is needed here as useLayoutEffect will insert the WorldEditorTabRenderer component before the next frame renders. */}
+                    {/* The WorldEditorTabRenderer component is being inserted via render() instead of just being here so that cleanup effects are properly triggered when the tab is switched. */}
                 </main>
             </div>
         </div>
@@ -1281,39 +1292,27 @@ tabManager.on("switchTab", ({ previousTab, newTab }: TabManagerSwitchTabEvent): 
             </div>,
             appContentsElement
         );
-        // const tempElement: HTMLDivElement = document.createElement("div");
-        // render(
-        //     <div style="width: 100vw; height: 100vh; position: fixed; bottom: 0; left: 0; display: flex; flex-direction: row; overflow: auto;">
-        //         <LoadingScreenContents />
-        //     </div>,
-        //     tempElement
-        // );
-        // appContentsElement.replaceChildren(...tempElement.children);
         return;
     }
     if (previousTab === null || lastTabContainerType !== "tab") {
         lastTabContainerType = "tab";
         render(null, appContentsElement);
         render(<MainEditor />, appContentsElement);
-        // const tempElement: HTMLDivElement = document.createElement("div");
-        // render(<MainEditor />, tempElement);
-        // appContentsElement.replaceChildren(...tempElement.children);
     }
     const tabContentsElement: HTMLDivElement | null = document.getElementById("tab-contents-container") as HTMLDivElement | null;
     if (!tabContentsElement) return;
-    // const tempElement: HTMLDivElement = document.createElement("div");
     render(null, tabContentsElement);
     if (newTab === null) {
         render(
             <div style="width: 100vw; height: 0; flex: 1; display: flex; flex-direction: row;">
                 <StartScreenContents />
             </div>,
-            tabContentsElement // tempElement
+            tabContentsElement
         );
     } else if (typeof newTab !== "string") {
         switch (newTab.type) {
             case "world":
-                render(<WorldEditor tab={newTab} />, tabContentsElement /* tempElement */);
+                render(<WorldEditor tab={newTab} />, tabContentsElement);
                 break;
             case "leveldb":
                 render(
@@ -1402,14 +1401,11 @@ tabManager.on("switchTab", ({ previousTab, newTab }: TabManagerSwitchTabEvent): 
                     <div style="width: 100vw; height: 0; flex: 1; display: flex; flex-direction: row;">
                         <LoadingScreenContents />
                     </div>,
-                    tabContentsElement // tempElement
+                    tabContentsElement
                 );
                 break;
             case "settings":
-                render(
-                    <SettingsPage />,
-                    tabContentsElement // tempElement
-                );
+                render(<SettingsPage />, tabContentsElement);
                 break;
             default:
                 render(
@@ -1435,7 +1431,6 @@ tabManager.on("switchTab", ({ previousTab, newTab }: TabManagerSwitchTabEvent): 
                 break;
         }
     }
-    // tabContentsElement.replaceChildren(...tempElement.children);
 });
 
 window.addEventListener("keydown", (event: KeyboardEvent): void => {

@@ -545,23 +545,26 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
         );
     }
     if (!isSupportedSyncEditorValueDataType(props.dataStorageObject.dataType) && !data.length) {
-        useEffect((): void => {
-            if (!editorConainterRef.current) return;
-            if (data.length) return;
-            void convertDataToEditorValue().then((editorValue: number[]): void => {
-                if (data.length) return;
-                data.push(...editorValue, null);
-                if (!editorConainterRef.current) return;
-                // setNonce((v: number): number => v + 1);
-                render(null, editorConainterRef.current);
-                render(
-                    <>
-                        <HexEditorInternal rerenderRef={rerenderEditorRef} />
-                        <div class="hexEditorErrorMessageDisplayBox" ref={editorErrorMessageDisplayBoxRef}></div>
-                    </>,
-                    editorConainterRef.current
-                );
-            });
+        useEffect((): (() => void) | undefined => {
+            if (editorConainterRef.current && !data.length) {
+                void convertDataToEditorValue().then((editorValue: number[]): void => {
+                    if (data.length) return;
+                    data.push(...editorValue, null);
+                    if (!editorConainterRef.current) return;
+                    // setNonce((v: number): number => v + 1);
+                    render(null, editorConainterRef.current);
+                    render(
+                        <>
+                            <HexEditorInternal rerenderRef={rerenderEditorRef} />
+                            <div class="hexEditorErrorMessageDisplayBox" ref={editorErrorMessageDisplayBoxRef}></div>
+                        </>,
+                        editorConainterRef.current
+                    );
+                });
+            }
+            return (): void => {
+                if (editorConainterRef.current) render(null, editorConainterRef.current);
+            };
         });
         return (
             <div class="hexEditorContainer" ref={editorConainterRef}>

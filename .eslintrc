@@ -239,7 +239,7 @@
         "jsdoc/check-tag-names": [
             "warn",
             {
-                "definedTags": ["supports", "platform"],
+                "definedTags": ["supports", "platform", "xxx", "warning"],
                 // TODO: Find a way to re-enable this without it flagging `readonly` tags at some point.
                 "typed": false
             }

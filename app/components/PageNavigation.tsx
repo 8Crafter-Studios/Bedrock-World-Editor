@@ -54,6 +54,11 @@ export function PageNavigation(props: PageNavigationProps): JSX.Element {
         render(null, containerRef.current);
         render(<Contents />, containerRef.current);
     }
+    useEffect((): (() => void) => {
+        return (): void => {
+            if (containerRef.current) render(null, containerRef.current);
+        };
+    });
     function Contents(): JSX.Element {
         const goToPageRef: RefObject<HTMLInputElement> = useRef<HTMLInputElement>(null);
         const pagesToShow: number[] = pageNumbers.slice(

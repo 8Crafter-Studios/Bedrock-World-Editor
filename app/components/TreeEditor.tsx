@@ -160,6 +160,11 @@ type JSONTreeNodeValue = { [key: string | number]: JSONTreeNodeValue } | string 
 
 // TODO: When creating a non-primitive tag, the created tag should be automatically selected (it should clear the previous selection too).
 
+/**
+ * @warning Make sure to manually `render(null, ...)` on the parent element of this on cleanup.
+ *
+ * @todo Add a description for this.
+ */
 export default class TreeEditor extends React.Component<
     TreeEditorProps & { dataStorageObject: Extract<TreeEditorDataStorageObject, { dataType: TreeEditorSupportedDataType }> },
     Extract<TreeEditorDataStorageObject, { dataType: TreeEditorSupportedDataType }>
@@ -176,10 +181,8 @@ export default class TreeEditor extends React.Component<
         const onValueChange: typeof this.props.onValueChange = (...args: Parameters<NonNullable<typeof this.props.onValueChange>>): boolean => {
             const result: boolean | undefined = this.props.onValueChange?.(...args);
             if (!result && outerContainerElementRef.current) {
-                // const tempElement: HTMLDivElement = document.createElement("div");
                 render(null, outerContainerElementRef.current);
-                render(<TreeEditor {...this.props} />, outerContainerElementRef.current.parentElement! /* tempElement */);
-                // outerContainerElementRef.current.parentElement?.replaceChild(tempElement.children[0]!, outerContainerElementRef.current);
+                render(<TreeEditor {...this.props} />, outerContainerElementRef.current.parentElement!);
             }
             return result ?? false;
         };
@@ -214,6 +217,7 @@ export default class TreeEditor extends React.Component<
             JSON: Record<"list" | "object" | "number" | "string" | "boolean", RefObject<HTMLButtonElement>>;
         };
         useEffect((): (() => void) => {
+            const targetsToUnrenderOnCleanup = new Set<HTMLElement>();
             const widgetId: string = `TreeEditor_${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
             if (this.props.overlayBarRegistry) {
                 this.props.overlayBarRegistry.registerWidget(
@@ -368,6 +372,7 @@ export default class TreeEditor extends React.Component<
                                             );
                                         }
                                         render(<Elem />, containerElement);
+                                        targetsToUnrenderOnCleanup.add(containerElement);
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.byte}
@@ -489,6 +494,7 @@ export default class TreeEditor extends React.Component<
                                             );
                                         }
                                         render(<Elem />, containerElement);
+                                        targetsToUnrenderOnCleanup.add(containerElement);
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.short}
@@ -610,6 +616,7 @@ export default class TreeEditor extends React.Component<
                                             );
                                         }
                                         render(<Elem />, containerElement);
+                                        targetsToUnrenderOnCleanup.add(containerElement);
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.int}
@@ -731,6 +738,7 @@ export default class TreeEditor extends React.Component<
                                             );
                                         }
                                         render(<Elem />, containerElement);
+                                        targetsToUnrenderOnCleanup.add(containerElement);
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.long}
@@ -854,6 +862,7 @@ export default class TreeEditor extends React.Component<
                                             );
                                         }
                                         render(<Elem />, containerElement);
+                                        targetsToUnrenderOnCleanup.add(containerElement);
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.float}
@@ -977,6 +986,7 @@ export default class TreeEditor extends React.Component<
                                             );
                                         }
                                         render(<Elem />, containerElement);
+                                        targetsToUnrenderOnCleanup.add(containerElement);
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.double}
@@ -1086,6 +1096,7 @@ export default class TreeEditor extends React.Component<
                                             );
                                         }
                                         render(<Elem />, containerElement);
+                                        targetsToUnrenderOnCleanup.add(containerElement);
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.byteArray}
@@ -1195,6 +1206,7 @@ export default class TreeEditor extends React.Component<
                                             );
                                         }
                                         render(<Elem />, containerElement);
+                                        targetsToUnrenderOnCleanup.add(containerElement);
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.shortArray}
@@ -1304,6 +1316,7 @@ export default class TreeEditor extends React.Component<
                                             );
                                         }
                                         render(<Elem />, containerElement);
+                                        targetsToUnrenderOnCleanup.add(containerElement);
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.intArray}
@@ -1413,6 +1426,7 @@ export default class TreeEditor extends React.Component<
                                             );
                                         }
                                         render(<Elem />, containerElement);
+                                        targetsToUnrenderOnCleanup.add(containerElement);
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.longArray}
@@ -1516,6 +1530,7 @@ export default class TreeEditor extends React.Component<
                                             );
                                         }
                                         render(<Elem />, containerElement);
+                                        targetsToUnrenderOnCleanup.add(containerElement);
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.list}
@@ -1625,6 +1640,7 @@ export default class TreeEditor extends React.Component<
                                             );
                                         }
                                         render(<Elem />, containerElement);
+                                        targetsToUnrenderOnCleanup.add(containerElement);
                                     }}
                                     disabled
                                     ref={widgetButtons.NBT.compound}
@@ -1722,6 +1738,9 @@ export default class TreeEditor extends React.Component<
                 }
                 if (this.props.overlayBarRegistry) {
                     this.props.overlayBarRegistry.unregisterWidget(widgetId);
+                }
+                for (const target of targetsToUnrenderOnCleanup) {
+                    render(null, target);
                 }
             };
         });
@@ -2235,6 +2254,7 @@ export default class TreeEditor extends React.Component<
                             valueTextBoxRef.current.removeEventListener("keydown", onTextBoxKeyDown);
                         }
                     }
+                    if (childrenRef.current) render(null, childrenRef.current);
                 };
             });
             const value: NBTTreeNodeValue | DirectNBTTreeNodeValue | JSONTreeNodeValue =
@@ -2845,14 +2865,11 @@ export default class TreeEditor extends React.Component<
                                             );
                                         }
                                         if (expanded) {
-                                            // let tempElement: HTMLDivElement = document.createElement("div");
                                             if (childrenRef.current) render(null, childrenRef.current);
-                                            if (childrenRef.current) render(getChildren(), childrenRef.current /* tempElement */);
-                                            // childrenRef.current?.replaceChildren(...tempElement.children);
+                                            if (childrenRef.current) render(getChildren(), childrenRef.current);
                                             event.currentTarget.querySelector("img")?.setAttribute("src", treeEditorIcons.generic.arrowExpanded);
                                         } else {
                                             if (childrenRef.current) render(null, childrenRef.current);
-                                            // childrenRef.current?.replaceChildren();
                                             event.currentTarget.querySelector("img")?.setAttribute("src", treeEditorIcons.generic.arrowCollapsed);
                                         }
                                     }}

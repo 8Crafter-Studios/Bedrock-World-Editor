@@ -25,10 +25,8 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
         function update(): void {
             if (!tab.isValid) return;
             if (tabContainerRef.current === null) return;
-            const element: HTMLUListElement = document.createElement("ul");
-            render(<RenderTabs />, element);
             render(null, tabContainerRef.current);
-            tabContainerRef.current.replaceChildren(...element.children);
+            render(<RenderTabs />, tabContainerRef.current);
         }
         triggerUpdate = update;
         function hideAddTabPopup(event: MouseEvent): void {
@@ -41,6 +39,7 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
         tab.on("reorderTabs", update);
         window.addEventListener("mousedown", hideAddTabPopup);
         return (): void => {
+            if (tabContainerRef.current) render(null, tabContainerRef.current);
             tab.off("openTab", update);
             tab.off("closeTab", update);
             tab.off("switchTab", update);

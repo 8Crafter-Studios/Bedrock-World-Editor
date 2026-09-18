@@ -192,15 +192,14 @@ export default function EntitiesTab(props: EntitiesTabProps): JSX.SpecificElemen
     useEffect((): (() => void) => {
         return (): void => {
             abortController.abort(new DOMException("Tab switched.", "AbortError"));
+            if (containerRef.current) render(null, containerRef.current);
         };
     });
     getEntitiesTabContents(props.tab, abortController.signal).then(
         (element: JSX.Element): void => {
             if (!containerRef.current) return;
-            // const tempElement: HTMLDivElement = document.createElement("div");
             render(null, containerRef.current);
-            render(element, containerRef.current /* tempElement */);
-            // containerRef.current?.replaceChildren(...tempElement.children);
+            render(element, containerRef.current);
         },
         (reason: unknown): void => {
             if (reason instanceof DOMException && reason.name === "AbortError" && reason.message === "Tab switched.") return;
@@ -416,11 +415,15 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                         (sectionID: (typeof ConfigConstants.views.Entities.entitiesTabModeToSectionIDs)[typeof mode][number], index: number): JSX.Element => {
                             function Test1(): JSX.Element {
                                 const bodyRef: RefObject<HTMLTableSectionElement> = useRef<HTMLTableSectionElement>(null);
+                                useEffect((): (() => void) => {
+                                    return (): void => {
+                                        if (bodyRef.current) render(null, bodyRef.current);
+                                    };
+                                });
                                 localTablesContents.observe((tablesContents: JSX.Element[][]): void => {
                                     if (!asyncMode || !bodyRef.current) return;
-                                    const tempElement: HTMLDivElement = document.createElement("div");
-                                    render(<>{...tablesContents[index]!}</>, tempElement);
-                                    bodyRef.current.replaceChildren(...tempElement.children);
+                                    render(null, bodyRef.current);
+                                    render(<>{...tablesContents[index]!}</>, bodyRef.current);
                                 });
                                 // const [columnHeadersContextMenu_isOpen, columnHeadersContextMenu_setOpen] = useState(false);
                                 // const [columnHeadersContextMenu_anchorPoint, columnHeadersContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
@@ -486,16 +489,15 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                                                                         page * 20
                                                                     );
                                                                 }
-                                                                const tempElement: HTMLDivElement = document.createElement("div");
+                                                                render(null, bodyRef.current);
                                                                 render(
                                                                     <>
                                                                         {...asyncMode ?
                                                                             localTablesContents.get()[index]!
                                                                         :   tablesContents[index]!.slice((page - 1) * 20, page * 20)}
                                                                     </>,
-                                                                    tempElement
+                                                                    bodyRef.current
                                                                 );
-                                                                bodyRef.current.replaceChildren(...tempElement.children);
                                                             }}
                                                         />
                                                     </td>
@@ -629,9 +631,8 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                     tablesContents = emptyTablesContents;
                 }
             }
-            const tempElement: HTMLDivElement = document.createElement("div");
-            render(<TablesContents />, tempElement);
-            tablesContainerRef.current.replaceChildren(...tempElement.children);
+            render(null, tablesContainerRef.current);
+            render(<TablesContents />, tablesContainerRef.current);
         }
         useEffect((): (() => void) => {
             function onModeChanged(): void {
@@ -646,6 +647,7 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
             return (): void => {
                 config.off("settingChanged:views.entities.mode", onModeChanged);
                 config.off("settingChanged:views.entities.modeSettings.simple.columns", onSimpleModeColumnsChanged);
+                if (tablesContainerRef.current) render(null, tablesContainerRef.current);
             };
         });
         let lastHideErrorPopupFunction: (() => void) | undefined;
@@ -948,14 +950,13 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                                 }
                                 if (searchRefs.searchTextBox.current) searchRefs.searchTextBox.current.blur();
                                 if (tablesContainerRef.current) {
-                                    const tempElement: HTMLDivElement = document.createElement("div");
+                                    render(null, tablesContainerRef.current);
                                     render(
                                         <div style="width: 100%; height: 100%; position: fixed; bottom: 0; left: 0; display: flex; flex-direction: row; overflow: auto;">
                                             <LoadingScreenContents messageContainerRef={loadingScreenMessageContainerRef} />
                                         </div>,
-                                        tempElement
+                                        tablesContainerRef.current
                                     );
-                                    tablesContainerRef.current.replaceChildren(...tempElement.children);
                                 }
                                 void updateTablesContents(true);
                             } catch (e) {

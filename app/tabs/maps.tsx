@@ -247,6 +247,7 @@ export default function MapsTab(props: MapsTabProps): JSX.SpecificElement<"div">
     useEffect((): (() => void) => {
         return (): void => {
             abortController.abort(new DOMException("Tab switched.", "AbortError"));
+            if (containerRef.current) render(null, containerRef.current);
         };
     });
     getMapsTabContents(props.tab, abortController.signal).then(
@@ -469,12 +470,15 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
                         (sectionID: (typeof ConfigConstants.views.Maps.mapsTabModeToSectionIDs)[typeof mode][number], index: number): JSX.Element => {
                             function Test1(): JSX.Element {
                                 const bodyRef: RefObject<HTMLTableSectionElement> = useRef<HTMLTableSectionElement>(null);
+                                useEffect((): (() => void) => {
+                                    return (): void => {
+                                        if (bodyRef.current) render(null, bodyRef.current);
+                                    };
+                                });
                                 localTablesContents.observe((tablesContents: JSX.Element[][]): void => {
                                     if (!asyncMode || !bodyRef.current) return;
-                                    // const tempElement: HTMLDivElement = document.createElement("div");
                                     render(null, bodyRef.current);
-                                    render(<>{...tablesContents[index]!}</>, bodyRef.current /* tempElement */);
-                                    // bodyRef.current.replaceChildren(...tempElement.children);
+                                    render(<>{...tablesContents[index]!}</>, bodyRef.current);
                                 });
                                 // const [columnHeadersContextMenu_isOpen, columnHeadersContextMenu_setOpen] = useState(false);
                                 // const [columnHeadersContextMenu_anchorPoint, columnHeadersContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
@@ -537,7 +541,6 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
                                                                         page * 20
                                                                     );
                                                                 }
-                                                                // let tempElement: HTMLDivElement = document.createElement("div");
                                                                 render(null, bodyRef.current);
                                                                 render(
                                                                     <>
@@ -545,9 +548,8 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
                                                                             localTablesContents.get()[index]!
                                                                         :   tablesContents[index]!.slice((page - 1) * 20, page * 20)}
                                                                     </>,
-                                                                    bodyRef.current /* tempElement */
+                                                                    bodyRef.current
                                                                 );
-                                                                // bodyRef.current.replaceChildren(...tempElement.children);
                                                             }}
                                                         />
                                                     </td>
@@ -690,10 +692,8 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
                     tablesContents = emptyTablesContents;
                 }
             }
-            // const tempElement: HTMLDivElement = document.createElement("div");
             render(null, tablesContainerRef.current);
-            render(<TablesContents />, tablesContainerRef.current /* tempElement */);
-            // tablesContainerRef.current.replaceChildren(...tempElement.children);
+            render(<TablesContents />, tablesContainerRef.current);
         }
         currentUpdateTablesContentsFunction = updateTablesContents;
         useEffect((): (() => void) => {
@@ -709,6 +709,7 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
             return (): void => {
                 config.off("settingChanged:views.maps.mode", onModeChanged);
                 config.off("settingChanged:views.maps.modeSettings.simple.columns", onSimpleModeColumnsChanged);
+                if (tablesContainerRef.current) render(null, tablesContainerRef.current);
             };
         });
         let lastHideErrorPopupFunction: (() => void) | undefined;
@@ -1049,14 +1050,13 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
                                 }
                                 if (searchRefs.searchTextBox.current) searchRefs.searchTextBox.current.blur();
                                 if (tablesContainerRef.current) {
-                                    const tempElement: HTMLDivElement = document.createElement("div");
+                                    render(null, tablesContainerRef.current);
                                     render(
                                         <div style="width: 100%; height: 100%; position: fixed; bottom: 0; left: 0; display: flex; flex-direction: row; overflow: auto;">
                                             <LoadingScreenContents messageContainerRef={loadingScreenMessageContainerRef} />
                                         </div>,
-                                        tempElement
+                                        tablesContainerRef.current
                                     );
-                                    tablesContainerRef.current.replaceChildren(...tempElement.children);
                                 }
                                 void updateTablesContents(true);
                             } catch (e) {

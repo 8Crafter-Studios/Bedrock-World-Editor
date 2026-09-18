@@ -22,6 +22,11 @@ type SettingsTab = "general" | "video" | "audio" | "integrations" | "advanced" |
 export default function SettingsPage(): JSX.Element {
     const containerRef: RefObject<HTMLElement> = useRef(null);
     const selectedTab: Observable<SettingsTab> = createObservable<SettingsTab>("general");
+    useEffect((): (() => void) => {
+        return (): void => {
+            if (containerRef.current) render(null, containerRef.current);
+        };
+    });
     selectedTab.observe((): void => {
         if (containerRef.current === null) return;
         render(null, containerRef.current);
@@ -1253,9 +1258,10 @@ function MinecraftWorldFoldersOption(props: MinecraftWorldFoldersOptionProps): J
     function updateWorldFolderLocations(locations?: typeof worldFolderLocations): void {
         if (!worldFolderLocationsListContainerRef.current) return;
         worldFolderLocations = locations ?? config[props.configOption];
-        Array.from(worldFolderLocationsListContainerRef.current.children)
-            .slice(worldFolderLocations.length)
-            .forEach((child: Element): void => void child.remove());
+        // Array.from(worldFolderLocationsListContainerRef.current.children)
+        //     .slice(worldFolderLocations.length)
+        //     .forEach((child: Element): void => void child.remove());
+        render(null, worldFolderLocationsListContainerRef.current);
         render(<WorldFolderLocationList locations={worldFolderLocations} />, worldFolderLocationsListContainerRef.current);
     }
     function appendWorldFolderLocation(location: string = ""): void {
@@ -1365,6 +1371,7 @@ function MinecraftWorldFoldersOption(props: MinecraftWorldFoldersOptionProps): J
         config.on(`settingChanged:${props.configOption}`, updateWorldFolderLocations);
         return (): void => {
             config.off(`settingChanged:${props.configOption}`, updateWorldFolderLocations);
+            if (worldFolderLocationsListContainerRef.current) render(null, worldFolderLocationsListContainerRef.current);
         };
     });
     return (

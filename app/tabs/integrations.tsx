@@ -1,5 +1,5 @@
 import type { JSX, RefObject } from "preact";
-import _React, { render, useRef } from "preact/compat";
+import _React, { render, useEffect, useRef } from "preact/compat";
 import { integrations, type Integration } from "../integrations";
 
 /**
@@ -33,6 +33,11 @@ export default function IntegrationsTab(props: IntegrationsTabProps): JSX.Elemen
         undetected: [],
         loading: [],
     };
+    useEffect((): (() => void) => {
+        return (): void => {
+            if (tablesContainerRef.current) render(null, tablesContainerRef.current);
+        };
+    });
     function updateTablesContents(): void {
         if (!tablesContainerRef.current) return;
         render(null, tablesContainerRef.current);
