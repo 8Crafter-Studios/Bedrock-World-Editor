@@ -4,6 +4,29 @@
 
 -   Windows builds are now code signed. -->
 
+# v1.0.0-beta.37
+
+## Additions
+
+-   Added validation to numeric inputs in the settings menu.
+-   Added the "Automatic Updates" option to the "General" settings section.
+-   Added 15 new settings to the "Advanced" settings section in the new "2D World Map" subsection:
+    -   Show Chunk Deletion Warnings
+    -   Check Cached DB Keys for Biome Data Keys if Available
+    -   Use Data3D Heightmap for Surface Biome Position
+    -   Use Grass Tint Color Instead of Biome Color for Old Chunk Formats
+    -   Minimum Map Scale
+    -   Maximum Map Scale
+    -   Default Map Scale
+    -   Map Go to Position Animation Duration
+    -   Height Map Mode
+    -   Height Map Difference Mode Strength
+    -   Height Map Difference Mode Minimum Tint
+    -   Height Map Difference Mode Maximum Tint
+    -   Max Parallel Chunk Deletions
+    -   Parallelize Chunk Loading
+    -   Max Parallel Loading Chunks
+
 # v1.0.0-beta.36
 
 ## Additions

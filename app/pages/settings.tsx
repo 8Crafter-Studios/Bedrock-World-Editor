@@ -51,10 +51,41 @@ interface SettingsTabRendererProps {
  * @returns The JSX element.
  */
 function SettingsTabRenderer(props: SettingsTabRendererProps): JSX.Element {
+    function textBoxOnInputValidationHandler(event: TargetedEvent<HTMLInputElement, Event>): void {
+        if (!event.currentTarget.reportValidity()) event.currentTarget.style.outline = "1px solid red";
+        else event.currentTarget.style.outline = "";
+    }
+    function createDOMInputOnChangeHandlerRef(callback: (event: Event) => void): (element: HTMLInputElement | null) => void {
+        return (element: HTMLInputElement | null): void => {
+            if (!element || element.dataset.hasOnChangeAttached) return;
+            element.dataset.hasOnChangeAttached = "true";
+            element.addEventListener("change", callback);
+        };
+    }
     switch (props.selectedTab) {
         case "general":
             return (
                 <div style="width: -webkit-fill-available; height: -webkit-fill-available; padding: 10px; display: flex; flex-direction: column; overflow: auto;">
+                    {(process.platform === "darwin" || process.platform === "win32") && (
+                        <>
+                            <label
+                                for="settings_general_autoUpdateEnabled"
+                                class="nsel ndrg"
+                                title="Whether or not to try to automatically update the app when a new version is available. Currently only supported on Windows and macOS."
+                            >
+                                <input
+                                    id="settings_general_autoUpdateEnabled"
+                                    type="checkbox"
+                                    checked={config.autoUpdateEnabled}
+                                    onChange={(event: TargetedEvent<HTMLInputElement, Event>): void => {
+                                        config.autoUpdateEnabled = event.currentTarget.checked;
+                                    }}
+                                />
+                                Automatic Updates (Requires Restart)
+                            </label>
+                            <br class="nsel ndrg" />
+                        </>
+                    )}
                     <label
                         for="settings_general_showWorldSizesOnWorldList"
                         class="nsel ndrg"
@@ -387,7 +418,19 @@ function SettingsTabRenderer(props: SettingsTabRendererProps): JSX.Element {
         case "advanced":
             return (
                 <div style="width: -webkit-fill-available; height: -webkit-fill-available; padding: 10px; display: flex; flex-direction: column; overflow: auto;">
-                    <label for="settings_advanced_useAsyncModeInEntryViews" class="nsel ndrg">
+                    <label
+                        for="settings_advanced_useAsyncModeInEntryViews"
+                        class="nsel ndrg"
+                        title="Whether to use async mode in entry views.
+
+Async mode loads NBT data for entries only when the page containing them is selected or when searching through them.
+
+It loads data as needed and unloads it after, this makes the initial view load faster and dramatically reduces memory usage, but makes it slightly slower to switch between pages, and makes searching through entries a lot slower.
+
+- Auto: Automatically determine whether async mode should be used based on the number of entries in the view and the total number of LevelDB keys in the world.
+- Always: Use async mode in entry views.
+- Never: Don't use async mode in entry views."
+                    >
                         Use Async Mode in Entry Views
                     </label>
                     <select
@@ -430,9 +473,20 @@ It loads data as needed and unloads it after, this makes the initial view load f
                         min="1"
                         step="1"
                         value={config.asyncModeEntryThreshold}
-                        onChange={(event: TargetedEvent<HTMLInputElement, Event>): void => {
-                            config.asyncModeEntryThreshold = event.currentTarget.valueAsNumber;
-                        }}
+                        placeholder={config.constants.defaults.asyncModeEntryThreshold.toString()}
+                        onInput={textBoxOnInputValidationHandler}
+                        ref={createDOMInputOnChangeHandlerRef((event: Event): void => {
+                            if (!(event.currentTarget instanceof HTMLInputElement)) return;
+                            if (!event.currentTarget.checkValidity()) {
+                                event.currentTarget.value = config.asyncModeEntryThreshold.toString();
+                                event.currentTarget.style.outline = "";
+                                return;
+                            }
+                            const newValue: number = event.currentTarget.valueAsNumber;
+                            config.asyncModeEntryThreshold = Number.isNaN(newValue) ? undefined : newValue;
+                            const resolvedNewValue: number = config.asyncModeEntryThreshold;
+                            if (Number.isNaN(newValue)) event.currentTarget.value = resolvedNewValue.toString();
+                        })}
                     />
                     <br class="nsel ndrg" />
                     <label
@@ -448,9 +502,20 @@ It loads data as needed and unloads it after, this makes the initial view load f
                         min="1"
                         step="1"
                         value={config.asyncModeTotalKeyCountThreshold}
-                        onChange={(event: TargetedEvent<HTMLInputElement, Event>): void => {
-                            config.asyncModeEntryThreshold = event.currentTarget.valueAsNumber;
-                        }}
+                        placeholder={config.constants.defaults.asyncModeEntryThreshold.toString()}
+                        onInput={textBoxOnInputValidationHandler}
+                        ref={createDOMInputOnChangeHandlerRef((event: Event): void => {
+                            if (!(event.currentTarget instanceof HTMLInputElement)) return;
+                            if (!event.currentTarget.checkValidity()) {
+                                event.currentTarget.value = config.asyncModeEntryThreshold.toString();
+                                event.currentTarget.style.outline = "";
+                                return;
+                            }
+                            const newValue: number = event.currentTarget.valueAsNumber;
+                            config.asyncModeEntryThreshold = Number.isNaN(newValue) ? undefined : newValue;
+                            const resolvedNewValue: number = config.asyncModeEntryThreshold;
+                            if (Number.isNaN(newValue)) event.currentTarget.value = resolvedNewValue.toString();
+                        })}
                     />
                     <br class="nsel ndrg" />
                     <label
@@ -466,9 +531,494 @@ It loads data as needed and unloads it after, this makes the initial view load f
                         min="1"
                         step="1"
                         value={config.noLookupEntityDimensionDigestKeyThreshold}
-                        onChange={(event: TargetedEvent<HTMLInputElement, Event>): void => {
-                            config.noLookupEntityDimensionDigestKeyThreshold = event.currentTarget.valueAsNumber;
+                        placeholder={config.constants.defaults.noLookupEntityDimensionDigestKeyThreshold.toString()}
+                        onInput={textBoxOnInputValidationHandler}
+                        ref={createDOMInputOnChangeHandlerRef((event: Event): void => {
+                            if (!(event.currentTarget instanceof HTMLInputElement)) return;
+                            if (!event.currentTarget.checkValidity()) {
+                                event.currentTarget.value = config.noLookupEntityDimensionDigestKeyThreshold.toString();
+                                event.currentTarget.style.outline = "";
+                                return;
+                            }
+                            const newValue: number = event.currentTarget.valueAsNumber;
+                            config.noLookupEntityDimensionDigestKeyThreshold = Number.isNaN(newValue) ? undefined : newValue;
+                            const resolvedNewValue: number = config.noLookupEntityDimensionDigestKeyThreshold;
+                            if (Number.isNaN(newValue)) event.currentTarget.value = resolvedNewValue.toString();
+                        })}
+                    />
+                    <hr />
+                    <h2>2D World Map</h2>
+                    <label
+                        for="settings_general_showChunkDeletionWarnings"
+                        class="nsel ndrg"
+                        title={`Whether to show a warning prompt before deleting a chunk.
+
+Default: ${config.constants.defaults.views.world.modeSettings["2D"].showChunkDeletionWarnings}`}
+                    >
+                        <input
+                            id="settings_general_showChunkDeletionWarnings"
+                            type="checkbox"
+                            checked={config.views.world.modeSettings["2D"].showChunkDeletionWarnings}
+                            onChange={(event: TargetedEvent<HTMLInputElement, Event>): void => {
+                                config.views.world.modeSettings["2D"].showChunkDeletionWarnings = event.currentTarget.checked;
+                            }}
+                        />
+                        Show Chunk Deletion Warnings
+                    </label>
+                    {/* <br class="nsel ndrg" />
+                    <label
+                        for="settings_general_Whether to modify the coordinates based on the nether scale when switching to/from the nether dimension."
+                        class="nsel ndrg"
+                        title={`Whether to modify the coordinates based on the nether scale when switching to/from the nether dimension.
+
+Default: ${config.constants.defaults.views.world.modeSettings["2D"].applyNetherScaleToCoordinatesWhenSwitchingToOrFromNether}`}
+                    >
+                        <input
+                            id="settings_general_applyNetherScaleToCoordinatesWhenSwitchingToOrFromNether"
+                            type="checkbox"
+                            checked={config.views.world.modeSettings["2D"].applyNetherScaleToCoordinatesWhenSwitchingToOrFromNether}
+                            onChange={(event: TargetedEvent<HTMLInputElement, Event>): void => {
+                                config.views.world.modeSettings["2D"].applyNetherScaleToCoordinatesWhenSwitchingToOrFromNether = event.currentTarget.checked;
+                            }}
+                        />
+                        Apply Nether Scale To Coordinates When Switching to or From the Nether
+                    </label> */}
+                    <br class="nsel ndrg" />
+                    <label
+                        for="settings_general_checkCachedDBKeysForBiomeDataKeysIfAvailable"
+                        class="nsel ndrg"
+                        title={`If enabled, will cache a compiled a set of the biome data keys from the TabManagerTab.cachedDBKeys object mapped to hex strings, and it will check that for the biome data's DB keys instead of attempting to read them from the LevelDB.
+
+Disabling this may slightly decrease memory usage but not by very much, and this will drastically slow down chunk loading and result in way more reads from the LevelDB.
+
+Default: ${config.constants.defaults.views.world.modeSettings["2D"].checkCachedDBKeysForBiomeDataKeysIfAvailable}`}
+                    >
+                        <input
+                            id="settings_general_checkCachedDBKeysForBiomeDataKeysIfAvailable"
+                            type="checkbox"
+                            checked={config.views.world.modeSettings["2D"].checkCachedDBKeysForBiomeDataKeysIfAvailable}
+                            onChange={(event: TargetedEvent<HTMLInputElement, Event>): void => {
+                                config.views.world.modeSettings["2D"].checkCachedDBKeysForBiomeDataKeysIfAvailable = event.currentTarget.checked;
+                            }}
+                        />
+                        Check Cached DB Keys for Biome Data Keys if Available
+                    </label>
+                    <br class="nsel ndrg" />
+                    <label
+                        for="settings_general_useData3DHeightmapForSurfaceBiomePosition"
+                        class="nsel ndrg"
+                        title={`Whether to use the Data3D heightmap to find the position of the surface biome.
+
+If false, it will get the surface biome from the highest point on the highest subchunk with biome data.
+
+This is experimental.
+
+Default: ${config.constants.defaults.views.world.modeSettings["2D"].useData3DHeightmapForSurfaceBiomePosition}`}
+                    >
+                        <input
+                            id="settings_general_useData3DHeightmapForSurfaceBiomePosition"
+                            type="checkbox"
+                            checked={config.views.world.modeSettings["2D"].useData3DHeightmapForSurfaceBiomePosition}
+                            onChange={(event: TargetedEvent<HTMLInputElement, Event>): void => {
+                                config.views.world.modeSettings["2D"].useData3DHeightmapForSurfaceBiomePosition = event.currentTarget.checked;
+                            }}
+                        />
+                        Use Data3D Heightmap for Surface Biome Position - Experimental (this is known to be buggy in some cases)
+                    </label>
+                    <br class="nsel ndrg" />
+                    <label
+                        for="settings_general_useGrassTintColorInsteadOfBiomeColorForOldChunkFormats"
+                        class="nsel ndrg"
+                        title={`Whether to use the grass tint color contained within old chunk formats like Data2DLegacy and LegacyTerrain instead of the biome color.
+
+Default: ${config.constants.defaults.views.world.modeSettings["2D"].useGrassTintColorInsteadOfBiomeColorForOldChunkFormats}`}
+                    >
+                        <input
+                            id="settings_general_useGrassTintColorInsteadOfBiomeColorForOldChunkFormats"
+                            type="checkbox"
+                            checked={config.views.world.modeSettings["2D"].useGrassTintColorInsteadOfBiomeColorForOldChunkFormats}
+                            onChange={(event: TargetedEvent<HTMLInputElement, Event>): void => {
+                                config.views.world.modeSettings["2D"].useGrassTintColorInsteadOfBiomeColorForOldChunkFormats = event.currentTarget.checked;
+                            }}
+                        />
+                        Use Grass Tint Color Instead of Biome Color for Old Chunk Formats
+                    </label>
+                    <br class="nsel ndrg" />
+                    <label
+                        for="settings_advanced_minMapScale"
+                        class="nsel ndrg"
+                        title="The minimum map scale for the world view in 2D mode.
+
+The scale is how many pixels on the screen each chunk takes up.
+
+This is the limit of how far you can zoom out.
+
+NOTE: 1 is absurdly laggy, 3 is a little laggy, 4 isn't too bad, 8 is fine."
+                    >
+                        Minimum Map Scale
+                    </label>
+                    <input
+                        id="settings_advanced_minMapScale"
+                        type="number"
+                        min={Number.MIN_VALUE}
+                        step="any"
+                        value={config.views.world.modeSettings["2D"].minMapScale}
+                        placeholder={config.constants.defaults.views.world.modeSettings["2D"].minMapScale.toString()}
+                        onInput={textBoxOnInputValidationHandler}
+                        ref={createDOMInputOnChangeHandlerRef((event: Event): void => {
+                            if (!(event.currentTarget instanceof HTMLInputElement)) return;
+                            if (!event.currentTarget.checkValidity()) {
+                                event.currentTarget.value = config.views.world.modeSettings["2D"].minMapScale.toString();
+                                event.currentTarget.style.outline = "";
+                                return;
+                            }
+                            const newValue: number = event.currentTarget.valueAsNumber;
+                            config.views.world.modeSettings["2D"].minMapScale = Number.isNaN(newValue) ? undefined : newValue;
+                            const resolvedNewValue: number = config.views.world.modeSettings["2D"].minMapScale;
+                            if (Number.isNaN(newValue)) event.currentTarget.value = resolvedNewValue.toString();
+                            setDefaultMapScale: {
+                                const defaultMapScaleOptionElement: HTMLElement | undefined = $("#settings_advanced_defaultMapScale")[0];
+                                if (config.views.world.modeSettings["2D"].defaultMapScale < resolvedNewValue) {
+                                    config.views.world.modeSettings["2D"].defaultMapScale = resolvedNewValue;
+                                    if (!(defaultMapScaleOptionElement instanceof HTMLInputElement)) break setDefaultMapScale;
+                                    defaultMapScaleOptionElement.value = resolvedNewValue.toString();
+                                } else if (!(defaultMapScaleOptionElement instanceof HTMLInputElement)) break setDefaultMapScale;
+                                defaultMapScaleOptionElement.min = resolvedNewValue.toString();
+                            }
+                            setMaxMapScale: {
+                                if (config.views.world.modeSettings["2D"].maxMapScale >= resolvedNewValue) break setMaxMapScale;
+                                const maxMapScaleOptionElement: HTMLElement | undefined = $("#settings_advanced_maxMapScale")[0];
+                                config.views.world.modeSettings["2D"].maxMapScale = resolvedNewValue;
+                                if (!(maxMapScaleOptionElement instanceof HTMLInputElement)) break setMaxMapScale;
+                                maxMapScaleOptionElement.value = resolvedNewValue.toString();
+                            }
+                        })}
+                    />
+                    <br class="nsel ndrg" />
+                    <label
+                        for="settings_advanced_maxMapScale"
+                        class="nsel ndrg"
+                        title="The maximum map scale for the world view in 2D mode.
+
+The scale is how many pixels on the screen each chunk takes up.
+
+This is the limit of how far you can zoom in."
+                    >
+                        Maximum Map Scale
+                    </label>
+                    <input
+                        id="settings_advanced_maxMapScale"
+                        type="number"
+                        min={Number.MIN_VALUE}
+                        step="any"
+                        value={config.views.world.modeSettings["2D"].maxMapScale}
+                        placeholder={config.constants.defaults.views.world.modeSettings["2D"].maxMapScale.toString()}
+                        onInput={textBoxOnInputValidationHandler}
+                        ref={createDOMInputOnChangeHandlerRef((event: Event): void => {
+                            if (!(event.currentTarget instanceof HTMLInputElement)) return;
+                            if (!event.currentTarget.checkValidity()) {
+                                event.currentTarget.value = config.views.world.modeSettings["2D"].maxMapScale.toString();
+                                event.currentTarget.style.outline = "";
+                                return;
+                            }
+                            const newValue: number = event.currentTarget.valueAsNumber;
+                            config.views.world.modeSettings["2D"].maxMapScale = Number.isNaN(newValue) ? undefined : newValue;
+                            const resolvedNewValue: number = config.views.world.modeSettings["2D"].maxMapScale;
+                            if (Number.isNaN(newValue)) event.currentTarget.value = resolvedNewValue.toString();
+                            setDefaultMapScale: {
+                                const defaultMapScaleOptionElement: HTMLElement | undefined = $("#settings_advanced_defaultMapScale")[0];
+                                if (config.views.world.modeSettings["2D"].defaultMapScale > resolvedNewValue) {
+                                    config.views.world.modeSettings["2D"].defaultMapScale = resolvedNewValue;
+                                    if (!(defaultMapScaleOptionElement instanceof HTMLInputElement)) break setDefaultMapScale;
+                                    defaultMapScaleOptionElement.value = resolvedNewValue.toString();
+                                } else if (!(defaultMapScaleOptionElement instanceof HTMLInputElement)) break setDefaultMapScale;
+                                defaultMapScaleOptionElement.max = resolvedNewValue.toString();
+                            }
+                            setMinMapScale: {
+                                if (config.views.world.modeSettings["2D"].minMapScale <= resolvedNewValue) break setMinMapScale;
+                                const minMapScaleOptionElement: HTMLElement | undefined = $("#settings_advanced_minMapScale")[0];
+                                config.views.world.modeSettings["2D"].minMapScale = resolvedNewValue;
+                                if (!(minMapScaleOptionElement instanceof HTMLInputElement)) break setMinMapScale;
+                                minMapScaleOptionElement.value = resolvedNewValue.toString();
+                            }
+                        })}
+                    />
+                    <br class="nsel ndrg" />
+                    <label
+                        for="settings_advanced_defaultMapScale"
+                        class="nsel ndrg"
+                        title="The default map scale for the world view in 2D mode.
+
+The scale is how many pixels on the screen each chunk takes up.
+
+Both smaller and larger scales can increase lag, smaller scales increase lag due to an increased number of chunks that need to be rendered, larger scales increase lag due to an increased amount of manual scaling that will need to be done to the chunk's color data."
+                    >
+                        Default Map Scale
+                    </label>
+                    <input
+                        id="settings_advanced_defaultMapScale"
+                        type="number"
+                        min={config.views.world.modeSettings["2D"].minMapScale}
+                        max={config.views.world.modeSettings["2D"].maxMapScale}
+                        step="any"
+                        value={config.views.world.modeSettings["2D"].defaultMapScale}
+                        placeholder={config.constants.defaults.views.world.modeSettings["2D"].defaultMapScale.toString()}
+                        onInput={textBoxOnInputValidationHandler}
+                        ref={createDOMInputOnChangeHandlerRef((event: Event): void => {
+                            if (!(event.currentTarget instanceof HTMLInputElement)) return;
+                            if (!event.currentTarget.checkValidity()) {
+                                event.currentTarget.value = config.views.world.modeSettings["2D"].defaultMapScale.toString();
+                                event.currentTarget.style.outline = "";
+                                return;
+                            }
+                            const newValue: number = event.currentTarget.valueAsNumber;
+                            config.views.world.modeSettings["2D"].defaultMapScale = Number.isNaN(newValue) ? undefined : newValue;
+                            const resolvedNewValue: number = config.views.world.modeSettings["2D"].defaultMapScale;
+                            if (Number.isNaN(newValue)) event.currentTarget.value = resolvedNewValue.toString();
+                        })}
+                    />
+                    <br class="nsel ndrg" />
+                    <label
+                        for="settings_advanced_mapGoToPositionAnimationDuration"
+                        class="nsel ndrg"
+                        title="How long the animation for sliding the map to a specific position takes in milliseconds."
+                    >
+                        Map Go to Position Animation Duration (ms)
+                    </label>
+                    <input
+                        id="settings_advanced_mapGoToPositionAnimationDuration"
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={config.views.world.modeSettings["2D"].mapGoToPositionAnimationDuration}
+                        placeholder={config.constants.defaults.views.world.modeSettings["2D"].mapGoToPositionAnimationDuration.toString()}
+                        onInput={textBoxOnInputValidationHandler}
+                        ref={createDOMInputOnChangeHandlerRef((event: Event): void => {
+                            if (!(event.currentTarget instanceof HTMLInputElement)) return;
+                            if (!event.currentTarget.checkValidity()) {
+                                event.currentTarget.value = config.views.world.modeSettings["2D"].mapGoToPositionAnimationDuration.toString();
+                                event.currentTarget.style.outline = "";
+                                return;
+                            }
+                            const newValue: number = event.currentTarget.valueAsNumber;
+                            config.views.world.modeSettings["2D"].mapGoToPositionAnimationDuration = Number.isNaN(newValue) ? undefined : newValue;
+                            const resolvedNewValue: number = config.views.world.modeSettings["2D"].mapGoToPositionAnimationDuration;
+                            if (Number.isNaN(newValue)) event.currentTarget.value = resolvedNewValue.toString();
+                        })}
+                    />
+                    <hr />
+                    <br class="nsel ndrg" />
+                    <label
+                        for="settings_advanced_heightMapMode"
+                        class="nsel ndrg"
+                        title='The height map mode for the 2D world map.
+
+"difference" mode shades blocks based on a calculated slope value between two blocks in the height map based on their height difference.
+
+"normalized" mode shades blocks based on their absolute y-level in the height map.'
+                    >
+                        Height Map Mode
+                    </label>
+                    <select
+                        id="settings_advanced_heightMapMode"
+                        class="nsel ndrg"
+                        title='The height map mode for the 2D world map.
+
+"difference" mode shades blocks based on a calculated slope value between two blocks in the height map based on their height difference.
+
+"normalized" mode shades blocks based on their absolute y-level in the height map.'
+                        onChange={(event: TargetedEvent<HTMLSelectElement, Event>): void => {
+                            config.views.world.modeSettings["2D"].heightMapMode = event.currentTarget
+                                .value as (typeof config.views.world.modeSettings)["2D"]["heightMapMode"];
                         }}
+                    >
+                        <option value="normalized" selected={config.views.world.modeSettings["2D"].heightMapMode === "normalized"}>
+                            Normalized
+                        </option>
+                        <option value="difference" selected={config.views.world.modeSettings["2D"].heightMapMode === "difference"}>
+                            Difference (Default)
+                        </option>
+                    </select>
+                    <br class="nsel ndrg" />
+                    <label
+                        for="settings_advanced_heightMapDifferenceModeStrength"
+                        class="nsel ndrg"
+                        title='A multiplier applied to the calculated slope value between two blocks in the height map.
+
+This affects how much a certain height difference will affect the shading.
+
+This only applies when heightMapMode is "difference".'
+                    >
+                        Height Map Difference Mode Strength
+                    </label>
+                    <input
+                        id="settings_advanced_heightMapDifferenceModeStrength"
+                        type="number"
+                        step="any"
+                        value={config.views.world.modeSettings["2D"].heightMapDifferenceModeStrength}
+                        placeholder={config.constants.defaults.views.world.modeSettings["2D"].heightMapDifferenceModeStrength.toString()}
+                        onInput={textBoxOnInputValidationHandler}
+                        ref={createDOMInputOnChangeHandlerRef((event: Event): void => {
+                            if (!(event.currentTarget instanceof HTMLInputElement)) return;
+                            if (!event.currentTarget.checkValidity()) {
+                                event.currentTarget.value = config.views.world.modeSettings["2D"].heightMapDifferenceModeStrength.toString();
+                                event.currentTarget.style.outline = "";
+                                return;
+                            }
+                            const newValue: number = event.currentTarget.valueAsNumber;
+                            config.views.world.modeSettings["2D"].heightMapDifferenceModeStrength = Number.isNaN(newValue) ? undefined : newValue;
+                            const resolvedNewValue: number = config.views.world.modeSettings["2D"].heightMapDifferenceModeStrength;
+                            if (Number.isNaN(newValue)) event.currentTarget.value = resolvedNewValue.toString();
+                        })}
+                    />
+                    <br class="nsel ndrg" />
+                    <label
+                        for="settings_advanced_heightMapDifferenceModeMinTint"
+                        class="nsel ndrg"
+                        title='The minimum tint applied to blocks in the height map.
+
+This only applies when heightMapMode is "difference".'
+                    >
+                        Height Map Difference Mode Minimum Tint
+                    </label>
+                    <input
+                        id="settings_advanced_heightMapDifferenceModeMinTint"
+                        type="number"
+                        step="any"
+                        value={config.views.world.modeSettings["2D"].heightMapDifferenceModeMinTint}
+                        placeholder={config.constants.defaults.views.world.modeSettings["2D"].heightMapDifferenceModeMinTint.toString()}
+                        onInput={textBoxOnInputValidationHandler}
+                        ref={createDOMInputOnChangeHandlerRef((event: Event): void => {
+                            if (!(event.currentTarget instanceof HTMLInputElement)) return;
+                            if (!event.currentTarget.checkValidity()) {
+                                event.currentTarget.value = config.views.world.modeSettings["2D"].heightMapDifferenceModeMinTint.toString();
+                                event.currentTarget.style.outline = "";
+                                return;
+                            }
+                            const newValue: number = event.currentTarget.valueAsNumber;
+                            config.views.world.modeSettings["2D"].heightMapDifferenceModeMinTint = Number.isNaN(newValue) ? undefined : newValue;
+                            const resolvedNewValue: number = config.views.world.modeSettings["2D"].heightMapDifferenceModeMinTint;
+                            if (Number.isNaN(newValue)) event.currentTarget.value = resolvedNewValue.toString();
+                        })}
+                    />
+                    <br class="nsel ndrg" />
+                    <label
+                        for="settings_advanced_heightMapDifferenceModeMaxTint"
+                        class="nsel ndrg"
+                        title='The maximum tint applied to blocks in the height map.
+
+This only applies when heightMapMode is "difference".'
+                    >
+                        Height Map Difference Mode Maximum Tint
+                    </label>
+                    <input
+                        id="settings_advanced_heightMapDifferenceModeMaxTint"
+                        type="number"
+                        step="any"
+                        value={config.views.world.modeSettings["2D"].heightMapDifferenceModeMaxTint}
+                        placeholder={config.constants.defaults.views.world.modeSettings["2D"].heightMapDifferenceModeMaxTint.toString()}
+                        onInput={textBoxOnInputValidationHandler}
+                        ref={createDOMInputOnChangeHandlerRef((event: Event): void => {
+                            if (!(event.currentTarget instanceof HTMLInputElement)) return;
+                            if (!event.currentTarget.checkValidity()) {
+                                event.currentTarget.value = config.views.world.modeSettings["2D"].heightMapDifferenceModeMaxTint.toString();
+                                event.currentTarget.style.outline = "";
+                                return;
+                            }
+                            const newValue: number = event.currentTarget.valueAsNumber;
+                            config.views.world.modeSettings["2D"].heightMapDifferenceModeMaxTint = Number.isNaN(newValue) ? undefined : newValue;
+                            const resolvedNewValue: number = config.views.world.modeSettings["2D"].heightMapDifferenceModeMaxTint;
+                            if (Number.isNaN(newValue)) event.currentTarget.value = resolvedNewValue.toString();
+                        })}
+                    />
+                    <hr />
+                    <br class="nsel ndrg" />
+                    <label
+                        for="settings_advanced_maxParallelChunkDeletions"
+                        class="nsel ndrg"
+                        title="The maximum number of chunks to delete simultaneously for the Delete Chunks in Range feature.
+
+Higher numbers speed up deletion but cause more lag."
+                    >
+                        Max Parallel Chunk Deletions
+                    </label>
+                    <input
+                        id="settings_advanced_maxParallelChunkDeletions"
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={config.views.world.modeSettings["2D"].maxParallelChunkDeletions}
+                        placeholder={config.constants.defaults.views.world.modeSettings["2D"].maxParallelChunkDeletions.toString()}
+                        onInput={textBoxOnInputValidationHandler}
+                        ref={createDOMInputOnChangeHandlerRef((event: Event): void => {
+                            if (!(event.currentTarget instanceof HTMLInputElement)) return;
+                            if (!event.currentTarget.checkValidity()) {
+                                event.currentTarget.value = config.views.world.modeSettings["2D"].maxParallelChunkDeletions.toString();
+                                event.currentTarget.style.outline = "";
+                                return;
+                            }
+                            const newValue: number = event.currentTarget.valueAsNumber;
+                            config.views.world.modeSettings["2D"].maxParallelChunkDeletions = Number.isNaN(newValue) ? undefined : newValue;
+                            const resolvedNewValue: number = config.views.world.modeSettings["2D"].maxParallelChunkDeletions;
+                            if (Number.isNaN(newValue)) event.currentTarget.value = resolvedNewValue.toString();
+                        })}
+                    />
+                    <br class="nsel ndrg" />
+                    <label
+                        for="settings_general_parallelizeChunkLoading"
+                        class="nsel ndrg"
+                        title={`Whether to parallelize the chunk loading.
+
+If set to false, it will load the chunks sequentially.
+
+If set to true, it will load all the chunks simultaneously. This will be a lot faster, but will use more system resources and may cause short UI freezes at smaller zoom levels depending on the maxParallelLoadingChunks.
+
+Default: ${config.constants.defaults.views.world.modeSettings["2D"].parallelizeChunkLoading}`}
+                    >
+                        <input
+                            id="settings_general_parallelizeChunkLoading"
+                            type="checkbox"
+                            checked={config.views.world.modeSettings["2D"].parallelizeChunkLoading}
+                            onChange={(event: TargetedEvent<HTMLInputElement, Event>): void => {
+                                config.views.world.modeSettings["2D"].parallelizeChunkLoading = event.currentTarget.checked;
+                            }}
+                        />
+                        Parallelize Chunk Loading
+                    </label>
+                    <br class="nsel ndrg" />
+                    <label
+                        for="settings_advanced_maxParallelLoadingChunks"
+                        class="nsel ndrg"
+                        title="The maximum number of chunks to load simultaneously.
+
+Higher numbers speed up loading but cause more lag.
+
+On larger worlds, each chunk causes more lag to load than it would on a smaller world due to having to search through a larger amount of LevelDB data.
+
+2048 lags a bit while loading the chunks, but it loads them incredibly fast and after they are loaded it stops lagging."
+                    >
+                        Max Parallel Loading Chunks
+                    </label>
+                    <input
+                        id="settings_advanced_maxParallelLoadingChunks"
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={config.views.world.modeSettings["2D"].maxParallelLoadingChunks}
+                        placeholder={config.constants.defaults.views.world.modeSettings["2D"].maxParallelLoadingChunks.toString()}
+                        onInput={textBoxOnInputValidationHandler}
+                        ref={createDOMInputOnChangeHandlerRef((event: Event): void => {
+                            if (!(event.currentTarget instanceof HTMLInputElement)) return;
+                            if (!event.currentTarget.checkValidity()) {
+                                event.currentTarget.value = config.views.world.modeSettings["2D"].maxParallelLoadingChunks.toString();
+                                event.currentTarget.style.outline = "";
+                                return;
+                            }
+                            const newValue: number = event.currentTarget.valueAsNumber;
+                            config.views.world.modeSettings["2D"].maxParallelLoadingChunks = Number.isNaN(newValue) ? undefined : newValue;
+                            const resolvedNewValue: number = config.views.world.modeSettings["2D"].maxParallelLoadingChunks;
+                            if (Number.isNaN(newValue)) event.currentTarget.value = resolvedNewValue.toString();
+                        })}
                     />
                 </div>
             );

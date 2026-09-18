@@ -415,6 +415,7 @@ namespace exports {
                             maxParallelImageBitmapCreations: 128,
                             parallelizeChunkLoading: true,
                             maxParallelLoadingChunks: 32,
+                            maxParallelChunkDeletions: 2,
                             checkCachedDBKeysForBiomeDataKeysIfAvailable: true,
                             useData3DHeightmapForSurfaceBiomePosition: false,
                             useGrassTintColorInsteadOfBiomeColorForOldChunkFormats: false,
@@ -423,6 +424,10 @@ namespace exports {
                             maxMapScale: 768,
                             applyNetherScaleToCoordinatesWhenSwitchingToOrFromNether: true,
                             mapGoToPositionAnimationDuration: 500,
+                            heightMapMode: "difference",
+                            heightMapDifferenceModeStrength: 0.1,
+                            heightMapDifferenceModeMinTint: 0.2,
+                            heightMapDifferenceModeMaxTint: 1.8,
                             showChunkDeletionWarnings: true,
                             showHeightmapDefault: true,
                             showGridDefault: true,
@@ -1097,6 +1102,8 @@ namespace exports {
         }
         /**
          * The list of integrations that should be completely hidden from the integrations sidebar tab.
+         *
+         * @todo
          *
          * @default
          * ```typescript
@@ -2495,11 +2502,11 @@ namespace exports {
                         }
                         return WorldViewConfig_ModeSettings_SubConfig;
                     })();
-                    public readonly ["3D"] = new (class WorldViewConfig_ModeSettings_3D extends WorldViewConfig_ModeSettings[subConfigClassSymbol]<"3D"> {})(
+                    public readonly "3D" = new (class WorldViewConfig_ModeSettings_3D extends WorldViewConfig_ModeSettings[subConfigClassSymbol]<"3D"> {})(
                         this,
                         "3D"
                     );
-                    public readonly ["2D"] = new (class WorldViewConfig_ModeSettings_2D extends WorldViewConfig_ModeSettings[subConfigClassSymbol]<"2D"> {
+                    public readonly "2D" = new (class WorldViewConfig_ModeSettings_2D extends WorldViewConfig_ModeSettings[subConfigClassSymbol]<"2D"> {
                         /**
                          * Whether to parallelize the image bitmap creation.
                          *
@@ -2614,6 +2621,33 @@ namespace exports {
                                         modeSettings: {
                                             "2D": {
                                                 maxParallelLoadingChunks: value ?? Config.defaults.views.world.modeSettings["2D"].maxParallelLoadingChunks,
+                                            },
+                                        },
+                                    },
+                                },
+                            });
+                        }
+                        /**
+                         * The maximum number of chunks to delete simultaneously for the Delete Chunks in Range feature.
+                         *
+                         * Higher numbers speed up deletion but cause more lag.
+                         *
+                         * @default 2
+                         */
+                        public get maxParallelChunkDeletions(): number {
+                            return (
+                                this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views?.world
+                                    ?.modeSettings?.["2D"]?.maxParallelChunkDeletions ??
+                                Config.defaults.views.world.modeSettings["2D"].maxParallelChunkDeletions
+                            );
+                        }
+                        public set maxParallelChunkDeletions(value: number | undefined) {
+                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                views: {
+                                    world: {
+                                        modeSettings: {
+                                            "2D": {
+                                                maxParallelChunkDeletions: value ?? Config.defaults.views.world.modeSettings["2D"].maxParallelChunkDeletions,
                                             },
                                         },
                                     },
@@ -2850,6 +2884,120 @@ namespace exports {
                             });
                         }
                         /**
+                         * The height map mode for the 2D world map.
+                         *
+                         * `"difference"` mode shades blocks based on a calculated slope value between two blocks in the height map based on their height difference.
+                         *
+                         * `"normalized"` mode shades blocks based on their absolute y-level in the height map.
+                         *
+                         * @default "difference"
+                         */
+                        public get heightMapMode(): "normalized" | "difference" {
+                            return (
+                                this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views?.world
+                                    ?.modeSettings?.["2D"]?.heightMapMode ?? Config.defaults.views.world.modeSettings["2D"].heightMapMode
+                            );
+                        }
+                        public set heightMapMode(value: "normalized" | "difference" | undefined) {
+                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                views: {
+                                    world: {
+                                        modeSettings: {
+                                            "2D": {
+                                                heightMapMode: value ?? Config.defaults.views.world.modeSettings["2D"].heightMapMode,
+                                            },
+                                        },
+                                    },
+                                },
+                            });
+                        }
+                        /**
+                         * A multiplier applied to the calculated slope value between two blocks in the height map.
+                         *
+                         * This affects how much a certain height difference will affect the shading.
+                         *
+                         * This only applies when {@link heightMapMode} is `"difference"`.
+                         *
+                         * @default 0.1
+                         */
+                        public get heightMapDifferenceModeStrength(): number {
+                            return (
+                                this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views?.world
+                                    ?.modeSettings?.["2D"]?.heightMapDifferenceModeStrength ??
+                                Config.defaults.views.world.modeSettings["2D"].heightMapDifferenceModeStrength
+                            );
+                        }
+                        public set heightMapDifferenceModeStrength(value: number | undefined) {
+                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                views: {
+                                    world: {
+                                        modeSettings: {
+                                            "2D": {
+                                                heightMapDifferenceModeStrength:
+                                                    value ?? Config.defaults.views.world.modeSettings["2D"].heightMapDifferenceModeStrength,
+                                            },
+                                        },
+                                    },
+                                },
+                            });
+                        }
+                        /**
+                         * The minimum tint applied to blocks in the height map.
+                         *
+                         * This only applies when {@link heightMapMode} is `"difference"`.
+                         *
+                         * @default 0.2
+                         */
+                        public get heightMapDifferenceModeMinTint(): number {
+                            return (
+                                this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views?.world
+                                    ?.modeSettings?.["2D"]?.heightMapDifferenceModeMinTint ??
+                                Config.defaults.views.world.modeSettings["2D"].heightMapDifferenceModeMinTint
+                            );
+                        }
+                        public set heightMapDifferenceModeMinTint(value: number | undefined) {
+                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                views: {
+                                    world: {
+                                        modeSettings: {
+                                            "2D": {
+                                                heightMapDifferenceModeMinTint:
+                                                    value ?? Config.defaults.views.world.modeSettings["2D"].heightMapDifferenceModeMinTint,
+                                            },
+                                        },
+                                    },
+                                },
+                            });
+                        }
+                        /**
+                         * The maximum tint applied to blocks in the height map.
+                         *
+                         * This only applies when {@link heightMapMode} is `"difference"`.
+                         *
+                         * @default 1.8
+                         */
+                        public get heightMapDifferenceModeMaxTint(): number {
+                            return (
+                                this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views?.world
+                                    ?.modeSettings?.["2D"]?.heightMapDifferenceModeMaxTint ??
+                                Config.defaults.views.world.modeSettings["2D"].heightMapDifferenceModeMaxTint
+                            );
+                        }
+                        public set heightMapDifferenceModeMaxTint(value: number | undefined) {
+                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                views: {
+                                    world: {
+                                        modeSettings: {
+                                            "2D": {
+                                                heightMapDifferenceModeMaxTint:
+                                                    value ?? Config.defaults.views.world.modeSettings["2D"].heightMapDifferenceModeMaxTint,
+                                            },
+                                        },
+                                    },
+                                },
+                            });
+                        }
+                        /**
                          * Whether to show a warning prompt before deleting a chunk.
                          *
                          * @default false
@@ -2954,6 +3102,10 @@ namespace exports {
     const subConfigValueClasses = [VolumeConfig, ViewsConfig, DeepSubConfig] as const;
 
     export namespace ConfigConstants {
+        /**
+         * The default values for the config file.
+         */
+        export const defaults = Config.defaults;
         export type DialogId = "allow_automatic_updates";
         export type IntegrationId = keyof typeof import("../../app/integrations/index.ts").integrations;
         export const AutoApplySupportedIntegrationIds = ["WorldEdit_Bedrock"] as const satisfies IntegrationId[];

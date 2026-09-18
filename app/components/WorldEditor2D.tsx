@@ -246,14 +246,12 @@ const MAP_LAYERS = {
     portalsOverlay: 52,
 } as const satisfies Record<string, number>;
 
-// TODO (Important): These should be moved to the config.
-const HEIGHT_MAP_MODE: "normalized" | "difference" = "difference";
-const HEIGHT_MAP_DIFFERENCE_MODE_STRENGTH: number = 1 / 10;
-const HEIGHT_MAP_DIFFERENCE_MODE_MIN_TINT: number = 0.2; /* 0.6 */
-const HEIGHT_MAP_DIFFERENCE_MODE_MAX_TINT: number = 1.8; /* 1.4 */
+// const HEIGHT_MAP_MODE: "normalized" | "difference" = "difference";
+// const HEIGHT_MAP_DIFFERENCE_MODE_STRENGTH: number = 1 / 10;
+// const HEIGHT_MAP_DIFFERENCE_MODE_MIN_TINT: number = 0.2; /* 0.6 */
+// const HEIGHT_MAP_DIFFERENCE_MODE_MAX_TINT: number = 1.8; /* 1.4 */
 
-// TODO (Important): This needs its own config option.
-const MAX_SIMULTANEOUS_CHUNK_DELETIONS = 2;
+// const MAX_SIMULTANEOUS_CHUNK_DELETIONS = 2;
 
 /**
  * The background color of the map.
@@ -1219,6 +1217,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                         const activeChunkDeletions: Promise<undefined[]>[] = [];
                                         let totalChunksDeleted = 0;
                                         let totalDBKeysDeleted = 0;
+                                        const MAX_SIMULTANEOUS_CHUNK_DELETIONS: number = config.views.world.modeSettings["2D"].maxParallelChunkDeletions;
                                         for (const currentChunk of chunksInDimension) {
                                             const [x, z] = currentChunk.split(",").map(Number) as [x: number, z: number];
                                             if (x < locationRangeDialogResult.data.from.chunkX || x > locationRangeDialogResult.data.to.chunkX) continue;
@@ -2644,6 +2643,11 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
 
         const heightMapEnabled: boolean = props.dataStorageObject.worldEditor2D.heightmap;
 
+        const HEIGHT_MAP_MODE = config.views.world.modeSettings["2D"].heightMapMode;
+        const HEIGHT_MAP_DIFFERENCE_MODE_STRENGTH = config.views.world.modeSettings["2D"].heightMapDifferenceModeStrength;
+        const HEIGHT_MAP_DIFFERENCE_MODE_MIN_TINT = config.views.world.modeSettings["2D"].heightMapDifferenceModeMinTint;
+        const HEIGHT_MAP_DIFFERENCE_MODE_MAX_TINT = config.views.world.modeSettings["2D"].heightMapDifferenceModeMaxTint;
+
         for (let cx = minChunkX; cx <= maxChunkX; cx++) {
             const col = cachedChunkColorData[cx];
             if (!col) continue;
@@ -2732,7 +2736,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                     const heightMapTint: number[] = new Array<number>(heightMapLength);
                                     const minHeight: number = entry.heightRange[0];
                                     const range: number = entry.heightRange[1] - minHeight;
-                                    const strength = 0.9;
+                                    const strength = 0.9; // TODO (Important): Add a config option for this.
                                     for (let i = 0; i < heightMapLength; i++) {
                                         heightMapTint[i] =
                                             1 + ((applyHeightMap ? normalizeHeightValue(entry.heightMap[i]!, minHeight, range) : 0.5) - 0.5) * strength;

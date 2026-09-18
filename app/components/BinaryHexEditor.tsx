@@ -21,8 +21,6 @@ export type HexEditorDataStorageObject = {
     hexEditor: {
         /**
          * The scroll position of the hex editor.
-         *
-         * @todo Not implemented yet.
          */
         scrollTop?: number;
     };
