@@ -180,6 +180,7 @@ function DebugOverlay_Top(): JSX.Element {
     let v8_heapStatistics: v8.HeapInfo = v8.getHeapStatistics();
     const osType: string = os.type();
     const osArch: string = os.arch();
+    const localCurrentFps: Observable<number> = createObservable(currentFps.get());
     function Contents(): JSX.Element {
         return (
             <>
@@ -204,7 +205,7 @@ function DebugOverlay_Top(): JSX.Element {
                         display: "block",
                     }}
                 >
-                    FPS:{currentFps.get().toFixed(1)}, Mem:{Math.round(process_memoryUsage.heapUsed / 1000 ** 2)}, Free Mem:
+                    FPS:{/* currentFps */ localCurrentFps.get().toFixed(1)}, Mem:{Math.round(process_memoryUsage.heapUsed / 1000 ** 2)}, Free Mem:
                     {Math.round((v8_heapStatistics.heap_size_limit - process_memoryUsage.heapUsed) / 1000 ** 2)}
                 </span>
             </>
@@ -214,28 +215,41 @@ function DebugOverlay_Top(): JSX.Element {
         if (containerRef.current) {
             hydrate(<Contents />, containerRef.current);
         }
-        function onFpsUpdate(): void {
-            if (!containerRef.current) {
-                clearInterval(intervalID);
-                stopObservingFps();
-                return;
-            }
-            hydrate(<Contents />, containerRef.current);
-        }
-        const stopObservingFps: () => boolean = currentFps.observe(onFpsUpdate);
+        // function onFpsUpdate(): void {
+        //     if (!containerRef.current) {
+        //         clearInterval(intervalID);
+        //         stopObservingFps();
+        //         return;
+        //     }
+        //     hydrate(<Contents />, containerRef.current);
+        // }
+        // const stopObservingFps: () => boolean = currentFps.observe(onFpsUpdate);
         const intervalID: number = setInterval((): void => {
             if (!containerRef.current) {
                 clearInterval(intervalID);
-                stopObservingFps();
+                clearInterval(intervalID_FPS);
+                // stopObservingFps();
                 return;
             }
             process_memoryUsage = process.memoryUsage();
             v8_heapStatistics = v8.getHeapStatistics();
+            // hydrate(<Contents />, containerRef.current);
+        }, 1000);
+        const intervalID_FPS: number = setInterval((): void => {
+            if (!containerRef.current) {
+                clearInterval(intervalID);
+                clearInterval(intervalID_FPS);
+                return;
+            }
+
+            if (localCurrentFps.get() !== currentFps.get()) localCurrentFps.set(currentFps.get());
             hydrate(<Contents />, containerRef.current);
         }, 1000);
+
         return (): void => {
             clearInterval(intervalID);
-            stopObservingFps();
+            clearInterval(intervalID_FPS);
+            // stopObservingFps();
         };
     });
     return (
@@ -467,6 +481,7 @@ function DebugOverlay_Basic(): JSX.Element {
     let systemUptime: number = Math.floor(os.uptime());
     let cpus = os.cpus();
     const osArch = os.arch();
+    const localCurrentFps: Observable<number> = createObservable(currentFps.get());
     function RightContents(): JSX.Element {
         return (
             <>
@@ -601,7 +616,15 @@ function DebugOverlay_Basic(): JSX.Element {
                         display: "block",
                     }}
                 >
-                    FPS: {currentFps.get().toFixed(1)}
+                    Last FPS: {currentFps.get().toFixed(1)}
+                </span>
+                <span
+                    class="crispy"
+                    style={{
+                        display: "block",
+                    }}
+                >
+                    FPS: {localCurrentFps.get().toFixed(1)}
                 </span>
             </>
         );
@@ -630,6 +653,7 @@ function DebugOverlay_Basic(): JSX.Element {
         const intervalID: number = setInterval((): void => {
             if (!rightContainerRef.current) {
                 clearInterval(intervalID);
+                clearInterval(intervalID_FPS);
                 stopObservingFps();
                 return;
             }
@@ -638,11 +662,23 @@ function DebugOverlay_Basic(): JSX.Element {
             processUptime = Math.floor(process.uptime());
             systemUptime = Math.floor(os.uptime());
             cpus = os.cpus();
+            // render(<RightContents />, rightContainerRef.current);
+        }, 1000);
+        const intervalID_FPS: number = setInterval((): void => {
+            if (!rightContainerRef.current) {
+                clearInterval(intervalID);
+                clearInterval(intervalID_FPS);
+                stopObservingFps();
+                return;
+            }
+
+            if (localCurrentFps.get() !== currentFps.get()) localCurrentFps.set(currentFps.get());
             render(<RightContents />, rightContainerRef.current);
         }, 1000);
         return (): void => {
             window.removeEventListener("resize", handleWindowResize);
             clearInterval(intervalID);
+            clearInterval(intervalID_FPS);
             stopObservingFps();
         };
     });

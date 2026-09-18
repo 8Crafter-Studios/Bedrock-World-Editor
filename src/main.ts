@@ -860,6 +860,8 @@ if (!startup && !started) {
     // initialization and is ready to create browser windows.
     // Some APIs can only be used after this event occurs.
     app.on("ready", (): void => {
+        if (config.showNativeFpsCounter) app.commandLine.appendSwitch("--show-fps-counter");
+        if (config.disableFrameRateLimit) app.commandLine.appendSwitch("--disable-frame-rate-limit");
         protocol.handle("resource", (request: GlobalRequest): GlobalResponse => {
             // console.log(request);
             const url: URL = new URL(request.url);

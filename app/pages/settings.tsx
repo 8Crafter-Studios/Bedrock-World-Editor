@@ -86,6 +86,18 @@ function SettingsTabRenderer(props: SettingsTabRendererProps): JSX.Element {
                             <br class="nsel ndrg" />
                         </>
                     )}
+                    <label for="settings_general_disableFrameRateLimit" class="nsel ndrg" title="Whether or not to disable the 60 FPS frame rate limit.">
+                        <input
+                            id="settings_general_disableFrameRateLimit"
+                            type="checkbox"
+                            checked={config.disableFrameRateLimit}
+                            onChange={(event: TargetedEvent<HTMLInputElement, Event>): void => {
+                                config.disableFrameRateLimit = event.currentTarget.checked;
+                            }}
+                        />
+                        Disable Frame Rate Limit (Requires Restart)
+                    </label>
+                    <br class="nsel ndrg" />
                     <label
                         for="settings_general_showWorldSizesOnWorldList"
                         class="nsel ndrg"
@@ -1025,6 +1037,18 @@ On larger worlds, each chunk causes more lag to load than it would on a smaller 
         case "debug":
             return (
                 <div style="width: -webkit-fill-available; height: -webkit-fill-available; padding: 10px; display: flex; flex-direction: column; overflow: auto;">
+                    <label for="settings_debug_showNativeFpsCounter" class="nsel ndrg" title="Whether or not to show the native FPS counter.">
+                        <input
+                            id="settings_debug_showNativeFpsCounter"
+                            type="checkbox"
+                            checked={config.showNativeFpsCounter}
+                            onChange={(event: TargetedEvent<HTMLInputElement, Event>): void => {
+                                config.showNativeFpsCounter = event.currentTarget.checked;
+                            }}
+                        />
+                        Show Native FPS Counter (Requires Restart)
+                    </label>
+                    <br class="nsel ndrg" />
                     <label for="settings_debug_debugHUDDropShadow" class="nsel ndrg">
                         <input
                             id="settings_debug_debugHUDDropShadow"

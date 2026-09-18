@@ -1618,8 +1618,22 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             }
             fpsLoop();
         }
+        const chunkLoadInterval: number = setInterval((): void => {
+            // Wait for the level.dat to finish attempting to load before loading chunk data.
+            if (isOldWorld === undefined && levelDatLoaded === "loading") return;
+            if (!engineRef.current) return;
+
+            const coords = engineRef.current.getCenterCoords();
+            const config = engineRef.current.getConfig();
+            const bounds: { min: Vector2; max: Vector2 } = {
+                min: { x: coords.x + 0.5 - config.size.width / config.scale / 2, y: coords.y + 0.5 - config.size.height / config.scale / 2 },
+                max: { x: coords.x + 0.5 + config.size.width / config.scale / 2, y: coords.y + 0.5 + config.size.height / config.scale / 2 },
+            };
+            void loadChunksInBounds(bounds);
+        }, 4 /* TODO: Add a config option for this. */);
         return (): void => {
             stopCurrentInteraction?.();
+            clearInterval(chunkLoadInterval);
             if (props.overlayBarRegistry && !props.readonly) {
                 props.overlayBarRegistry.unregisterWidget(widgetID);
             }
@@ -4368,10 +4382,10 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             // cullCachedOutOfBoundsImageBitmaps(bounds, config.scale);
                             cullEmptyZoomParallelChunkImageBitmapLists(config.scale);
 
-                            // Wait for the level.dat to finish attempting to load before loading chunk data.
-                            if (isOldWorld === undefined && levelDatLoaded === "loading") return;
+                            // // Wait for the level.dat to finish attempting to load before loading chunk data.
+                            // if (isOldWorld === undefined && levelDatLoaded === "loading") return;
 
-                            void loadChunksInBounds(bounds);
+                            // void loadChunksInBounds(bounds);
                             // loadChunkImageBitmapsInBounds(bounds, config.scale);
 
                             // ~DEBUG

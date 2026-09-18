@@ -313,6 +313,8 @@ namespace exports {
             asyncModeEntryThreshold: 2_500,
             asyncModeTotalKeyCountThreshold: 5_000_000,
             noLookupEntityDimensionDigestKeyThreshold: 100_000,
+            disableFrameRateLimit: false,
+            showNativeFpsCounter: false,
             volume: { master: 100, ui: 100 },
             views: {
                 players: {
@@ -1339,9 +1341,36 @@ namespace exports {
         public set noLookupEntityDimensionDigestKeyThreshold(value: number | undefined) {
             this.saveChanges({ noLookupEntityDimensionDigestKeyThreshold: value ?? Config.defaults.noLookupEntityDimensionDigestKeyThreshold });
         }
-        // TODO: Add a way to disable this after it is enabled.
+        /**
+         * Whether or not to show the native FPS counter.
+         *
+         * Requires a restart to take effect.
+         *
+         * @default false
+         */
+        public get showNativeFpsCounter(): boolean {
+            return this.getConfigData().showNativeFpsCounter ?? Config.defaults.showNativeFpsCounter;
+        }
+        public set showNativeFpsCounter(value: boolean | undefined) {
+            this.saveChanges({ showNativeFpsCounter: value ?? Config.defaults.showNativeFpsCounter });
+        }
+        /**
+         * Whether or not to disable the 60 FPS frame rate limit.
+         *
+         * Requires a restart to take effect.
+         *
+         * @default false
+         */
+        public get disableFrameRateLimit(): boolean {
+            return this.getConfigData().disableFrameRateLimit ?? Config.defaults.disableFrameRateLimit;
+        }
+        public set disableFrameRateLimit(value: boolean | undefined) {
+            this.saveChanges({ disableFrameRateLimit: value ?? Config.defaults.disableFrameRateLimit });
+        }
         /**
          * Whether or not to try to automatically update the app when a new version is available.
+         *
+         * Requires a restart to take effect.
          *
          * @platform darwin,win32
          *

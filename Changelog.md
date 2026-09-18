@@ -10,6 +10,7 @@
 
 -   Added validation to numeric inputs in the settings menu.
 -   Added the "Automatic Updates" option to the "General" settings section.
+-   Added the "Disable Frame Rate Limit" option to the "General" settings section.
 -   Added 15 new settings to the "Advanced" settings section in the new "2D World Map" subsection:
     -   Show Chunk Deletion Warnings
     -   Check Cached DB Keys for Biome Data Keys if Available
@@ -26,6 +27,13 @@
     -   Max Parallel Chunk Deletions
     -   Parallelize Chunk Loading
     -   Max Parallel Loading Chunks
+-   Added the "Show Native FPS Counter" option to the "Debug" settings section.
+-   Added the Last FPS line to the "Basic" debug overlay.
+-   The FPS line on the "Top" and "Basic" debug overlays now only updates once a second.
+
+## Changes
+
+-   Chunks in the 2D world map now try loading on a 4ms interval rather than once per frame to reduce the amount that chunk loading slows down when the FPS drops.
 
 # v1.0.0-beta.36
 
