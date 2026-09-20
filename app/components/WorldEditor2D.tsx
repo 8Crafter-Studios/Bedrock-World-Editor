@@ -207,7 +207,7 @@ let fallbackErrorChunkImageData: ImageData | null = null;
 
 interface AnimatedChunkImage {
     getImageData(size: number, timestamp: number): ImageData;
-    getUint32Array(size: number, timestamp: number): Uint32Array;
+    getUint32Array(size: number, timestamp: number): Uint32Array<ArrayBuffer>;
 }
 
 /**
@@ -678,7 +678,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 view32.fill(packedPixel32);
                 return new ImageData(new Uint8ClampedArray(view32.buffer), size, size);
             },
-            getUint32Array(size: number, timestamp: number): Uint32Array {
+            getUint32Array(size: number, timestamp: number): Uint32Array<ArrayBuffer> {
                 size = Math.round(size);
                 const totalPixels = size * size;
                 const view32 = new Uint32Array(totalPixels);
@@ -726,7 +726,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 view32.fill(packedPixel32);
                 return new ImageData(new Uint8ClampedArray(view32.buffer), size, size);
             },
-            getUint32Array(size: number, timestamp: number): Uint32Array {
+            getUint32Array(size: number, timestamp: number): Uint32Array<ArrayBuffer> {
                 size = Math.round(size);
                 const totalPixels = size * size;
                 const view32 = new Uint32Array(totalPixels);
@@ -1663,12 +1663,14 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             // Wait for the level.dat to finish attempting to load before loading chunk data.
             if (isOldWorld === undefined && levelDatLoaded === "loading") return;
             if (!engineRef.current) return;
+            if (!engineRef.current.instance?.canvas) return;
 
             const coords = engineRef.current.getCenterCoords();
             const config = engineRef.current.getConfig();
+            const size = { width: engineRef.current.instance.canvas.width, height: engineRef.current.instance.canvas.height };
             const bounds: { min: Vector2; max: Vector2 } = {
-                min: { x: coords.x + 0.5 - config.size.width / config.scale / 2, y: coords.y + 0.5 - config.size.height / config.scale / 2 },
-                max: { x: coords.x + 0.5 + config.size.width / config.scale / 2, y: coords.y + 0.5 + config.size.height / config.scale / 2 },
+                min: { x: coords.x + 0.5 - size.width / config.scale / 2, y: coords.y + 0.5 - size.height / config.scale / 2 },
+                max: { x: coords.x + 0.5 + size.width / config.scale / 2, y: coords.y + 0.5 + size.height / config.scale / 2 },
             };
             void loadChunksInBounds(bounds);
         }, 4 /* TODO: Add a config option for this. */);
@@ -2879,8 +2881,8 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         ctx.putImageData(img, 0, 0);
     }
     let drawCachedChunks_v4_frameBuffer: ArrayBuffer = new ArrayBuffer(0);
-    let drawCachedChunks_v4_screen32: Uint32Array = new Uint32Array(0);
-    let drawCachedChunks_v4_screen8Clamped: Uint8ClampedArray = new Uint8ClampedArray(0);
+    let drawCachedChunks_v4_screen32: Uint32Array<ArrayBuffer> = new Uint32Array(0);
+    let drawCachedChunks_v4_screen8Clamped: Uint8ClampedArray<ArrayBuffer> = new Uint8ClampedArray(0);
     function drawCachedChunks_v4(
         ctx: CanvasRenderingContext2D,
         bounds: { min: Vector2; max: Vector2 },
@@ -2903,17 +2905,19 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         drawCachedChunks_v4_screen32.fill(0x00000000);
 
         // const frame = new Uint8ClampedArray(* 4);
-        const frame = drawCachedChunks_v4_screen32;
+        const frame: Uint32Array<ArrayBuffer> = drawCachedChunks_v4_screen32;
         const now: number = Date.now();
 
         const placeholderTileSize: number = Math.min(16, tileSizePx);
 
-        const loadingPendingTile: Uint32Array | null =
+        const loadingPendingTile: Uint32Array<ArrayBuffer> | null =
             typeof LOADING_PENDING_CHUNK_IMAGE === "object" ? LOADING_PENDING_CHUNK_IMAGE.getUint32Array(placeholderTileSize, now) : null;
 
-        const loadingTile: Uint32Array | null = typeof LOADING_CHUNK_IMAGE === "object" ? LOADING_CHUNK_IMAGE.getUint32Array(placeholderTileSize, now) : null;
+        const loadingTile: Uint32Array<ArrayBuffer> | null =
+            typeof LOADING_CHUNK_IMAGE === "object" ? LOADING_CHUNK_IMAGE.getUint32Array(placeholderTileSize, now) : null;
 
-        const noDataTile: Uint32Array | null = typeof NO_DATA_CHUNK_IMAGE === "object" ? NO_DATA_CHUNK_IMAGE.getUint32Array(placeholderTileSize, now) : null;
+        const noDataTile: Uint32Array<ArrayBuffer> | null =
+            typeof NO_DATA_CHUNK_IMAGE === "object" ? NO_DATA_CHUNK_IMAGE.getUint32Array(placeholderTileSize, now) : null;
 
         const errorImageData: ImageData = fallbackErrorChunkImageData ?? generateErrorImageData();
         const errorTile: Uint8ClampedArray = scaleNearest(errorImageData.data, errorImageData.width, errorImageData.height, tileSizePx).data;
@@ -2931,8 +2935,8 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         const HEIGHT_MAP_DIFFERENCE_MODE_MIN_TINT = config.views.world.modeSettings["2D"].heightMapDifferenceModeMinTint;
         const HEIGHT_MAP_DIFFERENCE_MODE_MAX_TINT = config.views.world.modeSettings["2D"].heightMapDifferenceModeMaxTint;
 
-        const preShadeBuffer = usePreShading ? new ArrayBuffer(16 * 16 * 4) : null;
-        const preShade32 = usePreShading ? new Uint32Array(preShadeBuffer!) : null;
+        const preShadeBuffer: ArrayBuffer | null = usePreShading ? new ArrayBuffer(16 * 16 * 4) : null;
+        const preShade32: Uint32Array<ArrayBuffer> | null = usePreShading ? new Uint32Array(preShadeBuffer!) : null;
         for (let cx = minChunkX; cx <= maxChunkX; cx++) {
             const col = cachedChunkColorData.get(cx);
 
@@ -2992,7 +2996,10 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
 
                 if (!entry) {
                     src32 = loadingPendingTile;
-                } else if (entry === "loading" || entry === "has_data" /* TEMP: The has_data and loading tiles should be different colors. */) {
+                } else if (
+                    entry === "loading" ||
+                    entry === "has_data" /* TEMP: The has_data and loading tiles should be different colors, maybe loading should be fading cyan. */
+                ) {
                     src32 = loadingTile;
                 } else if (entry === "no_data") {
                     src32 = noDataTile;
@@ -4601,6 +4608,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                         debug: {
                             enabled: true,
                             hud: { enabled: true, coordinates: true, fps: false /* true */, scale: true, tilesInView: true, topLeftCoordinates: true },
+                            eventHandlers: { hover: false },
                         },
                         size: { width: 10000, height: 10000 },
                         backgroundColor: `#${MAP_BACKGROUND_COLOR.map((v: number): string => v.toString(16).padStart(2, "0")).join("")}`,
@@ -4614,6 +4622,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                         // DEBUG
                         console.debug("Clicked:", coords.snapped, { x: Math.floor(coords.raw.x * 16), y: Math.floor(coords.raw.y * 16) }, coords.raw);
                     }}
+                    // TEST: Make sure that ALT+Click triggers this.
                     onRightClick={(coords, _mouse, client) => {
                         // TODO: Make this work on long press too (on mobile and devices with touch screens only), and for Control+Click on macOS if that doesn't already work. Or maybe add a modifier key button for mobile where it is a toggle and when it is on, tapping/clicking opens this context menu.
                         if (!chunkContextMenuInteractionRef.current) return;
@@ -4739,15 +4748,17 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             if (portalsRendered && !props.dataStorageObject.worldEditor2D.dataOverlays.portals) {
                                 portalsRendered = !renderPortalsOnMap(config.scale, true);
                             }
+                            const size = { width: ctx.canvas.width, height: ctx.canvas.height };
+                            const scale = config.scale / (config.size.width / size.width);
                             const bounds: { min: Vector2; max: Vector2 } = {
                                 min: { ...coords },
-                                max: { x: coords.x + config.size.width / config.scale, y: coords.y + config.size.height / config.scale },
+                                max: { x: coords.x + size.width / scale, y: coords.y + size.height / scale },
                             };
                             const blockBounds: { min: VectorXZ; max: VectorXZ } = {
                                 min: { x: Math.floor(bounds.min.x * 16), z: Math.floor(bounds.min.y * 16) },
                                 max: { x: Math.ceil(bounds.max.x * 16), z: Math.ceil(bounds.max.y * 16) },
                             };
-                            drawCachedChunks_v4(ctx, bounds, blockBounds, config.size, config.scale);
+                            drawCachedChunks_v4(ctx, bounds, blockBounds, size, scale);
                             // function areMapPositionDetailsDifferent(a: ComparisonMapPositionDetails, b: ComparisonMapPositionDetails): boolean {
                             //     if (a.coords.x !== b.coords.x || a.coords.y !== b.coords.y) return true;
                             //     if (a.scale !== b.scale) return true;
@@ -4759,22 +4770,22 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 lastMapDrawCall >
                                 Date.now() - 5 /* &&
                                 (!lastMapPositionDetails ||
-                                    areMapPositionDetailsDifferent(lastMapPositionDetails, { coords, scale: config.scale, size: config.size }) ||
+                                    areMapPositionDetailsDifferent(lastMapPositionDetails, { coords, scale: config.scale, size: size }) ||
                                     lastMapDrawCall > Date.now() - 10) */
                             ) {
                                 return;
                             }
                             lastMapDrawCall = Date.now();
-                            lastMapPositionDetails = { coords, scale: config.scale, size: config.size };
+                            lastMapPositionDetails = { coords, scale, size };
                             cullCachedOutOfBoundsChunks(bounds);
-                            // cullCachedOutOfBoundsImageBitmaps(bounds, config.scale);
-                            cullEmptyZoomParallelChunkImageBitmapLists(config.scale);
+                            // cullCachedOutOfBoundsImageBitmaps(bounds, scale);
+                            cullEmptyZoomParallelChunkImageBitmapLists(scale);
 
                             // // Wait for the level.dat to finish attempting to load before loading chunk data.
                             // if (isOldWorld === undefined && levelDatLoaded === "loading") return;
 
                             // void loadChunksInBounds(bounds);
-                            // loadChunkImageBitmapsInBounds(bounds, config.scale);
+                            // loadChunkImageBitmapsInBounds(bounds, scale);
 
                             // ~DEBUG
                             // if (!cachedChunkColorData[5]?.[6]) {

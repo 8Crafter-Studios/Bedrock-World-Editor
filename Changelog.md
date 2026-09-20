@@ -9,6 +9,7 @@
 ## Critical Fixes
 
 -   Fixed bugs where many UI elements would fail to trigger their cleanup handlers upon unrendering in some cases. These bugs caused many issues, including the 2D world map sometimes leaving behind a permanent invisible copy that causes the same performance impact as if it was on screen, even after closing the tab, until the app was restarted.
+-   Fixed a bug where on macOS Retina displays or when the window's zoom level was not 100%, the rendered 2D world map would be an incorrect size.
 
 ## Additions
 
