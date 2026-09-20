@@ -39,6 +39,10 @@
 
 -   Chunks in the 2D world map now try loading on a 4ms interval rather than once per frame to reduce the amount that chunk loading slows down when the FPS drops.
 
+## Fixes
+
+-   When a new column of chunks is moved into view in the 2D world map, it no longer renders all the chunks in that column as if they do not exist for a split second before they start loading, and instead shows them with the loading pending animation (the gray fade).
+
 ## Performance Improvements
 
 -   Extreme performance improvements to the 2D world map, in some cases the FPS is over 10x higher than before.

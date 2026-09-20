@@ -2935,13 +2935,45 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         const preShade32 = usePreShading ? new Uint32Array(preShadeBuffer!) : null;
         for (let cx = minChunkX; cx <= maxChunkX; cx++) {
             const col = cachedChunkColorData.get(cx);
-            if (!col) continue;
+
+            if (!col && !loadingPendingTile) continue;
 
             const chunkPixelX = (cx - bounds.min.x) * scale;
             const chunkWidth = Math.floor((cx + 1 - bounds.min.x) * scale) - Math.floor((cx - bounds.min.x) * scale);
             const baseX = Math.floor(chunkPixelX);
 
             if (baseX + tileSizePx < 0 || baseX >= frameWidth) continue;
+
+            if (!col) {
+                for (let cy = minChunkY; cy <= maxChunkY; cy++) {
+                    const chunkPixelY = (cy - bounds.min.y) * scale;
+
+                    const baseY = Math.floor(chunkPixelY);
+
+                    if (baseY + tileSizePx < 0 || baseY >= frameHeight) continue;
+
+                    const chunkHeight = Math.floor((cy + 1 - bounds.min.y) * scale) - Math.floor((cy - bounds.min.y) * scale);
+
+                    for (let dy = 0; dy < chunkHeight; dy++) {
+                        const dstY = baseY + dy;
+                        if (dstY < 0 || dstY >= frameHeight) continue;
+
+                        const rowOffset = dstY * frameWidth;
+                        const srcRow = Math.floor((dy / chunkHeight) * placeholderTileSize) * placeholderTileSize;
+
+                        for (let dx = 0; dx < chunkWidth; dx++) {
+                            const dstX = baseX + dx;
+                            if (dstX < 0 || dstX >= frameWidth) continue;
+
+                            const si = srcRow + Math.floor((dx / chunkWidth) * placeholderTileSize);
+                            const di = rowOffset + dstX;
+
+                            frame[di] = loadingPendingTile![si]!;
+                        }
+                    }
+                }
+                continue;
+            }
 
             for (let cy = minChunkY; cy <= maxChunkY; cy++) {
                 const entry = col.get(cy);
@@ -3153,7 +3185,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             const dstX = baseX + dx;
                             if (dstX < 0 || dstX >= frameWidth) continue;
 
-                            const si = srcRow + Math.floor((dx / chunkHeight) * placeholderTileSize) * 4;
+                            const si = srcRow + Math.floor((dx / chunkWidth) * placeholderTileSize) * 4;
                             const di = rowOffset + dstX;
 
                             frame[di] =
@@ -3175,7 +3207,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             const dstX = baseX + dx;
                             if (dstX < 0 || dstX >= frameWidth) continue;
 
-                            const si = srcRow + Math.floor((dx / chunkHeight) * placeholderTileSize);
+                            const si = srcRow + Math.floor((dx / chunkWidth) * placeholderTileSize);
                             const di = rowOffset + dstX;
 
                             frame[di] = src32![si]!;
