@@ -39,6 +39,12 @@
 
 -   Chunks in the 2D world map now try loading on a 4ms interval rather than once per frame to reduce the amount that chunk loading slows down when the FPS drops.
 
+## Performance Improvements
+
+-   Extreme performance improvements to the 2D world map, in some cases the FPS is over 10x higher than before.
+-   Zooming in really far in the 2D world map no longer causes a lot of lag.
+-   Zooming out really far in the 2D world map now is much less laggy than before.
+
 # v1.0.0-beta.36
 
 ## Additions

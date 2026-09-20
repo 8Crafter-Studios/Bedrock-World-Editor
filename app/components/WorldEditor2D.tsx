@@ -207,6 +207,7 @@ let fallbackErrorChunkImageData: ImageData | null = null;
 
 interface AnimatedChunkImage {
     getImageData(size: number, timestamp: number): ImageData;
+    getUint32Array(size: number, timestamp: number): Uint32Array;
 }
 
 /**
@@ -670,11 +671,31 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         LOADING_CHUNK_IMAGE = {
             getImageData(size: number, timestamp: number): ImageData {
                 size = Math.round(size);
-                const rawPixels: Uint8ClampedArray = new Uint8ClampedArray(size * size * 4);
+                const totalPixels = size * size;
+                const view32 = new Uint32Array(totalPixels);
                 const fadeOpacity: number = ((0.5 + Math.sin((timestamp / 1000) * Math.PI) * 0.5) * 0.2475 + 0.025) * 255;
-                for (let i = 0; i < rawPixels.length; i += 4) rawPixels.set([255, 26, 255, fadeOpacity], i);
-                return new ImageData(rawPixels, size, size);
+                const packedPixel32 = ((fadeOpacity | 0) << 24) | (255 << 16) | (26 << 8) | 255;
+                view32.fill(packedPixel32);
+                return new ImageData(new Uint8ClampedArray(view32.buffer), size, size);
             },
+            getUint32Array(size: number, timestamp: number): Uint32Array {
+                size = Math.round(size);
+                const totalPixels = size * size;
+                const view32 = new Uint32Array(totalPixels);
+                const fadeOpacity = ((0.5 + Math.sin((timestamp / 1000) * Math.PI) * 0.5) * 0.2475 + 0.025) * 255;
+                // if (fadeOpacity > 255) fadeOpacity = 255;
+                // else if (fadeOpacity < 0) fadeOpacity = 0;
+                const packedPixel32 = ((fadeOpacity | 0) << 24) | (255 << 16) | (26 << 8) | 255;
+                view32.fill(packedPixel32);
+                return view32;
+            },
+            // getImageData(size: number, timestamp: number): ImageData {
+            //     size = Math.round(size);
+            //     const rawPixels: Uint8ClampedArray = new Uint8ClampedArray(size * size * 4);
+            //     const fadeOpacity: number = ((0.5 + Math.sin((timestamp / 1000) * Math.PI) * 0.5) * 0.2475 + 0.025) * 255;
+            //     for (let i = 0; i < rawPixels.length; i += 4) rawPixels.set([255, 26, 255, fadeOpacity], i);
+            //     return new ImageData(rawPixels, size, size);
+            // },
             // getImageData(size: number, timestamp: number): ImageData {
             //     const imageSize: [width: number, height: number] = [1, 1];
             //     const rawPixels: Uint8ClampedArray = new Uint8ClampedArray(imageSize[0] * imageSize[1] * 4);
@@ -697,12 +718,32 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         LOADING_PENDING_CHUNK_IMAGE = {
             getImageData(size: number, timestamp: number): ImageData {
                 size = Math.round(size);
-                const rawPixels: Uint8ClampedArray = new Uint8ClampedArray(size * size * 4);
+                const totalPixels = size * size;
+                const view32 = new Uint32Array(totalPixels);
                 const fadeOpacity: number = ((0.5 + Math.sin((timestamp / 1000) * Math.PI) * 0.5) * 0.2475 + 0.025) * 255;
                 const color: [r: number, g: number, b: number, a: number] = blendPixelOverBackground(255, 255, 255, fadeOpacity, ...MAP_BACKGROUND_COLOR);
-                for (let i = 0; i < rawPixels.length; i += 4) rawPixels.set(color, i);
-                return new ImageData(rawPixels, size, size);
+                const packedPixel32 = ((color[3] | 0) << 24) | ((color[2] | 0) << 16) | ((color[1] | 0) << 8) | (color[0] | 0);
+                view32.fill(packedPixel32);
+                return new ImageData(new Uint8ClampedArray(view32.buffer), size, size);
             },
+            getUint32Array(size: number, timestamp: number): Uint32Array {
+                size = Math.round(size);
+                const totalPixels = size * size;
+                const view32 = new Uint32Array(totalPixels);
+                const fadeOpacity: number = ((0.5 + Math.sin((timestamp / 1000) * Math.PI) * 0.5) * 0.2475 + 0.025) * 255;
+                const color: [r: number, g: number, b: number, a: number] = blendPixelOverBackground(255, 255, 255, fadeOpacity, ...MAP_BACKGROUND_COLOR);
+                const packedPixel32 = ((color[3] | 0) << 24) | ((color[2] | 0) << 16) | ((color[1] | 0) << 8) | (color[0] | 0);
+                view32.fill(packedPixel32);
+                return view32;
+            },
+            // getImageData(size: number, timestamp: number): ImageData {
+            //     size = Math.round(size);
+            //     const rawPixels: Uint8ClampedArray = new Uint8ClampedArray(size * size * 4);
+            //     const fadeOpacity: number = ((0.5 + Math.sin((timestamp / 1000) * Math.PI) * 0.5) * 0.2475 + 0.025) * 255;
+            //     const color: [r: number, g: number, b: number, a: number] = blendPixelOverBackground(255, 255, 255, fadeOpacity, ...MAP_BACKGROUND_COLOR);
+            //     for (let i = 0; i < rawPixels.length; i += 4) rawPixels.set(color, i);
+            //     return new ImageData(rawPixels, size, size);
+            // },
         };
     }
     if (NO_DATA_CHUNK_IMAGE === undefined) {
@@ -1308,22 +1349,22 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                                         if (contentType === "Data3D" && data3dKeyCount) {
                                                             data3dKeySet.delete(key.toString("hex"));
                                                             data3dKeyCount = data3dKeySet.size;
-                                                            delete cachedChunkColorData[x]?.[z];
+                                                            cachedChunkColorData.get(x)?.delete(z);
                                                             delete cachedChunkImageBitmaps[x]?.[z];
                                                         } else if (contentType === "Data2D" && data2dKeyCount) {
                                                             data2dKeySet.delete(key.toString("hex"));
                                                             data2dKeyCount = data2dKeySet.size;
-                                                            delete cachedChunkColorData[x]?.[z];
+                                                            cachedChunkColorData.get(x)?.delete(z);
                                                             delete cachedChunkImageBitmaps[x]?.[z];
                                                         } else if (contentType === "Data2DLegacy" && data2dLegacyKeyCount) {
                                                             data2dLegacyKeySet.delete(key.toString("hex"));
                                                             data2dLegacyKeyCount = data2dLegacyKeySet.size;
-                                                            delete cachedChunkColorData[x]?.[z];
+                                                            cachedChunkColorData.get(x)?.delete(z);
                                                             delete cachedChunkImageBitmaps[x]?.[z];
                                                         } else if (contentType === "LegacyTerrain" && legacyTerrainKeyCount) {
                                                             legacyTerrainKeySet.delete(key.toString("hex"));
                                                             legacyTerrainKeyCount = legacyTerrainKeySet.size;
-                                                            delete cachedChunkColorData[x]?.[z];
+                                                            cachedChunkColorData.get(x)?.delete(z);
                                                             delete cachedChunkImageBitmaps[x]?.[z];
                                                         }
                                                         if (!props.tab.cachedDBKeys) return;
@@ -1659,17 +1700,18 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     }
     const contentsInteractionRef: RefObject<ContentsInteraction> = useRef<ContentsInteraction>(null);
     let lastMapDrawCall: number = 0;
-    interface CachedChunkColorData {
-        [x: number]: {
-            [y: number]:
-                | { imageData: ImageData /* Uint8Array */; biomeData: Int32Array; heightMap?: Uint16Array; heightRange?: [min: number, max: number] | null }
-                | "loading"
-                | "has_data"
-                | "no_data"
-                | "error";
-        };
-    }
-    let cachedChunkColorData: CachedChunkColorData = {};
+    type CachedChunkColorData = Map<
+        number,
+        Map<
+            number,
+            | { imageData: ImageData /* Uint8Array */; biomeData: Int32Array; heightMap?: Uint16Array; heightRange?: [min: number, max: number] | null }
+            | "loading"
+            | "has_data"
+            | "no_data"
+            | "error"
+        >
+    >;
+    let cachedChunkColorData: CachedChunkColorData = new Map();
     interface CachedChunkImageBitmaps {
         [zoom: number]: {
             fallback_error_chunk_image: ImageBitmap | "loading";
@@ -1682,7 +1724,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     }
     let cachedChunkImageBitmaps: CachedChunkImageBitmaps = {};
     let chunkColorDataIsLoadingWithNoParallelization: boolean = false;
-    let currentParallelLoadingChunks: `${number},${number}`[] = [];
+    const currentParallelLoadingChunks = new Set<`${number},${number}`>();
     let chunkImageBitmapIsLoadingWithNoParallelization: boolean = false;
     let currentParallelLoadingImageBitmaps: { [zoom: number]: `${number},${number}`[] } = {};
     let mapReset: boolean = false;
@@ -1843,14 +1885,15 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         const min: Vector2 = { x: Math.floor(bounds.min.x), y: Math.floor(bounds.min.y) };
         const max: Vector2 = { x: Math.ceil(bounds.max.x), y: Math.ceil(bounds.max.y) };
         // eslint-disable-next-line guard-for-in -- Performance optimization
-        for (const x in cachedChunkColorData) {
+        for (const x of cachedChunkColorData.keys()) {
             if (Number(x) < min.x || Number(x) > max.x) {
-                delete cachedChunkColorData[x];
+                cachedChunkColorData.delete(x);
                 continue;
             }
-            for (const y in cachedChunkColorData[x]!) {
+            const cachedChunkColorDataX = cachedChunkColorData.get(x)!;
+            for (const y of cachedChunkColorDataX.keys()) {
                 if (Number(y) < min.y || Number(y) > max.y) {
-                    delete cachedChunkColorData[x][y];
+                    cachedChunkColorDataX.delete(y);
                     continue;
                 }
             }
@@ -2625,6 +2668,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     //     for (let i = 0; i < rawPixels.length; i += 4) rawPixels.set(color, i);
     //     return new ImageData(rawPixels, 16, 16);
     // })();
+    /** @deprecated */
     function drawCachedChunks_v3(
         ctx: CanvasRenderingContext2D,
         bounds: { min: Vector2; max: Vector2 },
@@ -2663,11 +2707,11 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         const HEIGHT_MAP_DIFFERENCE_MODE_MAX_TINT = config.views.world.modeSettings["2D"].heightMapDifferenceModeMaxTint;
 
         for (let cx = minChunkX; cx <= maxChunkX; cx++) {
-            const col = cachedChunkColorData[cx];
+            const col = cachedChunkColorData.get(cx);
             if (!col) continue;
 
             for (let cy = minChunkY; cy <= maxChunkY; cy++) {
-                const entry = col[cy];
+                const entry = col.get(cy);
 
                 const chunkPixelX = (cx - bounds.min.x) * scale;
                 const chunkPixelY = (cy - bounds.min.y) * scale;
@@ -2708,10 +2752,10 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 applyHeightMap = true;
                                 const heightMapTint: number[] = new Array<number>(256);
                                 const minHeight: number = entry.heightRange ? entry.heightRange[0] : 0;
-                                const aboveChunk = cachedChunkColorData[cx]?.[cy - 1];
+                                const aboveChunk = cachedChunkColorData.get(cx)?.get(cy - 1);
                                 const aboveChunkExists = typeof aboveChunk === "object" && !!aboveChunk.heightMap;
                                 const aboveChunkMinHeight = aboveChunkExists ? (aboveChunk.heightRange?.[0] ?? 0) : NaN;
-                                const leftChunk = cachedChunkColorData[cx - 1]?.[cy];
+                                const leftChunk = cachedChunkColorData.get(cx - 1)?.get(cy);
                                 const leftChunkExists = typeof leftChunk === "object" && !!leftChunk.heightMap;
                                 const leftChunkMinHeight = leftChunkExists ? (leftChunk.heightRange?.[0] ?? 0) : NaN;
                                 for (let x = 0; x < 16; x++) {
@@ -2834,6 +2878,316 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         const img = new ImageData(frame, frameWidth, frameHeight);
         ctx.putImageData(img, 0, 0);
     }
+    let drawCachedChunks_v4_frameBuffer: ArrayBuffer = new ArrayBuffer(0);
+    let drawCachedChunks_v4_screen32: Uint32Array = new Uint32Array(0);
+    let drawCachedChunks_v4_screen8Clamped: Uint8ClampedArray = new Uint8ClampedArray(0);
+    function drawCachedChunks_v4(
+        ctx: CanvasRenderingContext2D,
+        bounds: { min: Vector2; max: Vector2 },
+        _blockBounds: { min: VectorXZ; max: VectorXZ },
+        size: { width: number; height: number },
+        scale: number
+    ): void {
+        const tileSizePx: number = Math.max(1, Math.round(scale));
+
+        const frameWidth: number = size.width;
+        const frameHeight: number = size.height;
+        const totalPixels: number = frameWidth * frameHeight;
+
+        if (drawCachedChunks_v4_frameBuffer.byteLength !== totalPixels * 4) {
+            drawCachedChunks_v4_frameBuffer = new ArrayBuffer(totalPixels * 4);
+            drawCachedChunks_v4_screen32 = new Uint32Array(drawCachedChunks_v4_frameBuffer);
+            drawCachedChunks_v4_screen8Clamped = new Uint8ClampedArray(drawCachedChunks_v4_frameBuffer);
+        }
+
+        drawCachedChunks_v4_screen32.fill(0x00000000);
+
+        // const frame = new Uint8ClampedArray(* 4);
+        const frame = drawCachedChunks_v4_screen32;
+        const now: number = Date.now();
+
+        const placeholderTileSize: number = Math.min(16, tileSizePx);
+
+        const loadingPendingTile: Uint32Array | null =
+            typeof LOADING_PENDING_CHUNK_IMAGE === "object" ? LOADING_PENDING_CHUNK_IMAGE.getUint32Array(placeholderTileSize, now) : null;
+
+        const loadingTile: Uint32Array | null = typeof LOADING_CHUNK_IMAGE === "object" ? LOADING_CHUNK_IMAGE.getUint32Array(placeholderTileSize, now) : null;
+
+        const noDataTile: Uint32Array | null = typeof NO_DATA_CHUNK_IMAGE === "object" ? NO_DATA_CHUNK_IMAGE.getUint32Array(placeholderTileSize, now) : null;
+
+        const errorImageData: ImageData = fallbackErrorChunkImageData ?? generateErrorImageData();
+        const errorTile: Uint8ClampedArray = scaleNearest(errorImageData.data, errorImageData.width, errorImageData.height, tileSizePx).data;
+
+        const minChunkX: number = Math.floor(bounds.min.x);
+        const maxChunkX: number = Math.ceil(bounds.max.x);
+        const minChunkY: number = Math.floor(bounds.min.y);
+        const maxChunkY: number = Math.ceil(bounds.max.y);
+
+        const heightMapEnabled: boolean = props.dataStorageObject.worldEditor2D.heightmap;
+        const usePreShading: boolean = heightMapEnabled && scale >= 16;
+
+        const HEIGHT_MAP_MODE = config.views.world.modeSettings["2D"].heightMapMode;
+        const HEIGHT_MAP_DIFFERENCE_MODE_STRENGTH = config.views.world.modeSettings["2D"].heightMapDifferenceModeStrength;
+        const HEIGHT_MAP_DIFFERENCE_MODE_MIN_TINT = config.views.world.modeSettings["2D"].heightMapDifferenceModeMinTint;
+        const HEIGHT_MAP_DIFFERENCE_MODE_MAX_TINT = config.views.world.modeSettings["2D"].heightMapDifferenceModeMaxTint;
+
+        const preShadeBuffer = usePreShading ? new ArrayBuffer(16 * 16 * 4) : null;
+        const preShade32 = usePreShading ? new Uint32Array(preShadeBuffer!) : null;
+        for (let cx = minChunkX; cx <= maxChunkX; cx++) {
+            const col = cachedChunkColorData.get(cx);
+            if (!col) continue;
+
+            const chunkPixelX = (cx - bounds.min.x) * scale;
+            const chunkWidth = Math.floor((cx + 1 - bounds.min.x) * scale) - Math.floor((cx - bounds.min.x) * scale);
+            const baseX = Math.floor(chunkPixelX);
+
+            if (baseX + tileSizePx < 0 || baseX >= frameWidth) continue;
+
+            for (let cy = minChunkY; cy <= maxChunkY; cy++) {
+                const entry = col.get(cy);
+
+                const chunkPixelY = (cy - bounds.min.y) * scale;
+
+                const baseY = Math.floor(chunkPixelY);
+
+                if (baseY + tileSizePx < 0 || baseY >= frameHeight) continue;
+
+                let src: Uint8ClampedArray | null = null;
+                let src32: Uint32Array | null = null;
+                let applyHeightMap = false;
+                let isChunk = false;
+                let heightMapTintCache: number[] | undefined;
+
+                if (!entry) {
+                    src32 = loadingPendingTile;
+                } else if (entry === "loading" || entry === "has_data" /* TEMP: The has_data and loading tiles should be different colors. */) {
+                    src32 = loadingTile;
+                } else if (entry === "no_data") {
+                    src32 = noDataTile;
+                } else if (entry === "error") {
+                    src = errorTile;
+                } else {
+                    src = entry.imageData.data;
+                    isChunk = true;
+                    // OPTIMIZE: This needs to cache the height map tint values where they don't have to be recalculated every frame. Maybe it should also store a last modified time of the chunks above and to the left, so when those are updated, it can update the height map tint values.
+                    if (heightMapEnabled) {
+                        if (HEIGHT_MAP_MODE === "difference") {
+                            if (entry.heightMap) {
+                                applyHeightMap = true;
+                                const heightMapTint: number[] = new Array<number>(256);
+                                const minHeight: number = entry.heightRange ? entry.heightRange[0] : 0;
+                                const aboveChunk = cachedChunkColorData.get(cx)?.get(cy - 1);
+                                const aboveChunkExists = typeof aboveChunk === "object" && !!aboveChunk.heightMap;
+                                const aboveChunkMinHeight = aboveChunkExists ? (aboveChunk.heightRange?.[0] ?? 0) : NaN;
+                                const leftChunk = cachedChunkColorData.get(cx - 1)?.get(cy);
+                                const leftChunkExists = typeof leftChunk === "object" && !!leftChunk.heightMap;
+                                const leftChunkMinHeight = leftChunkExists ? (leftChunk.heightRange?.[0] ?? 0) : NaN;
+                                for (let x = 0; x < 16; x++) {
+                                    for (let z = 0; z < 16; z++) {
+                                        const i = offsetTo2DChunkBlockDataIndex({ x, z });
+                                        const currentY = entry.heightMap[i]! + minHeight;
+                                        const aboveY =
+                                            z === 0 ?
+                                                aboveChunkExists ? aboveChunk.heightMap![offsetTo2DChunkBlockDataIndex({ x, z: 15 })]! + aboveChunkMinHeight
+                                                :   currentY
+                                            :   entry.heightMap[offsetTo2DChunkBlockDataIndex({ x, z: z - 1 })]! + minHeight;
+                                        const leftY =
+                                            x === 0 ?
+                                                leftChunkExists ? leftChunk.heightMap![offsetTo2DChunkBlockDataIndex({ x: 15, z })]! + leftChunkMinHeight
+                                                :   currentY
+                                            :   entry.heightMap[offsetTo2DChunkBlockDataIndex({ x: x - 1, z })]! + minHeight;
+                                        const aboveDiff = currentY - aboveY;
+                                        const leftDiff = currentY - leftY;
+                                        // const slope = aboveDiff + leftDiff;
+                                        const slope_unlogged = Math.max(
+                                            Math.min(Math.min(aboveDiff, leftDiff) * 1.5, Math.min(aboveDiff, leftDiff) * 0.5),
+                                            Math.min(Math.max(Math.max(aboveDiff, leftDiff) * 1.5, Math.max(aboveDiff, leftDiff) * 0.5), aboveDiff + leftDiff)
+                                        );
+                                        const slope = (Math.log1p(Math.abs(slope_unlogged)) / Math.LN2) * Math.sign(slope_unlogged);
+                                        const shade = 1 + slope * HEIGHT_MAP_DIFFERENCE_MODE_STRENGTH;
+                                        heightMapTint[i] = Math.max(HEIGHT_MAP_DIFFERENCE_MODE_MIN_TINT, Math.min(HEIGHT_MAP_DIFFERENCE_MODE_MAX_TINT, shade));
+                                    }
+                                }
+                                heightMapTintCache = heightMapTint;
+                            }
+                        } else if (HEIGHT_MAP_MODE === "normalized") {
+                            if (entry.heightMap) {
+                                applyHeightMap = true;
+                                if (entry.heightRange) {
+                                    const heightMapLength: number = entry.heightMap.length;
+                                    const heightMapTint: number[] = new Array<number>(heightMapLength);
+                                    const minHeight: number = entry.heightRange[0];
+                                    const range: number = entry.heightRange[1] - minHeight;
+                                    const strength = 0.9; // TODO (Important): Add a config option for this.
+                                    for (let i = 0; i < heightMapLength; i++) {
+                                        heightMapTint[i] =
+                                            1 + ((applyHeightMap ? normalizeHeightValue(entry.heightMap[i]!, minHeight, range) : 0.5) - 0.5) * strength;
+                                    }
+                                    heightMapTintCache = heightMapTint;
+                                } else {
+                                    const heightMapLength: number = entry.heightMap.length;
+                                    const normalizedHeightMap: number[] = new Array<number>(heightMapLength);
+                                    const minHeight: number = 0;
+                                    const range: number = 256;
+                                    const strength = 0.9;
+                                    for (let i = 0; i < heightMapLength; i++) {
+                                        normalizedHeightMap[i] =
+                                            1 + ((applyHeightMap ? normalizeHeightValue(entry.heightMap[i]!, minHeight, range) : 0.5) - 0.5) * strength;
+                                    }
+                                    heightMapTintCache = normalizedHeightMap;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (!src && !src32) continue;
+
+                const chunkHeight = Math.floor((cy + 1 - bounds.min.y) * scale) - Math.floor((cy - bounds.min.y) * scale);
+
+                if (isChunk) {
+                    if (!src) continue; // TEMP
+                    const sw = 16,
+                        sh = 16;
+                    const xRatio = sw / chunkWidth;
+                    const yRatio = sh / chunkHeight;
+
+                    if (usePreShading) {
+                        for (let sir = 0; sir < 256; sir++) {
+                            // const packedPixel = src32[sir];
+                            const shade = heightMapTintCache![sir]!;
+                            const si = sir * 4;
+
+                            // let r = ((packedPixel & 0x000000ff) * shade) | 0;
+                            // if (r > 255) r = 255;
+                            // else if (r < 0) r = 0;
+
+                            // let g = (((packedPixel & 0x0000ff00) >> 8) * shade) | 0;
+                            // if (g > 255) g = 255;
+                            // else if (g < 0) g = 0;
+
+                            // let b = (((packedPixel & 0x00ff0000) >> 16) * shade) | 0;
+                            // if (b > 255) b = 255;
+                            // else if (b < 0) b = 0;
+
+                            // const a = (packedPixel & 0xff000000) >>> 24;
+
+                            let r: number = (src[si]! * shade) | 0;
+                            if (r > 255) r = 255;
+                            else if (r < 0) r = 0;
+
+                            let g: number = (src[si + 1]! * shade) | 0;
+                            if (g > 255) g = 255;
+                            else if (g < 0) g = 0;
+
+                            let b: number = (src[si + 2]! * shade) | 0;
+                            if (b > 255) b = 255;
+                            else if (b < 0) b = 0;
+
+                            const a: number = src[si + 3]!;
+                            // let a: number = (src[si + 3]! * shade) | 0;
+                            // if (a > 255) a = 255;
+                            // else if (a < 0) a = 0;
+
+                            preShade32![sir] = (a << 24) | (b << 16) | (g << 8) | r;
+                        }
+                    }
+
+                    for (let dy = 0; dy < chunkHeight; dy++) {
+                        const dstY = baseY + dy;
+                        if (dstY < 0 || dstY >= frameHeight) continue;
+
+                        const srcY = Math.floor(dy * yRatio);
+                        const rowOffset = dstY * frameWidth;
+
+                        for (let dx = 0; dx < chunkWidth; dx++) {
+                            const dstX = baseX + dx;
+                            if (dstX < 0 || dstX >= frameWidth) continue;
+
+                            const srcX = Math.floor(dx * xRatio);
+
+                            const sir = srcY * sw + srcX;
+                            const si = sir * 4;
+                            const di = rowOffset + dstX;
+                            if (usePreShading) {
+                                frame[di] = preShade32![sir]!;
+                            } else if (heightMapEnabled) {
+                                const shade = heightMapEnabled ? heightMapTintCache![sir]! : 1;
+
+                                let r: number = (src[si]! * shade) | 0;
+                                if (r > 255) r = 255;
+                                else if (r < 0) r = 0;
+
+                                let g: number = (src[si + 1]! * shade) | 0;
+                                if (g > 255) g = 255;
+                                else if (g < 0) g = 0;
+
+                                let b: number = (src[si + 2]! * shade) | 0;
+                                if (b > 255) b = 255;
+                                else if (b < 0) b = 0;
+
+                                const a: number = src[si + 3]!;
+                                // let a: number = (src[si + 3]! * shade) | 0;
+                                // if (a > 255) a = 255;
+                                // else if (a < 0) a = 0;
+
+                                frame[di] = (a << 24) | (b << 16) | (g << 8) | r;
+                            } else {
+                                frame[di] =
+                                    (src[si + 3]! << 24) | // a
+                                    (src[si + 2]! << 16) | // b
+                                    (src[si + 1]! << 8) | // g
+                                    src[si]!; // r
+                            }
+                        }
+                    }
+                } else if (src) {
+                    for (let dy = 0; dy < chunkHeight; dy++) {
+                        const dstY = baseY + dy;
+                        if (dstY < 0 || dstY >= frameHeight) continue;
+
+                        const rowOffset = dstY * frameWidth;
+                        const srcRow = Math.floor((dy / chunkHeight) * placeholderTileSize) * placeholderTileSize * 4;
+
+                        for (let dx = 0; dx < chunkWidth; dx++) {
+                            const dstX = baseX + dx;
+                            if (dstX < 0 || dstX >= frameWidth) continue;
+
+                            const si = srcRow + Math.floor((dx / chunkHeight) * placeholderTileSize) * 4;
+                            const di = rowOffset + dstX;
+
+                            frame[di] =
+                                (src[si + 3]! << 24) | // a
+                                (src[si + 2]! << 16) | // b
+                                (src[si + 1]! << 8) | // g
+                                src[si]!; // r
+                        }
+                    }
+                } else {
+                    for (let dy = 0; dy < chunkHeight; dy++) {
+                        const dstY = baseY + dy;
+                        if (dstY < 0 || dstY >= frameHeight) continue;
+
+                        const rowOffset = dstY * frameWidth;
+                        const srcRow = Math.floor((dy / chunkHeight) * placeholderTileSize) * placeholderTileSize;
+
+                        for (let dx = 0; dx < chunkWidth; dx++) {
+                            const dstX = baseX + dx;
+                            if (dstX < 0 || dstX >= frameWidth) continue;
+
+                            const si = srcRow + Math.floor((dx / chunkHeight) * placeholderTileSize);
+                            const di = rowOffset + dstX;
+
+                            frame[di] = src32![si]!;
+                        }
+                    }
+                }
+            }
+        }
+
+        const img = new ImageData(drawCachedChunks_v4_screen8Clamped, frameWidth, frameHeight);
+        ctx.putImageData(img, 0, 0);
+    }
 
     /** @deprecated */
     async function loadChunkImageBitmapsInBounds(bounds: { min: Vector2; max: Vector2 }, scale: number): Promise<void> {
@@ -2842,7 +3196,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         for (let x = bounds.min.x; x < bounds.max.x; x++) {
             for (let y = bounds.min.y; y < bounds.max.y; y++) {
                 const chunkColorData: { imageData: ImageData; biomeData: Int32Array } | "loading" | "has_data" | "no_data" | "error" | undefined =
-                    cachedChunkColorData[x]?.[y];
+                    cachedChunkColorData.get(x)?.get(y);
                 if (!chunkColorData || chunkColorData === "has_data") continue;
                 if (chunkColorData === "loading") continue;
 
@@ -2971,11 +3325,11 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         bounds = { min: { x: Math.floor(bounds.min.x), y: Math.floor(bounds.min.y) }, max: { x: Math.ceil(bounds.max.x), y: Math.ceil(bounds.max.y) } };
         const hasMaxParallelizationLimit: boolean = Number.isFinite(config.views.world.modeSettings["2D"].maxParallelLoadingChunks);
         for (let x = bounds.min.x; x < bounds.max.x; x++) {
-            cachedChunkColorData[x] ??= {};
+            if (!cachedChunkColorData.has(x)) cachedChunkColorData.set(x, new Map());
+            const col = cachedChunkColorData.get(x)!;
             for (let y = bounds.min.y; y < bounds.max.y; y++) {
-                if (!cachedChunkColorData[x]) break;
-
-                if (!cachedChunkColorData[x]![y]) {
+                let colYValue = col.get(y);
+                if (!colYValue) {
                     switch (
                         checkChunkForBiomeColorData({
                             x,
@@ -2984,121 +3338,122 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                         })
                     ) {
                         case true:
-                            cachedChunkColorData[x]![y] = "has_data";
+                            col.set(y, "has_data");
                             break;
                         case false:
-                            cachedChunkColorData[x]![y] = "no_data";
+                            col.set(y, "no_data");
                             continue;
                         case null:
                             break;
                         // no default
                     }
                 }
-                if (cachedChunkColorData[x]![y] === "loading" && !config.views.world.modeSettings["2D"].parallelizeChunkLoading) break;
+                if (colYValue === "no_data") continue;
+                if (colYValue === "loading" && !config.views.world.modeSettings["2D"].parallelizeChunkLoading) break;
                 if (chunkColorDataIsLoadingWithNoParallelization && !config.views.world.modeSettings["2D"].parallelizeChunkLoading) break;
                 if (
                     config.views.world.modeSettings["2D"].parallelizeChunkLoading &&
                     hasMaxParallelizationLimit &&
-                    currentParallelLoadingChunks.length >= config.views.world.modeSettings["2D"].maxParallelLoadingChunks
+                    currentParallelLoadingChunks.size >= config.views.world.modeSettings["2D"].maxParallelLoadingChunks
                 ) {
                     continue;
                 }
 
-                if (cachedChunkColorData[x]![y] && cachedChunkColorData[x]![y] !== "has_data") continue;
+                if (colYValue !== "has_data") continue;
                 if (
                     config.views.world.modeSettings["2D"].parallelizeChunkLoading &&
                     hasMaxParallelizationLimit &&
-                    currentParallelLoadingChunks.includes(`${x},${y}`)
+                    currentParallelLoadingChunks.has(`${x},${y}`)
                 ) {
                     continue;
                 }
 
                 if (!config.views.world.modeSettings["2D"].parallelizeChunkLoading) chunkColorDataIsLoadingWithNoParallelization = true;
-                else if (hasMaxParallelizationLimit) currentParallelLoadingChunks.push(`${x},${y}`);
-                cachedChunkColorData[x]![y] = "loading";
+                else if (hasMaxParallelizationLimit) currentParallelLoadingChunks.add(`${x},${y}`);
+                col.set(y, (colYValue = "loading"));
 
-                /**
-                 * Loads the color and biome data for this chunk.
-                 *
-                 * @returns A promise that resolves when the color and biome data is loaded.
-                 *
-                 * @throws {unknown} If an error occurs.
-                 */
-                async function loadChunkColorData(): Promise<void> {
-                    const biomeColorData: {
-                        colorData: Uint8ClampedArray;
-                        biomeData: Int32Array;
-                        heightMap?: Uint16Array;
-                        heightRange?: [min: number, max: number] | null;
-                    } | null = await getChunkBiomeColorData({
-                        x,
-                        z: y,
-                        dimension: props.dataStorageObject.worldEditor2D.dimension,
-                    });
-                    if (!cachedChunkColorData[x]?.[y]) return;
-                    if (biomeColorData === null) {
-                        cachedChunkColorData[x]![y] = "no_data";
-                        return;
-                    }
-                    cachedChunkColorData[x]![y] = {
-                        imageData: new ImageData(biomeColorData.colorData, 16, 16),
-                        biomeData: biomeColorData.biomeData,
-                        ...("heightMap" in biomeColorData && { heightMap: biomeColorData.heightMap }),
-                        ...("heightRange" in biomeColorData && { heightRange: biomeColorData.heightRange }),
-                    };
-                }
-
-                if (config.views.world.modeSettings["2D"].parallelizeChunkLoading) {
-                    loadChunkColorData()
-                        .catch((error: unknown): void => {
-                            console.error("Error loading chunk color data:", error, "Chunk:", { x, y });
-                            if (!cachedChunkColorData[x]?.[y]) return;
-                            cachedChunkColorData[x]![y] = "error";
-                        })
-                        .finally((): void => {
-                            removeFromLoadingChunksList: {
-                                const entryIndex: number = currentParallelLoadingChunks.indexOf(`${x},${y}`);
-                                if (entryIndex === -1) break removeFromLoadingChunksList;
-                                currentParallelLoadingChunks.splice(entryIndex, 1);
-                            }
+                {
+                    /**
+                     * Loads the color and biome data for this chunk.
+                     *
+                     * @returns A promise that resolves when the color and biome data is loaded.
+                     *
+                     * @throws {unknown} If an error occurs.
+                     */
+                    async function loadChunkColorData(): Promise<void> {
+                        const biomeColorData: {
+                            colorData: Uint8ClampedArray;
+                            biomeData: Int32Array;
+                            heightMap?: Uint16Array;
+                            heightRange?: [min: number, max: number] | null;
+                        } | null = await getChunkBiomeColorData({
+                            x,
+                            z: y,
+                            dimension: props.dataStorageObject.worldEditor2D.dimension,
                         });
-                } else {
-                    try {
-                        await loadChunkColorData();
-                        if (!chunkColorDataIsLoadingWithNoParallelization) return;
-                        // const chunkColorData = new Uint8ClampedArray(16 * 16 * 4);
-                        // const columnColors: [r: number, g: number, b: number, a: number][] = [
-                        //     [255, 0, 0, 255],
-                        //     [0, 255, 0, 255],
-                        //     [0, 0, 255, 255],
-                        //     [255, 255, 0, 255],
-                        //     [255, 0, 255, 255],
-                        //     [0, 255, 255, 255],
-                        //     [255, 255, 255, 255],
-                        //     [0, 0, 0, 255],
-                        //     [128, 128, 128, 255],
-                        //     [192, 192, 192, 255],
-                        //     [64, 64, 64, 255],
-                        //     [96, 96, 96, 255],
-                        //     [32, 32, 32, 255],
-                        //     [48, 48, 48, 255],
-                        //     [16, 16, 16, 255],
-                        //     [24, 24, 24, 255],
-                        // ];
-                        // for (let x = 0; x < 16; x++) {
-                        //     for (let z = 0; z < 16; z++) {
-                        //         const index: number = offsetTo2DChunkBlockColorDataIndex({ x, z });
-                        //         [chunkColorData[index], chunkColorData[index + 1], chunkColorData[index + 2], chunkColorData[index + 3]] = columnColors[x]!;
-                        //     }
-                        // }
-                        // // cachedChunkColorData[x]![y] = chunkColorData;
-                        // cachedChunkColorData[x]![y] = new ImageData(chunkColorData, 16, 16);
-                    } catch (e) {
-                        console.error("Error loading chunk color data:", e, "Chunk:", { x, y });
-                        if (!cachedChunkColorData[x]?.[y]) return;
-                        cachedChunkColorData[x]![y] = "error";
-                    } finally {
-                        chunkColorDataIsLoadingWithNoParallelization = false;
+                        if (col !== cachedChunkColorData.get(x)) return;
+                        if (!col.get(y)) return;
+                        if (biomeColorData === null) {
+                            col.set(y, "no_data");
+                            return;
+                        }
+                        col.set(y, {
+                            imageData: new ImageData(biomeColorData.colorData, 16, 16),
+                            biomeData: biomeColorData.biomeData,
+                            ...("heightMap" in biomeColorData && { heightMap: biomeColorData.heightMap }),
+                            ...("heightRange" in biomeColorData && { heightRange: biomeColorData.heightRange }),
+                        });
+                    }
+
+                    if (config.views.world.modeSettings["2D"].parallelizeChunkLoading) {
+                        loadChunkColorData()
+                            .catch((error: unknown): void => {
+                                console.error("Error loading chunk color data:", error, "Chunk:", { x, y });
+                                if (col !== cachedChunkColorData.get(x)) return;
+                                col.set(y, "error");
+                            })
+                            .finally((): void => {
+                                currentParallelLoadingChunks.delete(`${x},${y}`);
+                            });
+                    } else {
+                        try {
+                            await loadChunkColorData();
+                            if (col !== cachedChunkColorData.get(x)) break;
+                            if (!chunkColorDataIsLoadingWithNoParallelization) return;
+                            // const chunkColorData = new Uint8ClampedArray(16 * 16 * 4);
+                            // const columnColors: [r: number, g: number, b: number, a: number][] = [
+                            //     [255, 0, 0, 255],
+                            //     [0, 255, 0, 255],
+                            //     [0, 0, 255, 255],
+                            //     [255, 255, 0, 255],
+                            //     [255, 0, 255, 255],
+                            //     [0, 255, 255, 255],
+                            //     [255, 255, 255, 255],
+                            //     [0, 0, 0, 255],
+                            //     [128, 128, 128, 255],
+                            //     [192, 192, 192, 255],
+                            //     [64, 64, 64, 255],
+                            //     [96, 96, 96, 255],
+                            //     [32, 32, 32, 255],
+                            //     [48, 48, 48, 255],
+                            //     [16, 16, 16, 255],
+                            //     [24, 24, 24, 255],
+                            // ];
+                            // for (let x = 0; x < 16; x++) {
+                            //     for (let z = 0; z < 16; z++) {
+                            //         const index: number = offsetTo2DChunkBlockColorDataIndex({ x, z });
+                            //         [chunkColorData[index], chunkColorData[index + 1], chunkColorData[index + 2], chunkColorData[index + 3]] = columnColors[x]!;
+                            //     }
+                            // }
+                            // // col[y] = chunkColorData;
+                            // col[y] = new ImageData(chunkColorData, 16, 16);
+                        } catch (e) {
+                            console.error("Error loading chunk color data:", e, "Chunk:", { x, y });
+                            if (col !== cachedChunkColorData.get(x)) break;
+                            col.set(y, "error");
+                        } finally {
+                            chunkColorDataIsLoadingWithNoParallelization = false;
+                        }
                     }
                 }
             }
@@ -3106,10 +3461,10 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     }
     function reloadMap(reloadStaticDBKeysAndLevelDat: boolean, rerenderMode: "rerenderContents" | "renderFrame"): void {
         lastMapDrawCall = 0;
-        cachedChunkColorData = {};
+        cachedChunkColorData.clear();
         cachedChunkImageBitmaps = {};
         chunkColorDataIsLoadingWithNoParallelization = false;
-        currentParallelLoadingChunks = [];
+        currentParallelLoadingChunks.clear();
         chunkImageBitmapIsLoadingWithNoParallelization = false;
         currentParallelLoadingImageBitmaps = [];
         lastMapPositionDetails = undefined;
@@ -3570,7 +3925,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             );
         }
 
-        const chunkColorData = cachedChunkColorData[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
+        const chunkColorData = cachedChunkColorData.get(targetChunkDetails.chunk.x)?.get(targetChunkDetails.chunk.z);
 
         const height: number | undefined =
             typeof chunkColorData === "object" ? chunkColorData.heightMap?.[offsetTo2DChunkBlockColorDataIndex(targetChunkDetails.block) / 4] : undefined;
@@ -3964,7 +4319,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 <MenuItem
                     title="Reload the data for this chunk"
                     onClick={(): void => {
-                        delete cachedChunkColorData[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
+                        cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
                         delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
                     }}
                 >
@@ -4000,22 +4355,22 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                         if (contentType === "Data3D" && data3dKeyCount) {
                                             data3dKeySet.delete(currentKey.toString("hex"));
                                             data3dKeyCount = data3dKeySet.size;
-                                            delete cachedChunkColorData[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
+                                            cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
                                             delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
                                         } else if (contentType === "Data2D" && data2dKeyCount) {
                                             data2dKeySet.delete(currentKey.toString("hex"));
                                             data2dKeyCount = data2dKeySet.size;
-                                            delete cachedChunkColorData[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
+                                            cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
                                             delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
                                         } else if (contentType === "Data2DLegacy" && data2dLegacyKeyCount) {
                                             data2dLegacyKeySet.delete(currentKey.toString("hex"));
                                             data2dLegacyKeyCount = data2dLegacyKeySet.size;
-                                            delete cachedChunkColorData[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
+                                            cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
                                             delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
                                         } else if (contentType === "LegacyTerrain" && legacyTerrainKeyCount) {
                                             legacyTerrainKeySet.delete(currentKey.toString("hex"));
                                             legacyTerrainKeyCount = legacyTerrainKeySet.size;
-                                            delete cachedChunkColorData[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
+                                            cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
                                             delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
                                         }
                                         if (!props.tab.cachedDBKeys) return;
@@ -4032,22 +4387,22 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 if (contentType === "Data3D" && data3dKeyCount) {
                                     data3dKeySet.delete(key.toString("hex"));
                                     data3dKeyCount = data3dKeySet.size;
-                                    delete cachedChunkColorData[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
+                                    cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
                                     delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
                                 } else if (contentType === "Data2D" && data2dKeyCount) {
                                     data2dKeySet.delete(key.toString("hex"));
                                     data2dKeyCount = data2dKeySet.size;
-                                    delete cachedChunkColorData[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
+                                    cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
                                     delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
                                 } else if (contentType === "Data2DLegacy" && data2dLegacyKeyCount) {
                                     data2dLegacyKeySet.delete(key.toString("hex"));
                                     data2dLegacyKeyCount = data2dLegacyKeySet.size;
-                                    delete cachedChunkColorData[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
+                                    cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
                                     delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
                                 } else if (contentType === "LegacyTerrain" && legacyTerrainKeyCount) {
                                     legacyTerrainKeySet.delete(key.toString("hex"));
                                     legacyTerrainKeyCount = legacyTerrainKeySet.size;
-                                    delete cachedChunkColorData[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
+                                    cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
                                     delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
                                 }
                                 if (!props.tab.cachedDBKeys) return;
@@ -4067,6 +4422,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     void cullCachedOutOfBoundsImageBitmaps;
     void drawCachedChunks;
     void drawCachedChunks_v2;
+    void drawCachedChunks_v3;
     void loadChunkImageBitmapsInBounds;
     void rerenderMap; // TEMP
     const hoverInfoRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
@@ -4241,7 +4597,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                         if (!hoverInfoRef.current) return;
                         const chunk: Vector2 = { ...coords.snapped };
                         const block: VectorXZ = { x: Math.floor(coords.raw.x * 16), z: Math.floor(coords.raw.y * 16) };
-                        const chunkColorData = cachedChunkColorData[chunk.x]?.[chunk.y];
+                        const chunkColorData = cachedChunkColorData.get(chunk.x)?.get(chunk.y);
                         biomeDetailsRenderer: if (typeof chunkColorData === "object") {
                             const biomeId: number | undefined = chunkColorData.biomeData[offsetTo2DChunkBlockColorDataIndex(block) / 4];
                             if (biomeId === undefined) break biomeDetailsRenderer;
@@ -4359,7 +4715,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 min: { x: Math.floor(bounds.min.x * 16), z: Math.floor(bounds.min.y * 16) },
                                 max: { x: Math.ceil(bounds.max.x * 16), z: Math.ceil(bounds.max.y * 16) },
                             };
-                            drawCachedChunks_v3(ctx, bounds, blockBounds, config.size, config.scale);
+                            drawCachedChunks_v4(ctx, bounds, blockBounds, config.size, config.scale);
                             // function areMapPositionDetailsDifferent(a: ComparisonMapPositionDetails, b: ComparisonMapPositionDetails): boolean {
                             //     if (a.coords.x !== b.coords.x || a.coords.y !== b.coords.y) return true;
                             //     if (a.scale !== b.scale) return true;
