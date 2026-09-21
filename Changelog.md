@@ -39,6 +39,8 @@
 ## Changes
 
 -   Chunks in the 2D world map now try loading on a 4ms interval rather than once per frame to reduce the amount that chunk loading slows down when the FPS drops.
+-   This minimum zoom of the 2D world map is now decreases based on the device pixel ratio.
+-   This maximum zoom of the 2D world map is now increases based on the device pixel ratio.
 
 ## Fixes
 

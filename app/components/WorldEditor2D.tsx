@@ -4468,6 +4468,18 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     function Contents(): JSX.Element {
         const engine: EngineHandle = useCanvasTileEngine();
         const [forceRerenderLastValue, triggerForceRerender] = useState(false);
+        // TODO (Important): Add a config option to set whether the minimum scale should be adjusted based on the device pixel ratio.
+        function calculateMinScale(): number {
+            return devicePixelRatio > 1 ?
+                    config.views.world.modeSettings["2D"].minMapScale / devicePixelRatio
+                :   config.views.world.modeSettings["2D"].minMapScale;
+        }
+        // TODO (Important): Add a config option to set whether the maximum scale should be adjusted based on the device pixel ratio.
+        function calculateMaxScale(): number {
+            return devicePixelRatio < 1 ?
+                    config.views.world.modeSettings["2D"].maxMapScale / devicePixelRatio
+                :   config.views.world.modeSettings["2D"].maxMapScale;
+        }
         function rerenderContents(): void {
             triggerForceRerender(!forceRerenderLastValue);
         }
@@ -4482,6 +4494,10 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             if (successfullyRerenderedPortals) portalsRendered = props.dataStorageObject.worldEditor2D.dataOverlays.portals;
             else portalsRendered = !props.dataStorageObject.worldEditor2D.dataOverlays.portals;
         }
+
+        let minScale: number = calculateMinScale();
+        let maxScale: number = calculateMaxScale();
+        let lastDevicePixelRatio: number = devicePixelRatio;
 
         return (
             <div
@@ -4602,7 +4618,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                     engine={engine}
                     renderer={new RendererCanvas() as import("@canvas-tile-engine/core").IRenderer<HTMLDivElement, HTMLImageElement>}
                     config={{
-                        scale: props.dataStorageObject.worldEditor2D.zoom,
+                        scale: Math.min(Math.max(props.dataStorageObject.worldEditor2D.zoom, minScale), maxScale),
                         responsive: "preserve-scale",
                         coordinates: { enabled: true },
                         debug: {
@@ -4614,11 +4630,23 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                         backgroundColor: `#${MAP_BACKGROUND_COLOR.map((v: number): string => v.toString(16).padStart(2, "0")).join("")}`,
                         eventHandlers: { drag: true, zoom: true, hover: true, click: true, rightClick: true },
                         // 1 is absurdly laggy, 3 is a little laggy, 4 isn't *too* bad, 8 is good.
-                        minScale: config.views.world.modeSettings["2D"].minMapScale,
-                        maxScale: config.views.world.modeSettings["2D"].maxMapScale /* 768 */ /* 96 */,
+                        minScale,
+                        maxScale /* 768 */ /* 96 */,
                     }}
                     center={props.dataStorageObject.worldEditor2D.position /* { x: 0, y: 0 } */}
+                    onResize={(): void => {
+                        if (lastDevicePixelRatio !== devicePixelRatio) {
+                            lastDevicePixelRatio = devicePixelRatio;
+                            const centerPosition: import("@canvas-tile-engine/core").Coords = engine.getCenterCoords();
+                            minScale = calculateMinScale();
+                            maxScale = calculateMaxScale();
+                            (engine.instance as unknown as import("@canvas-tile-engine/core").RendererDependencies).camera.setScaleLimits(minScale, maxScale); // HACK
+                            engine.goCoords(centerPosition.x, centerPosition.y, 0);
+                        }
+                    }}
                     onClick={(coords) => {
+                        // IDEA: Maybe implement selection or something when a modifier key is held down, or a toggle is active on mobile.
+                        // IDEA: Maybe when clicking a chunk, it should be selected and have a button group at the top for actions for it, on maybe it should just open the context menu.
                         // DEBUG
                         console.debug("Clicked:", coords.snapped, { x: Math.floor(coords.raw.x * 16), y: Math.floor(coords.raw.y * 16) }, coords.raw);
                     }}
