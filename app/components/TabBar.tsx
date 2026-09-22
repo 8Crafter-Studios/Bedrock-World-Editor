@@ -168,7 +168,7 @@ export default function TabBar(): JSX.Element {
             },
             // IDEA: Add support for editing `.mcworld` and `.mctemplate` files, and maybe even selecting a `.mcaddon` file that contains worlds to open all of those worlds at once.
             {
-                icon: "resource://images/ui/glyphs/Data-Empty.png",
+                icon: "resource://images/ui/glyphs/NBT.png",
                 name: "NBT File",
                 resolution: 12,
                 async onClick(_event: TargetedMouseEvent<HTMLDivElement>): Promise<void> {

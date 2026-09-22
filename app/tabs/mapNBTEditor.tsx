@@ -113,7 +113,7 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
                 {((): boolean => {
                     if (props.tab.target.type === "File") return false;
                     const contentType = props.tab.contentType === "Unknown" ? getContentTypeFromDBKey(props.tab.target.key) : props.tab.contentType;
-                    const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[contentType];
+                    const format: EntryContentTypeFormatData = props.tab.formatData ?? entryContentTypeToFormatMap[contentType];
                     if (!((format.type === "NBT") /*  || (format.type === "custom" && format.resultType === "JSONNBT") */)) return false;
                     return true;
                 })() && (
@@ -122,7 +122,7 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
                         onClick={async (): Promise<void> => {
                             if (props.tab.target.type === "File") return;
                             const contentType = props.tab.contentType === "Unknown" ? getContentTypeFromDBKey(props.tab.target.key) : props.tab.contentType;
-                            const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[contentType];
+                            const format: EntryContentTypeFormatData = props.tab.formatData ?? entryContentTypeToFormatMap[contentType];
                             if (!((format.type === "NBT") /*  || (format.type === "custom" && format.resultType === "JSONNBT") */)) return;
                             if (!format.defaultValue) return; // TEMP: Remove this when a manual default value is added.
                             // TODO: Make this determine the default values dynamically (it needs to get the map ID from the LevelDB key and use that for the map ID in the default value) so as not to insert invalid data.
@@ -136,7 +136,7 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
             </div>
         );
     }
-    const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[props.tab.contentType] as EntryContentTypeFormatData;
+    const format: EntryContentTypeFormatData = props.tab.formatData ?? (entryContentTypeToFormatMap[props.tab.contentType] as EntryContentTypeFormatData);
     async function loadData(): Promise<void> {
         if (props.tab.target.type === "LevelDBEntry" && !props.tab.parentTab.db?.isOpen() && !((await props.tab.parentTab.awaitDBOpen) ?? true)) {
             throw new Error("LevelDB open failure.");

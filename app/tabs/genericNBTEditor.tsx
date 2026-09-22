@@ -113,7 +113,7 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                 {((): boolean => {
                     if (props.tab.target.type === "File") return false;
                     const contentType = props.tab.contentType === "Unknown" ? getContentTypeFromDBKey(props.tab.target.key) : props.tab.contentType;
-                    const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[contentType];
+                    const format: EntryContentTypeFormatData = props.tab.formatData ?? entryContentTypeToFormatMap[contentType];
                     if (!((format.type === "NBT") /*  || (format.type === "custom" && format.resultType === "JSONNBT") */)) return false;
                     return true;
                 })() && (
@@ -122,7 +122,7 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                         onClick={async (): Promise<void> => {
                             if (props.tab.target.type === "File") return;
                             const contentType = props.tab.contentType === "Unknown" ? getContentTypeFromDBKey(props.tab.target.key) : props.tab.contentType;
-                            const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[contentType];
+                            const format: EntryContentTypeFormatData = props.tab.formatData ?? entryContentTypeToFormatMap[contentType];
                             if (!((format.type === "NBT") /*  || (format.type === "custom" && format.resultType === "JSONNBT") */)) return;
                             // TODO: Make this determine the default values dynamically (if possible for the current content type) so as not to insert invalid data.
                             await props.tab.parentTab.db!.put(
@@ -147,7 +147,7 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
             </div>
         );
     }
-    const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[props.tab.contentType] as EntryContentTypeFormatData;
+    const format: EntryContentTypeFormatData = props.tab.formatData ?? (entryContentTypeToFormatMap[props.tab.contentType] as EntryContentTypeFormatData);
     async function loadData(): Promise<void> {
         if (props.tab.target.type === "LevelDBEntry" && !props.tab.parentTab.db?.isOpen() && !((await props.tab.parentTab.awaitDBOpen) ?? true)) {
             throw new Error("LevelDB open failure.");

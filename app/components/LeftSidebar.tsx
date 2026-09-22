@@ -21,6 +21,8 @@ export function setMobileLeftSidebarVisibility(value?: boolean): void {
     else $("#left_sidebar").removeClass("active-nav");
 }
 
+// IDEA: Make the highlight on the left sidebar item for a sub-tab with a matching content type being active be different from the highlight for when that left sidebar tab is actually directly active.
+
 /**
  * The left sidebar.
  *
@@ -40,7 +42,7 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.Element {
             case "DynamicProperties":
                 return "dynamic-properties";
             case "LevelDat":
-                return "world-settings";
+                return props.tab.type === "world" ? "world-settings" : "view-files";
             case "Map":
                 return "maps";
             case "PendingTicks":

@@ -104,7 +104,7 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
                         type="button"
                         onClick={async (): Promise<void> => {
                             if (props.tab.target.type === "File") return;
-                            const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[props.tab.contentType];
+                            const format: EntryContentTypeFormatData = props.tab.formatData ?? entryContentTypeToFormatMap[props.tab.contentType];
                             await props.tab.parentTab.db!.put(props.tab.target.key, format.defaultValue ?? Buffer.alloc(0));
                             triggerLoadData();
                         }}

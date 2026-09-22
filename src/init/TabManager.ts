@@ -302,7 +302,7 @@ namespace exports {
             this.openTabs.push(tab);
             this.emit("openTab", { tab });
             this.switchTab(tab);
-            this.addRecentItem(props, tab);
+            this.addRecentItem({ ...props, icon: tab.icon }, tab);
             return tab;
         }
         private addRecentItem(props: Parameters<this["openTab"]>[0], tab: TabManagerTab): void {
@@ -424,18 +424,20 @@ namespace exports {
                 );
                 writeFileSync(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons", `w${index}.ico`), pngToIco(img.resize({ width: 256, height: 256 }).toPNG()));
             });
-            recentsData.folders.forEach(async (world: RecentsItem, index: number): Promise<void> => {
-                if (!world.iconPath || ["ico", "exe", "dll"].includes(path.extname(world.iconPath).slice(1).toLowerCase())) return;
+            recentsData.folders.forEach(async (folder: RecentsItem, index: number): Promise<void> => {
+                if (!folder.iconPath || ["ico", "exe", "dll"].includes(path.extname(folder.iconPath).slice(1).toLowerCase())) return;
                 const img: NativeImage = await padNativeImageToSquare(
-                    checkIsURIOrPath(world.iconPath) === "Path" ?
-                        nativeImage.createFromPath(world.iconPath)
-                    :   nativeImage.createFromBuffer(Buffer.from(await (await fetch(world.iconPath)).arrayBuffer()))
+                    checkIsURIOrPath(folder.iconPath) === "Path" ?
+                        nativeImage.createFromPath(folder.iconPath)
+                    :   nativeImage.createFromBuffer(Buffer.from(await (await fetch(folder.iconPath)).arrayBuffer()))
                 );
                 writeFileSync(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons", `d${index}.ico`), pngToIco(img.resize({ width: 256, height: 256 }).toPNG()));
             });
-            recentsData.files.forEach(async (world: RecentsItem, index: number): Promise<void> => {
-                if (!world.iconPath || ["ico", "exe", "dll"].includes(path.extname(world.iconPath).slice(1).toLowerCase())) return;
-                const img: NativeImage = await padNativeImageToSquare(nativeImage.createFromPath(world.iconPath));
+            recentsData.files.forEach(async (file: RecentsItem, index: number): Promise<void> => {
+                if (!file.iconPath || ["ico", "exe", "dll"].includes(path.extname(file.iconPath).slice(1).toLowerCase())) return;
+                const img: NativeImage = await padNativeImageToSquare(checkIsURIOrPath(file.iconPath) === "Path" ?
+                        nativeImage.createFromPath(file.iconPath)
+                    :   nativeImage.createFromBuffer(Buffer.from(await (await fetch(file.iconPath)).arrayBuffer())));
                 writeFileSync(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons", `f${index}.ico`), pngToIco(img.resize({ width: 256, height: 256 }).toPNG()));
             });
             try {
@@ -1095,6 +1097,81 @@ namespace exports {
                         return false;
                     }
                 );
+            } else if (this.type === "nbt") {
+                let contentType: DBEntryContentType;
+                let formatData: EntryContentTypeFormatData | undefined;
+                // BUG: This treats Java level.dat as Bedrock level.dat, what it should do is check if it is little-endian or big-endian and if it is little-endian, treat it as Bedrock and set the content type to LevelDat.
+                contentTypeGetter: if (["level.dat", "level.dat_old"].includes(path.basename(this.path))) contentType = "LevelDat";
+                else if (this.path.toLowerCase().endsWith(".mcstructure")) contentType = "StructureTemplate";
+                else if (this.path.toLowerCase().endsWith(".snbt")) {
+                    contentType = "StructureTemplate";
+                    formatData = {
+                        type: "SNBT",
+                        rawFileExtension: "snbt",
+                    };
+                    // } else if (this.path.toLowerCase().endsWith(".schem")) { // TODO
+                    // } else if (this.path.toLowerCase().endsWith(".schematic")) { // TODO
+                } else {
+                    const components: string[] = path.basename(this.path).split(".");
+                    if (components.length > 2) {
+                        const preExt: string = components.at(-2)!;
+                        if (
+                            DBEntryContentTypes.filter(
+                                (contentType: DBEntryContentType): boolean =>
+                                    entryContentTypeToFormatMap[contentType].type === "NBT" ||
+                                    (entryContentTypeToFormatMap[contentType].type === "custom" &&
+                                        entryContentTypeToFormatMap[contentType].resultType === "JSONNBT")
+                            ).includes(preExt as DBEntryContentType)
+                        ) {
+                            contentType = preExt as DBEntryContentType;
+                            break contentTypeGetter;
+                        }
+                    }
+                    contentType = "Unknown";
+                }
+                if (this.icon === null && contentType !== "Unknown" && tabManagerSubTabContentTypeToDefaultIconMap[contentType]) {
+                    this.icon = tabManagerSubTabContentTypeToDefaultIconMap[contentType]!;
+                } else this.icon ??= "resource://images/ui/glyphs/NBT.png";
+                if (contentType === "Unknown" && !formatData) {
+                    void (async (): Promise<void> => {
+                        try {
+                            const format: NBT.NBTFormat = (await NBT.parse(await readFile(this.path))).type;
+                            formatData = {
+                                type: "NBT",
+                                format:
+                                    format === "big" ? "BE"
+                                    : format === "littleVarint" ? "LEV"
+                                    : "LE",
+                                rawFileExtension: path.extname(this.path).slice(1),
+                            };
+                        } catch (e) {
+                            console.error("Error while parsing NBT file:", e);
+                        }
+                        this.openTab({
+                            contentType,
+                            formatData,
+                            icon: "auto",
+                            name: path.basename(this.path),
+                            parentTab: this,
+                            target: {
+                                path: "",
+                                type: "File",
+                            },
+                        });
+                    })();
+                } else {
+                    this.openTab({
+                        contentType,
+                        formatData,
+                        icon: "auto",
+                        name: path.basename(this.path),
+                        parentTab: this,
+                        target: {
+                            path: "",
+                            type: "File",
+                        },
+                    });
+                }
             }
         }
         private async getCachedDBKeys(): Promise<Record<DBEntryContentType, Buffer[]>> {
@@ -1685,6 +1762,10 @@ namespace exports {
         public name: string;
         public icon?: LooseAutocomplete<"auto"> | undefined;
         public contentType: ContentType;
+        /**
+         * The format data of this sub-tab, if this is present is should be used instead of determining it from the {@link contentType}.
+         */
+        public formatData?: EntryContentTypeFormatData | undefined;
         public rawMode: boolean = false;
         public target:
             | {
@@ -1698,8 +1779,10 @@ namespace exports {
                   type: "File";
                   /**
                    * A relative path from the parent tab location to the file.
+                   *
+                   * If the parent tab is a file and this is `""`, then the file is the same as the parent tab.
                    */
-                  path: string;
+                  path: LooseAutocomplete<"">;
               };
         /**
          * @todo
@@ -1715,6 +1798,7 @@ namespace exports {
             name: TabManagerSubTab<ContentType>["name"];
             icon?: TabManagerSubTab<ContentType>["icon"] | undefined;
             contentType: ContentType;
+            formatData?: EntryContentTypeFormatData | undefined;
             target: TabManagerSubTab<ContentType>["target"];
             specialTabID?: TabManagerTabGenericSubTabID | undefined;
             isPinned?: boolean | undefined;
@@ -1725,6 +1809,7 @@ namespace exports {
             this.icon = props.icon === "auto" ? tabManagerSubTabContentTypeToDefaultIconMap[props.contentType] : props.icon;
             this.target = props.target;
             this.contentType = props.contentType;
+            this.formatData = props.formatData;
             this.specialTabID = props.specialTabID;
             this.currentState = {
                 scrollTop: 0,
@@ -1775,7 +1860,7 @@ namespace exports {
          * @throws {unknown} If the data cannot be parsed.
          */
         public async parseRawData(rawData: Buffer, format?: EntryContentTypeFormatData): Promise<Pick<DataStorageObject, "sourceType" | "dataType" | "data">> {
-            format ??= entryContentTypeToFormatMap[this.currentState.options.type] as EntryContentTypeFormatData;
+            format ??= this.formatData ?? (entryContentTypeToFormatMap[this.currentState.options.type] as EntryContentTypeFormatData);
             switch (format.type) {
                 case "NBT": {
                     return {
@@ -1911,7 +1996,10 @@ namespace exports {
                         this.currentState.options.dataStorageObject.data = rawData /* ?? Buffer.from([]) */;
                         break;
                     }
-                    const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[this.currentState.options.type] as EntryContentTypeFormatData;
+                    const format: EntryContentTypeFormatData =
+                        this.currentState.options.dataStorageObject?.sourceType ??
+                        (this.currentState.options.type === "Unknown" && this.currentState.options.type === this.contentType ? this.formatData : undefined) ??
+                        (entryContentTypeToFormatMap[this.currentState.options.type] as EntryContentTypeFormatData);
                     const rawData: Buffer | null = await this.parentTab.db.get(this.target.key);
                     if (rawData === null) {
                         throw new Error("The LevelDB key associated with this sub-tab does not exist.");
@@ -1925,19 +2013,55 @@ namespace exports {
                     break;
                 }
                 case "File": {
-                    if (!existsSync(path.join(this.parentTab.tempPath ?? this.parentTab.path, this.target.path))) {
+                    let filePath: string;
+                    pathGetter: {
+                        switch (this.parentTab.type) {
+                            case "nbt":
+                            case "json":
+                            case "xml":
+                            case "text":
+                            case "binary":
+                                if (this.target.path === "") {
+                                    switch (this.parentTab.mode) {
+                                        case TabManagerTabMode.Copy:
+                                        case TabManagerTabMode.CopyUntilSave:
+                                        case TabManagerTabMode.Readonly:
+                                            if (this.parentTab.tempFilePath === undefined) break;
+                                            filePath = this.parentTab.tempFilePath;
+                                            break pathGetter;
+                                        case TabManagerTabMode.Direct:
+                                        case TabManagerTabMode.ReadonlyDirect:
+                                            filePath = this.parentTab.path;
+                                            break pathGetter;
+                                        default:
+                                            break;
+                                    }
+                                }
+                                break;
+                            case "other":
+                                // TODO
+                                break;
+                            case "world":
+                            case "leveldb":
+                            default:
+                                break;
+                        }
+                        filePath = path.join(this.parentTab.tempPath ?? this.parentTab.path, this.target.path);
+                    }
+                    if (!existsSync(filePath)) {
                         throw new ReferenceError(`The file associated with this sub-tab does not exist: ${this.target.path}`);
                     }
                     if (binary) {
                         this.currentState.options.dataStorageObject ??= {} as DataStorageObject;
                         this.currentState.options.dataStorageObject.dataType = "binary";
-                        this.currentState.options.dataStorageObject.data = await readFile(
-                            path.join(this.parentTab.tempPath ?? this.parentTab.path, this.target.path)
-                        );
+                        this.currentState.options.dataStorageObject.data = await readFile(filePath);
                         break;
                     }
-                    const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[this.currentState.options.type] as EntryContentTypeFormatData;
-                    const rawData: Buffer = await readFile(path.join(this.parentTab.tempPath ?? this.parentTab.path, this.target.path));
+                    const format: EntryContentTypeFormatData =
+                        this.currentState.options.dataStorageObject?.sourceType ??
+                        (this.currentState.options.type === "Unknown" && this.currentState.options.type === this.contentType ? this.formatData : undefined) ??
+                        (entryContentTypeToFormatMap[this.currentState.options.type] as EntryContentTypeFormatData);
+                    const rawData: Buffer = await readFile(filePath);
                     this.currentState.options.dataStorageObject = {
                         hexEditor: this.currentState.options.dataStorageObject?.hexEditor,
                         mapEditor: this.currentState.options.dataStorageObject?.mapEditor,
@@ -2623,7 +2747,7 @@ namespace exports {
          */
         public async save(): Promise<void> {
             if (!this.hasUnsavedChanges) return;
-            switch (this.target.type) {
+            targetTypeSwitcher: switch (this.target.type) {
                 case "LevelDBEntry": {
                     if (!this.parentTab.db) throw new Error("The parent tab has no associated LevelDB.");
                     if (!this.parentTab.db.isOpen()) throw new Error("LevelDB is not open.");
@@ -2632,6 +2756,46 @@ namespace exports {
                     break;
                 }
                 case "File": {
+                    switch (this.parentTab.type) {
+                        case "nbt":
+                        case "json":
+                        case "xml":
+                        case "text":
+                        case "binary":
+                            if (this.target.path === "") {
+                                switch (this.parentTab.mode) {
+                                    case TabManagerTabMode.Copy:
+                                    case TabManagerTabMode.CopyUntilSave:
+                                        if (this.parentTab.tempFilePath === undefined) break;
+                                        if (!existsSync(this.parentTab.tempFilePath)) {
+                                            // REVIEW: This may or may not need to be changed to allow saving newly created files.
+                                            throw new ReferenceError(`The file associated with this sub-tab does not exist: ${this.parentTab.tempFilePath}`);
+                                        }
+                                        await writeFile(this.parentTab.tempFilePath, await this.exportRawData(false));
+                                        break targetTypeSwitcher;
+                                    case TabManagerTabMode.Direct:
+                                        if (!existsSync(this.parentTab.path)) {
+                                            // REVIEW: This may or may not need to be changed to allow saving newly created files.
+                                            throw new ReferenceError(`The file associated with this sub-tab does not exist: ${this.parentTab.path}`);
+                                        }
+                                        await writeFile(this.parentTab.path, await this.exportRawData(false));
+                                        break targetTypeSwitcher;
+                                    case TabManagerTabMode.Readonly:
+                                    case TabManagerTabMode.ReadonlyDirect:
+                                        throw new Error("Cannot save a read-only tab.");
+                                    default:
+                                        break;
+                                }
+                            }
+                            break;
+                        case "other":
+                            // TODO
+                            break;
+                        case "world":
+                        case "leveldb":
+                        default:
+                            break;
+                    }
                     if (!existsSync(path.join(this.parentTab.tempPath ?? this.parentTab.path, this.target.path))) {
                         // REVIEW: This may or may not need to be changed to allow saving newly created files.
                         throw new ReferenceError(`The file associated with this sub-tab does not exist: ${this.target.path}`);

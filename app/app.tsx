@@ -1165,6 +1165,53 @@ export function WorldEditor(props: WorldEditorProps): JSX.SpecificElement<"div">
         </div>
     );
 }
+
+/**
+ * Props for the {@link NBTFileEditor} component.
+ */
+export interface NBTFileEditorProps {
+    tab: TabManagerTab;
+}
+
+/**
+ * The NBT file editor.
+ *
+ * @param props The props for the NBT file editor.
+ * @returns The JSX element for the NBT file editor.
+ */
+export function NBTFileEditor(props: NBTFileEditorProps): JSX.SpecificElement<"div"> {
+    const containerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
+    useLayoutEffect((): void => {
+        if (containerRef.current) {
+            render(<NBTFileEditorTabRenderer tab={props.tab.selectedTab} parentTab={props.tab} />, containerRef.current);
+        }
+    });
+    useEffect((): (() => void) => {
+        function update(): void {
+            if (containerRef.current === null) return;
+            render(null, containerRef.current);
+            render(<NBTFileEditorTabRenderer tab={props.tab.selectedTab} parentTab={props.tab} />, containerRef.current);
+        }
+        props.tab.on("reloadCurrentSubTab", update);
+        props.tab.on("switchTab", update);
+        return (): void => {
+            props.tab.off("reloadCurrentSubTab", update);
+            props.tab.off("switchTab", update);
+            if (containerRef.current) render(null, containerRef.current);
+        };
+    }, []);
+    return (
+        <div style="width: -webkit-fill-available; height: 0; flex: 1; display: flex; flex-direction: column;">
+            <div style="width: -webkit-fill-available; height: 0; flex: 1; display: flex; flex-direction: row;">
+                <main style="width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1;" id="main" ref={containerRef}>
+                    {/* Nothing is needed here as useLayoutEffect will insert the NBTFileEditorTabRenderer component before the next frame renders. */}
+                    {/* The NBTFileEditorTabRenderer component is being inserted via render() instead of just being here so that cleanup effects are properly triggered when the tab is switched. */}
+                </main>
+            </div>
+        </div>
+    );
+}
+
 /**
  * The start tab of the world editor.
  *
@@ -1244,7 +1291,8 @@ export function WorldEditorTabRenderer(props: {
             case "Map":
                 return <MapEditorTab tab={props.tab} />;
             default: {
-                const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[props.tab.contentType] as EntryContentTypeFormatData;
+                const format: EntryContentTypeFormatData =
+                    props.tab.formatData ?? (entryContentTypeToFormatMap[props.tab.contentType] as EntryContentTypeFormatData);
                 switch (format.type) {
                     case "NBT":
                         return <GenericNBTEditorTab tab={props.tab} />;
@@ -1271,6 +1319,99 @@ export function WorldEditorTabRenderer(props: {
                     default:
                         return <HexEditorTab tab={props.tab} />;
                 }
+            }
+        }
+    }
+}
+
+/**
+ * The renderer for the NBT file editor tabs.
+ *
+ * @param props The props for the NBT file editor tab renderer.
+ * @returns The JSX element for the NBT file editor tab renderer.
+ *
+ * @throws {Error} If the sub-tab is a special string type sub-tab.
+ */
+export function NBTFileEditorTabRenderer(props: {
+    tab: TabManagerSubTab | TabManagerTabGenericSubTabID | null;
+    parentTab: TabManagerTab;
+}): JSX.SpecificElement<"div"> {
+    if (props.tab === null) return <LoadingScreenContents />;
+    if (typeof props.tab === "string") {
+        throw new Error(`The NBT file editor does not have any supported special string type sub-tabs: ${props.tab}`);
+    }
+    if (props.tab.rawMode) return <HexEditorTab tab={props.tab} />;
+    // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
+    switch (props.tab.contentType) {
+        case "LevelDat":
+            return <GenericNBTEditorTab tab={props.tab} />;
+        case "Map":
+            return <MapEditorTab tab={props.tab} />;
+        default: {
+            const format: EntryContentTypeFormatData =
+                props.tab.formatData ?? (entryContentTypeToFormatMap[props.tab.contentType] as EntryContentTypeFormatData);
+            switch (format.type) {
+                case "NBT":
+                case "unknown":
+                    return <GenericNBTEditorTab tab={props.tab} />;
+                case "custom":
+                    switch (format.resultType) {
+                        case "JSONNBT":
+                            return <GenericNBTEditorTab tab={props.tab} />;
+                        case "SNBT": // TODO: Add SNBT editor tab.
+                            return <TextEditorTab tab={props.tab} />;
+                        case "unknown":
+                        case "buffer":
+                        default:
+                            return (
+                                <center
+                                    style={{
+                                        display: "inline-block",
+                                        width: "-webkit-fill-available",
+                                        height: "-webkit-fill-available",
+                                    }}
+                                >
+                                    <h1>Error</h1>
+                                    <p>Something went wrong...</p>
+                                    <img
+                                        class="piximg ndrg nsel"
+                                        style={{ width: "min(calc(100% - mod(100%, 260px)), 260px * 4)" }}
+                                        aria-hidden="true"
+                                        src="resource://images/ui/art/generic_error.png"
+                                    />
+                                    <p>Upsupported NBT tab custom data format: {format.resultType}</p>
+                                </center>
+                            );
+                    }
+                case "SNBT": // TODO: Add SNBT editor tab.
+                    return <TextEditorTab tab={props.tab} />;
+                case "ASCII":
+                case "UTF-8":
+                case "JSON":
+                case "int":
+                case "binary":
+                case "binaryPlainText":
+                case "hex":
+                default:
+                    return (
+                        <center
+                            style={{
+                                display: "inline-block",
+                                width: "-webkit-fill-available",
+                                height: "-webkit-fill-available",
+                            }}
+                        >
+                            <h1>Error</h1>
+                            <p>Something went wrong...</p>
+                            <img
+                                class="piximg ndrg nsel"
+                                style={{ width: "min(calc(100% - mod(100%, 260px)), 260px * 4)" }}
+                                aria-hidden="true"
+                                src="resource://images/ui/art/generic_error.png"
+                            />
+                            <p>Upsupported NBT tab data format: {format.type}</p>
+                        </center>
+                    );
             }
         }
     }
@@ -1325,10 +1466,7 @@ tabManager.on("switchTab", ({ previousTab, newTab }: TabManagerSwitchTabEvent): 
                 );
                 break;
             case "nbt":
-                render(
-                    <UnderConstruction subtitle="This tab type is under construction." detail="The NBT editor has not been implemented yet." />,
-                    tabContentsElement
-                );
+                render(<NBTFileEditor tab={newTab} />, tabContentsElement);
                 break;
             case "json":
                 render(

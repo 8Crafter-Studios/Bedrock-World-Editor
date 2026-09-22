@@ -41,7 +41,7 @@ export default function TextEditorTab(props: TextEditorTabProps): JSX.SpecificEl
     fakeAssertIsValidOptionsType(props.tab.currentState.options);
     props.tab.currentState.options.viewMode ??= "map";
     if (!props.tab.currentState.options.dataStorageObject) {
-        const format: EntryContentTypeFormatData = entryContentTypeToFormatMap[props.tab.contentType] as EntryContentTypeFormatData;
+        const format: EntryContentTypeFormatData = props.tab.formatData ?? (entryContentTypeToFormatMap[props.tab.contentType] as EntryContentTypeFormatData);
         async function loadData(): Promise<void> {
             formatTypeSwitch: switch (format.type) {
                 case "ASCII":

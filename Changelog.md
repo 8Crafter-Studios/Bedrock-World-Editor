@@ -8,12 +8,15 @@
 
 ## Additions
 
+-   Added support for opening and editing NBT files directly (as in not part of a world) ([#11](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/11))
 -   Added the "Heightmap" render type to the 2D world map.
 -   Added hover and active tints to the refresh world list button on the start screen.
 -   Added focus tints to many buttons throughout the app so it is now possible to see if a button is focused with tab.
 -   The Show Grid Lines option in the 2D world map has been changed from a toggle to having an "Always", "With Threshold", and "Never" option. The "With Threshold" option allows you to specify a threshold at which the grid lines are shown. Ehen the zoom level is at or above that threshold the grid lines are shown.
 -   Added a `Delete Pack From World Files` context menu option to the "Packs" tab to allow deleting packs stored in the world files.
 -   Added ALT text for world icons on the world selection menu so that if a world has an invalid image, it won't display the entire hover info where the icon should be.
+-   Added a custom icon for the "NBT File" option in the add tab popup menu.
+-   NBT File tabs now have icons.
 
 ## Changes
 
