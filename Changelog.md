@@ -4,6 +4,28 @@
 
 -   Windows builds are now code signed. -->
 
+# v1.0.0-beta.38
+
+## Additions
+
+-   Added the "Heightmap" render type to the 2D world map.
+-   Added hover and active tints to the refresh world list button on the start screen.
+-   Added focus tints to many buttons throughout the app so it is now possible to see if a button is focused with tab.
+-   The Show Grid Lines option in the 2D world map has been changed from a toggle to having an "Always", "With Threshold", and "Never" option. The "With Threshold" option allows you to specify a threshold at which the grid lines are shown. Ehen the zoom level is at or above that threshold the grid lines are shown.
+-   Added a `Delete Pack From World Files` context menu option to the "Packs" tab to allow deleting packs stored in the world files.
+-   Added ALT text for world icons on the world selection menu so that if a world has an invalid image, it won't display the entire hover info where the icon should be.
+
+## Changes
+
+-   The app no longer copies the `resource_packs`, `behavior_packs`, or `.git` folders of worlds when they are opened, and when saving it does not delete them (before it would delete them to replace them with the copied version from the temp folder). This will fix an issue where world with large resource packs, behavior packs, or git repositories would take a very long time to open or save ([#63](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/63)).
+
+## Fixes
+
+-   Fixed a bug where clicking the app icon in the mobile friendly start screen did not refresh the world list.
+-   The `Activate Pack`, `Deactivate Pack`, and `Delete Pack From History` context menu options in the "Packs" tab are now hidden in read-only mode.
+-   Fixed a typo in the direct mode warning message.
+-   Fixed a bug where a scroll bar was sometimes visible on the top left hover info overlay in the 2D world map.
+
 # v1.0.0-beta.37
 
 ## Critical Fixes

@@ -232,6 +232,7 @@ export function setActivePage(activePage: string): void {
 export default function App(): JSX.Element {
     return (
         <>
+            {/* TODO (Important): This element needs to have the "inert" attribute added to it whenever an overlay page is open. */}
             <div id="app-contents">
                 <StartScreen />
             </div>
@@ -685,6 +686,7 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                     >
                         <img
                             title={hoverInfo + " ".repeat(2)}
+                            alt="Icon"
                             aria-hidden="true"
                             src={
                                 world.thumbnailPath ?
@@ -833,7 +835,7 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                                                 type: "warning",
                                                 title: "Bedrock World Editor",
                                                 message: `Are you sure you want to open this world in Direct Mode?`,
-                                                detail: "Direct mode is unsafe as any changes are immediately saved directly to your world files, leading to the potential corruption of your world. Using unsafe mode also can behave unpredictably when used while the world is open in Minecraft. Use at your own risk.",
+                                                detail: "Direct mode is unsafe as any changes are immediately saved directly to your world files, leading to the potential corruption of your world. Using direct mode also can behave unpredictably when used while the world is open in Minecraft. Use at your own risk.",
                                                 buttons: ["Proceed", "Cancel"],
                                                 noLink: true,
                                             })
@@ -1009,10 +1011,11 @@ export function StartScreenContents(): JSX.Element {
                 <img
                     aria-hidden="true"
                     src="resource://icon.png"
+                    class="nsel ndrg reloadWorldListButton"
                     style="margin-left: 9px; width: 32px; cursor: pointer;"
                     title="Reload world list"
                     onClick={(): void => {
-                        // forceTriggerUpdateRef.current?.();
+                        forceTriggerUpdateRef.current?.();
                     }}
                 />
                 <div style="flex: 1; overflow: auto; line-height: 1.25em;">
@@ -1028,6 +1031,7 @@ export function StartScreenContents(): JSX.Element {
                 <img
                     aria-hidden="true"
                     src="resource://icon.png"
+                    class="nsel ndrg reloadWorldListButton"
                     style="margin-top: 35px; width: 128px; cursor: pointer;"
                     title="Reload world list"
                     onClick={(): void => {

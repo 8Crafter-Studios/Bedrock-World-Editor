@@ -3,7 +3,7 @@ import { app, clipboard, dialog } from "@electron/remote";
 import { ControlledMenu, MenuItem, SubMenu, type ClickEvent as ContextMenu_ClickEvent } from "@szhsin/react-menu";
 import type { SaveDialogReturnValue } from "electron";
 import { existsSync } from "node:fs";
-import { readdir, readFile, writeFile } from "node:fs/promises";
+import { readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef, useState } from "preact/compat";
@@ -14,7 +14,11 @@ import { LoadingScreenContents } from "../app";
 // import Notice from "../components/Notice";
 import { PageNavigation } from "../components/PageNavigation";
 import json5 from "json5";
+import { normalizePath, normalizePathSlashes } from "../../src/utils/pathUtils";
 const mime = require("mime-types") as typeof import("mime-types");
+
+// TODO: Add support for getting the pack icon of marketplace packs.
+// TODO: Add a context menu item to open the folder location of the pack.
 
 /**
  * Props for the {@link PacksTab} component.
@@ -208,12 +212,16 @@ async function getPacksData(
         descriptionLocales: Partial<Record<LooseAutocomplete<LocaleID>, string>> | null;
     }[] = [];
     loadWorldResourcePacksFolderPacks: {
-        // TEMP: Once the app no longer copies the behavior_packs and resource_packs folders into the temp folder, this should be only tab.path and not use tab.tempPath.
-        const worldResourcePacksFolderPath: string = path.join(tab.tempPath ?? tab.path, "resource_packs");
-        if (!existsSync(worldResourcePacksFolderPath)) break loadWorldResourcePacksFolderPacks;
+        let worldResourcePacksFolderPath: string = path.join(tab.tempPath ?? tab.path, "resource_packs");
+        if (!existsSync(worldResourcePacksFolderPath)) {
+            if (tab.tempPath === undefined) break loadWorldResourcePacksFolderPacks;
+            worldResourcePacksFolderPath = path.join(tab.path, "resource_packs");
+            if (!existsSync(worldResourcePacksFolderPath)) break loadWorldResourcePacksFolderPacks;
+        }
         for (const folder of await readdir(worldResourcePacksFolderPath)) {
             signal.throwIfAborted();
             try {
+                if (tab.pathsToRemoveOnSave.includes(`resource_packs/${folder}`)) continue;
                 if (!existsSync(path.join(worldResourcePacksFolderPath, folder, "manifest.json"))) continue;
                 const manifest: ManifestJSONSchema = json5.parse(await readFile(path.join(worldResourcePacksFolderPath, folder, "manifest.json"), "utf8"));
                 signal.throwIfAborted();
@@ -273,12 +281,17 @@ async function getPacksData(
         descriptionLocales: Partial<Record<LooseAutocomplete<LocaleID>, string>> | null;
     }[] = [];
     loadWorldBehaviorPacksFolderPacks: {
-        // TEMP: Once the app no longer copies the behavior_packs and resource_packs folders into the temp folder, this should be only tab.path and not use tab.tempPath.
-        const worldBehaviorPacksFolderPath: string = path.join(tab.tempPath ?? tab.path, "behavior_packs");
-        if (!existsSync(worldBehaviorPacksFolderPath)) break loadWorldBehaviorPacksFolderPacks;
+        // TEMP: Once the ability to directly edit mcworld files is implemented, this needs to have handling for that.
+        let worldBehaviorPacksFolderPath: string = path.join(tab.tempPath ?? tab.path, "behavior_packs");
+        if (!existsSync(worldBehaviorPacksFolderPath)) {
+            if (tab.tempPath === undefined) break loadWorldBehaviorPacksFolderPacks;
+            worldBehaviorPacksFolderPath = path.join(tab.path, "behavior_packs");
+            if (!existsSync(worldBehaviorPacksFolderPath)) break loadWorldBehaviorPacksFolderPacks;
+        }
         for (const folder of await readdir(worldBehaviorPacksFolderPath)) {
             signal.throwIfAborted();
             try {
+                if (tab.pathsToRemoveOnSave.includes(`behavior_packs/${folder}`)) continue;
                 if (!existsSync(path.join(worldBehaviorPacksFolderPath, folder, "manifest.json"))) continue;
                 const manifest: ManifestJSONSchema = json5.parse(await readFile(path.join(worldBehaviorPacksFolderPath, folder, "manifest.json"), "utf8"));
                 signal.throwIfAborted();
@@ -1820,6 +1833,7 @@ async function getPacksTabContentsRows(data: {
                                                     });
                                                 }
                                             }}
+                                            hidden={data.tab.readonly}
                                         >
                                             Deactivate Pack
                                         </MenuItem>
@@ -1862,34 +1876,55 @@ async function getPacksTabContentsRows(data: {
                                                         });
                                                     }
                                                 }}
+                                                hidden={data.tab.readonly}
                                             >
                                                 Delete Pack From History
                                             </MenuItem>
                                         )}
-                                        {/* TODO */}
-                                        {/* {pack.packDetails?.storageLocation === "world" && (
+                                        {pack.packDetails?.storageLocation === "world" && (
                                             <MenuItem
                                                 onClick={async (): Promise<void> => {
                                                     try {
-                                                        const worldResourcePackHistoryJSON: WorldXPackHistoryJSONSchema = json5.parse(
-                                                            await readFile(path.join(data.tab.tempPath ?? data.tab.path, "world_resource_pack_history.json"), "utf-8")
-                                                        ) as WorldXPackHistoryJSONSchema;
-                                                        const packIndex: number = worldResourcePackHistoryJSON.packs.findIndex((entry) =>
-                                                            typeof pack.version === "string" ?
-                                                                pack.version === entry.version
-                                                            :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
-                                                        );
-                                                        if (packIndex === -1) {
-                                                            void data.updateTablesContents?.(true);
-                                                            return;
+                                                        switch (data.tab.mode) {
+                                                            case TabManagerTabMode.Copy:
+                                                                await rm(pack.packDetails!.folderPath, { force: true, recursive: true });
+                                                                data.tab.setLevelDBIsModified(); // TEMP: This is just until there is a proper method for this.
+                                                                break;
+                                                            case TabManagerTabMode.Direct:
+                                                                await rm(pack.packDetails!.folderPath, { force: true, recursive: true });
+                                                                break;
+                                                            case TabManagerTabMode.CopyUntilSave:
+                                                                if (
+                                                                    data.tab.tempPath !== undefined &&
+                                                                    normalizePath(pack.packDetails!.folderPath).startsWith(normalizePath(data.tab.tempPath))
+                                                                ) {
+                                                                    await rm(pack.packDetails!.folderPath, { force: true, recursive: true });
+                                                                    // throw new Error(
+                                                                    //     "Found pack path is in the temporary folder but the mode is set to CopyUntilSave."
+                                                                    // );
+                                                                } else if (
+                                                                    normalizePath(pack.packDetails!.folderPath).startsWith(normalizePath(data.tab.path))
+                                                                ) {
+                                                                    data.tab.pathsToRemoveOnSave.push(
+                                                                        normalizePathSlashes(
+                                                                            path.relative(
+                                                                                normalizePathSlashes(data.tab.path),
+                                                                                normalizePathSlashes(pack.packDetails!.folderPath)
+                                                                            )
+                                                                        )
+                                                                    );
+                                                                } else {
+                                                                    throw new Error(
+                                                                        `Found pack path is not in the temporary folder or the original folder: ${pack.packDetails!.folderPath}`
+                                                                    );
+                                                                }
+                                                                data.tab.setLevelDBIsModified(); // TEMP: This is just until there is a proper method for this.
+                                                                break;
+                                                            case TabManagerTabMode.Readonly:
+                                                            case TabManagerTabMode.ReadonlyDirect:
+                                                            default:
+                                                                return;
                                                         }
-                                                        worldResourcePackHistoryJSON.packs.splice(packIndex, 1);
-                                                        await writeFile(
-                                                            path.join(data.tab.tempPath ?? data.tab.path, "world_resource_pack_history.json"),
-                                                            JSON.stringify(worldResourcePackHistoryJSON, null, 4),
-                                                            "utf-8"
-                                                        );
-                                                        data.tab.setFileAsModified("world_resource_pack_history.json");
                                                         void data.updateTablesContents?.(true);
                                                     } catch (e) {
                                                         console.error("Error while deleting pack from world files:", e, "pack:", pack);
@@ -1903,10 +1938,11 @@ async function getPacksTabContentsRows(data: {
                                                         });
                                                     }
                                                 }}
+                                                hidden={data.tab.readonly}
                                             >
                                                 Delete Pack From World Files
                                             </MenuItem>
-                                        )} */}
+                                        )}
                                         {!copyContextMenuItemValue || copyContextMenuItemValue.value !== undefined || !copyContextMenuItemValue.formatOptions ?
                                             <MenuItem
                                                 onClick={(_event: ContextMenu_ClickEvent): void => {
@@ -2350,6 +2386,7 @@ async function getPacksTabContentsRows(data: {
                                                     });
                                                 }
                                             }}
+                                            hidden={data.tab.readonly}
                                         >
                                             Deactivate Pack
                                         </MenuItem>
@@ -2392,34 +2429,55 @@ async function getPacksTabContentsRows(data: {
                                                         });
                                                     }
                                                 }}
+                                                hidden={data.tab.readonly}
                                             >
                                                 Delete Pack From History
                                             </MenuItem>
                                         )}
-                                        {/* TODO */}
-                                        {/* {pack.packDetails?.storageLocation === "world" && (
+                                        {pack.packDetails?.storageLocation === "world" && (
                                             <MenuItem
                                                 onClick={async (): Promise<void> => {
                                                     try {
-                                                        const worldResourcePackHistoryJSON: WorldXPackHistoryJSONSchema = json5.parse(
-                                                            await readFile(path.join(data.tab.tempPath ?? data.tab.path, "world_resource_pack_history.json"), "utf-8")
-                                                        ) as WorldXPackHistoryJSONSchema;
-                                                        const packIndex: number = worldResourcePackHistoryJSON.packs.findIndex((entry) =>
-                                                            typeof pack.version === "string" ?
-                                                                pack.version === entry.version
-                                                            :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
-                                                        );
-                                                        if (packIndex === -1) {
-                                                            void data.updateTablesContents?.(true);
-                                                            return;
+                                                        switch (data.tab.mode) {
+                                                            case TabManagerTabMode.Copy:
+                                                                await rm(pack.packDetails!.folderPath, { force: true, recursive: true });
+                                                                data.tab.setLevelDBIsModified(); // TEMP: This is just until there is a proper method for this.
+                                                                break;
+                                                            case TabManagerTabMode.Direct:
+                                                                await rm(pack.packDetails!.folderPath, { force: true, recursive: true });
+                                                                break;
+                                                            case TabManagerTabMode.CopyUntilSave:
+                                                                if (
+                                                                    data.tab.tempPath !== undefined &&
+                                                                    normalizePath(pack.packDetails!.folderPath).startsWith(normalizePath(data.tab.tempPath))
+                                                                ) {
+                                                                    await rm(pack.packDetails!.folderPath, { force: true, recursive: true });
+                                                                    // throw new Error(
+                                                                    //     "Found pack path is in the temporary folder but the mode is set to CopyUntilSave."
+                                                                    // );
+                                                                } else if (
+                                                                    normalizePath(pack.packDetails!.folderPath).startsWith(normalizePath(data.tab.path))
+                                                                ) {
+                                                                    data.tab.pathsToRemoveOnSave.push(
+                                                                        normalizePathSlashes(
+                                                                            path.relative(
+                                                                                normalizePathSlashes(data.tab.path),
+                                                                                normalizePathSlashes(pack.packDetails!.folderPath)
+                                                                            )
+                                                                        )
+                                                                    );
+                                                                } else {
+                                                                    throw new Error(
+                                                                        `Found pack path is not in the temporary folder or the original folder: ${pack.packDetails!.folderPath}`
+                                                                    );
+                                                                }
+                                                                data.tab.setLevelDBIsModified(); // TEMP: This is just until there is a proper method for this.
+                                                                break;
+                                                            case TabManagerTabMode.Readonly:
+                                                            case TabManagerTabMode.ReadonlyDirect:
+                                                            default:
+                                                                return;
                                                         }
-                                                        worldResourcePackHistoryJSON.packs.splice(packIndex, 1);
-                                                        await writeFile(
-                                                            path.join(data.tab.tempPath ?? data.tab.path, "world_resource_pack_history.json"),
-                                                            JSON.stringify(worldResourcePackHistoryJSON, null, 4),
-                                                            "utf-8"
-                                                        );
-                                                        data.tab.setFileAsModified("world_resource_pack_history.json");
                                                         void data.updateTablesContents?.(true);
                                                     } catch (e) {
                                                         console.error("Error while deleting pack from world files:", e, "pack:", pack);
@@ -2433,10 +2491,11 @@ async function getPacksTabContentsRows(data: {
                                                         });
                                                     }
                                                 }}
+                                                hidden={data.tab.readonly}
                                             >
                                                 Delete Pack From World Files
                                             </MenuItem>
-                                        )} */}
+                                        )}
                                         <MenuItem disabled>Copy Cell Value</MenuItem>
                                     </ControlledMenu>
                                     <tr
@@ -2591,6 +2650,7 @@ async function getPacksTabContentsRows(data: {
                                                     });
                                                 }
                                             }}
+                                            hidden={data.tab.readonly}
                                         >
                                             Deactivate Pack
                                         </MenuItem>
@@ -2633,34 +2693,55 @@ async function getPacksTabContentsRows(data: {
                                                         });
                                                     }
                                                 }}
+                                                hidden={data.tab.readonly}
                                             >
                                                 Delete Pack From History
                                             </MenuItem>
                                         )}
-                                        {/* TODO */}
-                                        {/* {pack.packDetails?.storageLocation === "world" && (
+                                        {pack.packDetails?.storageLocation === "world" && (
                                             <MenuItem
                                                 onClick={async (): Promise<void> => {
                                                     try {
-                                                        const worldBehaviorPackHistoryJSON: WorldXPackHistoryJSONSchema = json5.parse(
-                                                            await readFile(path.join(data.tab.tempPath ?? data.tab.path, "world_behavior_pack_history.json"), "utf-8")
-                                                        ) as WorldXPackHistoryJSONSchema;
-                                                        const packIndex: number = worldBehaviorPackHistoryJSON.packs.findIndex((entry) =>
-                                                            typeof pack.version === "string" ?
-                                                                pack.version === entry.version
-                                                            :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
-                                                        );
-                                                        if (packIndex === -1) {
-                                                            void data.updateTablesContents?.(true);
-                                                            return;
+                                                        switch (data.tab.mode) {
+                                                            case TabManagerTabMode.Copy:
+                                                                await rm(pack.packDetails!.folderPath, { force: true, recursive: true });
+                                                                data.tab.setLevelDBIsModified(); // TEMP: This is just until there is a proper method for this.
+                                                                break;
+                                                            case TabManagerTabMode.Direct:
+                                                                await rm(pack.packDetails!.folderPath, { force: true, recursive: true });
+                                                                break;
+                                                            case TabManagerTabMode.CopyUntilSave:
+                                                                if (
+                                                                    data.tab.tempPath !== undefined &&
+                                                                    normalizePath(pack.packDetails!.folderPath).startsWith(normalizePath(data.tab.tempPath))
+                                                                ) {
+                                                                    await rm(pack.packDetails!.folderPath, { force: true, recursive: true });
+                                                                    // throw new Error(
+                                                                    //     "Found pack path is in the temporary folder but the mode is set to CopyUntilSave."
+                                                                    // );
+                                                                } else if (
+                                                                    normalizePath(pack.packDetails!.folderPath).startsWith(normalizePath(data.tab.path))
+                                                                ) {
+                                                                    data.tab.pathsToRemoveOnSave.push(
+                                                                        normalizePathSlashes(
+                                                                            path.relative(
+                                                                                normalizePathSlashes(data.tab.path),
+                                                                                normalizePathSlashes(pack.packDetails!.folderPath)
+                                                                            )
+                                                                        )
+                                                                    );
+                                                                } else {
+                                                                    throw new Error(
+                                                                        `Found pack path is not in the temporary folder or the original folder: ${pack.packDetails!.folderPath}`
+                                                                    );
+                                                                }
+                                                                data.tab.setLevelDBIsModified(); // TEMP: This is just until there is a proper method for this.
+                                                                break;
+                                                            case TabManagerTabMode.Readonly:
+                                                            case TabManagerTabMode.ReadonlyDirect:
+                                                            default:
+                                                                return;
                                                         }
-                                                        worldBehaviorPackHistoryJSON.packs.splice(packIndex, 1);
-                                                        await writeFile(
-                                                            path.join(data.tab.tempPath ?? data.tab.path, "world_behavior_pack_history.json"),
-                                                            JSON.stringify(worldBehaviorPackHistoryJSON, null, 4),
-                                                            "utf-8"
-                                                        );
-                                                        data.tab.setFileAsModified("world_behavior_pack_history.json");
                                                         void data.updateTablesContents?.(true);
                                                     } catch (e) {
                                                         console.error("Error while deleting pack from world files:", e, "pack:", pack);
@@ -2674,10 +2755,11 @@ async function getPacksTabContentsRows(data: {
                                                         });
                                                     }
                                                 }}
+                                                hidden={data.tab.readonly}
                                             >
                                                 Delete Pack From World Files
                                             </MenuItem>
-                                        )} */}
+                                        )}
                                         {!copyContextMenuItemValue || copyContextMenuItemValue.value !== undefined || !copyContextMenuItemValue.formatOptions ?
                                             <MenuItem
                                                 onClick={(_event: ContextMenu_ClickEvent): void => {
@@ -3121,6 +3203,7 @@ async function getPacksTabContentsRows(data: {
                                                     });
                                                 }
                                             }}
+                                            hidden={data.tab.readonly}
                                         >
                                             Deactivate Pack
                                         </MenuItem>
@@ -3163,34 +3246,55 @@ async function getPacksTabContentsRows(data: {
                                                         });
                                                     }
                                                 }}
+                                                hidden={data.tab.readonly}
                                             >
                                                 Delete Pack From History
                                             </MenuItem>
                                         )}
-                                        {/* TODO */}
-                                        {/* {pack.packDetails?.storageLocation === "world" && (
+                                        {pack.packDetails?.storageLocation === "world" && (
                                             <MenuItem
                                                 onClick={async (): Promise<void> => {
                                                     try {
-                                                        const worldBehaviorPackHistoryJSON: WorldXPackHistoryJSONSchema = json5.parse(
-                                                            await readFile(path.join(data.tab.tempPath ?? data.tab.path, "world_behavior_pack_history.json"), "utf-8")
-                                                        ) as WorldXPackHistoryJSONSchema;
-                                                        const packIndex: number = worldBehaviorPackHistoryJSON.packs.findIndex((entry) =>
-                                                            typeof pack.version === "string" ?
-                                                                pack.version === entry.version
-                                                            :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
-                                                        );
-                                                        if (packIndex === -1) {
-                                                            void data.updateTablesContents?.(true);
-                                                            return;
+                                                        switch (data.tab.mode) {
+                                                            case TabManagerTabMode.Copy:
+                                                                await rm(pack.packDetails!.folderPath, { force: true, recursive: true });
+                                                                data.tab.setLevelDBIsModified(); // TEMP: This is just until there is a proper method for this.
+                                                                break;
+                                                            case TabManagerTabMode.Direct:
+                                                                await rm(pack.packDetails!.folderPath, { force: true, recursive: true });
+                                                                break;
+                                                            case TabManagerTabMode.CopyUntilSave:
+                                                                if (
+                                                                    data.tab.tempPath !== undefined &&
+                                                                    normalizePath(pack.packDetails!.folderPath).startsWith(normalizePath(data.tab.tempPath))
+                                                                ) {
+                                                                    await rm(pack.packDetails!.folderPath, { force: true, recursive: true });
+                                                                    // throw new Error(
+                                                                    //     "Found pack path is in the temporary folder but the mode is set to CopyUntilSave."
+                                                                    // );
+                                                                } else if (
+                                                                    normalizePath(pack.packDetails!.folderPath).startsWith(normalizePath(data.tab.path))
+                                                                ) {
+                                                                    data.tab.pathsToRemoveOnSave.push(
+                                                                        normalizePathSlashes(
+                                                                            path.relative(
+                                                                                normalizePathSlashes(data.tab.path),
+                                                                                normalizePathSlashes(pack.packDetails!.folderPath)
+                                                                            )
+                                                                        )
+                                                                    );
+                                                                } else {
+                                                                    throw new Error(
+                                                                        `Found pack path is not in the temporary folder or the original folder: ${pack.packDetails!.folderPath}`
+                                                                    );
+                                                                }
+                                                                data.tab.setLevelDBIsModified(); // TEMP: This is just until there is a proper method for this.
+                                                                break;
+                                                            case TabManagerTabMode.Readonly:
+                                                            case TabManagerTabMode.ReadonlyDirect:
+                                                            default:
+                                                                return;
                                                         }
-                                                        worldBehaviorPackHistoryJSON.packs.splice(packIndex, 1);
-                                                        await writeFile(
-                                                            path.join(data.tab.tempPath ?? data.tab.path, "world_behavior_pack_history.json"),
-                                                            JSON.stringify(worldBehaviorPackHistoryJSON, null, 4),
-                                                            "utf-8"
-                                                        );
-                                                        data.tab.setFileAsModified("world_behavior_pack_history.json");
                                                         void data.updateTablesContents?.(true);
                                                     } catch (e) {
                                                         console.error("Error while deleting pack from world files:", e, "pack:", pack);
@@ -3204,10 +3308,11 @@ async function getPacksTabContentsRows(data: {
                                                         });
                                                     }
                                                 }}
+                                                hidden={data.tab.readonly}
                                             >
                                                 Delete Pack From World Files
                                             </MenuItem>
-                                        )} */}
+                                        )}
                                         <MenuItem disabled>Copy Cell Value</MenuItem>
                                     </ControlledMenu>
                                     <tr
@@ -3367,6 +3472,7 @@ async function getPacksTabContentsRows(data: {
                                                     });
                                                 }
                                             }}
+                                            hidden={data.tab.readonly}
                                         >
                                             Activate Pack
                                         </MenuItem>
@@ -3409,34 +3515,55 @@ async function getPacksTabContentsRows(data: {
                                                         });
                                                     }
                                                 }}
+                                                hidden={data.tab.readonly}
                                             >
                                                 Delete Pack From History
                                             </MenuItem>
                                         )}
-                                        {/* TODO */}
-                                        {/* {pack.packDetails?.storageLocation === "world" && (
+                                        {pack.packDetails?.storageLocation === "world" && (
                                             <MenuItem
                                                 onClick={async (): Promise<void> => {
                                                     try {
-                                                        const worldResourcePackHistoryJSON: WorldXPackHistoryJSONSchema = json5.parse(
-                                                            await readFile(path.join(data.tab.tempPath ?? data.tab.path, "world_resource_pack_history.json"), "utf-8")
-                                                        ) as WorldXPackHistoryJSONSchema;
-                                                        const packIndex: number = worldResourcePackHistoryJSON.packs.findIndex((entry) =>
-                                                            typeof pack.version === "string" ?
-                                                                pack.version === entry.version
-                                                            :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
-                                                        );
-                                                        if (packIndex === -1) {
-                                                            void data.updateTablesContents?.(true);
-                                                            return;
+                                                        switch (data.tab.mode) {
+                                                            case TabManagerTabMode.Copy:
+                                                                await rm(pack.packDetails!.folderPath, { force: true, recursive: true });
+                                                                data.tab.setLevelDBIsModified(); // TEMP: This is just until there is a proper method for this.
+                                                                break;
+                                                            case TabManagerTabMode.Direct:
+                                                                await rm(pack.packDetails!.folderPath, { force: true, recursive: true });
+                                                                break;
+                                                            case TabManagerTabMode.CopyUntilSave:
+                                                                if (
+                                                                    data.tab.tempPath !== undefined &&
+                                                                    normalizePath(pack.packDetails!.folderPath).startsWith(normalizePath(data.tab.tempPath))
+                                                                ) {
+                                                                    await rm(pack.packDetails!.folderPath, { force: true, recursive: true });
+                                                                    // throw new Error(
+                                                                    //     "Found pack path is in the temporary folder but the mode is set to CopyUntilSave."
+                                                                    // );
+                                                                } else if (
+                                                                    normalizePath(pack.packDetails!.folderPath).startsWith(normalizePath(data.tab.path))
+                                                                ) {
+                                                                    data.tab.pathsToRemoveOnSave.push(
+                                                                        normalizePathSlashes(
+                                                                            path.relative(
+                                                                                normalizePathSlashes(data.tab.path),
+                                                                                normalizePathSlashes(pack.packDetails!.folderPath)
+                                                                            )
+                                                                        )
+                                                                    );
+                                                                } else {
+                                                                    throw new Error(
+                                                                        `Found pack path is not in the temporary folder or the original folder: ${pack.packDetails!.folderPath}`
+                                                                    );
+                                                                }
+                                                                data.tab.setLevelDBIsModified(); // TEMP: This is just until there is a proper method for this.
+                                                                break;
+                                                            case TabManagerTabMode.Readonly:
+                                                            case TabManagerTabMode.ReadonlyDirect:
+                                                            default:
+                                                                return;
                                                         }
-                                                        worldResourcePackHistoryJSON.packs.splice(packIndex, 1);
-                                                        await writeFile(
-                                                            path.join(data.tab.tempPath ?? data.tab.path, "world_resource_pack_history.json"),
-                                                            JSON.stringify(worldResourcePackHistoryJSON, null, 4),
-                                                            "utf-8"
-                                                        );
-                                                        data.tab.setFileAsModified("world_resource_pack_history.json");
                                                         void data.updateTablesContents?.(true);
                                                     } catch (e) {
                                                         console.error("Error while deleting pack from world files:", e, "pack:", pack);
@@ -3450,10 +3577,11 @@ async function getPacksTabContentsRows(data: {
                                                         });
                                                     }
                                                 }}
+                                                hidden={data.tab.readonly}
                                             >
                                                 Delete Pack From World Files
                                             </MenuItem>
-                                        )} */}
+                                        )}
                                         {!copyContextMenuItemValue || copyContextMenuItemValue.value !== undefined || !copyContextMenuItemValue.formatOptions ?
                                             <MenuItem
                                                 onClick={(_event: ContextMenu_ClickEvent): void => {
@@ -3907,6 +4035,7 @@ async function getPacksTabContentsRows(data: {
                                                     });
                                                 }
                                             }}
+                                            hidden={data.tab.readonly}
                                         >
                                             Activate Pack
                                         </MenuItem>
@@ -3949,34 +4078,55 @@ async function getPacksTabContentsRows(data: {
                                                         });
                                                     }
                                                 }}
+                                                hidden={data.tab.readonly}
                                             >
                                                 Delete Pack From History
                                             </MenuItem>
                                         )}
-                                        {/* TODO */}
-                                        {/* {pack.packDetails?.storageLocation === "world" && (
+                                        {pack.packDetails?.storageLocation === "world" && (
                                             <MenuItem
                                                 onClick={async (): Promise<void> => {
                                                     try {
-                                                        const worldResourcePackHistoryJSON: WorldXPackHistoryJSONSchema = json5.parse(
-                                                            await readFile(path.join(data.tab.tempPath ?? data.tab.path, "world_resource_pack_history.json"), "utf-8")
-                                                        ) as WorldXPackHistoryJSONSchema;
-                                                        const packIndex: number = worldResourcePackHistoryJSON.packs.findIndex((entry) =>
-                                                            typeof pack.version === "string" ?
-                                                                pack.version === entry.version
-                                                            :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
-                                                        );
-                                                        if (packIndex === -1) {
-                                                            void data.updateTablesContents?.(true);
-                                                            return;
+                                                        switch (data.tab.mode) {
+                                                            case TabManagerTabMode.Copy:
+                                                                await rm(pack.packDetails!.folderPath, { force: true, recursive: true });
+                                                                data.tab.setLevelDBIsModified(); // TEMP: This is just until there is a proper method for this.
+                                                                break;
+                                                            case TabManagerTabMode.Direct:
+                                                                await rm(pack.packDetails!.folderPath, { force: true, recursive: true });
+                                                                break;
+                                                            case TabManagerTabMode.CopyUntilSave:
+                                                                if (
+                                                                    data.tab.tempPath !== undefined &&
+                                                                    normalizePath(pack.packDetails!.folderPath).startsWith(normalizePath(data.tab.tempPath))
+                                                                ) {
+                                                                    await rm(pack.packDetails!.folderPath, { force: true, recursive: true });
+                                                                    // throw new Error(
+                                                                    //     "Found pack path is in the temporary folder but the mode is set to CopyUntilSave."
+                                                                    // );
+                                                                } else if (
+                                                                    normalizePath(pack.packDetails!.folderPath).startsWith(normalizePath(data.tab.path))
+                                                                ) {
+                                                                    data.tab.pathsToRemoveOnSave.push(
+                                                                        normalizePathSlashes(
+                                                                            path.relative(
+                                                                                normalizePathSlashes(data.tab.path),
+                                                                                normalizePathSlashes(pack.packDetails!.folderPath)
+                                                                            )
+                                                                        )
+                                                                    );
+                                                                } else {
+                                                                    throw new Error(
+                                                                        `Found pack path is not in the temporary folder or the original folder: ${pack.packDetails!.folderPath}`
+                                                                    );
+                                                                }
+                                                                data.tab.setLevelDBIsModified(); // TEMP: This is just until there is a proper method for this.
+                                                                break;
+                                                            case TabManagerTabMode.Readonly:
+                                                            case TabManagerTabMode.ReadonlyDirect:
+                                                            default:
+                                                                return;
                                                         }
-                                                        worldResourcePackHistoryJSON.packs.splice(packIndex, 1);
-                                                        await writeFile(
-                                                            path.join(data.tab.tempPath ?? data.tab.path, "world_resource_pack_history.json"),
-                                                            JSON.stringify(worldResourcePackHistoryJSON, null, 4),
-                                                            "utf-8"
-                                                        );
-                                                        data.tab.setFileAsModified("world_resource_pack_history.json");
                                                         void data.updateTablesContents?.(true);
                                                     } catch (e) {
                                                         console.error("Error while deleting pack from world files:", e, "pack:", pack);
@@ -3990,10 +4140,11 @@ async function getPacksTabContentsRows(data: {
                                                         });
                                                     }
                                                 }}
+                                                hidden={data.tab.readonly}
                                             >
                                                 Delete Pack From World Files
                                             </MenuItem>
-                                        )} */}
+                                        )}
                                         <MenuItem disabled>Copy Cell Value</MenuItem>
                                     </ControlledMenu>
                                     <tr
@@ -4153,6 +4304,7 @@ async function getPacksTabContentsRows(data: {
                                                     });
                                                 }
                                             }}
+                                            hidden={data.tab.readonly}
                                         >
                                             Activate Pack
                                         </MenuItem>
@@ -4195,34 +4347,55 @@ async function getPacksTabContentsRows(data: {
                                                         });
                                                     }
                                                 }}
+                                                hidden={data.tab.readonly}
                                             >
                                                 Delete Pack From History
                                             </MenuItem>
                                         )}
-                                        {/* TODO */}
-                                        {/* {pack.packDetails?.storageLocation === "world" && (
+                                        {pack.packDetails?.storageLocation === "world" && (
                                             <MenuItem
                                                 onClick={async (): Promise<void> => {
                                                     try {
-                                                        const worldBehaviorPackHistoryJSON: WorldXPackHistoryJSONSchema = json5.parse(
-                                                            await readFile(path.join(data.tab.tempPath ?? data.tab.path, "world_behavior_pack_history.json"), "utf-8")
-                                                        ) as WorldXPackHistoryJSONSchema;
-                                                        const packIndex: number = worldBehaviorPackHistoryJSON.packs.findIndex((entry) =>
-                                                            typeof pack.version === "string" ?
-                                                                pack.version === entry.version
-                                                            :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
-                                                        );
-                                                        if (packIndex === -1) {
-                                                            void data.updateTablesContents?.(true);
-                                                            return;
+                                                        switch (data.tab.mode) {
+                                                            case TabManagerTabMode.Copy:
+                                                                await rm(pack.packDetails!.folderPath, { force: true, recursive: true });
+                                                                data.tab.setLevelDBIsModified(); // TEMP: This is just until there is a proper method for this.
+                                                                break;
+                                                            case TabManagerTabMode.Direct:
+                                                                await rm(pack.packDetails!.folderPath, { force: true, recursive: true });
+                                                                break;
+                                                            case TabManagerTabMode.CopyUntilSave:
+                                                                if (
+                                                                    data.tab.tempPath !== undefined &&
+                                                                    normalizePath(pack.packDetails!.folderPath).startsWith(normalizePath(data.tab.tempPath))
+                                                                ) {
+                                                                    await rm(pack.packDetails!.folderPath, { force: true, recursive: true });
+                                                                    // throw new Error(
+                                                                    //     "Found pack path is in the temporary folder but the mode is set to CopyUntilSave."
+                                                                    // );
+                                                                } else if (
+                                                                    normalizePath(pack.packDetails!.folderPath).startsWith(normalizePath(data.tab.path))
+                                                                ) {
+                                                                    data.tab.pathsToRemoveOnSave.push(
+                                                                        normalizePathSlashes(
+                                                                            path.relative(
+                                                                                normalizePathSlashes(data.tab.path),
+                                                                                normalizePathSlashes(pack.packDetails!.folderPath)
+                                                                            )
+                                                                        )
+                                                                    );
+                                                                } else {
+                                                                    throw new Error(
+                                                                        `Found pack path is not in the temporary folder or the original folder: ${pack.packDetails!.folderPath}`
+                                                                    );
+                                                                }
+                                                                data.tab.setLevelDBIsModified(); // TEMP: This is just until there is a proper method for this.
+                                                                break;
+                                                            case TabManagerTabMode.Readonly:
+                                                            case TabManagerTabMode.ReadonlyDirect:
+                                                            default:
+                                                                return;
                                                         }
-                                                        worldBehaviorPackHistoryJSON.packs.splice(packIndex, 1);
-                                                        await writeFile(
-                                                            path.join(data.tab.tempPath ?? data.tab.path, "world_behavior_pack_history.json"),
-                                                            JSON.stringify(worldBehaviorPackHistoryJSON, null, 4),
-                                                            "utf-8"
-                                                        );
-                                                        data.tab.setFileAsModified("world_behavior_pack_history.json");
                                                         void data.updateTablesContents?.(true);
                                                     } catch (e) {
                                                         console.error("Error while deleting pack from world files:", e, "pack:", pack);
@@ -4236,10 +4409,11 @@ async function getPacksTabContentsRows(data: {
                                                         });
                                                     }
                                                 }}
+                                                hidden={data.tab.readonly}
                                             >
                                                 Delete Pack From World Files
                                             </MenuItem>
-                                        )} */}
+                                        )}
                                         {!copyContextMenuItemValue || copyContextMenuItemValue.value !== undefined || !copyContextMenuItemValue.formatOptions ?
                                             <MenuItem
                                                 onClick={(_event: ContextMenu_ClickEvent): void => {
@@ -4693,6 +4867,7 @@ async function getPacksTabContentsRows(data: {
                                                     });
                                                 }
                                             }}
+                                            hidden={data.tab.readonly}
                                         >
                                             Activate Pack
                                         </MenuItem>
@@ -4735,34 +4910,55 @@ async function getPacksTabContentsRows(data: {
                                                         });
                                                     }
                                                 }}
+                                                hidden={data.tab.readonly}
                                             >
                                                 Delete Pack From History
                                             </MenuItem>
                                         )}
-                                        {/* TODO */}
-                                        {/* {pack.packDetails?.storageLocation === "world" && (
+                                        {pack.packDetails?.storageLocation === "world" && (
                                             <MenuItem
                                                 onClick={async (): Promise<void> => {
                                                     try {
-                                                        const worldBehaviorPackHistoryJSON: WorldXPackHistoryJSONSchema = json5.parse(
-                                                            await readFile(path.join(data.tab.tempPath ?? data.tab.path, "world_behavior_pack_history.json"), "utf-8")
-                                                        ) as WorldXPackHistoryJSONSchema;
-                                                        const packIndex: number = worldBehaviorPackHistoryJSON.packs.findIndex((entry) =>
-                                                            typeof pack.version === "string" ?
-                                                                pack.version === entry.version
-                                                            :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
-                                                        );
-                                                        if (packIndex === -1) {
-                                                            void data.updateTablesContents?.(true);
-                                                            return;
+                                                        switch (data.tab.mode) {
+                                                            case TabManagerTabMode.Copy:
+                                                                await rm(pack.packDetails!.folderPath, { force: true, recursive: true });
+                                                                data.tab.setLevelDBIsModified(); // TEMP: This is just until there is a proper method for this.
+                                                                break;
+                                                            case TabManagerTabMode.Direct:
+                                                                await rm(pack.packDetails!.folderPath, { force: true, recursive: true });
+                                                                break;
+                                                            case TabManagerTabMode.CopyUntilSave:
+                                                                if (
+                                                                    data.tab.tempPath !== undefined &&
+                                                                    normalizePath(pack.packDetails!.folderPath).startsWith(normalizePath(data.tab.tempPath))
+                                                                ) {
+                                                                    await rm(pack.packDetails!.folderPath, { force: true, recursive: true });
+                                                                    // throw new Error(
+                                                                    //     "Found pack path is in the temporary folder but the mode is set to CopyUntilSave."
+                                                                    // );
+                                                                } else if (
+                                                                    normalizePath(pack.packDetails!.folderPath).startsWith(normalizePath(data.tab.path))
+                                                                ) {
+                                                                    data.tab.pathsToRemoveOnSave.push(
+                                                                        normalizePathSlashes(
+                                                                            path.relative(
+                                                                                normalizePathSlashes(data.tab.path),
+                                                                                normalizePathSlashes(pack.packDetails!.folderPath)
+                                                                            )
+                                                                        )
+                                                                    );
+                                                                } else {
+                                                                    throw new Error(
+                                                                        `Found pack path is not in the temporary folder or the original folder: ${pack.packDetails!.folderPath}`
+                                                                    );
+                                                                }
+                                                                data.tab.setLevelDBIsModified(); // TEMP: This is just until there is a proper method for this.
+                                                                break;
+                                                            case TabManagerTabMode.Readonly:
+                                                            case TabManagerTabMode.ReadonlyDirect:
+                                                            default:
+                                                                return;
                                                         }
-                                                        worldBehaviorPackHistoryJSON.packs.splice(packIndex, 1);
-                                                        await writeFile(
-                                                            path.join(data.tab.tempPath ?? data.tab.path, "world_behavior_pack_history.json"),
-                                                            JSON.stringify(worldBehaviorPackHistoryJSON, null, 4),
-                                                            "utf-8"
-                                                        );
-                                                        data.tab.setFileAsModified("world_behavior_pack_history.json");
                                                         void data.updateTablesContents?.(true);
                                                     } catch (e) {
                                                         console.error("Error while deleting pack from world files:", e, "pack:", pack);
@@ -4776,10 +4972,11 @@ async function getPacksTabContentsRows(data: {
                                                         });
                                                     }
                                                 }}
+                                                hidden={data.tab.readonly}
                                             >
                                                 Delete Pack From World Files
                                             </MenuItem>
-                                        )} */}
+                                        )}
                                         <MenuItem disabled>Copy Cell Value</MenuItem>
                                     </ControlledMenu>
                                     <tr

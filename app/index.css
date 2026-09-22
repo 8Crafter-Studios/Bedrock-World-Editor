@@ -512,7 +512,8 @@ page_background[theme_color_bg] {
     }
 }
 
-.sidebar_button:hover {
+.sidebar_button:hover,
+.sidebar_button:focus-visible {
     background-color: #fff5;
     /* & > img {
         opacity: 1;
@@ -535,7 +536,8 @@ page_background[theme_color_bg] {
     }
 }
 
-.sidebar_button.active:hover {
+.sidebar_button.active:hover,
+.sidebar_button.active:focus-visible {
     background-color: #8fc5;
     /* & > img {
         opacity: 1;
@@ -749,7 +751,10 @@ ul.horizontal-nav.tab-bar {
 
     & > li:not(:has(.closebtn:hover)):not(:has(.closebtn:active)) a:hover:not(.active),
     & > li:not(:has(.closebtn:hover)):not(:has(.closebtn:active)) .navbar-dropdown:hover .navbar-dropbtn,
-    & > li:not(:has(.closebtn:hover)):not(:has(.closebtn:active)) .navbar-dropdown:hover .navbar-dropdown-content a:hover {
+    & > li:not(:has(.closebtn:hover)):not(:has(.closebtn:active)) .navbar-dropdown:hover .navbar-dropdown-content a:hover,
+    & > li:not(:has(.closebtn:focus-visible)):not(:has(.closebtn:active)) a:focus-visible:not(.active),
+    & > li:not(:has(.closebtn:focus-visible)):not(:has(.closebtn:active)) .navbar-dropdown:focus-visible .navbar-dropbtn,
+    & > li:not(:has(.closebtn:focus-visible)):not(:has(.closebtn:active)) .navbar-dropdown:focus-visible .navbar-dropdown-content a:focus-visible {
         background-repeat: no-repeat;
         background-position: top, left, right, bottom, center;
         background-size:
@@ -772,7 +777,10 @@ ul.horizontal-nav.tab-bar {
 
     & > li:not(:has(.closebtn:hover)):not(:has(.closebtn:active)) a:not(:hover):not(.active),
     & > li:not(:has(.closebtn:hover)):not(:has(.closebtn:active)) .navbar-dropdown:not(:hover) .navbar-dropbtn,
-    & > li:not(:has(.closebtn:hover)):not(:has(.closebtn:active)) .navbar-dropdown:hover .navbar-dropdown-content a:hover {
+    & > li:not(:has(.closebtn:hover)):not(:has(.closebtn:active)) .navbar-dropdown:hover .navbar-dropdown-content a:hover,
+    & > li:not(:has(.closebtn:focus-visible)):not(:has(.closebtn:active)) a:not(:focus-visible):not(.active),
+    & > li:not(:has(.closebtn:focus-visible)):not(:has(.closebtn:active)) .navbar-dropdown:not(:focus-visible) .navbar-dropbtn,
+    & > li:not(:has(.closebtn:focus-visible)):not(:has(.closebtn:active)) .navbar-dropdown:focus-visible .navbar-dropdown-content a:focus-visible {
         & > [name="cv"] {
             display: block;
         }
@@ -946,7 +954,8 @@ body.overlay_page_visible .possible_scroll_y {
     vertical-align: 5%;
 }
 
-.settings_button:hover {
+.settings_button:hover,
+.settings_button:focus-visible {
     background-image: url("/resources/images/ui/glyphs/settings_glyph_color_2x_hover.png");
 }
 
@@ -1077,7 +1086,8 @@ body.overlay_page_visible .possible_scroll_y {
     color: #00ff88ff;
 }
 
-.emerald-green-link:hover {
+.emerald-green-link:hover,
+.emerald-green-link:focus-visible {
     color: hsl(152, 100%, 75%);
 }
 
@@ -1085,7 +1095,8 @@ body.overlay_page_visible .possible_scroll_y {
     color: hsl(152, 100%, 37.5%);
 }
 
-.text-box-popup-help-info-label:hover {
+.text-box-popup-help-info-label:hover,
+.text-box-popup-help-info-label:focus-visible {
     cursor: help;
     text-decoration: underline;
 }
@@ -1095,7 +1106,8 @@ div:has(> .text-box-popup-help-info-label) > div.popup-container {
     opacity: 0;
     z-index: 1000;
 }
-div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
+div:has(> .text-box-popup-help-info-label:hover) > div.popup-container,
+div:has(> .text-box-popup-help-info-label:focus-visible) > div.popup-container {
     display: block;
     transition: opacity 0.1s ease 0.5s;
     opacity: 1;
@@ -1107,7 +1119,8 @@ div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
     margin: -2px;
 }
 
-.closebtn:hover:not(:active) {
+.closebtn:hover:not(:active),
+.closebtn:focus-visible:not(:active) {
     background-color: #f44336;
     color: white;
 }
@@ -1123,7 +1136,8 @@ div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
     margin: -2px;
 }
 
-.unpinbtn:hover:not(:active) {
+.unpinbtn:hover:not(:active),
+.unpinbtn:focus-visible:not(:active) {
     background-color: hsl(64, 90%, 58%);
 }
 
@@ -1135,7 +1149,8 @@ div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
     background-color: attr(data-bg-color type(<color>));
 }
 
-[data-hover-bg-color]:hover {
+[data-hover-bg-color]:hover,
+[data-hover-bg-color]:focus-visible {
     background-color: attr(data-hover-bg-color type(<color>));
 }
 
@@ -1221,7 +1236,8 @@ div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
     color: var(--tabbed-selector-option-button-pressed-text-color);
 }
 
-.tabbed-selector > button:hover:not(:active) {
+.tabbed-selector > button:hover:not(:active),
+.tabbed-selector > button:focus-visible:not(:active) {
     background-color: var(--tabbed-selector-option-button-hover-bg-color);
     color: var(--tabbed-selector-option-button-hover-text-color);
 }
@@ -1240,7 +1256,8 @@ div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
     color: var(--tabbed-selector-option-button-selected-pressed-text-color);
 }
 
-.tabbed-selector.radio-tabbed-selector > button.selected:hover:not(:active) {
+.tabbed-selector.radio-tabbed-selector > button.selected:hover:not(:active),
+.tabbed-selector.radio-tabbed-selector > button.selected:focus-visible:not(:active) {
     background-color: var(--tabbed-selector-option-button-selected-hover-bg-color);
     color: var(--tabbed-selector-option-button-selected-hover-text-color);
 }
@@ -1308,7 +1325,8 @@ div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
     display: block;
 }
 
-.search-controls-container > button:hover:not(:active) {
+.search-controls-container > button:hover:not(:active),
+.search-controls-container > button:focus-visible:not(:active) {
     background-color: #8884;
 }
 
@@ -1361,7 +1379,8 @@ div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
     color: var(--generic-button-pressed-text-color);
 }
 
-.funTabButton:not(:disabled):hover:not(:active) {
+.funTabButton:not(:disabled):hover:not(:active),
+.funTabButton:not(:disabled):focus-visible:not(:active) {
     background-color: var(--generic-button-hover-bg-color);
     color: var(--generic-button-hover-text-color);
 }
@@ -1376,7 +1395,8 @@ div:has(> .text-box-popup-help-info-label:hover) > div.popup-container {
     color: var(--generic-button-selected-pressed-text-color);
 }
 
-.funTabButton:not(:disabled).selected:hover:not(:active) {
+.funTabButton:not(:disabled).selected:hover:not(:active),
+.funTabButton:not(:disabled).selected:focus-visible:not(:active) {
     background-color: var(--generic-button-selected-hover-bg-color);
     color: var(--generic-button-selected-hover-text-color);
 }
@@ -1449,7 +1469,13 @@ select.search-mode-dropdown option:not(:disabled):active {
 .genericRoundButtonR:not(:disabled):hover:not(:active),
 .genericRoundButtonH:not(:disabled):hover:not(:active),
 .genericRoundButtonHR:not(:disabled):hover:not(:active),
-select.search-mode-dropdown option:not(:disabled):hover:not(:active) {
+select.search-mode-dropdown option:not(:disabled):hover:not(:active),
+.integrationsTabIntegrationButton:not(:disabled):focus-visible:not(:active),
+.genericRoundButton:not(:disabled):focus-visible:not(:active),
+.genericRoundButtonR:not(:disabled):focus-visible:not(:active),
+.genericRoundButtonH:not(:disabled):focus-visible:not(:active),
+.genericRoundButtonHR:not(:disabled):focus-visible:not(:active),
+select.search-mode-dropdown option:not(:disabled):focus-visible:not(:active) {
     background-color: var(--generic-button-hover-bg-color);
     color: var(--generic-button-hover-text-color);
 }
@@ -1479,7 +1505,13 @@ select.search-mode-dropdown option:not(:disabled):checked:active {
 .genericRoundButtonR:not(:disabled).selected:hover:not(:active),
 .genericRoundButtonH:not(:disabled).selected:hover:not(:active),
 .genericRoundButtonHR:not(:disabled).selected:hover:not(:active),
-select.search-mode-dropdown option:not(:disabled):checked:hover:not(:active) {
+select.search-mode-dropdown option:not(:disabled):checked:hover:not(:active),
+.integrationsTabIntegrationButton:not(:disabled).selected:focus-visible:not(:active),
+.genericRoundButton:not(:disabled).selected:focus-visible:not(:active),
+.genericRoundButtonR:not(:disabled).selected:focus-visible:not(:active),
+.genericRoundButtonH:not(:disabled).selected:focus-visible:not(:active),
+.genericRoundButtonHR:not(:disabled).selected:focus-visible:not(:active),
+select.search-mode-dropdown option:not(:disabled):checked:focus-visible:not(:active) {
     background-color: var(--generic-button-selected-hover-bg-color);
     color: var(--generic-button-selected-hover-text-color);
 }
@@ -1597,6 +1629,14 @@ select.search-mode-dropdown:open::picker-icon {
 
 .worldSelectorListItemWorldVersion {
     text-align: right;
+}
+
+.reloadWorldListButton:hover,
+.reloadWorldListButton:focus-visible {
+    filter: brightness(1.2);
+}
+.reloadWorldListButton:active {
+    filter: brightness(1.4);
 }
 
 .add-tab-popup-menu {

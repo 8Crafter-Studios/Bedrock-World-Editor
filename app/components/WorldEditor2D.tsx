@@ -47,6 +47,14 @@ import { stringifyError } from "../../src/utils/miscUtils";
 // import { currentFpsRaw } from "./DebugOverlay";
 // const mime = require("mime-types") as typeof import("mime-types");
 
+// IDEA: Maybe make the random colors of custom biomes based on a hash of their namespaced ID rather than their numeric ID, and add a config option to set whether it should use the numeric ID or namespaced ID.
+// IDEA: Maybe add a way to customize the vanilla biome colors.
+// IDEA: Maybe add a way to define biome colors for custom biomes (via their namespaced ID so that it can persist across worlds, and maybe also add a way to save it to the world files so that when sending the world to someone else it can be used there too).
+// IDEA: Maybe add a way for behavior packs to define the biome colors for their biomes for BWE with a specific file.
+// IDEA: Add a water color render type, and make it able to read that color from resource packs too for custom biomes.
+
+// IDEA: Add a screenshot button that takes a screenshot of the currently-in-view map without any of the overlays. It should maybe create a new canvas and render the map to it and then export it as an image.
+
 /**
  * The data storage object for the {@link WorldEditor2D}.
  */
@@ -102,7 +110,7 @@ export interface WorldEditor2DDataStorageObject {
          *
          * If `auto`, it will be shown if the zoom level is at least 8.
          */
-        showGrid: boolean | "auto";
+        showGrid: boolean | number;
         /**
          * Whether to show the corresponding nether or overworld coordinates and chunk coordinates in the hover details overlay when in the overworld or the nether.
          */
@@ -2880,9 +2888,18 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         const img = new ImageData(frame, frameWidth, frameHeight);
         ctx.putImageData(img, 0, 0);
     }
+
     let drawCachedChunks_v4_frameBuffer: ArrayBuffer = new ArrayBuffer(0);
     let drawCachedChunks_v4_screen32: Uint32Array<ArrayBuffer> = new Uint32Array(0);
     let drawCachedChunks_v4_screen8Clamped: Uint8ClampedArray<ArrayBuffer> = new Uint8ClampedArray(0);
+
+    let drawCachedChunks_v4_heightMapRenderTypeSrcLastUsedColor: number = NaN;
+    const drawCachedChunks_v4_heightMapRenderTypeSrcBuffer: ArrayBuffer = new ArrayBuffer(16 * 16 * 4);
+    const drawCachedChunks_v4_heightMapRenderTypeSrc32: Uint32Array<ArrayBuffer> = new Uint32Array(drawCachedChunks_v4_heightMapRenderTypeSrcBuffer);
+    const drawCachedChunks_v4_heightMapRenderTypeSrc8Clamped: Uint8ClampedArray<ArrayBuffer> = new Uint8ClampedArray(
+        drawCachedChunks_v4_heightMapRenderTypeSrcBuffer
+    );
+
     function drawCachedChunks_v4(
         ctx: CanvasRenderingContext2D,
         bounds: { min: Vector2; max: Vector2 },
@@ -2927,7 +2944,21 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         const minChunkY: number = Math.floor(bounds.min.y);
         const maxChunkY: number = Math.ceil(bounds.max.y);
 
-        const heightMapEnabled: boolean = props.dataStorageObject.worldEditor2D.heightmap;
+        const RENDER_TYPE = props.dataStorageObject.worldEditor2D.renderType;
+        // TODO (Important): Add a config option for this. Maybe have it be stored as a CSS color string and use color-rgba to convert it whenever it changes and cache it to a variable, or maybe just use the Spectrum color picker and store it as a single number.
+        const HEIGHTMAP_RENDER_TYPE_BASE_COLOR: readonly [r: number, g: number, b: number, a: number] = [128, 128, 128, 255];
+        const HEIGHTMAP_RENDER_TYPE_BASE_COLOR_NUM: number =
+            (HEIGHTMAP_RENDER_TYPE_BASE_COLOR[3] << 24) |
+            (HEIGHTMAP_RENDER_TYPE_BASE_COLOR[2] << 16) |
+            (HEIGHTMAP_RENDER_TYPE_BASE_COLOR[1] << 8) |
+            HEIGHTMAP_RENDER_TYPE_BASE_COLOR[0];
+
+        if (RENDER_TYPE === "heightmap" && HEIGHTMAP_RENDER_TYPE_BASE_COLOR_NUM !== drawCachedChunks_v4_heightMapRenderTypeSrcLastUsedColor) {
+            drawCachedChunks_v4_heightMapRenderTypeSrcLastUsedColor = HEIGHTMAP_RENDER_TYPE_BASE_COLOR_NUM;
+            drawCachedChunks_v4_heightMapRenderTypeSrc32.fill(HEIGHTMAP_RENDER_TYPE_BASE_COLOR_NUM);
+        }
+
+        const heightMapEnabled: boolean = props.dataStorageObject.worldEditor2D.heightmap || RENDER_TYPE === "heightmap";
         const usePreShading: boolean = heightMapEnabled && scale >= 16;
 
         const HEIGHT_MAP_MODE = config.views.world.modeSettings["2D"].heightMapMode;
@@ -2992,9 +3023,10 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 let src32: Uint32Array | null = null;
                 let applyHeightMap = false;
                 let isChunk = false;
+                let skipSrcCheck = false;
                 let heightMapTintCache: number[] | undefined;
 
-                if (!entry) {
+                srcGetter: if (!entry) {
                     src32 = loadingPendingTile;
                 } else if (
                     entry === "loading" ||
@@ -3006,7 +3038,24 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 } else if (entry === "error") {
                     src = errorTile;
                 } else {
-                    src = entry.imageData.data;
+                    switch (RENDER_TYPE) {
+                        case "biomes":
+                            src = entry.imageData.data;
+                            break;
+                        case "blocks_accurate":
+                        case "blocks_map":
+                            // TODO
+                            src = errorTile; // TEMP
+                            break srcGetter;
+                        case "heightmap":
+                            if (!usePreShading) src = drawCachedChunks_v4_heightMapRenderTypeSrc8Clamped;
+                            else skipSrcCheck = true; // This is handled by the pre-shading.
+                            break;
+                        default:
+                            // TODO
+                            src = errorTile; // TEMP
+                            break srcGetter;
+                    }
                     isChunk = true;
                     // OPTIMIZE: This needs to cache the height map tint values where they don't have to be recalculated every frame. Maybe it should also store a last modified time of the chunks above and to the left, so when those are updated, it can update the height map tint values.
                     if (heightMapEnabled) {
@@ -3080,57 +3129,83 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                     }
                 }
 
-                if (!src && !src32) continue;
+                if (!skipSrcCheck && !src && !src32) continue;
 
                 const chunkHeight = Math.floor((cy + 1 - bounds.min.y) * scale) - Math.floor((cy - bounds.min.y) * scale);
 
                 if (isChunk) {
-                    if (!src) continue; // TEMP
                     const sw = 16,
                         sh = 16;
                     const xRatio = sw / chunkWidth;
                     const yRatio = sh / chunkHeight;
 
                     if (usePreShading) {
-                        for (let sir = 0; sir < 256; sir++) {
-                            // const packedPixel = src32[sir];
-                            const shade = heightMapTintCache![sir]!;
-                            const si = sir * 4;
+                        if (src) {
+                            for (let sir = 0; sir < 256; sir++) {
+                                // const packedPixel = src32[sir];
+                                const shade = heightMapTintCache![sir]!;
+                                const si = sir * 4;
 
-                            // let r = ((packedPixel & 0x000000ff) * shade) | 0;
-                            // if (r > 255) r = 255;
-                            // else if (r < 0) r = 0;
+                                // let r = ((packedPixel & 0x000000ff) * shade) | 0;
+                                // if (r > 255) r = 255;
+                                // else if (r < 0) r = 0;
 
-                            // let g = (((packedPixel & 0x0000ff00) >> 8) * shade) | 0;
-                            // if (g > 255) g = 255;
-                            // else if (g < 0) g = 0;
+                                // let g = (((packedPixel & 0x0000ff00) >> 8) * shade) | 0;
+                                // if (g > 255) g = 255;
+                                // else if (g < 0) g = 0;
 
-                            // let b = (((packedPixel & 0x00ff0000) >> 16) * shade) | 0;
-                            // if (b > 255) b = 255;
-                            // else if (b < 0) b = 0;
+                                // let b = (((packedPixel & 0x00ff0000) >> 16) * shade) | 0;
+                                // if (b > 255) b = 255;
+                                // else if (b < 0) b = 0;
 
-                            // const a = (packedPixel & 0xff000000) >>> 24;
+                                // const a = (packedPixel & 0xff000000) >>> 24;
 
-                            let r: number = (src[si]! * shade) | 0;
-                            if (r > 255) r = 255;
-                            else if (r < 0) r = 0;
+                                let r: number = (src[si]! * shade) | 0;
+                                if (r > 255) r = 255;
+                                else if (r < 0) r = 0;
 
-                            let g: number = (src[si + 1]! * shade) | 0;
-                            if (g > 255) g = 255;
-                            else if (g < 0) g = 0;
+                                let g: number = (src[si + 1]! * shade) | 0;
+                                if (g > 255) g = 255;
+                                else if (g < 0) g = 0;
 
-                            let b: number = (src[si + 2]! * shade) | 0;
-                            if (b > 255) b = 255;
-                            else if (b < 0) b = 0;
+                                let b: number = (src[si + 2]! * shade) | 0;
+                                if (b > 255) b = 255;
+                                else if (b < 0) b = 0;
 
-                            const a: number = src[si + 3]!;
-                            // let a: number = (src[si + 3]! * shade) | 0;
-                            // if (a > 255) a = 255;
-                            // else if (a < 0) a = 0;
+                                const a: number = src[si + 3]!;
+                                // let a: number = (src[si + 3]! * shade) | 0;
+                                // if (a > 255) a = 255;
+                                // else if (a < 0) a = 0;
 
-                            preShade32![sir] = (a << 24) | (b << 16) | (g << 8) | r;
+                                preShade32![sir] = (a << 24) | (b << 16) | (g << 8) | r;
+                            }
+                        } else if (src32) {
+                            // TODO
+                        } else {
+                            for (let sir = 0; sir < 256; sir++) {
+                                const shade = heightMapTintCache![sir]!;
+
+                                let r: number = (HEIGHTMAP_RENDER_TYPE_BASE_COLOR[0] * shade) | 0;
+                                if (r > 255) r = 255;
+                                else if (r < 0) r = 0;
+
+                                let g: number = (HEIGHTMAP_RENDER_TYPE_BASE_COLOR[1] * shade) | 0;
+                                if (g > 255) g = 255;
+                                else if (g < 0) g = 0;
+
+                                let b: number = (HEIGHTMAP_RENDER_TYPE_BASE_COLOR[2] * shade) | 0;
+                                if (b > 255) b = 255;
+                                else if (b < 0) b = 0;
+
+                                const a: number = HEIGHTMAP_RENDER_TYPE_BASE_COLOR[3];
+                                // let a: number = (src[si + 3]! * shade) | 0;
+                                // if (a > 255) a = 255;
+                                // else if (a < 0) a = 0;
+
+                                preShade32![sir] = (a << 24) | (b << 16) | (g << 8) | r;
+                            }
                         }
-                    }
+                    } else if (!src) continue; // TEMP
 
                     for (let dy = 0; dy < chunkHeight; dy++) {
                         const dstY = baseY + dy;
@@ -3153,19 +3228,19 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             } else if (heightMapEnabled) {
                                 const shade = heightMapEnabled ? heightMapTintCache![sir]! : 1;
 
-                                let r: number = (src[si]! * shade) | 0;
+                                let r: number = (src![si]! * shade) | 0;
                                 if (r > 255) r = 255;
                                 else if (r < 0) r = 0;
 
-                                let g: number = (src[si + 1]! * shade) | 0;
+                                let g: number = (src![si + 1]! * shade) | 0;
                                 if (g > 255) g = 255;
                                 else if (g < 0) g = 0;
 
-                                let b: number = (src[si + 2]! * shade) | 0;
+                                let b: number = (src![si + 2]! * shade) | 0;
                                 if (b > 255) b = 255;
                                 else if (b < 0) b = 0;
 
-                                const a: number = src[si + 3]!;
+                                const a: number = src![si + 3]!;
                                 // let a: number = (src[si + 3]! * shade) | 0;
                                 // if (a > 255) a = 255;
                                 // else if (a < 0) a = 0;
@@ -3173,10 +3248,10 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 frame[di] = (a << 24) | (b << 16) | (g << 8) | r;
                             } else {
                                 frame[di] =
-                                    (src[si + 3]! << 24) | // a
-                                    (src[si + 2]! << 16) | // b
-                                    (src[si + 1]! << 8) | // g
-                                    src[si]!; // r
+                                    (src![si + 3]! << 24) | // a
+                                    (src![si + 2]! << 16) | // b
+                                    (src![si + 1]! << 8) | // g
+                                    src![si]!; // r
                             }
                         }
                     }
@@ -3766,6 +3841,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             >
                 <MenuHeader>Settings</MenuHeader>
                 <SubMenu label="Render Type">
+                    {/* TODO: Add hover descriptions to the options via the titles. */}
                     <MenuItem
                         type="checkbox"
                         checked={props.dataStorageObject.worldEditor2D.renderType === "biomes"}
@@ -3807,8 +3883,6 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             props.dataStorageObject.worldEditor2D.renderType = "heightmap";
                             engineRef.current?.render();
                         }}
-                        disabled
-                        title="Not implemented yet."
                     >
                         Heightmap
                     </MenuItem>
@@ -3816,29 +3890,80 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 <MenuDivider />
                 <MenuItem
                     type="checkbox"
-                    checked={props.dataStorageObject.worldEditor2D.heightmap}
+                    checked={props.dataStorageObject.worldEditor2D.heightmap || props.dataStorageObject.worldEditor2D.renderType === "heightmap"}
                     onClick={(): void => {
                         props.dataStorageObject.worldEditor2D.heightmap = !props.dataStorageObject.worldEditor2D.heightmap;
                         engineRef.current?.render();
                     }}
+                    disabled={props.dataStorageObject.worldEditor2D.renderType === "heightmap"}
+                    title={
+                        props.dataStorageObject.worldEditor2D.renderType === "heightmap" ?
+                            "The Show Heightmap option cannot be disabled while the render type is set to Heightmap."
+                        :   ""
+                    }
                 >
                     Show Heightmap
                 </MenuItem>
-                {/* TODO: At some point, this should have an option to have "Show Grid" in "auto" mode, and maybe an option to change the "auto" mode zoom level threshold. */}
-                <MenuItem
-                    type="checkbox"
-                    checked={props.dataStorageObject.worldEditor2D.showGrid === true || props.dataStorageObject.worldEditor2D.showGrid === "auto"}
-                    onClick={(): void => {
-                        props.dataStorageObject.worldEditor2D.showGrid = !props.dataStorageObject.worldEditor2D.showGrid;
-                        if (!engineRef.current) return;
-                        engineRef.current.clearLayer(1);
-                        if (/* props.dataStorageObject.worldEditor2D.showGrid === "auto" ? scale >= 8 : */ props.dataStorageObject.worldEditor2D.showGrid) {
+                <SubMenu label="Show Grid Lines">
+                    <MenuItem
+                        type="checkbox"
+                        title="Always shows grid lines, regardless of zoom level."
+                        checked={props.dataStorageObject.worldEditor2D.showGrid === true}
+                        onClick={(): void => {
+                            props.dataStorageObject.worldEditor2D.showGrid = true;
+                            engineRef.current?.render();
+                            if (!engineRef.current) return;
+                            engineRef.current.clearLayer(1);
                             engineRef.current.drawGridLines(1, 1, "#1e293b", 1);
-                        }
-                    }}
-                >
-                    Show Grid Lines
-                </MenuItem>
+                        }}
+                    >
+                        Always
+                    </MenuItem>
+                    <MenuItem
+                        type="checkbox"
+                        title="Only shows grid lines when the zoom level is at or above a chosen threshold."
+                        checked={typeof props.dataStorageObject.worldEditor2D.showGrid === "number"}
+                        onClick={async (): Promise<void> => {
+                            const lastValue: number =
+                                typeof props.dataStorageObject.worldEditor2D.showGrid === "number" ? props.dataStorageObject.worldEditor2D.showGrid : 8;
+                            const threshold: ShowNumberInputDialogResult = await showNumberInputDialog({
+                                optionLabel: "Custom zoom threshold: ",
+                                optionDefaultValue: lastValue,
+                                submitButtonText: "Set threshold",
+                                optionMinValue: 0,
+                                optionStep: 1,
+                            });
+                            if (threshold.canceled) return;
+                            if (
+                                lastValue !==
+                                (typeof props.dataStorageObject.worldEditor2D.showGrid === "number" ? props.dataStorageObject.worldEditor2D.showGrid : 8)
+                            ) {
+                                return;
+                            }
+                            props.dataStorageObject.worldEditor2D.showGrid = Math.trunc(threshold.value);
+                            if (!engineRef.current) return;
+                            engineRef.current.clearLayer(1);
+                            if (props.dataStorageObject.worldEditor2D.zoom >= props.dataStorageObject.worldEditor2D.showGrid) {
+                                engineRef.current.drawGridLines(1, 1, "#1e293b", 1);
+                            }
+                        }}
+                    >
+                        With Threshold
+                        {typeof props.dataStorageObject.worldEditor2D.showGrid === "number" ? ` (${props.dataStorageObject.worldEditor2D.showGrid})` : ""}
+                    </MenuItem>
+                    <MenuItem
+                        type="checkbox"
+                        title="Never shows grid lines, regardless of zoom level."
+                        checked={props.dataStorageObject.worldEditor2D.showGrid === false}
+                        onClick={(): void => {
+                            props.dataStorageObject.worldEditor2D.showGrid = false;
+                            if (!engineRef.current) return;
+                            engineRef.current.clearLayer(1);
+                        }}
+                    >
+                        Never
+                    </MenuItem>
+                </SubMenu>
                 <MenuDivider />
                 <SubMenu label="Set defaults...">
                     <MenuItem
@@ -3850,16 +3975,62 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                     >
                         Show Heightmap
                     </MenuItem>
-                    <MenuItem
-                        type="checkbox"
-                        checked={config.views.world.modeSettings["2D"].showGridDefault}
-                        onClick={(): void => {
-                            config.views.world.modeSettings["2D"].showGridDefault = !config.views.world.modeSettings["2D"].showGridDefault;
-                        }}
-                    >
-                        Show Grid Lines
-                    </MenuItem>
-                    {/* TODO: Add the render type option to here too once at least one other render type is implemented. */}
+                    <SubMenu label="Show Grid Lines">
+                        <MenuItem
+                            type="checkbox"
+                            title="Always shows grid lines, regardless of zoom level."
+                            checked={config.views.world.modeSettings["2D"].showGridDefault === true}
+                            onClick={(): void => {
+                                config.views.world.modeSettings["2D"].showGridDefault = true;
+                            }}
+                        >
+                            Always
+                        </MenuItem>
+                        <MenuItem
+                            type="checkbox"
+                            title="Only shows grid lines when the zoom level is at or above a chosen threshold."
+                            checked={typeof config.views.world.modeSettings["2D"].showGridDefault === "number"}
+                            onClick={async (): Promise<void> => {
+                                const lastValue: number =
+                                    typeof config.views.world.modeSettings["2D"].showGridDefault === "number" ?
+                                        config.views.world.modeSettings["2D"].showGridDefault
+                                    :   8;
+                                const threshold: ShowNumberInputDialogResult = await showNumberInputDialog({
+                                    optionLabel: "Custom zoom threshold: ",
+                                    optionDefaultValue: lastValue,
+                                    submitButtonText: "Set threshold",
+                                    optionMinValue: 0,
+                                    optionStep: 1,
+                                });
+                                if (threshold.canceled) return;
+                                if (
+                                    lastValue !==
+                                    (typeof config.views.world.modeSettings["2D"].showGridDefault === "number" ?
+                                        config.views.world.modeSettings["2D"].showGridDefault
+                                    :   8)
+                                ) {
+                                    return;
+                                }
+                                config.views.world.modeSettings["2D"].showGridDefault = Math.trunc(threshold.value);
+                            }}
+                        >
+                            With Threshold
+                            {typeof config.views.world.modeSettings["2D"].showGridDefault === "number" ?
+                                ` (${config.views.world.modeSettings["2D"].showGridDefault})`
+                            :   ""}
+                        </MenuItem>
+                        <MenuItem
+                            type="checkbox"
+                            title="Never shows grid lines, regardless of zoom level."
+                            checked={config.views.world.modeSettings["2D"].showGridDefault === false}
+                            onClick={(): void => {
+                                config.views.world.modeSettings["2D"].showGridDefault = false;
+                            }}
+                        >
+                            Never
+                        </MenuItem>
+                    </SubMenu>
+                    {/* TODO (Important): Add the render type option to here too once the config option for it is added. */}
                 </SubMenu>
             </ControlledMenu>
         );
@@ -4510,7 +4681,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             position: "absolute",
                             top: 0,
                             left: 0,
-                            /* width: "100%", height: "100%", */ overflow: "auto",
+                            /* width: "100%", height: "100%", */
                             color: "white",
                             backgroundColor: "rgba(0, 0, 0, 0.5)",
                             whiteSpace: "pre-wrap",
@@ -4650,9 +4821,8 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                         // DEBUG
                         console.debug("Clicked:", coords.snapped, { x: Math.floor(coords.raw.x * 16), y: Math.floor(coords.raw.y * 16) }, coords.raw);
                     }}
-                    // TEST: Make sure that ALT+Click triggers this.
                     onRightClick={(coords, _mouse, client) => {
-                        // TODO: Make this work on long press too (on mobile and devices with touch screens only), and for Control+Click on macOS if that doesn't already work. Or maybe add a modifier key button for mobile where it is a toggle and when it is on, tapping/clicking opens this context menu.
+                        // TODO: Make this work on long press too (on mobile and devices with touch screens only). Or maybe add a modifier key button for mobile where it is a toggle and when it is on, tapping/clicking opens this context menu, maybe the button should be overlayed on top of the map.
                         if (!chunkContextMenuInteractionRef.current) return;
                         chunkContextMenuInteractionRef.current.targetChunkDetails = {
                             block: { x: Math.floor(coords.raw.x * 16), z: Math.floor(coords.raw.y * 16) },
@@ -4670,7 +4840,6 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                         biomeDetailsRenderer: if (typeof chunkColorData === "object") {
                             const biomeId: number | undefined = chunkColorData.biomeData[offsetTo2DChunkBlockColorDataIndex(block) / 4];
                             if (biomeId === undefined) break biomeDetailsRenderer;
-                            // TODO: Add support for custom biomes.
                             const biomeNamespacedId: string | undefined = getBiomeNamespacedIdFromNumericId(
                                 biomeId,
                                 typeof biomeIdsTable === "object" ? biomeIdsTable : undefined
@@ -4756,7 +4925,11 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                     onZoom={(scale: number): void => {
                         props.dataStorageObject.worldEditor2D.zoom = scale;
                         engine.clearLayer(1);
-                        if (props.dataStorageObject.worldEditor2D.showGrid === "auto" ? scale >= 8 : props.dataStorageObject.worldEditor2D.showGrid) {
+                        if (
+                            typeof props.dataStorageObject.worldEditor2D.showGrid === "number" ?
+                                scale >= props.dataStorageObject.worldEditor2D.showGrid
+                            :   props.dataStorageObject.worldEditor2D.showGrid
+                        ) {
                             engine.drawGridLines(1, 1, "#1e293b", 1);
                         }
                         if (portalsRendered && props.dataStorageObject.worldEditor2D.dataOverlays.portals) portalsRendered = renderPortalsOnMap(scale);
@@ -4851,8 +5024,8 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             // console.log(ctx, coords, config);
                         }}
                     </CanvasTileEngine.DrawFunction>
-                    {(props.dataStorageObject.worldEditor2D.showGrid === "auto" ?
-                        props.dataStorageObject.worldEditor2D.zoom >= 8
+                    {(typeof props.dataStorageObject.worldEditor2D.showGrid === "number" ?
+                        props.dataStorageObject.worldEditor2D.zoom >= props.dataStorageObject.worldEditor2D.showGrid
                     :   props.dataStorageObject.worldEditor2D.showGrid) && <CanvasTileEngine.GridLines cellSize={1} strokeStyle="#1e293b" layer={1} />}
                 </CanvasTileEngine>
                 {/* <div style={{ maxHeight: "round(down, 100%, 128px)", display: "flex", justifyContent: "center", aspectRatio: "1 / 1" }}>

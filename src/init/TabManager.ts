@@ -19,14 +19,14 @@ import type { TreeEditorDataStorageObjectInput } from "../../app/components/Tree
 import { LevelDB } from "@8crafter/leveldb-zlib";
 import path from "node:path";
 import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { copyFile, cp, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, cp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { APP_DATA_FOLDER_PATH } from "../utils/URLs";
 import type { MapEditorDataStorageObject } from "../../app/components/MapEditor";
 import { app, dialog, Menu, nativeImage } from "@electron/remote";
 import type { MenuItemConstructorOptions, NativeImage } from "electron";
 import { padNativeImageToSquare, pngToIco } from "../utils/imageUtils";
 import { defaultWorldIconDataURI } from "../utils/preloadImages";
-import { checkIsURIOrPath } from "../utils/pathUtils";
+import { checkIsURIOrPath, normalizePathSlashes } from "../utils/pathUtils";
 import type { HexEditorDataStorageObject } from "../../app/components/BinaryHexEditor";
 import type { WorldEditorDataStorageObject } from "../../app/tabs/worldEditor";
 import { stringifyError } from "../utils/miscUtils";
@@ -741,6 +741,13 @@ namespace exports {
     // FIXME: Saving the level.dat tab marks the whole world as saved if that was the only thing that was modified.
 
     /**
+     * The sub-paths of world folders that should never be copied.
+     */
+    // CAUTION: Currently some of the functions that use this only have handling for folder names here, not deeper paths.
+    const WORLD_FOLDER_SUBPATHS_TO_NEVER_COPY: readonly string[] = [".git", "behavior_packs", "resource_packs"];
+    const WORLD_FOLDER_SUBPATHS_TO_NEVER_COPY_APPLICABLE_MODES: readonly TabManagerTabMode[] = [TabManagerTabMode.CopyUntilSave];
+
+    /**
      * Represents a tab in the tab manager.
      */
     export class TabManagerTab extends EventEmitter<TabManagerTabEventMap> {
@@ -798,8 +805,6 @@ namespace exports {
          * If an error occured while opening the database because it was encrypted.
          *
          * Only present if an error occurred while opening the database and the database is encrypted.
-         *
-         * @todo
          */
         public errorDueToEncryptedLevelDB?: true;
         /**
@@ -876,6 +881,16 @@ namespace exports {
             files: [],
             leveldb: false,
         };
+        /**
+         * The list of relative paths of files and folders that should be removed from the original world folder on save.
+         *
+         * Make sure to use {@link normalizePathSlashes} on a path before adding it.
+         *
+         * Only used for the {@link TabManagerTabMode.CopyUntilSave} and {@link TabManagerTabMode.Copy} modes.
+         *
+         * Only used for the `world` {@link type}
+         */
+        public pathsToRemoveOnSave: string[] = [];
         /**
          * Whether the tab is currently saving.
          */
@@ -992,14 +1007,34 @@ namespace exports {
                     if (this.type === "world" || this.type === "leveldb") {
                         this.tempPath = mkdtempSync(path.join(APP_DATA_FOLDER_PATH, "temp/"));
                         this.tempFilePath = this.tempPath;
-                        cpSync(this.path, this.tempPath, {
-                            recursive: true,
-                            force: true,
-                            preserveTimestamps: true,
-                            dereference: true,
-                            // HACK: Workaround to make non-latin characters in file names work.
-                            filter: () => true,
-                        });
+                        if (this.type === "world" && WORLD_FOLDER_SUBPATHS_TO_NEVER_COPY_APPLICABLE_MODES.includes(this.mode)) {
+                            cpSync(this.path, this.tempPath, {
+                                recursive: true,
+                                force: true,
+                                preserveTimestamps: true,
+                                dereference: true,
+                                // WARNING: If this filter is ever removed, it must stay as `() => true` in order to make non-latin characters in file names work.
+                                filter: (source: string, _destination: string): boolean => {
+                                    if (
+                                        WORLD_FOLDER_SUBPATHS_TO_NEVER_COPY.includes(
+                                            normalizePathSlashes(path.relative(normalizePathSlashes(this.path), normalizePathSlashes(source)))
+                                        )
+                                    ) {
+                                        return false;
+                                    }
+                                    return true;
+                                },
+                            });
+                        } else {
+                            cpSync(this.path, this.tempPath, {
+                                recursive: true,
+                                force: true,
+                                preserveTimestamps: true,
+                                dereference: true,
+                                // NOTE: This is a workaround make non-latin characters in file names work.
+                                filter: (): true => true,
+                            });
+                        }
                     } else {
                         this.tempPath = mkdtempSync(path.join(APP_DATA_FOLDER_PATH, "temp/"));
                         this.tempFilePath = path.join(this.tempPath, path.basename(this.path));
@@ -1164,7 +1199,7 @@ namespace exports {
          * @param unsafeMode Disables the protections that delete existing world files before saving, a side effect is that if a world is opened while this tab is open, data from before and after the save may be merged randomly.
          * @returns A promise that resolves when the tab has been saved.
          */
-        // TODO: Maybe this shouldn't copy folders and files that are not necessary to copy, so that is there is a .git folder in a resource or behavior pack for example, then it won't try to copy 60 GB of data.
+        // TODO: Maybe this shouldn't copy folders and files that are not necessary to copy, so that is there is a 60 GB development-related folder that isn't explicitly marked as never copy in WORLD_FOLDER_SUBPATHS_TO_NEVER_COPY, then it won't try to copy 60 GB of data.
         public async save(ignoreFailedTabSaves: boolean = false, unsafeMode: boolean = false): Promise<void> {
             if (this.isSaving || this.readonly || !this.saveEnabled || !this.tempPath || !this.tempFilePath) return;
             this.isSaving = true;
@@ -1200,7 +1235,14 @@ namespace exports {
                 if (this.type === "world" || this.type === "leveldb") {
                     console.log(`Copying modified files from ${this.tempPath} to ${this.path}...`);
                     // await this.db?.close();
-                    if (!unsafeMode && existsSync(this.path)) await rm(this.path, { recursive: true, force: true });
+                    if (!unsafeMode && existsSync(this.path)) {
+                        if (this.type === "world" && WORLD_FOLDER_SUBPATHS_TO_NEVER_COPY_APPLICABLE_MODES.includes(this.mode)) {
+                            for (const dirent of await readdir(this.path, { withFileTypes: true })) {
+                                if (dirent.isDirectory() && WORLD_FOLDER_SUBPATHS_TO_NEVER_COPY.includes(dirent.name)) continue;
+                                await rm(path.join(this.path, dirent.name), { recursive: true, force: true });
+                            }
+                        } else await rm(this.path, { recursive: true, force: true });
+                    }
                     let fileNumber: number = 0;
                     const tempPath: string = this.tempPath;
                     await cp(this.tempPath, this.path, {
@@ -1216,6 +1258,17 @@ namespace exports {
                             return true;
                         },
                     });
+                    if (this.type === "world" && WORLD_FOLDER_SUBPATHS_TO_NEVER_COPY_APPLICABLE_MODES.includes(this.mode)) {
+                        let fileNumber: number = 0;
+                        for (const pathToRemove of this.pathsToRemoveOnSave) {
+                            progressBar.detail = `Deleting removed files from ${
+                                this.type === "world" ? "world"
+                                : this.type === "leveldb" ? "LevelDB"
+                                : "source"
+                            }...\n\rFile ${++fileNumber}: ${pathToRemove}`;
+                            await rm(path.join(this.path, pathToRemove), { recursive: true, force: true });
+                        }
+                    }
                 } else {
                     await copyFile(this.tempFilePath, this.path);
                 }

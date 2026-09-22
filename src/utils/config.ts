@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-qualifier, @typescript-eslint/no-redundant-type-constituents */
 /**
  * src/utils/config.ts
  *
@@ -67,13 +68,13 @@ namespace exports {
     }>;
     type GetSubConfigJSONTypeOfConfig<T extends Config | SubConfigValueTypes, P extends boolean = false> =
         P extends true ? PartialWU<GetSubConfigJSONTypeOfConfig_Inner<T, P>> : GetSubConfigJSONTypeOfConfig_Inner<T>;
-    type GetJSONTypeOfConfigA<T extends Config | SubConfigValueTypes, P extends boolean = false> = {
-        [key in Exclude<NonNullable<keyof GetBaseJSONTypeOfConfig<T, false>>, symbol>]: GetBaseJSONTypeOfConfig<T, P>[key];
-    } & {
-        [key in Exclude<NonNullable<keyof GetSubConfigJSONTypeOfConfig<T, false>>, symbol>]: key extends symbol ? never
-        : T[key] extends SubConfigValueTypes ? GetJSONTypeOfConfig<T[key], P>
-        : never;
-    };
+    // type GetJSONTypeOfConfigA<T extends Config | SubConfigValueTypes, P extends boolean = false> = {
+    //     [key in Exclude<NonNullable<keyof GetBaseJSONTypeOfConfig<T, false>>, symbol>]: GetBaseJSONTypeOfConfig<T, P>[key];
+    // } & {
+    //     [key in Exclude<NonNullable<keyof GetSubConfigJSONTypeOfConfig<T, false>>, symbol>]: key extends symbol ? never
+    //     : T[key] extends SubConfigValueTypes ? GetJSONTypeOfConfig<T[key], P>
+    //     : never;
+    // };
     // type GetJSONTypeOfConfigB<T extends Config | SubConfigValueTypes, P extends boolean = false> =
     //     P extends true ? PartialWU<MergeObjectTypes<GetJSONTypeOfConfigA<T, P>>> : MergeObjectTypes<GetJSONTypeOfConfigA<T, P>>;
 
@@ -105,10 +106,11 @@ namespace exports {
     //             : never]: Config[key];
     //         }>;
     export type ConfigJSON<P extends boolean = false> = GetJSONTypeOfConfig<Config, P>;
-    function cullUndefinedProperties<T extends { [key: PropertyKey]: unknown }>(
+    function _cullUndefinedProperties<T extends { [key: PropertyKey]: unknown }>(
         obj: T
     ): { [key in keyof T as undefined extends T[key] ? never : key]: Exclude<T[key], undefined> } {
-        return Object.fromEntries(Object.entries(obj).filter(([key, value]: [key: string, value: unknown]): boolean => value !== undefined)) as any;
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        return Object.fromEntries(Object.entries(obj).filter(([_key, value]: [key: string, value: unknown]): boolean => value !== undefined)) as any;
     }
     type DeepSubConfigKeyStructureOfConfig<T extends Config | SubConfigValueTypes> = OmitNeverValueKeys<{
         [key in keyof T as key extends symbol ? never
@@ -432,7 +434,7 @@ namespace exports {
                             heightMapDifferenceModeMaxTint: 1.8,
                             showChunkDeletionWarnings: true,
                             showHeightmapDefault: true,
-                            showGridDefault: true,
+                            showGridDefault: 8,
                         },
                         block: {},
                         search: {},
@@ -465,16 +467,18 @@ namespace exports {
             if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.9", { includePrerelease: true })) {
                 const currentMinecraftDataFolders: string[] = this.minecraftDataFolders;
                 const originalLength: number = currentMinecraftDataFolders.length;
-                if (!currentMinecraftDataFolders.includes("%appdata%/Minecraft Bedrock Preview/Users/*/games/com.mojang"))
+                if (!currentMinecraftDataFolders.includes("%appdata%/Minecraft Bedrock Preview/Users/*/games/com.mojang")) {
                     currentMinecraftDataFolders.push("%appdata%/Minecraft Bedrock Preview/Users/*/games/com.mojang");
-                if (!currentMinecraftDataFolders.includes("%appdata%/Minecraft Bedrock Preview/games/com.mojang"))
+                }
+                if (!currentMinecraftDataFolders.includes("%appdata%/Minecraft Bedrock Preview/games/com.mojang")) {
                     currentMinecraftDataFolders.push("%appdata%/Minecraft Bedrock Preview/games/com.mojang");
+                }
                 if (currentMinecraftDataFolders.length !== originalLength) this.minecraftDataFolders = currentMinecraftDataFolders;
             }
             if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.12", { includePrerelease: true })) {
                 const currentMinecraftDataFolders: string[] = this.minecraftDataFolders;
                 const originalItems: string[] = [...currentMinecraftDataFolders];
-                if (currentMinecraftDataFolders.includes("%AppData%/Minecraft Bedrock Preview/Users/*/games/com.mojang"))
+                if (currentMinecraftDataFolders.includes("%AppData%/Minecraft Bedrock Preview/Users/*/games/com.mojang")) {
                     currentMinecraftDataFolders.splice(
                         currentMinecraftDataFolders.indexOf("%AppData%/Minecraft Bedrock Preview/Users/*/games/com.mojang"),
                         1,
@@ -482,7 +486,8 @@ namespace exports {
                             []
                         :   ["%appdata%/Minecraft Bedrock Preview/Users/*/games/com.mojang"])
                     );
-                if (currentMinecraftDataFolders.includes("%AppData%/Minecraft Bedrock Preview/games/com.mojang"))
+                }
+                if (currentMinecraftDataFolders.includes("%AppData%/Minecraft Bedrock Preview/games/com.mojang")) {
                     currentMinecraftDataFolders.splice(
                         currentMinecraftDataFolders.indexOf("%AppData%/Minecraft Bedrock Preview/games/com.mojang"),
                         1,
@@ -490,45 +495,57 @@ namespace exports {
                             []
                         :   ["%appdata%/Minecraft Bedrock Preview/games/com.mojang"])
                     );
+                }
                 if (
                     currentMinecraftDataFolders.length !== originalItems.length ||
                     currentMinecraftDataFolders.some((v: string, i: number): boolean => v !== originalItems[i])
-                )
+                ) {
                     this.minecraftDataFolders = currentMinecraftDataFolders;
+                }
             }
             if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.14", { includePrerelease: true })) {
                 const currentMinecraftDataFolders: string[] = this.minecraftDataFolders;
                 const originalLength: number = currentMinecraftDataFolders.length;
-                if (!currentMinecraftDataFolders.includes("%appdata%/Minecraft Bedrock/Users/*/games/com.mojang"))
+                if (!currentMinecraftDataFolders.includes("%appdata%/Minecraft Bedrock/Users/*/games/com.mojang")) {
                     currentMinecraftDataFolders.push("%appdata%/Minecraft Bedrock/Users/*/games/com.mojang");
-                if (!currentMinecraftDataFolders.includes("%appdata%/Minecraft Bedrock/games/com.mojang"))
+                }
+                if (!currentMinecraftDataFolders.includes("%appdata%/Minecraft Bedrock/games/com.mojang")) {
                     currentMinecraftDataFolders.push("%appdata%/Minecraft Bedrock/games/com.mojang");
+                }
                 if (currentMinecraftDataFolders.length !== originalLength) this.minecraftDataFolders = currentMinecraftDataFolders;
             }
             if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.18", { includePrerelease: true })) {
                 const currentMinecraftDataFolders: string[] = this.minecraftDataFolders;
                 const originalLength: number = currentMinecraftDataFolders.length;
-                if (!currentMinecraftDataFolders.includes("Home/Library/Containers/com.mojang.minecraftpe/Data/Documents/games/com.mojang"))
+                if (!currentMinecraftDataFolders.includes("Home/Library/Containers/com.mojang.minecraftpe/Data/Documents/games/com.mojang")) {
                     currentMinecraftDataFolders.push("Home/Library/Containers/com.mojang.minecraftpe/Data/Documents/games/com.mojang");
-                if (!currentMinecraftDataFolders.includes("Home/Library/Containers/com.mojang.minecraftpreview/Data/Documents/games/com.mojang"))
+                }
+                if (!currentMinecraftDataFolders.includes("Home/Library/Containers/com.mojang.minecraftpreview/Data/Documents/games/com.mojang")) {
                     currentMinecraftDataFolders.push("Home/Library/Containers/com.mojang.minecraftpreview/Data/Documents/games/com.mojang");
+                }
                 if (currentMinecraftDataFolders.length !== originalLength) this.minecraftDataFolders = currentMinecraftDataFolders;
             }
             if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.25", { includePrerelease: true })) {
                 const currentExtraMinecraftDataFolders: string[] = this.extraMinecraftDataFolders;
                 const originalLength: number = currentExtraMinecraftDataFolders.length;
-                if (!currentExtraMinecraftDataFolders.includes("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/Users/*/games/com.mojang"))
+                if (!currentExtraMinecraftDataFolders.includes("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/Users/*/games/com.mojang")) {
                     currentExtraMinecraftDataFolders.push("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/Users/*/games/com.mojang");
-                if (!currentExtraMinecraftDataFolders.includes("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/Users/*/games/com.mojang"))
+                }
+                if (!currentExtraMinecraftDataFolders.includes("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/Users/*/games/com.mojang")) {
                     currentExtraMinecraftDataFolders.push("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/Users/*/games/com.mojang");
-                if (!currentExtraMinecraftDataFolders.includes("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/games/com.mojang"))
+                }
+                if (!currentExtraMinecraftDataFolders.includes("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/games/com.mojang")) {
                     currentExtraMinecraftDataFolders.push("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock/games/com.mojang");
-                if (!currentExtraMinecraftDataFolders.includes("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/games/com.mojang"))
+                }
+                if (!currentExtraMinecraftDataFolders.includes("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/games/com.mojang")) {
                     currentExtraMinecraftDataFolders.push("/Volumes/*/Users/*/AppData/Roaming/Minecraft Bedrock Preview/games/com.mojang");
-                if (!currentExtraMinecraftDataFolders.includes("/Volumes/*/games/com.mojang"))
+                }
+                if (!currentExtraMinecraftDataFolders.includes("/Volumes/*/games/com.mojang")) {
                     currentExtraMinecraftDataFolders.push("/Volumes/*/games/com.mojang");
-                if (!currentExtraMinecraftDataFolders.includes("/Volumes/*/Documents/games/com.mojang"))
+                }
+                if (!currentExtraMinecraftDataFolders.includes("/Volumes/*/Documents/games/com.mojang")) {
                     currentExtraMinecraftDataFolders.push("/Volumes/*/Documents/games/com.mojang");
+                }
                 if (currentExtraMinecraftDataFolders.length !== originalLength) this.extraMinecraftDataFolders = currentExtraMinecraftDataFolders;
             }
             if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.26", { includePrerelease: true })) {
@@ -631,8 +648,9 @@ namespace exports {
                     for (const path of ["CurrentTick", "TickCount"] as const) {
                         if (!currentRandomTicksColumns.includes(path)) currentRandomTicksColumns.push(path);
                     }
-                    if (currentRandomTicksColumns.length !== originalLength)
+                    if (currentRandomTicksColumns.length !== originalLength) {
                         this.views.ticks.modeSettings.simple.sections.randomTicks.columns = currentRandomTicksColumns;
+                    }
                 }
                 {
                     const currentPendingTicksColumns = this.views.ticks.modeSettings.simple.sections.pendingTicks.columns;
@@ -640,8 +658,14 @@ namespace exports {
                     for (const path of ["CurrentTick", "TickCount"] as const) {
                         if (!currentPendingTicksColumns.includes(path)) currentPendingTicksColumns.push(path);
                     }
-                    if (currentPendingTicksColumns.length !== originalLength)
+                    if (currentPendingTicksColumns.length !== originalLength) {
                         this.views.ticks.modeSettings.simple.sections.pendingTicks.columns = currentPendingTicksColumns;
+                    }
+                }
+            }
+            if (semver.compareBuild(currentConfigVersion, "1.0.0-beta.38+BUILD.2") < 0) {
+                if (this.views.world.modeSettings["2D"].showGridDefault === true) {
+                    this.views.world.modeSettings["2D"].showGridDefault = 8;
                 }
             }
             // TODO: Uncomment this at add the correct version number when grouped search mode for the raw players tab mode is implemented.
@@ -664,11 +688,17 @@ namespace exports {
                 Path extends PropertyPathsWithoutOuterContainingProperties<Config> | [] = [],
                 EndPath extends Path[number] = Path[number],
             >(oldData: GetJSONTypeOfConfig<T>, newData: GetJSONTypeOfConfig<T, true>, path: Path = [] as unknown as Path): GetJSONTypeOfConfig<T> {
-                let data = { ...oldData, ...newData };
+                const data = { ...oldData, ...newData };
 
                 for (const [key, _value] of Object.entries(data) as [EndPath & keyof typeof data, any][]) {
                     // console.log(0, path, key, value, oldData, newData, data);
-                    if (key in (getPropertyAtPath(Config.defaults, path) ?? {}) && getPropertyAtPath(subConfigKeyStructure, [...(path as Path), key])) {
+                    if (
+                        key in (getPropertyAtPath(Config.defaults, path) ?? {}) &&
+                        getPropertyAtPath(subConfigKeyStructure, [
+                            ...path /* as Path */ /* TEMP: Remove the "as Path" comment once it is verified it isn't needed to stop TSC errors. */,
+                            key,
+                        ])
+                    ) {
                         // console.log(0.1, path, key, value);
                         if (data[key] !== undefined && (typeof data[key] !== "object" || data[key] === null)) {
                             continue;
@@ -676,12 +706,13 @@ namespace exports {
                         if (newData[key as keyof typeof newData] !== undefined) {
                             // console.log(1, path, key, data[key], data);
                             if (oldData[key as keyof typeof oldData] !== undefined) {
+                                // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- TSC: TypeScript complains if the non-null assertion is not present.
                                 data[key] = mergeConfigData(oldData[key as keyof typeof oldData]!, newData[key as keyof typeof newData]!, [
                                     ...path,
                                     key,
-                                ] as any) as any;
+                                ] as any) as never;
                             } else {
-                                data[key] = newData[key as keyof typeof newData]! as any;
+                                data[key] = newData[key as keyof typeof newData] as never;
                             }
                             // console.log(2, path, key, data[key], data);
                             // return data[key];
@@ -690,7 +721,7 @@ namespace exports {
                             // return data[key];
                         } else {
                             // console.log(4, path, key, data[key], data);
-                            data[key] = getPropertyAtPath(existingData, [...path, key]) ?? getPropertyAtPath(Config.defaults, [...path, key]) ?? ({} as any);
+                            data[key] = (getPropertyAtPath(existingData, [...path, key]) ?? getPropertyAtPath(Config.defaults, [...path, key]) ?? {}) as never;
                             // console.log(5, path, key, data[key], data);
                             // return data[key];
                         }
@@ -711,25 +742,24 @@ namespace exports {
                 for (const [key, value] of Object.entries(dataAtCurrentPath) as [string | number, any][]) {
                     const fullKey: ConfigEventMap["settingChanged"][0] = [...path, key].join(".") as ConfigEventMap["settingChanged"][0];
                     if (
-                        [...path, key].reduce(
-                            (previousValue: any, currentValue: string | number): any =>
-                                previousValue ?
-                                    currentValue in previousValue ?
-                                        previousValue[currentValue]
-                                    :   undefined
+                        [...path, key].reduce<unknown>(
+                            (previousValue: unknown, currentValue: string | number): unknown =>
+                                typeof previousValue === "object" && previousValue && currentValue in previousValue ?
+                                    previousValue[currentValue as never]
                                 :   undefined,
-                            subConfigKeyStructure as any
+                            subConfigKeyStructure
                         )
                     ) {
-                        if (emitConfigChange(data, [...path, key] as any)) {
+                        if (emitConfigChange(data, [...path, key] as never)) {
                             success = true;
                             continue;
                         }
                     }
                     if (getPropertyAtPath(Config.defaults, path as any)) {
                         success = true;
-                        this.emit(`settingChanged:${fullKey}`, value as any);
-                        this.emit("settingChanged", fullKey as any, value as any);
+                        this.emit(`settingChanged:${fullKey}`, value as never);
+                        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- TSC
+                        this.emit("settingChanged", fullKey as never, value as never);
                     }
                 }
                 return success;
@@ -761,7 +791,7 @@ namespace exports {
                 mkdirSync(APP_DATA_FOLDER_PATH, { recursive: true });
                 writeFileSync(path.join(APP_DATA_FOLDER_PATH, "./config.json"), JSONB.stringify(Config.defaults, null, 4), { encoding: "utf-8" });
             }
-            return { ...Config.defaults, ...JSONB.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "./config.json"), { encoding: "utf-8" })) };
+            return { ...Config.defaults, ...JSONB.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "./config.json"), { encoding: "utf-8" })) } as ConfigJSON;
         }
         /**
          * The newest version of the app that this config was used for.
@@ -1481,6 +1511,7 @@ namespace exports {
             public set mode(value: ConfigConstants.views.Players.PlayersTabMode | undefined) {
                 this[DeepSubConfig_configSymbol].#config.saveChanges({ views: { players: { mode: value ?? Config.defaults.views.players.mode } } });
             }
+            // eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- This is necessary.
             public readonly modeSettings = new ((() => {
                 const subConfigClassSymbol: unique symbol = Symbol.for("PlayersViewConfig_ModeSettings_subConfig");
                 class PlayersViewConfig_ModeSettings
@@ -1488,6 +1519,7 @@ namespace exports {
                     implements Record<ConfigConstants.views.Players.PlayersTabMode, (typeof subConfigValueClasses)[number]["prototype"]>
                 {
                     public static readonly __subConfigClassSymbol__: symbol = subConfigClassSymbol;
+                    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- This is necessary.
                     public static readonly [subConfigClassSymbol] = (() => {
                         abstract class PlayersViewConfig_ModeSettings_SubConfig<
                             T extends ConfigConstants.views.Players.PlayersTabMode,
@@ -1512,19 +1544,21 @@ namespace exports {
                                 >][number][]
                             :   never {
                                 if ((this.modes as M[number][]).includes(null)) {
-                                    return ((
-                                        this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views
-                                            ?.players?.modeSettings?.[this.mode] as any
-                                    )?.columns ??
+                                    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+                                    return (
+                                        (
+                                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData()
+                                                .views?.players?.modeSettings?.[this.mode] as any
+                                        )?.columns ?? // eslint-disable-line @typescript-eslint/no-unsafe-member-access
                                         (
                                             Config.defaults.views.players.modeSettings[this.mode] as unknown as Extract<
                                                 (typeof Config)["defaults"]["views"]["players"]["modeSettings"][T],
                                                 { columns: any }
                                             >
-                                        ).columns) as any;
-                                } else {
-                                    return void 0 as never;
+                                        ).columns
+                                    );
                                 }
+                                return void 0 as never;
                             }
                             public set columns(
                                 value: HasNullSection extends true ?
@@ -1692,6 +1726,7 @@ namespace exports {
             public set mode(value: ConfigConstants.views.Entities.EntitiesTabMode | undefined) {
                 this[DeepSubConfig_configSymbol].#config.saveChanges({ views: { entities: { mode: value ?? Config.defaults.views.entities.mode } } });
             }
+            // eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- This is necessary.
             public readonly modeSettings = new ((() => {
                 const subConfigClassSymbol: unique symbol = Symbol.for("EntitiesViewConfig_ModeSettings_subConfig");
                 class EntitiesViewConfig_ModeSettings
@@ -1699,6 +1734,7 @@ namespace exports {
                     implements Record<ConfigConstants.views.Entities.EntitiesTabMode, (typeof subConfigValueClasses)[number]["prototype"]>
                 {
                     public static readonly __subConfigClassSymbol__: symbol = subConfigClassSymbol;
+                    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- This is necessary.
                     public static readonly [subConfigClassSymbol] = (() => {
                         abstract class EntitiesViewConfig_ModeSettings_SubConfig<
                             T extends ConfigConstants.views.Entities.EntitiesTabMode,
@@ -1723,19 +1759,21 @@ namespace exports {
                                 >][number][]
                             :   never {
                                 if ((this.modes as M[number][]).includes(null)) {
-                                    return ((
-                                        this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views
-                                            ?.entities?.modeSettings?.[this.mode] as any
-                                    )?.columns ??
+                                    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+                                    return (
+                                        (
+                                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData()
+                                                .views?.entities?.modeSettings?.[this.mode] as any
+                                        )?.columns ?? // eslint-disable-line @typescript-eslint/no-unsafe-member-access
                                         (
                                             Config.defaults.views.entities.modeSettings[this.mode] as unknown as Extract<
                                                 (typeof Config)["defaults"]["views"]["entities"]["modeSettings"][T],
                                                 { columns: any }
                                             >
-                                        ).columns) as any;
-                                } else {
-                                    return void 0 as never;
+                                        ).columns
+                                    );
                                 }
+                                return void 0 as never;
                             }
                             public set columns(
                                 value: HasNullSection extends true ?
@@ -1780,6 +1818,7 @@ namespace exports {
             public set mode(value: ConfigConstants.views.Maps.MapsTabMode | undefined) {
                 this[DeepSubConfig_configSymbol].#config.saveChanges({ views: { maps: { mode: value ?? Config.defaults.views.maps.mode } } });
             }
+            // eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- This is necessary.
             public readonly modeSettings = new ((() => {
                 const subConfigClassSymbol: unique symbol = Symbol.for("MapsViewConfig_ModeSettings_subConfig");
                 class MapsViewConfig_ModeSettings
@@ -1787,6 +1826,7 @@ namespace exports {
                     implements Record<ConfigConstants.views.Maps.MapsTabMode, (typeof subConfigValueClasses)[number]["prototype"]>
                 {
                     public static readonly __subConfigClassSymbol__: symbol = subConfigClassSymbol;
+                    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- This is necessary.
                     public static readonly [subConfigClassSymbol] = (() => {
                         abstract class MapsViewConfig_ModeSettings_SubConfig<
                             T extends ConfigConstants.views.Maps.MapsTabMode,
@@ -1811,19 +1851,21 @@ namespace exports {
                                 >][number][]
                             :   never {
                                 if ((this.modes as M[number][]).includes(null)) {
-                                    return ((
-                                        this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views
-                                            ?.maps?.modeSettings?.[this.mode] as any
-                                    )?.columns ??
+                                    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+                                    return (
+                                        (
+                                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData()
+                                                .views?.maps?.modeSettings?.[this.mode] as any
+                                        )?.columns ?? // eslint-disable-line @typescript-eslint/no-unsafe-member-access
                                         (
                                             Config.defaults.views.maps.modeSettings[this.mode] as unknown as Extract<
                                                 (typeof Config)["defaults"]["views"]["maps"]["modeSettings"][T],
                                                 { columns: any }
                                             >
-                                        ).columns) as any;
-                                } else {
-                                    return void 0 as never;
+                                        ).columns
+                                    );
                                 }
+                                return void 0 as never;
                             }
                             public set columns(
                                 value: HasNullSection extends true ?
@@ -1866,6 +1908,7 @@ namespace exports {
             public set mode(value: ConfigConstants.views.Ticks.TicksTabMode | undefined) {
                 this[DeepSubConfig_configSymbol].#config.saveChanges({ views: { ticks: { mode: value ?? Config.defaults.views.ticks.mode } } });
             }
+            // eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- This is necessary.
             public readonly modeSettings = new ((() => {
                 const subConfigClassSymbol: unique symbol = Symbol.for("TicksViewConfig_ModeSettings_subConfig");
                 class TicksViewConfig_ModeSettings
@@ -1873,6 +1916,7 @@ namespace exports {
                     implements Record<ConfigConstants.views.Ticks.TicksTabMode, (typeof subConfigValueClasses)[number]["prototype"]>
                 {
                     public static readonly __subConfigClassSymbol__: symbol = subConfigClassSymbol;
+                    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- This is necessary.
                     public static readonly [subConfigClassSymbol] = (() => {
                         abstract class TicksViewConfig_ModeSettings_SubConfig<
                             T extends ConfigConstants.views.Ticks.TicksTabMode,
@@ -1896,20 +1940,22 @@ namespace exports {
                                     keyof typeof ConfigConstants.views.Ticks.ticksTabModeToColumnIDs
                                 >][number][]
                             :   never {
-                                if ((this.modes as M[number][]).includes(null as any)) {
-                                    return ((
-                                        this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views
-                                            ?.ticks?.modeSettings?.[this.mode] as any
-                                    )?.columns ??
+                                if ((this.modes as M[number][]).includes(null as never)) {
+                                    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+                                    return (
+                                        (
+                                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData()
+                                                .views?.ticks?.modeSettings?.[this.mode] as any
+                                        )?.columns ?? // eslint-disable-line @typescript-eslint/no-unsafe-member-access
                                         (
                                             Config.defaults.views.ticks.modeSettings[this.mode] as unknown as Extract<
                                                 (typeof Config)["defaults"]["views"]["ticks"]["modeSettings"][T],
                                                 { columns: any }
                                             >
-                                        ).columns) as any;
-                                } else {
-                                    return void 0 as never;
+                                        ).columns
+                                    );
                                 }
+                                return void 0 as never;
                             }
                             public set columns(
                                 value: HasNullSection extends true ?
@@ -1919,7 +1965,7 @@ namespace exports {
                                     >][number][]
                                 :   never
                             ) {
-                                if ((this.modes as M[number][]).includes(null as any)) {
+                                if ((this.modes as M[number][]).includes(null as never)) {
                                     this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
                                         views: { ticks: { modeSettings: { [this.mode]: { columns: value } } } },
                                     });
@@ -2048,6 +2094,7 @@ namespace exports {
             public set mode(value: ConfigConstants.views.TickingAreas.TickingAreasTabMode | undefined) {
                 this[DeepSubConfig_configSymbol].#config.saveChanges({ views: { tickingAreas: { mode: value ?? Config.defaults.views.tickingAreas.mode } } });
             }
+            // eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- This is necessary.
             public readonly modeSettings = new ((() => {
                 const subConfigClassSymbol: unique symbol = Symbol.for("TickingAreasViewConfig_ModeSettings_subConfig");
                 class TickingAreasViewConfig_ModeSettings
@@ -2055,6 +2102,7 @@ namespace exports {
                     implements Record<ConfigConstants.views.TickingAreas.TickingAreasTabMode, (typeof subConfigValueClasses)[number]["prototype"]>
                 {
                     public static readonly __subConfigClassSymbol__: symbol = subConfigClassSymbol;
+                    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- This is necessary.
                     public static readonly [subConfigClassSymbol] = (() => {
                         abstract class TickingAreasViewConfig_ModeSettings_SubConfig<
                             T extends ConfigConstants.views.TickingAreas.TickingAreasTabMode,
@@ -2079,19 +2127,21 @@ namespace exports {
                                 >][number][]
                             :   never {
                                 if ((this.modes as M[number][]).includes(null)) {
-                                    return ((
-                                        this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views
-                                            ?.tickingAreas?.modeSettings?.[this.mode] as any
-                                    )?.columns ??
+                                    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+                                    return (
+                                        (
+                                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData()
+                                                .views?.tickingAreas?.modeSettings?.[this.mode] as any
+                                        )?.columns ?? // eslint-disable-line @typescript-eslint/no-unsafe-member-access
                                         (
                                             Config.defaults.views.tickingAreas.modeSettings[this.mode] as unknown as Extract<
                                                 (typeof Config)["defaults"]["views"]["tickingAreas"]["modeSettings"][T],
                                                 { columns: any }
                                             >
-                                        ).columns) as any;
-                                } else {
-                                    return void 0 as never;
+                                        ).columns
+                                    );
                                 }
+                                return void 0 as never;
                             }
                             public set columns(
                                 value: HasNullSection extends true ?
@@ -2139,6 +2189,7 @@ namespace exports {
             public set mode(value: ConfigConstants.views.Structures.StructuresTabMode | undefined) {
                 this[DeepSubConfig_configSymbol].#config.saveChanges({ views: { structures: { mode: value ?? Config.defaults.views.structures.mode } } });
             }
+            // eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- This is necessary.
             public readonly modeSettings = new ((() => {
                 const subConfigClassSymbol: unique symbol = Symbol.for("StructuresViewConfig_ModeSettings_subConfig");
                 class StructuresViewConfig_ModeSettings
@@ -2146,6 +2197,7 @@ namespace exports {
                     implements Record<ConfigConstants.views.Structures.StructuresTabMode, (typeof subConfigValueClasses)[number]["prototype"]>
                 {
                     public static readonly __subConfigClassSymbol__: symbol = subConfigClassSymbol;
+                    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- This is necessary.
                     public static readonly [subConfigClassSymbol] = (() => {
                         abstract class StructuresViewConfig_ModeSettings_SubConfig<
                             T extends ConfigConstants.views.Structures.StructuresTabMode,
@@ -2170,19 +2222,21 @@ namespace exports {
                                 >][number][]
                             :   never {
                                 if ((this.modes as M[number][]).includes(null)) {
-                                    return ((
-                                        this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views
-                                            ?.structures?.modeSettings?.[this.mode] as any
-                                    )?.columns ??
+                                    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+                                    return (
+                                        (
+                                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData()
+                                                .views?.structures?.modeSettings?.[this.mode] as any
+                                        )?.columns ?? // eslint-disable-line @typescript-eslint/no-unsafe-member-access
                                         (
                                             Config.defaults.views.structures.modeSettings[this.mode] as unknown as Extract<
                                                 (typeof Config)["defaults"]["views"]["structures"]["modeSettings"][T],
                                                 { columns: any }
                                             >
-                                        ).columns) as any;
-                                } else {
-                                    return void 0 as never;
+                                        ).columns
+                                    );
                                 }
+                                return void 0 as never;
                             }
                             public set columns(
                                 value: HasNullSection extends true ?
@@ -2230,6 +2284,7 @@ namespace exports {
             public set mode(value: ConfigConstants.views.Packs.PacksTabMode | undefined) {
                 this[DeepSubConfig_configSymbol].#config.saveChanges({ views: { packs: { mode: value ?? Config.defaults.views.packs.mode } } });
             }
+            // eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- This is necessary.
             public readonly modeSettings = new ((() => {
                 const subConfigClassSymbol: unique symbol = Symbol.for("PacksViewConfig_ModeSettings_subConfig");
                 class PacksViewConfig_ModeSettings
@@ -2237,6 +2292,7 @@ namespace exports {
                     implements Record<ConfigConstants.views.Packs.PacksTabMode, (typeof subConfigValueClasses)[number]["prototype"]>
                 {
                     public static readonly __subConfigClassSymbol__: symbol = subConfigClassSymbol;
+                    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- This is necessary.
                     public static readonly [subConfigClassSymbol] = (() => {
                         abstract class PacksViewConfig_ModeSettings_SubConfig<
                             T extends ConfigConstants.views.Packs.PacksTabMode,
@@ -2261,19 +2317,21 @@ namespace exports {
                                 >][number][]
                             :   never {
                                 if ((this.modes as (M[number] | null)[]).includes(null)) {
-                                    return ((
-                                        this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views
-                                            ?.packs?.modeSettings?.[this.mode] as any
-                                    )?.columns ??
+                                    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+                                    return (
+                                        (
+                                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData()
+                                                .views?.packs?.modeSettings?.[this.mode] as any
+                                        )?.columns ?? // eslint-disable-line @typescript-eslint/no-unsafe-member-access
                                         (
                                             Config.defaults.views.packs.modeSettings[this.mode] as unknown as Extract<
                                                 (typeof Config)["defaults"]["views"]["packs"]["modeSettings"][T],
                                                 { columns: any }
                                             >
-                                        ).columns) as any;
-                                } else {
-                                    return void 0 as never;
+                                        ).columns
+                                    );
                                 }
+                                return void 0 as never;
                             }
                             public set columns(
                                 value: HasNullSection extends true ?
@@ -2511,6 +2569,7 @@ namespace exports {
             public set mode(value: ConfigConstants.views.World.WorldTabMode | undefined) {
                 this[DeepSubConfig_configSymbol].#config.saveChanges({ views: { world: { mode: value ?? Config.defaults.views.world.mode } } });
             }
+            // eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- This is necessary.
             public readonly modeSettings = new ((() => {
                 const subConfigClassSymbol: unique symbol = Symbol.for("WorldViewConfig_ModeSettings_subConfig");
                 class WorldViewConfig_ModeSettings
@@ -2518,6 +2577,7 @@ namespace exports {
                     implements Record<ConfigConstants.views.World.WorldTabMode, (typeof subConfigValueClasses)[number]["prototype"]>
                 {
                     public static readonly __subConfigClassSymbol__: symbol = subConfigClassSymbol;
+                    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- This is necessary.
                     public static readonly [subConfigClassSymbol] = (() => {
                         abstract class WorldViewConfig_ModeSettings_SubConfig<
                             T extends ConfigConstants.views.World.WorldTabMode,
@@ -3078,15 +3138,17 @@ namespace exports {
                         /**
                          * Whether to show a the grid lines by default.
                          *
+                         * If the value is a number, then grid lines by default will be shown when the zoom level is at least this value.
+                         *
                          * @default true
                          */
-                        public get showGridDefault(): boolean {
+                        public get showGridDefault(): boolean | number {
                             return (
                                 this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData().views?.world
                                     ?.modeSettings?.["2D"]?.showGridDefault ?? Config.defaults.views.world.modeSettings["2D"].showGridDefault
                             );
                         }
-                        public set showGridDefault(value: boolean | undefined) {
+                        public set showGridDefault(value: boolean | number | undefined) {
                             this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
                                 views: {
                                     world: {
@@ -3129,6 +3191,7 @@ namespace exports {
         }
     }
     const subConfigValueClasses = [VolumeConfig, ViewsConfig, DeepSubConfig] as const;
+    void subConfigValueClasses; // TEMP
 
     export namespace ConfigConstants {
         /**
