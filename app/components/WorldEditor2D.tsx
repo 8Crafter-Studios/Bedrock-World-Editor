@@ -822,7 +822,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     //     }
     // }
 
-    let levelDatLoaded: boolean | "loading" | "error" = false;
+    let levelDatLoaded: boolean | "loading" | "error" | "no_data" = false;
     let isOldWorld: boolean | null | undefined;
     let worldSpawn: DimensionLocation | null | undefined;
     let worldBorder: { from: VectorXZ; to: VectorXZ } | null | undefined;
@@ -837,6 +837,14 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     async function loadNeededDataFromLevelDat(): Promise<void> {
         levelDatLoaded = "loading";
         try {
+            if (props.tab.type === "leveldb") {
+                levelDatLoaded = "no_data";
+                isOldWorld = null;
+                worldSpawn = null;
+                worldBorder = null;
+                netherScale = null;
+                return;
+            }
             if (props.tab.type !== "world") return;
             const filePath: string = path.join(props.tab.tempPath ?? props.tab.path, "level.dat");
             if (!existsSync(filePath)) throw new ReferenceError(`Could not find the level.dat file: ${filePath}`);
@@ -4869,7 +4877,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             )}${
                                 (
                                     props.dataStorageObject.worldEditor2D.showCorrespondingNetherOrOverworldCoordinates &&
-                                    netherScale !== null &&
+                                    // netherScale !== null &&
                                     ["overworld", "nether", 0, 1].includes(props.dataStorageObject.worldEditor2D.dimension)
                                 ) ?
                                     ["overworld", 0].includes(props.dataStorageObject.worldEditor2D.dimension) ?
@@ -4892,7 +4900,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             hoverInfoRef.current.textContent = `Biome: no data\nHeight: N/A\nCoordinates: ${formatter.format(block.x)}, ${formatter.format(block.z)}\nChunk: ${formatter.format(chunk.x)}, ${formatter.format(chunk.y)}${
                                 (
                                     props.dataStorageObject.worldEditor2D.showCorrespondingNetherOrOverworldCoordinates &&
-                                    netherScale !== null &&
+                                    // netherScale !== null &&
                                     ["overworld", "nether", 0, 1].includes(props.dataStorageObject.worldEditor2D.dimension)
                                 ) ?
                                     ["overworld", 0].includes(props.dataStorageObject.worldEditor2D.dimension) ?

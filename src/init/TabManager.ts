@@ -285,6 +285,8 @@ namespace exports {
         files: RecentsItem_File[];
     }
 
+    // IDEA: Add a way to open a LevelDB as a generic LevelDB, where it doesn't have any of the world-specific stuff.
+
     /**
      * Represents a tab manager.
      */
@@ -435,9 +437,11 @@ namespace exports {
             });
             recentsData.files.forEach(async (file: RecentsItem, index: number): Promise<void> => {
                 if (!file.iconPath || ["ico", "exe", "dll"].includes(path.extname(file.iconPath).slice(1).toLowerCase())) return;
-                const img: NativeImage = await padNativeImageToSquare(checkIsURIOrPath(file.iconPath) === "Path" ?
+                const img: NativeImage = await padNativeImageToSquare(
+                    checkIsURIOrPath(file.iconPath) === "Path" ?
                         nativeImage.createFromPath(file.iconPath)
-                    :   nativeImage.createFromBuffer(Buffer.from(await (await fetch(file.iconPath)).arrayBuffer())));
+                    :   nativeImage.createFromBuffer(Buffer.from(await (await fetch(file.iconPath)).arrayBuffer()))
+                );
                 writeFileSync(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons", `f${index}.ico`), pngToIco(img.resize({ width: 256, height: 256 }).toPNG()));
             });
             try {

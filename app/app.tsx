@@ -1167,6 +1167,54 @@ export function WorldEditor(props: WorldEditorProps): JSX.SpecificElement<"div">
 }
 
 /**
+ * Props for the {@link LevelDBEditor} component.
+ */
+export interface LevelDBEditorProps {
+    tab: TabManagerTab;
+}
+
+/**
+ * The LevelDB editor.
+ *
+ * @param props The props for the LevelDB editor.
+ * @returns The JSX element for the LevelDB editor.
+ */
+export function LevelDBEditor(props: LevelDBEditorProps): JSX.SpecificElement<"div"> {
+    const containerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
+    useLayoutEffect((): void => {
+        if (containerRef.current) {
+            render(<LevelDBEditorTabRenderer tab={props.tab.selectedTab} parentTab={props.tab} />, containerRef.current);
+        }
+    });
+    useEffect((): (() => void) => {
+        function update(): void {
+            if (containerRef.current === null) return;
+            render(null, containerRef.current);
+            render(<LevelDBEditorTabRenderer tab={props.tab.selectedTab} parentTab={props.tab} />, containerRef.current);
+        }
+        props.tab.on("reloadCurrentSubTab", update);
+        props.tab.on("switchTab", update);
+        return (): void => {
+            props.tab.off("reloadCurrentSubTab", update);
+            props.tab.off("switchTab", update);
+            if (containerRef.current) render(null, containerRef.current);
+        };
+    }, []);
+    return (
+        <div style="width: -webkit-fill-available; height: 0; flex: 1; display: flex; flex-direction: column;">
+            {props.tab.hasTabBar && <SubTabBar tab={props.tab} />}
+            <div style="width: -webkit-fill-available; height: 0; flex: 1; display: flex; flex-direction: row;">
+                <LeftSidebar tab={props.tab} />
+                <main style="width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1;" id="main" ref={containerRef}>
+                    {/* Nothing is needed here as useLayoutEffect will insert the LevelDBEditorTabRenderer component before the next frame renders. */}
+                    {/* The LevelDBEditorTabRenderer component is being inserted via render() instead of just being here so that cleanup effects are properly triggered when the tab is switched. */}
+                </main>
+            </div>
+        </div>
+    );
+}
+
+/**
  * Props for the {@link NBTFileEditor} component.
  */
 export interface NBTFileEditorProps {
@@ -1228,6 +1276,21 @@ export function WorldEditorStartTab(): JSX.SpecificElement<"div"> {
 }
 
 /**
+ * The start tab of the LevelDB editor.
+ *
+ * @returns The JSX element for the start tab of the LevelDB editor.
+ */
+export function LevelDBEditorStartTab(): JSX.SpecificElement<"div"> {
+    return (
+        <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
+            <div style="flex: 1; overflow: auto;">
+                <NoneTab />
+            </div>
+        </div>
+    );
+}
+
+/**
  * The renderer for the world editor tabs.
  *
  * @param props The props for the world editor tab renderer.
@@ -1263,6 +1326,110 @@ export function WorldEditorTabRenderer(props: {
                 return <MapsTab tab={props.parentTab} />;
             case "packs":
                 return <PacksTab tab={props.parentTab} />;
+            case "players":
+                return <PlayersTab tab={props.parentTab} />;
+            case "repair-forced-world-corruption":
+                return <RepairForcedWorldCorruptionTab tab={props.parentTab} />;
+            case "structures":
+                return <StructuresTab tab={props.parentTab} />;
+            case "ticks":
+                return <TicksTab tab={props.parentTab} />;
+            case "ticking-areas":
+                return <TickingAreasTab tab={props.parentTab} />;
+            case "view-files":
+                return <ViewFilesTab tab={props.parentTab} />;
+            case "world":
+                return <WorldEditorTab tab={props.parentTab} />;
+            case "block-entities":
+            case "villages":
+            default:
+                return <UnderConstruction detail={`The ${props.tab} tab has not been implemented yet.`} />;
+        }
+    } else {
+        if (props.tab.rawMode) return <HexEditorTab tab={props.tab} />;
+        // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
+        switch (props.tab.contentType) {
+            case "LevelDat":
+                return <WorldSettingsTab tab={props.tab} />;
+            case "Map":
+                return <MapEditorTab tab={props.tab} />;
+            default: {
+                const format: EntryContentTypeFormatData =
+                    props.tab.formatData ?? (entryContentTypeToFormatMap[props.tab.contentType] as EntryContentTypeFormatData);
+                switch (format.type) {
+                    case "NBT":
+                        return <GenericNBTEditorTab tab={props.tab} />;
+                    case "custom":
+                        switch (format.resultType) {
+                            case "JSONNBT":
+                                return <GenericNBTEditorTab tab={props.tab} />;
+                            case "SNBT": // TODO: Add SNBT editor tab.
+                            case "unknown":
+                            case "buffer":
+                            default:
+                                return <HexEditorTab tab={props.tab} />;
+                        }
+                    case "ASCII":
+                    case "UTF-8":
+                    case "SNBT": // TODO: Add SNBT editor tab.
+                    case "JSON": // TODO: Add JSON editor tab.
+                        return <TextEditorTab tab={props.tab} />;
+                    case "int": // TODO: Add int editor tab.
+                    case "binary":
+                    case "binaryPlainText":
+                    case "hex":
+                    case "unknown":
+                    default:
+                        return <HexEditorTab tab={props.tab} />;
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The renderer for the LevelDB editor tabs.
+ *
+ * @param props The props for the LevelDB editor tab renderer.
+ * @returns The JSX element for the LevelDB editor tab renderer.
+ */
+export function LevelDBEditorTabRenderer(props: {
+    tab: TabManagerSubTab | TabManagerTabGenericSubTabID | null;
+    parentTab: TabManagerTab;
+}): JSX.SpecificElement<"div"> {
+    if (props.tab === null) return <LevelDBEditorStartTab />;
+    if (typeof props.tab === "string") {
+        switch (props.tab) {
+            case "world-settings":
+            case "dynamic-properties":
+            case "scoreboards":
+            case "portals":
+            case "schedulerwt":
+                return (
+                    <Notice
+                        title="Unsupported Tab Type Usage"
+                        subtitle={`The tab type ${props.tab} is not supported to be used as a special string type sub-tab.`}
+                        detail={null}
+                        image="nothing_to_see"
+                    />
+                );
+            case "entities":
+                return <EntitiesTab tab={props.parentTab} />;
+            case "fun":
+                return <FunTab tab={props.parentTab} />;
+            case "integrations":
+                return <IntegrationsTab tab={props.parentTab} />;
+            case "maps":
+                return <MapsTab tab={props.parentTab} />;
+            case "packs":
+                return (
+                    <Notice
+                        title="Unsupported Tab Type"
+                        subtitle={`The tab type ${props.tab} is not supported in the LevelDB editor.`}
+                        detail={null}
+                        image="nothing_to_see"
+                    />
+                );
             case "players":
                 return <PlayersTab tab={props.parentTab} />;
             case "repair-forced-world-corruption":
@@ -1460,10 +1627,7 @@ tabManager.on("switchTab", ({ previousTab, newTab }: TabManagerSwitchTabEvent): 
                 render(<WorldEditor tab={newTab} />, tabContentsElement);
                 break;
             case "leveldb":
-                render(
-                    <UnderConstruction subtitle="This tab type is under construction." detail="The LevelDB editor has not been implemented yet." />,
-                    tabContentsElement
-                );
+                render(<LevelDBEditor tab={newTab} />, tabContentsElement);
                 break;
             case "nbt":
                 render(<NBTFileEditor tab={newTab} />, tabContentsElement);

@@ -8,7 +8,8 @@
 
 ## Additions
 
--   Added support for opening and editing NBT files directly (as in not part of a world) ([#11](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/11))
+-   Added support for opening and editing NBT files directly (as in not part of a world) ([#11](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/11)).
+-   Added support for opening and editing LevelDBs directly (as in not part of a world) ([#12](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/12)).
 -   Added the "Heightmap" render type to the 2D world map.
 -   Added hover and active tints to the refresh world list button on the start screen.
 -   Added focus tints to many buttons throughout the app so it is now possible to see if a button is focused with tab.
@@ -28,6 +29,7 @@
 -   The `Activate Pack`, `Deactivate Pack`, and `Delete Pack From History` context menu options in the "Packs" tab are now hidden in read-only mode.
 -   Fixed a typo in the direct mode warning message.
 -   Fixed a bug where a scroll bar was sometimes visible on the top left hover info overlay in the 2D world map.
+-   Fixed a bug where the "Nether Chunk" and "Nether Coordinates" in the top left hover info overlay in the 2D world map were not shown when the `NetherScale` field was not present in the `level.dat` file.
 
 # v1.0.0-beta.37
 
