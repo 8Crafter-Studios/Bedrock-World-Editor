@@ -18,12 +18,6 @@ Even though iOS is not supported yet, you can still edit worlds from your iPhone
 
 [Changelog](https://github.com/8Crafter-Studios/Bedrock-World-Editor/blob/main/Changelog.md)
 
-## Important
-
-Here are some important bugs to note:
-
--   The Node editor currently only allows renaming, editing, and deleting tags, but not adding them (the buttons in the top right for it do not do anything yet). You can use the Prismarine-NBT or SNBT editors instead to avoid this issue.
-
 ## Supported Add-Ons for Detecting Player Names
 
 This is a list of add-ons that if you have any of them on your world, then this app can read the player names that they saved to the world's dynamic properties, allowing you to see players' names in the "Players" tab, as well as search for players by their name.
