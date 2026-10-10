@@ -1,5 +1,5 @@
 import path from "node:path";
-import { type ConfigEnv, defineConfig } from "vite";
+import { type ConfigEnv, defineConfig, type Plugin } from "vite";
 import commonjsExternals from "vite-plugin-commonjs-externals";
 
 const externals: (string | RegExp)[] = [/^node:.+$/, "@electron/remote", "path", "@8crafter/leveldb-zlib"];
@@ -38,6 +38,7 @@ export default defineConfig((env: ConfigEnv) => ({
         esbuildOptions: {
             plugins: [
                 {
+                    // This fixes pasting in Monaco Editor when in development mode.
                     name: "override-monaco-clipboard",
                     setup(build): void {
                         build.onResolve({ filter: /^\.\/contrib\/clipboard\/browser\/clipboard\.js$/ }, (args) => {
@@ -54,6 +55,17 @@ export default defineConfig((env: ConfigEnv) => ({
         commonjsExternals({
             externals,
         }),
+        ((): Plugin => ({
+            // This fixes pasting in Monaco Editor when in production mode.
+            name: "override-monaco-clipboard",
+            enforce: "pre",
+            resolveId(source: string, _importer: string | undefined): string | null {
+                if (/^\.\/contrib\/clipboard\/browser\/clipboard\.js$/.test(source)) {
+                    return path.resolve(__dirname, "module_file_overrides/monaco-editor.clipboard.override.js");
+                }
+                return null;
+            },
+        }))(),
     ],
     resolve: {
         alias: {
