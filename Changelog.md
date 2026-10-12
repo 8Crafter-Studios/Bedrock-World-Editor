@@ -117,6 +117,7 @@
 -   Fixed a bug where the lock icon on read-only tabs and sub-tabs would cause the height of the tab bar to get slightly larger.
 -   The app no longer creates a LevelDB if the world doesn't have one.
 -   If a world does not have the `MultiplayerGameIntent` in `level.dat`, the hover info for that world in the world selction menu will now display it as "Multiplayer" instead of "Singleplayer".
+-   Closing a tab that is not the active tab no longer switches your active tab.
 
 ## Performance Improvements
 

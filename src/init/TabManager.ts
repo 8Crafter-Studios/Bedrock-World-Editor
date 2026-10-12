@@ -1776,6 +1776,7 @@ namespace exports {
         public async close(): Promise<void> {
             // this.db?.close();
             this.isValid = false;
+            const isActiveTab = this.tabManager.selectedTab === this;
             const index: number = this.tabManager.openTabs.indexOf(this);
             if (this.tabManager.openTabs.includes(this)) {
                 this.tabManager.openTabs.splice(this.tabManager.openTabs.indexOf(this), 1);
@@ -1785,7 +1786,9 @@ namespace exports {
             }
             this.openTabs.length = 0;
             this.switchTab(null);
-            this.tabManager.switchTab(index === -1 ? null : (this.tabManager.openTabs[index - 1] ?? this.tabManager.openTabs[0] ?? null));
+            if (isActiveTab) {
+                this.tabManager.switchTab(index === -1 ? null : (this.tabManager.openTabs[index - 1] ?? this.tabManager.openTabs[0] ?? null));
+            }
             this.tabManager.emit("closeTab", { tab: this });
             this.emit("closed");
             if (this.tempPath) {
