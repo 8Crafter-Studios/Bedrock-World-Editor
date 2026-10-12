@@ -3,8 +3,7 @@ const { ipcRenderer } = require("electron") as typeof import("electron");
 import { dialog } from "@electron/remote";
 import { existsSync, globSync, readFileSync } from "node:fs";
 import path from "node:path";
-import * as NBT from "prismarine-nbt";
-import type { NBTSchemas } from "mcbe-leveldb";
+import { entryContentTypeToFormatMap } from "mcbe-leveldb";
 
 ipcRenderer.on("console-action", function consoleActionHandler<
     // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
@@ -22,6 +21,7 @@ ipcRenderer.on(
         // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
         switch (true) {
             case type === "nbt":
+            // FIXME: This treats ALL dat files as NBT, even though many aren't.
             case type === "unset" && ["nbt", "mcstructure", "schem", "schematic", "snbt", "dat"].includes(path.extname(filePath).slice(1).toLowerCase()):
                 tabManager.openTab({
                     icon: undefined, // TODO: Add an icon for NBT tabs, and add support for using the custom icon set for the file if it exists.
@@ -131,13 +131,15 @@ ipcRenderer.on(
             name:
                 (await (async (): Promise<string | undefined> => {
                     try {
-                        return ((await NBT.parse(readFileSync(path.join(folderPath, "level.dat")))).parsed as NBTSchemas.NBTSchemaTypes.LevelDat).value
-                            .LevelName?.value;
+                        return (await entryContentTypeToFormatMap.LevelDat.parse(readFileSync(path.join(folderPath, "level.dat")))).value.LevelName?.value;
                     } catch (e) {
                         console.error("Error while reading level.dat:", e, "folderPath:", folderPath);
                         try {
-                            return ((await NBT.parse(readFileSync(path.join(folderPath, "level.dat_old")))).parsed as NBTSchemas.NBTSchemaTypes.LevelDat).value
-                                .LevelName?.value;
+                            if (existsSync(path.join(folderPath, "level.dat_old"))) {
+                                return (await entryContentTypeToFormatMap.LevelDat.parse(readFileSync(path.join(folderPath, "level.dat_old")))).value.LevelName
+                                    ?.value;
+                            }
+                            console.warn("Unable to load details for world; level.dat_old not found. folderPath:", folderPath);
                         } catch (e) {
                             console.error("Error while reading level.dat_old:", e, "folderPath:", folderPath);
                         }

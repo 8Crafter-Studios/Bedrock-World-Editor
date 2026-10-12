@@ -54,13 +54,18 @@ export function addFolderContents(directoryEntry: zip.ZipDirectoryEntry, basePat
  *
  * @param dir The directory.
  * @param results The current results.
+ * @param filter An optional filter function.
  * @returns The results.
  */
-export async function readdirRecursiveSafe(dir: string, results: Dirent[] = []): Promise<Dirent[]> {
-    let entries: Dirent[];
+export async function readdirRecursiveSafe(
+    dir: string,
+    results: Dirent<string>[] = [],
+    filter: (this: void, dir: string, entry: Dirent<string>) => boolean = (): true => true
+): Promise<Dirent<string>[]> {
+    let entries: Dirent<string>[];
 
     try {
-        entries = await readdir(dir, { withFileTypes: true });
+        entries = (await readdir(dir, { withFileTypes: true })).filter(filter.bind(void 0, dir));
     } catch (err: unknown) {
         if (typeof err === "object" && err && "code" in err && (err.code === "EACCES" || err.code === "EPERM")) {
             return results;
@@ -70,9 +75,11 @@ export async function readdirRecursiveSafe(dir: string, results: Dirent[] = []):
 
     results.push(...entries);
 
-    const subdirs = entries.filter((entry) => entry.isDirectory()).map((entry) => path.join(dir, entry.name));
+    const subdirs: string[] = entries
+        .filter((entry: Dirent<string>): boolean => entry.isDirectory())
+        .map((entry: Dirent<string>): string => path.join(dir, entry.name));
 
-    await Promise.all(subdirs.map(async (subdir) => await readdirRecursiveSafe(subdir, results)));
+    await Promise.all(subdirs.map(async (subdir: string): Promise<Dirent<string>[]> => await readdirRecursiveSafe(subdir, results)));
 
     return results;
 }

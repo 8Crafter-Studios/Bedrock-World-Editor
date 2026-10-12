@@ -95,15 +95,27 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
     function MissingLevelDBKeyNotice(): JSX.SpecificElement<"div"> {
         return (
             <div>
-                <h2>The LevelDB key associated with this sub-tab does not exist.</h2>
+                <h2>
+                    The{" "}
+                    {props.tab.target.type === "File" ?
+                        "File"
+                    : props.tab.target.type === "ChunksDatEntry" ?
+                        "chunks.dat entry"
+                    : props.tab.target.type === "LevelDBEntry" ?
+                        "LevelDB key"
+                    :   "?"}{" "}
+                    associated with this sub-tab does not exist.
+                </h2>
                 {((): boolean => {
                     if (props.tab.target.type === "File") return false;
+                    if (props.tab.target.type === "ChunksDatEntry") return false;
                     return true;
                 })() && (
                     <button
                         type="button"
                         onClick={async (): Promise<void> => {
                             if (props.tab.target.type === "File") return;
+                            if (props.tab.target.type === "ChunksDatEntry") return;
                             const format: EntryContentTypeFormatData = props.tab.formatData ?? entryContentTypeToFormatMap[props.tab.contentType];
                             await props.tab.parentTab.db!.put(props.tab.target.key, format.defaultValue ?? Buffer.alloc(0));
                             triggerLoadData();
@@ -138,6 +150,18 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
                         return;
                     }
                     if (reason instanceof Error && reason.message === "The LevelDB key associated with this sub-tab does not exist.") {
+                        render(null, containerRef.current);
+                        render(<MissingLevelDBKeyNotice />, containerRef.current);
+                        missingLevelDBKey = true;
+                        return;
+                    }
+                    if (reason instanceof Error && reason.message.startsWith("The chunks.dat file associated with this sub-tab does not exist:")) {
+                        render(null, containerRef.current);
+                        render(<MissingLevelDBKeyNotice />, containerRef.current);
+                        missingLevelDBKey = true;
+                        return;
+                    }
+                    if (reason instanceof Error && reason.message.startsWith("The file associated with this sub-tab does not exist:")) {
                         render(null, containerRef.current);
                         render(<MissingLevelDBKeyNotice />, containerRef.current);
                         missingLevelDBKey = true;
@@ -197,6 +221,8 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
                             props.props.tab.hasUnsavedChanges = true;
                             if (props.props.tab.target.type === "LevelDBEntry") {
                                 props.props.tab.parentTab.setLevelDBIsModified();
+                            } else if (props.props.tab.target.type === "ChunksDatEntry") {
+                                props.props.tab.parentTab.setFileAsModified("chunks.dat");
                             } else {
                                 props.props.tab.parentTab.setFileAsModified(props.props.tab.target.path);
                             }

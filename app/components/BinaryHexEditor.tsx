@@ -1,6 +1,6 @@
 import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef, useState } from "preact/compat";
-import type { DBEntryContentType } from "mcbe-leveldb";
+import type { MCEntryContentType } from "mcbe-leveldb";
 import HexEditor from "@jixun/react-hex-editor-react-16";
 import oneDarkPro from "@jixun/react-hex-editor-react-16/themes/oneDarkPro";
 import "./binaryHexEditor.css";
@@ -47,7 +47,7 @@ export interface HexEditorProps {
      */
     tab?: TabManagerSubTab | undefined;
     dataStorageObject: HexEditorDataStorageObject;
-    contentType?: DBEntryContentType;
+    contentType?: MCEntryContentType;
     /**
      * A callback function that is called when a value is changed in the hex editor.
      *

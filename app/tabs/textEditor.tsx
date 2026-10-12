@@ -46,7 +46,9 @@ export default function TextEditorTab(props: TextEditorTabProps): JSX.SpecificEl
             formatTypeSwitch: switch (format.type) {
                 case "ASCII":
                 case "UTF-8":
-                case "binaryPlainText": {
+                case "binaryPlainText":
+                case "JSON": /* TEMP */
+                case "JSONC": /* TEMP */ {
                     await props.tab.loadData();
                     if (props.tab.currentState.options.dataStorageObject) {
                         props.tab.currentState.options.dataStorageObject.treeEditor = { scrollTop: 0, expansionData: {} };
@@ -67,7 +69,6 @@ export default function TextEditorTab(props: TextEditorTabProps): JSX.SpecificEl
                             break formatTypeSwitch;
                     }
                 }
-                case "JSON":
                 case "NBT":
                 case "SNBT":
                 case "binary":
@@ -117,6 +118,8 @@ export default function TextEditorTab(props: TextEditorTabProps): JSX.SpecificEl
                     props.props.tab.hasUnsavedChanges = true;
                     if (props.props.tab.target.type === "LevelDBEntry") {
                         props.props.tab.parentTab.setLevelDBIsModified();
+                    } else if (props.props.tab.target.type === "ChunksDatEntry") {
+                        props.props.tab.parentTab.setFileAsModified("chunks.dat");
                     } else {
                         props.props.tab.parentTab.setFileAsModified(props.props.tab.target.path);
                     }

@@ -2,6 +2,7 @@ import type { JSX, RefObject, TargetedEvent, TargetedMouseEvent } from "preact";
 import _React, { createElement, render, useEffect, useRef } from "preact/compat";
 import {
     dimensions,
+    dimensionsMCCE,
     entryContentTypeToFormatMap,
     gameModes,
     getKeyDisplayName,
@@ -21,6 +22,9 @@ import SearchSyntaxHelpMenu from "../components/SearchSyntaxHelpMenu";
 import SearchString from "search-string";
 import { PageNavigation } from "../components/PageNavigation";
 import Notice from "../components/Notice";
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { readdir, readFile, stat } from "node:fs/promises";
 
 // TODO: Implement Async Mode for this tab.
 
@@ -328,7 +332,8 @@ const playersTabSearchSyntax: SearchSyntaxHelpInfo = {
  * @returns The JSX element.
  */
 export default function PlayersTab(props: PlayersTabProps): JSX.SpecificElement<"div"> {
-    if (!props.tab.db) return <div>The players sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
+    // Worlds can use this tab without a LevelDB because pre-0.9.0 worlds did not have a LevelDB but still had player data.
+    if (!props.tab.db && props.tab.type !== "world") return <div>The players sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
     const containerRef: RefObject<HTMLTableElement> = useRef<HTMLTableElement>(null);
     const abortController: AbortController = new AbortController();
     useEffect((): (() => void) => {
@@ -359,7 +364,7 @@ export default function PlayersTab(props: PlayersTabProps): JSX.SpecificElement<
         }
     );
     const loadingScreenMessageContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
-    if (!props.tab.db.isOpen()) {
+    if (props.tab.db && !props.tab.db.isOpen()) {
         void props.tab.awaitDBOpen!.then(async (): Promise<void> => {
             if (loadingScreenMessageContainerRef.current && !props.tab.cachedDBKeys) {
                 const formatter = new Intl.NumberFormat();
@@ -382,7 +387,7 @@ export default function PlayersTab(props: PlayersTabProps): JSX.SpecificElement<
             </div>
         );
     }
-    if (!props.tab.cachedDBKeys) {
+    if (props.tab.db && !props.tab.cachedDBKeys) {
         const formatter = new Intl.NumberFormat();
         queueMicrotask(async (): Promise<void> => {
             await sleep(20);
@@ -422,7 +427,10 @@ interface ClientKeyData {
     } | null /* | undefined */;
 }
 
-interface ServerKeyData {
+type ServerKeyData = ServerLevelDBKeyData | PlayerDatKeyData | LANPlayerDatKeyData | LevelDatPlayerKeyData;
+
+interface ServerLevelDBKeyData {
+    type: "ServerLevelDBKeyData";
     rawKey: Buffer;
     displayKey: string;
     // UNDONE: Uncomment the `?` and ` | undefined` when async mode is implemented.
@@ -433,9 +441,32 @@ interface ServerKeyData {
     } | null /* | undefined */;
 }
 
+interface PlayerDatKeyData {
+    type: "PlayerDatKeyData";
+    file: "player.dat";
+    displayKey: string;
+    // UNDONE: Uncomment the `?` and ` | undefined` when async mode is implemented.
+    data /* ? */: NBTSchemas.NBTSchemaTypes.PlayerDat | null /* | undefined */;
+}
+
+interface LANPlayerDatKeyData {
+    type: "LANPlayerDatKeyData";
+    file: `players/${string}`;
+    displayKey: string;
+    // UNDONE: Uncomment the `?` and ` | undefined` when async mode is implemented.
+    data /* ? */: NBTSchemas.NBTSchemaTypes.LANPlayerDat | null /* | undefined */;
+}
+
+interface LevelDatPlayerKeyData {
+    type: "LevelDatPlayerKeyData";
+    file: "level.dat"; // IDEA: Maybe also allow level.dat_old and level.dat_new, maybe even when level.dat is not invalid/corrupted.
+    displayKey: string;
+    // This key type doesn't have async mode due to requiring reading it anyways to know if it show be shown, and since there can only be one of it.
+    data: NBTSchemas.NBTSchemaTypes.FileBasedStoragePlayerData | null;
+}
+
 async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): Promise<JSX.Element> {
-    if (!tab.db) return <div>The players sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
-    if (!tab.db.isOpen() && !((await tab.awaitDBOpen) ?? true)) {
+    if (tab.db && !tab.db.isOpen() && !((await tab.awaitDBOpen) ?? true)) {
         if (tab.errorDueToEncryptedLevelDB) {
             return (
                 <Notice
@@ -459,20 +490,21 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
             </div>
         );
     }
-    if (!tab.cachedDBKeys) await tab.awaitCachedDBKeys!;
+    if (tab.db && !tab.cachedDBKeys) await tab.awaitCachedDBKeys!;
     signal.throwIfAborted();
     const LOCAL_PLAYER_KEY_BUFFER: Buffer<ArrayBuffer> = Buffer.from("~local_player", "utf-8");
     const LOCAL_PLAYER_EDITOR_KEY_BUFFER: Buffer<ArrayBuffer> = Buffer.from("~local_player.Editor", "utf-8");
     const keys = {
-        client: tab.cachedDBKeys!.PlayerClient,
-        server: tab.cachedDBKeys!.Player.toSorted((a: Buffer, b: Buffer): number =>
-            a.equals(LOCAL_PLAYER_KEY_BUFFER) ? -1
-            : a.equals(LOCAL_PLAYER_EDITOR_KEY_BUFFER) ?
-                b.equals(LOCAL_PLAYER_KEY_BUFFER) ?
-                    1
-                :   -1
-            :   0
-        ),
+        client: tab.cachedDBKeys?.PlayerClient ?? [],
+        server:
+            tab.cachedDBKeys?.Player.toSorted((a: Buffer, b: Buffer): number =>
+                a.equals(LOCAL_PLAYER_KEY_BUFFER) ? -1
+                : a.equals(LOCAL_PLAYER_EDITOR_KEY_BUFFER) ?
+                    b.equals(LOCAL_PLAYER_KEY_BUFFER) ?
+                        1
+                    :   -1
+                :   0
+            ) ?? [],
     };
     const clientKeys: ClientKeyData[] = await Promise.all(
         keys.client.map(
@@ -486,14 +518,91 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
     const serverKeys: ServerKeyData[] = await Promise.all(
         keys.server.map(
             async (key: Buffer): Promise<ServerKeyData> => ({
+                type: "ServerLevelDBKeyData",
                 rawKey: key,
                 displayKey: getKeyDisplayName(key),
                 data: await NBT.parse((await tab.db!.get(key))!).catch((): null => null),
             })
         )
     );
+    try {
+        if (existsSync(path.join(tab.tempPath ?? tab.path, "players")) && (await stat(path.join(tab.tempPath ?? tab.path, "players"))).isDirectory()) {
+            const entries: LANPlayerDatKeyData[] = [];
+            for (const file of await readdir(path.join(tab.tempPath ?? tab.path, "players"), { withFileTypes: true })) {
+                if (!file.isFile()) continue;
+                if (!/^-?[0-9]+\.dat$/.test(file.name)) continue;
+                try {
+                    entries.push({
+                        type: "LANPlayerDatKeyData",
+                        file: `players/${file.name}`,
+                        displayKey: `players/${file.name}`,
+                        data: entryContentTypeToFormatMap.LANPlayerDat.parse(await readFile(path.join(tab.tempPath ?? tab.path, "players", file.name))),
+                    });
+                } catch {
+                    // TODO: Maybe add an error log here?
+                    entries.push({
+                        type: "LANPlayerDatKeyData",
+                        file: `players/${file.name}`,
+                        displayKey: `players/${file.name}`,
+                        data: null,
+                    });
+                }
+            }
+            serverKeys.unshift(...entries);
+        }
+    } catch (e) {
+        console.error("Error checking for LAN player files:", e);
+    }
+    try {
+        if (existsSync(path.join(tab.tempPath ?? tab.path, "player.dat"))) {
+            try {
+                serverKeys.unshift({
+                    type: "PlayerDatKeyData",
+                    file: "player.dat",
+                    displayKey: "player.dat",
+                    data: entryContentTypeToFormatMap.PlayerDat.parse(await readFile(path.join(tab.tempPath ?? tab.path, "player.dat"))),
+                });
+            } catch {
+                // TODO: Maybe add an error log here?
+                serverKeys.unshift({
+                    type: "PlayerDatKeyData",
+                    file: "player.dat",
+                    displayKey: "player.dat",
+                    data: null,
+                });
+            }
+        }
+    } catch (e) {
+        console.error("Error checking for player.dat file:", e);
+    }
+    // TODO: Add support for level.dat_old and level.dat_new.
+    try {
+        if (existsSync(path.join(tab.tempPath ?? tab.path, "level.dat"))) {
+            try {
+                const playerData: NBTSchemas.NBTSchemaTypes.FileBasedStoragePlayerData | undefined = (
+                    await entryContentTypeToFormatMap.LevelDat.parse(await readFile(path.join(tab.tempPath ?? tab.path, "level.dat")))
+                ).value.Player;
+                if (playerData) {
+                    serverKeys.unshift({
+                        type: "LevelDatPlayerKeyData",
+                        file: "level.dat",
+                        displayKey: "level.dat",
+                        data: playerData,
+                    });
+                }
+            } catch {
+                // TODO: Maybe add an error log here?
+            }
+        }
+    } catch (e) {
+        console.error("Error checking for level.dat file:", e);
+    }
     const serverToClientKeyMap = new Map<string, [ClientKeyData, ...ClientKeyData[]] | undefined>();
     serverKeys.forEach((serverKey: ServerKeyData): void => {
+        if (serverKey.type === "PlayerDatKeyData") {
+            serverToClientKeyMap.set(serverKey.displayKey, undefined);
+            return;
+        }
         const correspondingClientKeys: ClientKeyData[] = clientKeys.filter(
             (clientKey: ClientKeyData): boolean => clientKey.data?.parsed.value.ServerId?.value === serverKey.displayKey
         );
@@ -502,16 +611,19 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
             correspondingClientKeys[0] === undefined ? undefined : (correspondingClientKeys as [ClientKeyData, ...ClientKeyData[]])
         );
     });
-    const clientToServerKeyMap = new Map<string, ServerKeyData>();
+    const clientToServerKeyMap = new Map<string, ServerLevelDBKeyData>();
     clientKeys.forEach(
         (clientKey: ClientKeyData): void =>
             void clientToServerKeyMap.set(
                 clientKey.displayKey,
-                serverKeys.find((serverKey: ServerKeyData): boolean => serverKey.displayKey === clientKey.data?.parsed.value.ServerId?.value)!
+                serverKeys.find(
+                    (serverKey: ServerKeyData): serverKey is ServerLevelDBKeyData =>
+                        serverKey.type === "ServerLevelDBKeyData" && serverKey.displayKey === clientKey.data?.parsed.value.ServerId?.value
+                )!
             )
     );
     const dynamicProperties: NBT.NBT | undefined = await tab.db
-        .get("DynamicProperties")
+        ?.get("DynamicProperties")
         .then((data: Buffer | null): Promise<NBT.NBT> | undefined =>
             data ? NBT.parse(data).then((data: { parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata }): NBT.NBT => data.parsed) : undefined
         )
@@ -669,7 +781,7 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
                                             clientKeyList
                                                 .map((key: ClientKeyData): ServerKeyData | undefined => clientToServerKeyMap.get(key.displayKey))
                                                 .filter((key: ServerKeyData | undefined): key is ServerKeyData => key !== undefined)
-                                                .sort((a: ServerKeyData, b: ServerKeyData): number => clientKeys.indexOf(a) - clientKeys.indexOf(b))
+                                                .sort((a: ServerKeyData, b: ServerKeyData): number => serverKeys.indexOf(a) - serverKeys.indexOf(b))
                                         ),
                                     ];
                             return await getPlayersTabContentsRows({
@@ -761,27 +873,61 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
             ),
         };
         let serverQuery: Omit<TabManagerTab_LevelDBSearchQuery, "searchTargets"> & {
-            searchTargets: {
-                key: Buffer<ArrayBufferLike>;
-                displayKey: string;
-                value:
-                    | {
-                          parsed: NBT.NBT;
-                          type: NBT.NBTFormat;
-                          metadata: NBT.Metadata;
-                      }
-                    | null
-                    | undefined;
-                valueType: {
-                    readonly type: "NBT";
-                };
-                contentType: "Player";
-                data: ServerKeyData;
-                searchableContents: string[];
-            }[];
+            searchTargets: (
+                | {
+                      key: Buffer<ArrayBufferLike>;
+                      displayKey: string;
+                      value:
+                          | {
+                                parsed: NBT.NBT;
+                                type: NBT.NBTFormat;
+                                metadata: NBT.Metadata;
+                            }
+                          | null
+                          | undefined;
+                      valueType: {
+                          readonly type: "NBT";
+                      };
+                      contentType: "Player";
+                      data: ServerLevelDBKeyData;
+                      searchableContents: string[];
+                  }
+                | {
+                      key: Buffer<ArrayBufferLike>;
+                      displayKey: string;
+                      value: ReturnType<typeof entryContentTypeToFormatMap.PlayerDat.parse> /* TEMP */ | null | undefined;
+                      valueType: typeof entryContentTypeToFormatMap.PlayerDat;
+                      contentType: "PlayerDat";
+                      data: PlayerDatKeyData;
+                      searchableContents: string[];
+                  }
+                | {
+                      key: Buffer<ArrayBufferLike>;
+                      displayKey: string;
+                      value: NBTSchemas.NBTSchemaTypes.LANPlayerDat | null | undefined;
+                      valueType: typeof entryContentTypeToFormatMap.LANPlayerDat;
+                      contentType: "LANPlayerDat";
+                      data: LANPlayerDatKeyData;
+                      searchableContents: string[];
+                  }
+                | {
+                      key: Buffer<ArrayBufferLike>;
+                      displayKey: string;
+                      value: NBTSchemas.NBTSchemaTypes.LevelDat["value"]["Player"] | null;
+                      valueType: {
+                          readonly type: "custom";
+                          readonly resultType: "JSONNBT";
+                          parse(_data: Buffer): never;
+                          serialize(_data: NBT.Compound): never;
+                      };
+                      contentType: "LevelDat";
+                      data: LevelDatPlayerKeyData;
+                      searchableContents: string[];
+                  }
+            )[];
         } = {
-            searchTargets: serverKeys.map(
-                (key: ServerKeyData) =>
+            searchTargets: serverKeys.map((key: ServerKeyData) =>
+                key.type === "ServerLevelDBKeyData" ?
                     ({
                         key: key.rawKey,
                         displayKey: key.displayKey,
@@ -848,7 +994,126 @@ async function getPlayersTabContents(tab: TabManagerTab, signal: AbortSignal): P
                                 return playerName;
                             },
                         },
-                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
+                    } as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number])
+                : key.type === "LANPlayerDatKeyData" ?
+                    ({
+                        key: Buffer.from(key.file, "utf-8"),
+                        displayKey: key.displayKey,
+                        value: key.data,
+                        valueType: entryContentTypeToFormatMap.LANPlayerDat,
+                        contentType: "LANPlayerDat",
+                        data: key,
+                        searchableContents: [
+                            key.displayKey,
+                            ((): string => {
+                                try {
+                                    // return prettyPrintSNBT(prismarineToSNBT(key.data.parsed), { indent: 0 });
+                                    // Disable directly searching SNBT.
+                                    return "";
+                                } catch {
+                                    return "";
+                                }
+                            })(),
+                        ],
+                        customDataFields: {
+                            // TODO: Uncomment the below line and implement a search query for checking for entries with invalid data.
+                            // hasInvalidData: key.data === null,
+                            contents: ((): string => {
+                                if (key.data === null) return "";
+                                try {
+                                    return prettyPrintSNBT(prismarineToSNBT(key.data), { indent: 0 });
+                                } catch {
+                                    return "";
+                                }
+                            })(),
+                            msa_id: undefined,
+                            self_signed_id: undefined,
+                            server_id: undefined,
+                            name: undefined,
+                        },
+                    } as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number])
+                : key.type === "LevelDatPlayerKeyData" ?
+                    ({
+                        key: Buffer.from(key.file, "utf-8"),
+                        displayKey: key.displayKey,
+                        value: key.data,
+                        valueType: {
+                            type: "custom",
+                            resultType: "JSONNBT",
+                            parse(_data: Buffer): never {
+                                throw new TypeError("Illegal invocation");
+                            },
+                            serialize(_data: NBT.Compound): never {
+                                throw new TypeError("Illegal invocation");
+                            },
+                        },
+                        contentType: "LevelDat",
+                        data: key,
+                        searchableContents: [
+                            key.displayKey,
+                            ((): string => {
+                                try {
+                                    // return prettyPrintSNBT(prismarineToSNBT(key.data.parsed), { indent: 0 });
+                                    // Disable directly searching SNBT.
+                                    return "";
+                                } catch {
+                                    return "";
+                                }
+                            })(),
+                        ],
+                        customDataFields: {
+                            // TODO: Uncomment the below line and implement a search query for checking for entries with invalid data.
+                            // hasInvalidData: key.data === null,
+                            contents: ((): string => {
+                                if (key.data === null) return "";
+                                try {
+                                    return prettyPrintSNBT(prismarineToSNBT(key.data), { indent: 0 });
+                                } catch {
+                                    return "";
+                                }
+                            })(),
+                            msa_id: undefined,
+                            self_signed_id: undefined,
+                            server_id: undefined,
+                            name: undefined,
+                        },
+                    } as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number])
+                :   ({
+                        key: Buffer.from(key.file, "utf-8"),
+                        displayKey: key.displayKey,
+                        value: key.data,
+                        valueType: entryContentTypeToFormatMap.PlayerDat,
+                        contentType: "PlayerDat",
+                        data: key,
+                        searchableContents: [
+                            key.displayKey,
+                            ((): string => {
+                                try {
+                                    // return prettyPrintSNBT(prismarineToSNBT(key.data.parsed), { indent: 0 });
+                                    // Disable directly searching SNBT.
+                                    return "";
+                                } catch {
+                                    return "";
+                                }
+                            })(),
+                        ],
+                        customDataFields: {
+                            // TODO: Uncomment the below line and implement a search query for checking for entries with invalid data.
+                            // hasInvalidData: key.data === null,
+                            contents: ((): string => {
+                                if (key.data === null) return "";
+                                try {
+                                    return prettyPrintSNBT(prismarineToSNBT(key.data), { indent: 0 });
+                                } catch {
+                                    return "";
+                                }
+                            })(),
+                            msa_id: undefined,
+                            self_signed_id: undefined,
+                            server_id: undefined,
+                            name: undefined,
+                        },
+                    } as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number])
             ),
         };
         useEffect((): (() => void) => {
@@ -1592,7 +1857,7 @@ async function getPlayersTabContentsRows(data: {
     /**
      * The full map of client key data to server key data (including what isn't going to be displayed).
      */
-    clientToServerKeyMap: Map<string, ServerKeyData>;
+    clientToServerKeyMap: Map<string, ServerLevelDBKeyData>;
     dynamicProperties?: NBT.NBT | undefined;
     /**
      * The mode of the tab.
@@ -1611,35 +1876,128 @@ async function getPlayersTabContentsRows(data: {
                 // player's name to a player dynamic property specifically for being accessed here.
                 // TODO: Add a context menu to the individual rows to set player name.
                 function onEntryMiddleClick(_event: TargetedMouseEvent<HTMLTableRowElement>): void {
-                    data.tab.openTab(
-                        {
-                            // TODO: In the future, add support for getting their skin head or profile picture.
-                            contentType: "Player",
-                            icon: "auto",
-                            name: serverKey.displayKey,
-                            parentTab: data.tab,
-                            target: {
-                                type: "LevelDBEntry",
-                                key: serverKey.rawKey,
-                            },
-                        },
-                        false
-                    );
+                    switch (serverKey.type) {
+                        case "ServerLevelDBKeyData":
+                            data.tab.openTab(
+                                {
+                                    // TODO: In the future, add support for getting their skin head or profile picture.
+                                    contentType: "Player",
+                                    icon: "auto",
+                                    name: serverKey.displayKey,
+                                    parentTab: data.tab,
+                                    target: {
+                                        type: "LevelDBEntry",
+                                        key: serverKey.rawKey,
+                                    },
+                                },
+                                false
+                            );
+                            break;
+                        case "PlayerDatKeyData":
+                            data.tab.openTab(
+                                {
+                                    contentType: "PlayerDat",
+                                    icon: "auto",
+                                    name: serverKey.displayKey,
+                                    parentTab: data.tab,
+                                    target: {
+                                        type: "File",
+                                        path: serverKey.file,
+                                    },
+                                },
+                                false
+                            );
+                            break;
+                        case "LANPlayerDatKeyData":
+                            data.tab.openTab(
+                                {
+                                    contentType: "LANPlayerDat",
+                                    icon: "auto",
+                                    name: serverKey.displayKey,
+                                    parentTab: data.tab,
+                                    target: {
+                                        type: "File",
+                                        path: serverKey.file,
+                                    },
+                                },
+                                false
+                            );
+                            break;
+                        case "LevelDatPlayerKeyData":
+                            data.tab.openTab(
+                                {
+                                    contentType: "LevelDat",
+                                    icon: "auto",
+                                    name: serverKey.displayKey,
+                                    parentTab: data.tab,
+                                    target: {
+                                        type: "File",
+                                        path: serverKey.file,
+                                    },
+                                },
+                                false
+                            );
+                            break;
+                        default:
+                            throw new TypeError(`Unknown server key type: ${(serverKey as ServerKeyData).type}`);
+                    }
                 }
                 return (
                     <tr
                         onDblClick={(): void => {
-                            data.tab.openTab({
-                                // TODO: In the future, add support for getting their skin head or profile picture.
-                                contentType: "Player",
-                                icon: "auto",
-                                name: serverKey.displayKey,
-                                parentTab: data.tab,
-                                target: {
-                                    type: "LevelDBEntry",
-                                    key: serverKey.rawKey,
-                                },
-                            });
+                            switch (serverKey.type) {
+                                case "ServerLevelDBKeyData":
+                                    data.tab.openTab({
+                                        // TODO: In the future, add support for getting their skin head or profile picture.
+                                        contentType: "Player",
+                                        icon: "auto",
+                                        name: serverKey.displayKey,
+                                        parentTab: data.tab,
+                                        target: {
+                                            type: "LevelDBEntry",
+                                            key: serverKey.rawKey,
+                                        },
+                                    });
+                                    break;
+                                case "PlayerDatKeyData":
+                                    data.tab.openTab({
+                                        contentType: "PlayerDat",
+                                        icon: "auto",
+                                        name: serverKey.displayKey,
+                                        parentTab: data.tab,
+                                        target: {
+                                            type: "File",
+                                            path: serverKey.file,
+                                        },
+                                    });
+                                    break;
+                                case "LANPlayerDatKeyData":
+                                    data.tab.openTab({
+                                        contentType: "LANPlayerDat",
+                                        icon: "auto",
+                                        name: serverKey.displayKey,
+                                        parentTab: data.tab,
+                                        target: {
+                                            type: "File",
+                                            path: serverKey.file,
+                                        },
+                                    });
+                                    break;
+                                case "LevelDatPlayerKeyData":
+                                    data.tab.openTab({
+                                        contentType: "LevelDat",
+                                        icon: "auto",
+                                        name: serverKey.displayKey,
+                                        parentTab: data.tab,
+                                        target: {
+                                            type: "File",
+                                            path: serverKey.file,
+                                        },
+                                    });
+                                    break;
+                                default:
+                                    throw new TypeError(`Unknown server key type: ${(serverKey as ServerKeyData).type}`);
+                            }
                         }}
                         onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                             // Treat Alt+Click as a middle click.
@@ -1666,6 +2024,37 @@ async function getPlayersTabContentsRows(data: {
                                     if (serverKey.data === null) {
                                         return (
                                             <td>
+                                                <span style="color: red;">N/A</span>
+                                            </td>
+                                        );
+                                    }
+                                    // TEMP: When I add the ability to manually define player names, it should allow legacy player data too.
+                                    if (serverKey.type === "PlayerDatKeyData") {
+                                        return (
+                                            <td
+                                                title="This player is from the player.dat file, the name of a player.dat player cannot be detected."
+                                                style={{ cursor: "help" }}
+                                            >
+                                                <span style="color: red;">N/A</span>
+                                            </td>
+                                        );
+                                    }
+                                    if (serverKey.type === "LANPlayerDatKeyData") {
+                                        return (
+                                            <td
+                                                title="This player is from a players/<ID>.dat file, the name of a players/<ID>.dat player cannot be detected."
+                                                style={{ cursor: "help" }}
+                                            >
+                                                <span style="color: red;">N/A</span>
+                                            </td>
+                                        );
+                                    }
+                                    if (serverKey.type === "LevelDatPlayerKeyData") {
+                                        return (
+                                            <td
+                                                title="This player is from the level.dat file, the name of a level.dat player cannot be detected."
+                                                style={{ cursor: "help" }}
+                                            >
                                                 <span style="color: red;">N/A</span>
                                             </td>
                                         );
@@ -1734,6 +2123,35 @@ async function getPlayersTabContentsRows(data: {
                                             </td>
                                         );
                                     }
+                                    if (serverKey.type === "PlayerDatKeyData") {
+                                        return (
+                                            <td title="This player is stored in player.dat, and player.dat players do not have UUIDs." style="cursor: help;">
+                                                <span style="color: yellow;">&lt;player.dat&gt;</span>
+                                            </td>
+                                        );
+                                    }
+                                    if (serverKey.type === "LANPlayerDatKeyData") {
+                                        const rakNetId: string | undefined = serverKey.file.split("/")[1]?.split(".")[0];
+                                        if (rakNetId !== undefined) {
+                                            return (
+                                                <td title="This is actually the player's RakNet ID, and not their UUID." style="cursor: help;">
+                                                    <span style="color: color-mix(in lab, var(--text-color) 65%, yellow);">{rakNetId}</span>
+                                                </td>
+                                            );
+                                        }
+                                        return (
+                                            <td>
+                                                <span style="color: red;">null</span>
+                                            </td>
+                                        );
+                                    }
+                                    if (serverKey.type === "LevelDatPlayerKeyData") {
+                                        return (
+                                            <td title="This player is stored in level.dat, and level.dat players do not have UUIDs." style="cursor: help;">
+                                                <span style="color: yellow;">&lt;level.dat&gt;</span>
+                                            </td>
+                                        );
+                                    }
                                     return (
                                         <td>
                                             {serverKey.data.parsed.value.UniqueID?.type === "long" ?
@@ -1753,6 +2171,17 @@ async function getPlayersTabContentsRows(data: {
                                         return (
                                             <td>
                                                 <span style="color: red;">N/A</span>
+                                            </td>
+                                        );
+                                    }
+                                    if (
+                                        serverKey.type === "PlayerDatKeyData" ||
+                                        serverKey.type === "LANPlayerDatKeyData" ||
+                                        serverKey.type === "LevelDatPlayerKeyData"
+                                    ) {
+                                        return (
+                                            <td>
+                                                <span style="color: red;">null</span>
                                             </td>
                                         );
                                     }
@@ -2021,33 +2450,128 @@ async function getPlayersTabContentsRows(data: {
             const columns = config.views.players.modeSettings.raw.sections.server.columns;
             return data.serverKeys.map((serverKey: ServerKeyData): JSX.Element => {
                 function onEntryMiddleClick(_event: TargetedMouseEvent<HTMLTableRowElement>): void {
-                    data.tab.openTab(
-                        {
-                            // TODO: In the future, add support for getting their skin head or profile picture.
-                            contentType: "Player",
-                            icon: "resource://images/ui/glyphs/icon_steve_server.png",
-                            name: serverKey.displayKey,
-                            target: {
-                                type: "LevelDBEntry",
-                                key: serverKey.rawKey,
-                            },
-                        },
-                        false
-                    );
+                    switch (serverKey.type) {
+                        case "ServerLevelDBKeyData":
+                            data.tab.openTab(
+                                {
+                                    // TODO: In the future, add support for getting their skin head or profile picture.
+                                    contentType: "Player",
+                                    icon: "auto",
+                                    name: serverKey.displayKey,
+                                    parentTab: data.tab,
+                                    target: {
+                                        type: "LevelDBEntry",
+                                        key: serverKey.rawKey,
+                                    },
+                                },
+                                false
+                            );
+                            break;
+                        case "PlayerDatKeyData":
+                            data.tab.openTab(
+                                {
+                                    contentType: "PlayerDat",
+                                    icon: "auto",
+                                    name: serverKey.displayKey,
+                                    parentTab: data.tab,
+                                    target: {
+                                        type: "File",
+                                        path: serverKey.file,
+                                    },
+                                },
+                                false
+                            );
+                            break;
+                        case "LANPlayerDatKeyData":
+                            data.tab.openTab(
+                                {
+                                    contentType: "LANPlayerDat",
+                                    icon: "auto",
+                                    name: serverKey.displayKey,
+                                    parentTab: data.tab,
+                                    target: {
+                                        type: "File",
+                                        path: serverKey.file,
+                                    },
+                                },
+                                false
+                            );
+                            break;
+                        case "LevelDatPlayerKeyData":
+                            data.tab.openTab(
+                                {
+                                    contentType: "LevelDat",
+                                    icon: "auto",
+                                    name: serverKey.displayKey,
+                                    parentTab: data.tab,
+                                    target: {
+                                        type: "File",
+                                        path: serverKey.file,
+                                    },
+                                },
+                                false
+                            );
+                            break;
+                        default:
+                            throw new TypeError(`Unknown server key type: ${(serverKey as ServerKeyData).type}`);
+                    }
                 }
                 return (
                     <tr
                         onDblClick={(): void => {
-                            data.tab.openTab({
-                                // TODO: In the future, add support for getting their skin head or profile picture.
-                                contentType: "Player",
-                                icon: "resource://images/ui/glyphs/icon_steve_server.png",
-                                name: serverKey.displayKey,
-                                target: {
-                                    type: "LevelDBEntry",
-                                    key: serverKey.rawKey,
-                                },
-                            });
+                            switch (serverKey.type) {
+                                case "ServerLevelDBKeyData":
+                                    data.tab.openTab({
+                                        // TODO: In the future, add support for getting their skin head or profile picture.
+                                        contentType: "Player",
+                                        icon: "auto",
+                                        name: serverKey.displayKey,
+                                        parentTab: data.tab,
+                                        target: {
+                                            type: "LevelDBEntry",
+                                            key: serverKey.rawKey,
+                                        },
+                                    });
+                                    break;
+                                case "PlayerDatKeyData":
+                                    data.tab.openTab({
+                                        contentType: "PlayerDat",
+                                        icon: "auto",
+                                        name: serverKey.displayKey,
+                                        parentTab: data.tab,
+                                        target: {
+                                            type: "File",
+                                            path: serverKey.file,
+                                        },
+                                    });
+                                    break;
+                                case "LANPlayerDatKeyData":
+                                    data.tab.openTab({
+                                        contentType: "LANPlayerDat",
+                                        icon: "auto",
+                                        name: serverKey.displayKey,
+                                        parentTab: data.tab,
+                                        target: {
+                                            type: "File",
+                                            path: serverKey.file,
+                                        },
+                                    });
+                                    break;
+                                case "LevelDatPlayerKeyData":
+                                    data.tab.openTab({
+                                        contentType: "LevelDat",
+                                        icon: "auto",
+                                        name: serverKey.displayKey,
+                                        parentTab: data.tab,
+                                        target: {
+                                            type: "File",
+                                            path: serverKey.file,
+                                        },
+                                    });
+                                    break;
+                                default:
+                                    throw new TypeError(`Unknown server key type: ${(serverKey as ServerKeyData).type}`);
+                            }
                         }}
                         onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                             // Treat Alt+Click as a middle click.
@@ -2097,6 +2621,37 @@ async function getPlayersTabContentsRows(data: {
                                     if (serverKey.data === null) {
                                         return (
                                             <td>
+                                                <span style="color: red;">N/A</span>
+                                            </td>
+                                        );
+                                    }
+                                    // TEMP: When I add the ability to manually define player names, it should allow legacy player data too.
+                                    if (serverKey.type === "PlayerDatKeyData") {
+                                        return (
+                                            <td
+                                                title="This player is from the player.dat file, the name of a player.dat player cannot be detected."
+                                                style={{ cursor: "help" }}
+                                            >
+                                                <span style="color: red;">N/A</span>
+                                            </td>
+                                        );
+                                    }
+                                    if (serverKey.type === "LANPlayerDatKeyData") {
+                                        return (
+                                            <td
+                                                title="This player is from a players/<ID>.dat file, the name of a players/<ID>.dat player cannot be detected."
+                                                style={{ cursor: "help" }}
+                                            >
+                                                <span style="color: red;">N/A</span>
+                                            </td>
+                                        );
+                                    }
+                                    if (serverKey.type === "LevelDatPlayerKeyData") {
+                                        return (
+                                            <td
+                                                title="This player is from the level.dat file, the name of a level.dat player cannot be detected."
+                                                style={{ cursor: "help" }}
+                                            >
                                                 <span style="color: red;">N/A</span>
                                             </td>
                                         );
@@ -2165,6 +2720,35 @@ async function getPlayersTabContentsRows(data: {
                                             </td>
                                         );
                                     }
+                                    if (serverKey.type === "PlayerDatKeyData") {
+                                        return (
+                                            <td title="This player is stored in player.dat, and player.dat players do not have UUIDs." style="cursor: help;">
+                                                <span style="color: yellow;">&lt;player.dat&gt;</span>
+                                            </td>
+                                        );
+                                    }
+                                    if (serverKey.type === "LANPlayerDatKeyData") {
+                                        const rakNetId: string | undefined = serverKey.file.split("/")[1]?.split(".")[0];
+                                        if (rakNetId !== undefined) {
+                                            return (
+                                                <td title="This is actually the player's RakNet ID, and not their UUID." style="cursor: help;">
+                                                    <span style="color: color-mix(in lab, var(--text-color) 65%, yellow);">{rakNetId}</span>
+                                                </td>
+                                            );
+                                        }
+                                        return (
+                                            <td>
+                                                <span style="color: red;">null</span>
+                                            </td>
+                                        );
+                                    }
+                                    if (serverKey.type === "LevelDatPlayerKeyData") {
+                                        return (
+                                            <td title="This player is stored in level.dat, and level.dat players do not have UUIDs." style="cursor: help;">
+                                                <span style="color: yellow;">&lt;level.dat&gt;</span>
+                                            </td>
+                                        );
+                                    }
                                     return (
                                         <td>
                                             {serverKey.data.parsed.value.UniqueID?.type === "long" ?
@@ -2184,6 +2768,17 @@ async function getPlayersTabContentsRows(data: {
                                         return (
                                             <td>
                                                 <span style="color: red;">N/A</span>
+                                            </td>
+                                        );
+                                    }
+                                    if (
+                                        serverKey.type === "PlayerDatKeyData" ||
+                                        serverKey.type === "LANPlayerDatKeyData" ||
+                                        serverKey.type === "LevelDatPlayerKeyData"
+                                    ) {
+                                        return (
+                                            <td>
+                                                <span style="color: red;">null</span>
                                             </td>
                                         );
                                     }
@@ -2267,6 +2862,36 @@ async function getPlayersTabContentsRows(data: {
                                             </td>
                                         );
                                     }
+                                    if (serverKey.type === "PlayerDatKeyData") {
+                                        return (
+                                            <td>
+                                                {serverKey.data.value.Pos?.type === "list" && serverKey.data.value.Pos.value.type === "float" ?
+                                                    `${(serverKey.data.value.Pos.value.value as number[])
+                                                        .map((v: number): string => v.toFixed(3))
+                                                        .join(", ")} overworld`
+                                                :   <span style="color: red;">null</span>}
+                                            </td>
+                                        );
+                                    }
+                                    if (serverKey.type === "LANPlayerDatKeyData" || serverKey.type === "LevelDatPlayerKeyData") {
+                                        return (
+                                            <td>
+                                                {serverKey.data.value.Pos?.type === "list" && serverKey.data.value.Pos.value.type === "float" ?
+                                                    `${(serverKey.data.value.Pos.value.value as number[])
+                                                        .map((v: number): string => v.toFixed(3))
+                                                        .join(", ")} ${
+                                                        serverKey.data.value.Dimension?.type === "int" ?
+                                                            ((data.tab.cachedDBKeys?.MCChinaDevDimension.length ?
+                                                                dimensionsMCCE[serverKey.data.value.Dimension.value]
+                                                            :   undefined) ??
+                                                            dimensions[serverKey.data.value.Dimension.value] ??
+                                                            serverKey.data.value.Dimension.value)
+                                                        :   "Unknown Dimension"
+                                                    }`
+                                                :   <span style="color: red;">null</span>}
+                                            </td>
+                                        );
+                                    }
                                     return (
                                         <td>
                                             {serverKey.data.parsed.value.Pos?.type === "list" && serverKey.data.parsed.value.Pos.value.type === "float" ?
@@ -2274,7 +2899,10 @@ async function getPlayersTabContentsRows(data: {
                                                     .map((v: number): string => v.toFixed(3))
                                                     .join(", ")} ${
                                                     serverKey.data.parsed.value.DimensionId?.type === "int" ?
-                                                        (dimensions[serverKey.data.parsed.value.DimensionId.value] ??
+                                                        ((data.tab.cachedDBKeys?.MCChinaDevDimension.length ?
+                                                            dimensionsMCCE[serverKey.data.parsed.value.DimensionId.value]
+                                                        :   undefined) ??
+                                                        dimensions[serverKey.data.parsed.value.DimensionId.value] ??
                                                         serverKey.data.parsed.value.DimensionId.value)
                                                     :   "Unknown Dimension"
                                                 }`
@@ -2293,6 +2921,26 @@ async function getPlayersTabContentsRows(data: {
                                         return (
                                             <td>
                                                 <span style="color: red;">N/A</span>
+                                            </td>
+                                        );
+                                    }
+                                    if (serverKey.type === "PlayerDatKeyData") {
+                                        return (
+                                            <td>
+                                                {serverKey.data.value.Pos?.type === "list" && serverKey.data.value.Pos.value.type === "float" ?
+                                                    `${(serverKey.data.value.Pos.value.value as number[]).map((v: number): string => v.toFixed(0)).join(",")} 0`
+                                                :   <span style="color: red;">null</span>}
+                                            </td>
+                                        );
+                                    }
+                                    if (serverKey.type === "LANPlayerDatKeyData" || serverKey.type === "LevelDatPlayerKeyData") {
+                                        return (
+                                            <td>
+                                                {serverKey.data.value.Pos?.type === "list" && serverKey.data.value.Pos.value.type === "float" ?
+                                                    `${(serverKey.data.value.Pos.value.value as number[]).map((v: number): string => v.toFixed(0)).join(",")} ${
+                                                        serverKey.data.value.Dimension?.type === "int" ? serverKey.data.value.Dimension.value : "?"
+                                                    }`
+                                                :   <span style="color: red;">null</span>}
                                             </td>
                                         );
                                     }
@@ -2324,6 +2972,19 @@ async function getPlayersTabContentsRows(data: {
                                             </td>
                                         );
                                     }
+                                    if (
+                                        serverKey.type === "PlayerDatKeyData" ||
+                                        serverKey.type === "LANPlayerDatKeyData" ||
+                                        serverKey.type === "LevelDatPlayerKeyData"
+                                    ) {
+                                        return (
+                                            <td>
+                                                {serverKey.data.value.Rotation?.type === "list" && serverKey.data.value.Rotation.value.type === "float" ?
+                                                    (serverKey.data.value.Rotation.value.value as number[]).join(", ")
+                                                :   <span style="color: red;">null</span>}
+                                            </td>
+                                        );
+                                    }
                                     return (
                                         <td>
                                             {(
@@ -2349,18 +3010,73 @@ async function getPlayersTabContentsRows(data: {
                                             </td>
                                         );
                                     }
+                                    if (serverKey.type === "PlayerDatKeyData") {
+                                        return (
+                                            <td>
+                                                <span style="color: red;">null</span>
+                                            </td>
+                                        );
+                                    }
+                                    if (serverKey.type === "LANPlayerDatKeyData" || serverKey.type === "LevelDatPlayerKeyData") {
+                                        return (
+                                            <td>
+                                                {(
+                                                    serverKey.data.value.SpawnX?.type === "int" ||
+                                                    serverKey.data.value.SpawnY?.type === "int" ||
+                                                    serverKey.data.value.SpawnZ?.type === "int"
+                                                ) ?
+                                                    (
+                                                        serverKey.data.value.SpawnX?.type === "int" &&
+                                                        serverKey.data.value.SpawnX.value === 0 &&
+                                                        serverKey.data.value.SpawnY?.type === "int" &&
+                                                        serverKey.data.value.SpawnY.value === -1 &&
+                                                        serverKey.data.value.SpawnZ?.type === "int" &&
+                                                        serverKey.data.value.SpawnZ.value === 0
+                                                    ) ?
+                                                        "Not Set"
+                                                    :   `${serverKey.data.value.SpawnY?.type === "int" ? serverKey.data.value.SpawnY?.value : "!!"}, ${serverKey.data.value.SpawnY?.type === "int" ? serverKey.data.value.SpawnY?.value : "!!"}, ${
+                                                            serverKey.data.value.SpawnZ?.type === "int" ? serverKey.data.value.SpawnZ?.value : "!!"
+                                                        } overworld`
+
+                                                :   <span style="color: red;">null</span>}
+                                            </td>
+                                        );
+                                    }
                                     return (
                                         <td>
-                                            {serverKey.data.parsed.value.SpawnX?.type === "int" ?
-                                                serverKey.data.parsed.value.SpawnX?.value === -2147483648 ?
+                                            {(
+                                                serverKey.data.parsed.value.SpawnX?.type === "int" ||
+                                                serverKey.data.parsed.value.SpawnY?.type === "int" ||
+                                                serverKey.data.parsed.value.SpawnZ?.type === "int"
+                                            ) ?
+                                                (
+                                                    [
+                                                        serverKey.data.parsed.value.SpawnX,
+                                                        serverKey.data.parsed.value.SpawnY,
+                                                        serverKey.data.parsed.value.SpawnZ,
+                                                    ].every(
+                                                        (v: NBT.Tags[NBT.TagType] | undefined): v is { type: "int"; value: -2147483648 } | undefined =>
+                                                            !v || (v.type === "int" && v.value === -2147483648)
+                                                    ) ||
+                                                    (serverKey.data.parsed.value.SpawnX?.type === "int" &&
+                                                        serverKey.data.parsed.value.SpawnX.value === 0 &&
+                                                        serverKey.data.parsed.value.SpawnY?.type === "int" &&
+                                                        serverKey.data.parsed.value.SpawnY.value === -1 &&
+                                                        serverKey.data.parsed.value.SpawnZ?.type === "int" &&
+                                                        serverKey.data.parsed.value.SpawnZ.value === 0)
+                                                ) ?
                                                     "Not Set"
-                                                :   `${serverKey.data.parsed.value.SpawnX.value}, ${serverKey.data.parsed.value.SpawnY?.type === "int" ? serverKey.data.parsed.value.SpawnY?.value : "!!"}, ${
+                                                :   `${serverKey.data.parsed.value.SpawnX?.type === "int" ? serverKey.data.parsed.value.SpawnX?.value : "!!"}, ${serverKey.data.parsed.value.SpawnY?.type === "int" ? serverKey.data.parsed.value.SpawnY?.value : "!!"}, ${
                                                         serverKey.data.parsed.value.SpawnZ?.type === "int" ? serverKey.data.parsed.value.SpawnZ?.value : "!!"
                                                     } ${
                                                         serverKey.data.parsed.value.SpawnDimension?.type === "int" ?
-                                                            (dimensions[serverKey.data.parsed.value.SpawnDimension.value] ??
+                                                            ((data.tab.cachedDBKeys?.MCChinaDevDimension.length ?
+                                                                dimensionsMCCE[serverKey.data.parsed.value.SpawnDimension.value]
+                                                            :   undefined) ??
+                                                            dimensions[serverKey.data.parsed.value.SpawnDimension.value] ??
                                                             serverKey.data.parsed.value.SpawnDimension.value)
-                                                        :   "Unknown Dimension"
+                                                        : serverKey.data.parsed.value.SpawnDimension ? "Unknown Dimension"
+                                                        : "overworld"
                                                     }`
 
                                             :   <span style="color: red;">null</span>}
@@ -2381,17 +3097,81 @@ async function getPlayersTabContentsRows(data: {
                                             </td>
                                         );
                                     }
+                                    if (serverKey.type === "PlayerDatKeyData") {
+                                        return (
+                                            <td>
+                                                <span style="color: red;">null</span>
+                                            </td>
+                                        );
+                                    }
+                                    if (serverKey.type === "LANPlayerDatKeyData" || serverKey.type === "LevelDatPlayerKeyData") {
+                                        return (
+                                            <td>
+                                                {(
+                                                    serverKey.data.value.SpawnX?.type === "int" ||
+                                                    serverKey.data.value.SpawnY?.type === "int" ||
+                                                    serverKey.data.value.SpawnZ?.type === "int"
+                                                ) ?
+                                                    (
+                                                        serverKey.data.value.SpawnX?.type === "int" &&
+                                                        serverKey.data.value.SpawnX.value === 0 &&
+                                                        serverKey.data.value.SpawnY?.type === "int" &&
+                                                        serverKey.data.value.SpawnY.value === -1 &&
+                                                        serverKey.data.value.SpawnZ?.type === "int" &&
+                                                        serverKey.data.value.SpawnZ.value === 0
+                                                    ) ?
+                                                        "Not Set"
+                                                    :   `${serverKey.data.value.SpawnX?.type === "int" ? serverKey.data.value.SpawnX.value.toFixed(0) : "!!"},${
+                                                            serverKey.data.value.SpawnY?.type === "int" ? serverKey.data.value.SpawnY.value.toFixed(0) : "!!"
+                                                        },${
+                                                            serverKey.data.value.SpawnZ?.type === "int" ? serverKey.data.value.SpawnZ.value.toFixed(0) : "!!"
+                                                        } overworld`
+
+                                                :   <span style="color: red;">null</span>}
+                                            </td>
+                                        );
+                                    }
                                     return (
                                         <td>
-                                            {serverKey.data.parsed.value.SpawnX?.type === "int" ?
-                                                serverKey.data.parsed.value.SpawnX?.value === -2147483648 ?
+                                            {(
+                                                serverKey.data.parsed.value.SpawnX?.type === "int" ||
+                                                serverKey.data.parsed.value.SpawnY?.type === "int" ||
+                                                serverKey.data.parsed.value.SpawnZ?.type === "int"
+                                            ) ?
+                                                (
+                                                    [
+                                                        serverKey.data.parsed.value.SpawnX,
+                                                        serverKey.data.parsed.value.SpawnY,
+                                                        serverKey.data.parsed.value.SpawnZ,
+                                                    ].every(
+                                                        (v: NBT.Tags[NBT.TagType] | undefined): v is { type: "int"; value: -2147483648 } | undefined =>
+                                                            !v || (v.type === "int" && v.value === -2147483648)
+                                                    ) ||
+                                                    (serverKey.data.parsed.value.SpawnX?.type === "int" &&
+                                                        serverKey.data.parsed.value.SpawnX.value === 0 &&
+                                                        serverKey.data.parsed.value.SpawnY?.type === "int" &&
+                                                        serverKey.data.parsed.value.SpawnY.value === -1 &&
+                                                        serverKey.data.parsed.value.SpawnZ?.type === "int" &&
+                                                        serverKey.data.parsed.value.SpawnZ.value === 0)
+                                                ) ?
                                                     "Not Set"
-                                                :   `${serverKey.data.parsed.value.SpawnX.value.toFixed(0)},${(
-                                                        serverKey.data.parsed.value.SpawnY?.value as number
-                                                    ).toFixed(0)},${(serverKey.data.parsed.value.SpawnZ?.value as number).toFixed(0)} ${
+                                                :   `${
+                                                        serverKey.data.parsed.value.SpawnX?.type === "int" ?
+                                                            serverKey.data.parsed.value.SpawnX.value.toFixed(0)
+                                                        :   "!!"
+                                                    },${
+                                                        serverKey.data.parsed.value.SpawnY?.type === "int" ?
+                                                            serverKey.data.parsed.value.SpawnY.value.toFixed(0)
+                                                        :   "!!"
+                                                    },${
+                                                        serverKey.data.parsed.value.SpawnZ?.type === "int" ?
+                                                            serverKey.data.parsed.value.SpawnZ.value.toFixed(0)
+                                                        :   "!!"
+                                                    } ${
                                                         serverKey.data.parsed.value.SpawnDimension?.type === "int" ?
                                                             serverKey.data.parsed.value.SpawnDimension.value
-                                                        :   "?"
+                                                        : serverKey.data.parsed.value.SpawnDimension ? "?"
+                                                        : "overworld"
                                                     }`
 
                                             :   <span style="color: red;">null</span>}
@@ -2409,6 +3189,17 @@ async function getPlayersTabContentsRows(data: {
                                         return (
                                             <td>
                                                 <span style="color: red;">N/A</span>
+                                            </td>
+                                        );
+                                    }
+                                    if (
+                                        serverKey.type === "PlayerDatKeyData" ||
+                                        serverKey.type === "LANPlayerDatKeyData" ||
+                                        serverKey.type === "LevelDatPlayerKeyData"
+                                    ) {
+                                        return (
+                                            <td>
+                                                <span style="color: red;">null</span>
                                             </td>
                                         );
                                     }
@@ -2432,6 +3223,17 @@ async function getPlayersTabContentsRows(data: {
                                         return (
                                             <td>
                                                 <span style="color: red;">N/A</span>
+                                            </td>
+                                        );
+                                    }
+                                    if (
+                                        serverKey.type === "PlayerDatKeyData" ||
+                                        serverKey.type === "LANPlayerDatKeyData" ||
+                                        serverKey.type === "LevelDatPlayerKeyData"
+                                    ) {
+                                        return (
+                                            <td>
+                                                <span style="color: red;">null</span>
                                             </td>
                                         );
                                     }
@@ -2460,7 +3262,24 @@ async function getPlayersTabContentsRows(data: {
                                             </td>
                                         );
                                     }
-                                    return <td>{serverKey.data.parsed.value.playerPermissionsLevel?.value ?? <span style="color: red;">null</span>}</td>;
+                                    if (
+                                        serverKey.type === "PlayerDatKeyData" ||
+                                        serverKey.type === "LANPlayerDatKeyData" ||
+                                        serverKey.type === "LevelDatPlayerKeyData"
+                                    ) {
+                                        return (
+                                            <td>
+                                                <span style="color: red;">null</span>
+                                            </td>
+                                        );
+                                    }
+                                    return (
+                                        <td>
+                                            {serverKey.data.parsed.value.playerPermissionsLevel?.value ??
+                                                (serverKey.data.parsed.value.abilities?.value as NBT.Compound["value"] | undefined)?.permissionsLevel
+                                                    ?.value ?? <span style="color: red;">null</span>}
+                                        </td>
+                                    );
                                 case "raw_permissionsLevel":
                                     if (serverKey.data === undefined) {
                                         return (
@@ -2473,6 +3292,17 @@ async function getPlayersTabContentsRows(data: {
                                         return (
                                             <td>
                                                 <span style="color: red;">N/A</span>
+                                            </td>
+                                        );
+                                    }
+                                    if (
+                                        serverKey.type === "PlayerDatKeyData" ||
+                                        serverKey.type === "LANPlayerDatKeyData" ||
+                                        serverKey.type === "LevelDatPlayerKeyData"
+                                    ) {
+                                        return (
+                                            <td>
+                                                <span style="color: red;">null</span>
                                             </td>
                                         );
                                     }

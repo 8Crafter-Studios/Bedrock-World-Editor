@@ -70,52 +70,69 @@ export function SelectOpenTabDialog(props: SelectOpenTabDialogProps): JSX.Elemen
             // TODO: Add an error handler to this function.
             if (!containerRef.current || !windowListRef.current) return;
             const openWindows: Electron.BrowserWindow[] = BrowserWindow.getAllWindows();
-            const includedOpenWindows: Electron.BrowserWindow[] = (
-                await Promise.all(
-                    openWindows.map(
-                        async (targetWindow: Electron.BrowserWindow): Promise<boolean> =>
-                            (await targetWindow.webContents.executeJavaScript(`typeof tabManager !== "undefined" && tabManager.openTabs.length > 0`)) as boolean
-                    )
+            /**
+             * The state of the tabs of an open window.
+             *
+             * - `0` - No tab manager.
+             * - `1` - Tab manager with no open tabs.
+             * - `2` - Tab manager with open tabs.
+             */
+            type OpenWindowTabState = 0 | 1 | 2;
+            const openWindowTabStates: OpenWindowTabState[] = await Promise.all(
+                openWindows.map(
+                    async (targetWindow: Electron.BrowserWindow): Promise<OpenWindowTabState> =>
+                        (await targetWindow.webContents.executeJavaScript(
+                            `typeof tabManager !== "undefined" ? tabManager.openTabs.length > 0 ? 2 : 1 : 0`
+                        )) as OpenWindowTabState
                 )
-            )
-                .map((result: boolean, index: number): Electron.BrowserWindow | undefined => (result ? openWindows[index] : undefined))
+            );
+            const openWindowsWithTabManager: Electron.BrowserWindow[] = openWindowTabStates
+                .map((result: OpenWindowTabState, index: number): Electron.BrowserWindow | undefined => (result >= 1 ? openWindows[index] : undefined))
+                .filter((targetWindow: Electron.BrowserWindow | undefined): targetWindow is Electron.BrowserWindow => targetWindow !== undefined);
+            const includedOpenWindows: Electron.BrowserWindow[] = openWindowTabStates
+                .map((result: OpenWindowTabState, index: number): Electron.BrowserWindow | undefined => (result >= 2 ? openWindows[index] : undefined))
                 .filter((targetWindow: Electron.BrowserWindow | undefined): targetWindow is Electron.BrowserWindow => targetWindow !== undefined);
             if (!containerRef.current || !windowListRef.current) return;
-            const includedTabs: { windowID: number; tabID: bigint; name: string }[][] = (
+            interface OpenTabDetails {
+                windowID: number;
+                windowDisplayNumber: number;
+                tabID: bigint;
+                name: string;
+            }
+            const includedTabs: OpenTabDetails[][] = (
                 await Promise.all(
                     includedOpenWindows.map(
-                        async (targetWindow: Electron.BrowserWindow): Promise<{ windowID: number; tabID: bigint; name: string }[]> =>
+                        async (targetWindow: Electron.BrowserWindow): Promise<OpenTabDetails[]> =>
                             (await targetWindow.webContents.executeJavaScript(
                                 `tabManager.openTabs${
                                     props.tabTargetTypeFilter ? `.filter((tab) => ${JSON.stringify(props.tabTargetTypeFilter)}.includes(tab.type))` : ""
-                                }.map((tab) => ({ windowID: ${targetWindow.id}, tabID: tab.id, name: tab.name }))`
-                            )) as { windowID: number; tabID: bigint; name: string }[]
+                                }.map((tab) => ({ windowID: ${targetWindow.id}, windowDisplayNumber: ${openWindowsWithTabManager.indexOf(targetWindow) + 1} tabID: tab.id, name: tab.name }))`
+                            )) as OpenTabDetails[]
                     )
                 )
             )
-                .map((tabList: { windowID: number; tabID: bigint; name: string }[]): { windowID: number; tabID: bigint; name: string }[] =>
+                .map((tabList: OpenTabDetails[]): OpenTabDetails[] =>
                     tabList.filter(
-                        (tab: { windowID: number; tabID: bigint; name: string }): boolean =>
+                        (tab: OpenTabDetails): boolean =>
                             !props.excludedTabs.some(
                                 (excludedTab: { windowID: number; tabID: bigint }): boolean =>
                                     excludedTab.windowID === tab.windowID && excludedTab.tabID === tab.tabID
                             )
                     )
                 )
-                .filter((tabList: { windowID: number; tabID: bigint; name: string }[]): boolean => tabList.length > 0)
-                .sort(
-                    (a: { windowID: number; tabID: bigint; name: string }[], b: { windowID: number; tabID: bigint; name: string }[]): number =>
-                        a[0]!.windowID - b[0]!.windowID
-                );
+                .filter((tabList: OpenTabDetails[]): boolean => tabList.length > 0)
+                .sort((a: OpenTabDetails[], b: OpenTabDetails[]): number => a[0]!.windowID - b[0]!.windowID);
             if (!containerRef.current || !windowListRef.current) return;
             render(
                 includedTabs.map(
-                    (tabList: { windowID: number; tabID: bigint; name: string }[]): JSX.SpecificElement<"div"> => (
+                    (tabList: OpenTabDetails[]): JSX.SpecificElement<"div"> => (
                         <div class="selectOpenTabDialogWindowListItem">
-                            <div class="selectOpenTabDialogWindowListItemWindowName">Window {tabList[0]!.windowID}</div>
+                            <div class="selectOpenTabDialogWindowListItemWindowName">
+                                Window {tabList[0]!.windowDisplayNumber} ({tabList[0]!.windowID})
+                            </div>
                             <div class="selectOpenTabDialogWindowListItemTabList">
                                 {tabList.map(
-                                    (tab: { windowID: number; tabID: bigint; name: string }): JSX.SpecificElement<"div"> => (
+                                    (tab: OpenTabDetails): JSX.SpecificElement<"div"> => (
                                         <div class="selectOpenTabDialogWindowListItemTabListItem">
                                             <button
                                                 type="button"

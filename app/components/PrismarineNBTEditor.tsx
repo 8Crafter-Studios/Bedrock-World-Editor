@@ -1,5 +1,5 @@
 import { Editor, type Monaco } from "@monaco-editor/react";
-import { prismarineToSNBT, type DBEntryContentType } from "mcbe-leveldb";
+import { prismarineToSNBT, type MCEntryContentType } from "mcbe-leveldb";
 import * as monaco from "monaco-editor";
 import type { JSX } from "preact";
 import { LoadingScreenContents } from "../app";
@@ -15,7 +15,7 @@ export interface PrismarineNBTEditorProps {
      */
     tab?: TabManagerSubTab | undefined;
     dataStorageObject: GenericDataStorageObject;
-    contentType?: DBEntryContentType;
+    contentType?: MCEntryContentType;
     /**
      * A callback function that is called when a value is changed in the editor.
      *
@@ -65,6 +65,7 @@ export interface PrismarineNBTEditorProps {
  */
 export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JSX.Element {
     if (props.dataStorageObject?.dataType === "JSON") return <p style="color: red;">JSON is not supported.</p>;
+    if (props.dataStorageObject?.dataType === "JSONC") return <p style="color: red;">JSONC is not supported.</p>;
     const editorRef = useRef<typeof Editor>(null);
     let currentEditor: monaco.editor.IStandaloneCodeEditor | undefined;
     function handleEditorDidMount(editor: monaco.editor.IStandaloneCodeEditor, monaco: Monaco): void {
@@ -175,7 +176,14 @@ export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JS
         }
     }
     let dataLoaded: boolean = props.dataStorageObject?.data !== undefined;
-    const editorParams = new URLSearchParams({ contentType: props.contentType ?? "Unknown" });
+    const editorParams = new URLSearchParams({
+        contentType:
+            (props.contentType ?? "Unknown") === "Unknown" ?
+                props.tab?.target.type === "ChunksDatEntry" ?
+                    "ChunksDatEntry"
+                :   "Unknown"
+            :   props.contentType!,
+    });
     let startingEditorValue: string | undefined =
         dataLoaded ?
             JSON.stringify(
@@ -220,11 +228,29 @@ export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JS
                 props.path ?
                     (props.path.includes("/ContentType:") ? props.path
                     : props.path.includes("?") ?
-                        `${props.path.split("?")[0]}/ContentType:${props.contentType ?? "Unknown"}${props.path.split("?").slice(1).join("")}`
-                    :   `${props.path}/ContentType:${props.contentType ?? "Unknown"}`) +
+                        `${props.path.split("?")[0]}/ContentType:${
+                            (props.contentType ?? "Unknown") === "Unknown" ?
+                                props.tab?.target.type === "ChunksDatEntry" ?
+                                    "ChunksDatEntry"
+                                :   "Unknown"
+                            :   props.contentType!
+                        }${props.path.split("?").slice(1).join("")}`
+                    :   `${props.path}/ContentType:${
+                            (props.contentType ?? "Unknown") === "Unknown" ?
+                                props.tab?.target.type === "ChunksDatEntry" ?
+                                    "ChunksDatEntry"
+                                :   "Unknown"
+                            :   props.contentType!
+                        }`) +
                     (props.path.includes("?") ? "&?" : "?") +
                     editorParams.toString()
-                :   `unlinked-editor://${Date.now()}/ContentType:${props.contentType ?? "Unknown"}?${editorParams.toString()}`
+                :   `unlinked-editor://${Date.now()}/ContentType:${
+                        (props.contentType ?? "Unknown") === "Unknown" ?
+                            props.tab?.target.type === "ChunksDatEntry" ?
+                                "ChunksDatEntry"
+                            :   "Unknown"
+                        :   props.contentType!
+                    }?${editorParams.toString()}`
             }
             ref={editorRef}
         />

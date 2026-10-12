@@ -3,12 +3,11 @@ import _React, { render, useEffect, useRef, useState } from "preact/compat";
 import { checkIsURIOrPath } from "../../src/utils/pathUtils";
 const mime = require("mime-types") as typeof import("mime-types");
 import { existsSync, globSync, readFileSync } from "node:fs";
-import type { NBTSchemas, Vector2 } from "mcbe-leveldb";
+import { entryContentTypeToFormatMap, type Vector2 } from "mcbe-leveldb";
 import { dialog, shell } from "@electron/remote";
 import type { MessageBoxReturnValue, OpenDialogReturnValue } from "electron";
 import { ControlledMenu, MenuDivider, MenuItem, type ClickEvent } from "@szhsin/react-menu";
 import path from "node:path";
-import * as NBT from "prismarine-nbt";
 import { setMobileLeftSidebarVisibility } from "./LeftSidebar";
 
 export default function TabBar(): JSX.Element {
@@ -88,16 +87,16 @@ export default function TabBar(): JSX.Element {
                             name:
                                 (await (async (): Promise<string | undefined> => {
                                     try {
-                                        return (
-                                            (await NBT.parse(readFileSync(path.join(folderPath, "level.dat")))).parsed as NBTSchemas.NBTSchemaTypes.LevelDat
-                                        ).value.LevelName?.value;
+                                        return (await entryContentTypeToFormatMap.LevelDat.parse(readFileSync(path.join(folderPath, "level.dat")))).value
+                                            .LevelName?.value;
                                     } catch (e) {
                                         console.error("Error while reading level.dat:", e, "folderPath:", folderPath);
                                         try {
-                                            return (
-                                                (await NBT.parse(readFileSync(path.join(folderPath, "level.dat_old"))))
-                                                    .parsed as NBTSchemas.NBTSchemaTypes.LevelDat
-                                            ).value.LevelName?.value;
+                                            if (existsSync(path.join(folderPath, "level.dat_old"))) {
+                                                return (await entryContentTypeToFormatMap.LevelDat.parse(readFileSync(path.join(folderPath, "level.dat_old"))))
+                                                    .value.LevelName?.value;
+                                            }
+                                            console.warn("Unable to load details for world; level.dat_old not found. folderPath:", folderPath);
                                         } catch (e) {
                                             console.error("Error while reading level.dat_old:", e, "folderPath:", folderPath);
                                         }
@@ -168,7 +167,7 @@ export default function TabBar(): JSX.Element {
             },
             // IDEA: Add support for editing `.mcworld` and `.mctemplate` files, and maybe even selecting a `.mcaddon` file that contains worlds to open all of those worlds at once.
             {
-                icon: "resource://images/ui/glyphs/NBT.png",
+                icon: "resource://images/ui/glyphs/icon_NBT.png",
                 name: "NBT File",
                 resolution: 12,
                 async onClick(_event: TargetedMouseEvent<HTMLDivElement>): Promise<void> {
@@ -261,6 +260,9 @@ export default function TabBar(): JSX.Element {
     }
     function Tab(props: TabProps): JSX.SpecificElement<"li"> {
         const containerRef: RefObject<HTMLLIElement> = useRef(null);
+        const fragileLevelDBIconRef: RefObject<HTMLImageElement> = useRef(null);
+        const possiblyFragileLevelDBIconRef: RefObject<HTMLImageElement> = useRef(null);
+        const shatteredLevelDBIconRef: RefObject<HTMLImageElement> = useRef(null);
         const unsavedBulletPointRef: RefObject<HTMLDivElement> = useRef(null);
         let dragging: boolean = false;
         let draggingInitiated: boolean = false;
@@ -383,12 +385,39 @@ export default function TabBar(): JSX.Element {
                 unsavedBulletPointRef.current.style.display = event.isModified ? "" : "none";
             }
         }
-        useEffect((): (() => void) => {
-            props.tab.on("modificationStatusChanged", onModificationStatusChanged);
-            return (): void => {
-                props.tab.off("modificationStatusChanged", onModificationStatusChanged);
-            };
-        });
+        function onOtherStatusChanged(event: TabManagerTabOtherStatusChangedEvent): void {
+            if (event.tab === props.tab) {
+                if (event.status === "hasFragileLevelDB" || event.status === "fragileLevelDBAlreadyShattered") {
+                    if (fragileLevelDBIconRef.current) {
+                        fragileLevelDBIconRef.current.style.display =
+                            !event.tab.fragileLevelDBAlreadyShattered && event.tab.hasFragileLevelDB === true ? "" : "none";
+                    }
+                    if (possiblyFragileLevelDBIconRef.current) {
+                        possiblyFragileLevelDBIconRef.current.style.display =
+                            !event.tab.fragileLevelDBAlreadyShattered && event.tab.hasFragileLevelDB === "possible" ? "" : "none";
+                    }
+                    if (shatteredLevelDBIconRef.current) {
+                        shatteredLevelDBIconRef.current.style.display = event.tab.fragileLevelDBAlreadyShattered ? "" : "none";
+                    }
+                }
+            }
+        }
+        {
+            const originalFragilityState: TabManagerTabOtherStatusChangedEvent["tab"]["hasFragileLevelDB"] = props.tab.hasFragileLevelDB;
+            const originalShatteredState: boolean = props.tab.fragileLevelDBAlreadyShattered;
+            useEffect((): (() => void) => {
+                if (originalFragilityState !== props.tab.hasFragileLevelDB) onOtherStatusChanged({ tab: props.tab, status: "hasFragileLevelDB" });
+                else if (originalShatteredState !== props.tab.fragileLevelDBAlreadyShattered) {
+                    onOtherStatusChanged({ tab: props.tab, status: "fragileLevelDBAlreadyShattered" });
+                }
+                props.tab.on("modificationStatusChanged", onModificationStatusChanged);
+                props.tab.on("otherStatusChanged", onOtherStatusChanged);
+                return (): void => {
+                    props.tab.off("modificationStatusChanged", onModificationStatusChanged);
+                    props.tab.off("otherStatusChanged", onOtherStatusChanged);
+                };
+            });
+        }
         const [tabContextMenu_isOpen, tabContextMenu_setOpen] = useState(false);
         const [tabContextMenu_anchorPoint, tabContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
         function onTabRightClick(event: JSX.TargetedMouseEvent<HTMLLIElement>): void {
@@ -472,7 +501,6 @@ export default function TabBar(): JSX.Element {
                                 });
                                 if (result.response === 1) return;
                             }
-                            // TODO: Add a proper reload feature where it keeps the tab open but just reloads the data.
                             const data: Parameters<typeof tabManager.openTab>[0] = {
                                 icon: props.tab.icon,
                                 name: props.tab.name,
@@ -480,6 +508,24 @@ export default function TabBar(): JSX.Element {
                                 type: props.tab.type,
                                 mode: props.tab.mode,
                                 isNonIsolatedWorld: props.tab.isNonIsolatedWorld,
+                                fragileLevelDBAlreadyShattered: props.tab.fragileLevelDBAlreadyShattered,
+                                subTabs: props.tab.openTabs.map((tab): NonNullable<Parameters<typeof tabManager.openTab>[0]["subTabs"]>[number] => [
+                                    {
+                                        contentType: tab.contentType,
+                                        name: tab.name,
+                                        target: tab.target,
+                                        formatData: tab.formatData,
+                                        icon: tab.icon,
+                                        isPinned: tab.isPinned,
+                                        readonly: tab.readonly,
+                                        specialTabID: tab.specialTabID,
+                                    },
+                                    props.tab.selectedTab === tab,
+                                ]),
+                                switchToTab:
+                                    !props.tab.openTabs.includes(props.tab.selectedTab as never) && !(props.tab.selectedTab instanceof TabManagerTab) ?
+                                        props.tab.selectedTab
+                                    :   undefined,
                             };
                             const tabIndex: number = props.tab.index;
                             await props.tab.close();
@@ -638,9 +684,46 @@ export default function TabBar(): JSX.Element {
                         <img
                             title="Read-only"
                             src="resource://images/ui/glyphs/Lock-Locked.png"
-                            style="margin-left: 0.5em; width: 18px; height: 18px; vertical-align: middle;"
+                            style="margin-left: 0.5em; margin-top -1px; margin-bottom: -1px; width: 18px; height: 18px; vertical-align: middle;"
                         />
                     )}
+                    <img
+                        title="Fragile LevelDB"
+                        src="resource://images/ui/glyphs/glass_old.png"
+                        style={{
+                            display: !props.tab.fragileLevelDBAlreadyShattered && props.tab.hasFragileLevelDB === true ? undefined : "none",
+                            marginLeft: "0.5em",
+                            width: "16px",
+                            height: "16px",
+                            verticalAlign: "middle",
+                        }}
+                        ref={fragileLevelDBIconRef}
+                    />
+                    {/* IDEA: Maybe make this show up for when the fragility is `"unknown"` too, or add a separate warning element for that. */}
+                    <img
+                        title="Possibly Fragile LevelDB"
+                        src="resource://images/ui/glyphs/glass.png"
+                        style={{
+                            display: !props.tab.fragileLevelDBAlreadyShattered && props.tab.hasFragileLevelDB === "possible" ? undefined : "none",
+                            marginLeft: "0.5em",
+                            width: "16px",
+                            height: "16px",
+                            verticalAlign: "middle",
+                        }}
+                        ref={possiblyFragileLevelDBIconRef}
+                    />
+                    <img
+                        title="Shattered LevelDB"
+                        src="resource://images/ui/glyphs/glass_JE2.png"
+                        style={{
+                            display: props.tab.fragileLevelDBAlreadyShattered ? undefined : "none",
+                            marginLeft: "0.5em",
+                            width: "16px",
+                            height: "16px",
+                            verticalAlign: "middle",
+                        }}
+                        ref={shatteredLevelDBIconRef}
+                    />
                     <div
                         title="Modified"
                         style={{
@@ -716,9 +799,10 @@ export default function TabBar(): JSX.Element {
                 <li style="float: right;" data-immovable>
                     <a
                         style="padding: 10px;"
-                        onClick={(): void => {
+                        onClick={(event: TargetedMouseEvent<HTMLAnchorElement>): void => {
                             $("#add-tab-popup-menu").css("left", window.innerWidth - 200);
-                            $("#add-tab-popup-menu").css("top", 44);
+                            const boundingClientRect: DOMRect = event.currentTarget.getBoundingClientRect();
+                            $("#add-tab-popup-menu").css("top", boundingClientRect.top + boundingClientRect.height);
                             $("#add-tab-popup-menu").toggle();
                         }}
                     >

@@ -355,8 +355,13 @@ async function getPacksData(
         if (!tab.isNonIsolatedWorld) break loadLocalResourcePacksFolderPacks;
         let localResourcePacksFolderPath: string = path.join(tab.path, "../../", "resource_packs");
         if (!existsSync(localResourcePacksFolderPath)) {
-            try {
-                const d2: string = path.dirname(path.dirname(tab.path));
+            realPathFinder: try {
+                const d1: string = path.dirname(tab.path);
+                const d2: string = path.dirname(d1);
+                if (path.basename(d2) === "MinecraftPE_Netease" && path.basename(d1) === "minecraftWorlds") {
+                    localResourcePacksFolderPath = path.join(d2, "games/com.netease/resource_packs");
+                    if (existsSync(localResourcePacksFolderPath)) break realPathFinder;
+                }
                 if (path.basename(d2) !== "com.mojang") break loadLocalResourcePacksFolderPacks;
                 const d3: string = path.dirname(d2);
                 if (path.basename(d3) !== "games") break loadLocalResourcePacksFolderPacks;
@@ -436,8 +441,13 @@ async function getPacksData(
         if (!tab.isNonIsolatedWorld) break loadLocalBehaviorPacksFolderPacks;
         let localBehaviorPacksFolderPath: string = path.join(tab.path, "../../", "behavior_packs");
         if (!existsSync(localBehaviorPacksFolderPath)) {
-            try {
-                const d2: string = path.dirname(path.dirname(tab.path));
+            realPathFinder: try {
+                const d1: string = path.dirname(tab.path);
+                const d2: string = path.dirname(d1);
+                if (path.basename(d2) === "MinecraftPE_Netease" && path.basename(d1) === "minecraftWorlds") {
+                    localBehaviorPacksFolderPath = path.join(d2, "games/com.netease/behavior_packs");
+                    if (existsSync(localBehaviorPacksFolderPath)) break realPathFinder;
+                }
                 if (path.basename(d2) !== "com.mojang") break loadLocalBehaviorPacksFolderPacks;
                 const d3: string = path.dirname(d2);
                 if (path.basename(d3) !== "games") break loadLocalBehaviorPacksFolderPacks;
@@ -518,8 +528,13 @@ async function getPacksData(
         if (!tab.isNonIsolatedWorld) break loadDevelopmentResourcePacksFolderPacks;
         let developmentResourcePacksFolderPath: string = path.join(tab.path, "../../", "development_resource_packs");
         if (!existsSync(developmentResourcePacksFolderPath)) {
-            try {
-                const d2: string = path.dirname(path.dirname(tab.path));
+            realPathFinder: try {
+                const d1: string = path.dirname(tab.path);
+                const d2: string = path.dirname(d1);
+                if (path.basename(d2) === "MinecraftPE_Netease" && path.basename(d1) === "minecraftWorlds") {
+                    developmentResourcePacksFolderPath = path.join(d2, "games/com.netease/development_resource_packs");
+                    if (existsSync(developmentResourcePacksFolderPath)) break realPathFinder;
+                }
                 if (path.basename(d2) !== "com.mojang") break loadDevelopmentResourcePacksFolderPacks;
                 const d3: string = path.dirname(d2);
                 if (path.basename(d3) !== "games") break loadDevelopmentResourcePacksFolderPacks;
@@ -604,8 +619,13 @@ async function getPacksData(
         if (!tab.isNonIsolatedWorld) break loadDevelopmentBehaviorPacksFolderPacks;
         let developmentBehaviorPacksFolderPath: string = path.join(tab.path, "../../", "development_behavior_packs");
         if (!existsSync(developmentBehaviorPacksFolderPath)) {
-            try {
-                const d2: string = path.dirname(path.dirname(tab.path));
+            realPathFinder: try {
+                const d1: string = path.dirname(tab.path);
+                const d2: string = path.dirname(d1);
+                if (path.basename(d2) === "MinecraftPE_Netease" && path.basename(d1) === "minecraftWorlds") {
+                    developmentBehaviorPacksFolderPath = path.join(d2, "games/com.netease/development_behavior_packs");
+                    if (existsSync(developmentBehaviorPacksFolderPath)) break realPathFinder;
+                }
                 if (path.basename(d2) !== "com.mojang") break loadDevelopmentBehaviorPacksFolderPacks;
                 const d3: string = path.dirname(d2);
                 if (path.basename(d3) !== "games") break loadDevelopmentBehaviorPacksFolderPacks;

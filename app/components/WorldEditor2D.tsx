@@ -5,8 +5,9 @@ import { ControlledMenu, MenuDivider, MenuHeader, MenuItem, SubMenu } from "@szh
 import type { MessageBoxReturnValue } from "electron";
 import {
     BiomeData,
-    DBChunkLinkedContentTypes,
+    MCDBChunkLinkedContentTypes,
     dimensions,
+    dimensionsMCCE,
     dimensionVectorDimensionToInt,
     entryContentTypeToFormatMap,
     generateChunkKeyFromIndices,
@@ -16,18 +17,21 @@ import {
     getKeyDisplayName,
     intToDimensionVectorDimension,
     offsetToChunkBlockIndex,
-    type DBChunkLinkedContentType,
+    type MCDBChunkLinkedContentType,
     type Dimension,
     type DimensionLocation,
+    type DimensionMCCE,
     type DimensionVectorXZ,
     type NBTSchemas,
     type Vector2,
     type Vector3,
     type VectorXZ,
+    offsetToChunkBlock128Index,
+    toLong,
 } from "mcbe-leveldb";
 import mergeRefs from "merge-refs";
 import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import { useEffect, useRef, useState } from "preact/compat";
@@ -452,6 +456,7 @@ function getBiomeNamespacedIdFromNumericId(id: number, customBiomeIdMapping?: NB
  * @param additionalInfo Additional information about the chunk.
  * @returns The height range, or `null` if the height range could not be found.
  */
+// FIXME: In really old worlds this doesn't seem to treat it as such via LegacyVersion entries.
 async function getHeightRangeForChunk(
     db: LevelDB,
     chunk: DimensionVectorXZ,
@@ -467,7 +472,7 @@ async function getHeightRangeForChunk(
         | {
               type: "Data2D";
               dimension?: Dimension | number | undefined;
-              legacyVersion?: never; // In case this is ever needed.s
+              legacyVersion?: never; // In case this is ever needed.
               version?: number | undefined;
               isOldWorldType?: boolean | undefined;
           }
@@ -823,15 +828,22 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     // }
 
     let levelDatLoaded: boolean | "loading" | "error" | "no_data" = false;
+    let levelDatStorageVersion: number | null | undefined;
     let isOldWorld: boolean | null | undefined;
     let worldSpawn: DimensionLocation | null | undefined;
     let worldBorder: { from: VectorXZ; to: VectorXZ } | null | undefined;
     let netherScale: number | null | undefined;
+    let legacySeed: number | null | undefined; // DEBUG
+    let randomSeed: bigint | null | undefined; // DEBUG
+    let chunksDat: NBTSchemas.NBTSchemaTypes.ChunksDat | "loading" | "error" | "no_data" | false | undefined;
     function unloadLevelDatData(): void {
         levelDatLoaded = false;
+        levelDatStorageVersion = undefined;
         isOldWorld = undefined;
         worldSpawn = undefined;
         worldBorder = undefined;
+        legacySeed = undefined; // DEBUG
+        randomSeed = undefined; // DEBUG
         netherScale = undefined;
     }
     async function loadNeededDataFromLevelDat(): Promise<void> {
@@ -843,6 +855,8 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 worldSpawn = null;
                 worldBorder = null;
                 netherScale = null;
+                legacySeed = null; // DEBUG
+                randomSeed = null; // DEBUG
                 return;
             }
             if (props.tab.type !== "world") return;
@@ -868,6 +882,12 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                     return;
                 }
             }
+            if (levelDat.value.StorageVersion) levelDatStorageVersion = levelDat.value.StorageVersion.value;
+            else levelDatStorageVersion = null;
+            if (levelDat.value.LegacySeed) legacySeed = levelDat.value.LegacySeed.value;
+            else legacySeed = null;
+            if (levelDat.value.RandomSeed) randomSeed = toLong(levelDat.value.RandomSeed.value);
+            else randomSeed = null;
             if (levelDat.value.Generator) isOldWorld = levelDat.value.Generator.value === 0;
             else isOldWorld = null;
             if (levelDat.value.SpawnX && levelDat.value.SpawnY && levelDat.value.SpawnZ) {
@@ -928,7 +948,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             if (levelDatLoaded === "loading") levelDatLoaded = "error";
         }
     }
-    function onLevelDatDataChanged(): void {
+    function drawWorldBorder(): void {
         if (!engineRef.current?.isReady) return;
         engineRef.current.clearLayer(51);
         if (worldBorder) {
@@ -942,6 +962,55 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 },
                 2
             );
+        }
+    }
+    function onLevelDatDataChanged(): void {
+        if (!engineRef.current?.isReady) return;
+        drawWorldBorder();
+        // For versions prior to Pocket Edition v0.9.0 Alpha.
+        if ((levelDatStorageVersion ?? NaN) <= 3 || existsSync(path.join(props.tab.tempPath ?? props.tab.path, "importedchunks.dat"))) {
+            if (chunksDat !== "loading") {
+                chunksDat = "loading";
+                void loadChunksDat();
+            }
+        } else chunksDat = false;
+    }
+    async function loadChunksDat(): Promise<void> {
+        chunksDat = "loading";
+        try {
+            const filePath: string = path.join(props.tab.tempPath ?? props.tab.path, "chunks.dat");
+            if (!existsSync(filePath)) {
+                chunksDat = "no_data";
+                return;
+            }
+            chunksDat = entryContentTypeToFormatMap.ChunksDat.parse(await readFile(filePath));
+            if (worldBorder === null && (levelDatStorageVersion ?? NaN) <= 3) {
+                const range = {
+                    from: { x: Infinity, z: Infinity },
+                    to: { x: -Infinity, z: -Infinity },
+                };
+                for (let x = 0; x < chunksDat.value.chunks.value.value.length; x++) {
+                    const column = chunksDat.value.chunks.value.value[x];
+                    if (!column) continue;
+                    for (let z = 0; z < column.value.length; z++) {
+                        if (column.value[z]?.update_map.value.value.length !== 256) continue;
+                        if (x < range.from.x) range.from.x = x;
+                        if (x > range.to.x) range.to.x = x;
+                        if (z < range.from.z) range.from.z = z;
+                        if (z > range.to.z) range.to.z = z;
+                    }
+                }
+                if ([range.from.x, range.from.z, range.to.x, range.to.z].every(Number.isFinite)) {
+                    worldBorder = {
+                        from: { x: range.from.x * 16, z: range.from.z * 16 },
+                        to: { x: (range.to.x + 1) * 16 - 1, z: (range.to.z + 1) * 16 - 1 },
+                    };
+                    drawWorldBorder();
+                }
+            }
+        } catch (e) {
+            console.error("Error while loading chunks.dat:", e);
+            if (chunksDat === "loading") chunksDat = "error";
         }
     }
     void loadNeededDataFromLevelDat();
@@ -1227,11 +1296,17 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 class="image-only-button"
                                 onClick={async (event: TargetedMouseEvent<HTMLButtonElement>): Promise<void> => {
                                     if (!containerRef.current) return;
-                                    if (!props.tab.cachedDBKeys) return;
+                                    if (
+                                        !props.tab.cachedDBKeys &&
+                                        (typeof chunksDat !== "object" || ![0, "overworld"].includes(props.dataStorageObject.worldEditor2D.dimension))
+                                    ) {
+                                        return;
+                                    }
                                     // IDEA: Add a progress bar to the button, or maybe somewhere else.
                                     // IDEA: Add an option to make it so that the button isn't disabled while the chunks are being deleted.
                                     const elem: HTMLButtonElement = event.currentTarget;
                                     elem.disabled = true;
+                                    let totalChunksDatEntriesDeleted = 0;
                                     try {
                                         const t1: number = performance.now();
                                         const chunksInDimension = new Set<`${number},${number}`>();
@@ -1239,17 +1314,27 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                             typeof props.dataStorageObject.worldEditor2D.dimension === "number" ?
                                                 intToDimensionVectorDimension(props.dataStorageObject.worldEditor2D.dimension)
                                             :   props.dataStorageObject.worldEditor2D.dimension;
-                                        for (const key of props.tab.cachedDBKeys.Version) {
-                                            try {
-                                                const { dimension, x, z } = getChunkKeyIndices(key);
-                                                if (dimension === currentDimension) chunksInDimension.add(`${x},${z}`);
-                                            } catch {}
+                                        if (props.tab.cachedDBKeys) {
+                                            for (const key of props.tab.cachedDBKeys.Version) {
+                                                try {
+                                                    const { dimension, x, z } = getChunkKeyIndices(key);
+                                                    if (dimension === currentDimension) chunksInDimension.add(`${x},${z}`);
+                                                } catch {}
+                                            }
+                                            for (const key of props.tab.cachedDBKeys.LegacyVersion) {
+                                                try {
+                                                    const { dimension, x, z } = getChunkKeyIndices(key);
+                                                    if (dimension === currentDimension) chunksInDimension.add(`${x},${z}`);
+                                                } catch {}
+                                            }
                                         }
-                                        for (const key of props.tab.cachedDBKeys.LegacyVersion) {
-                                            try {
-                                                const { dimension, x, z } = getChunkKeyIndices(key);
-                                                if (dimension === currentDimension) chunksInDimension.add(`${x},${z}`);
-                                            } catch {}
+                                        if (typeof chunksDat === "object" && currentDimension === "overworld") {
+                                            for (let x = 0; x < 32; x++) {
+                                                for (let z = 0; z < 32; z++) {
+                                                    if (chunksDat.value.chunks.value.value[x]?.value[z]?.update_map.value.value.length !== 256) continue;
+                                                    chunksInDimension.add(`${x},${z}`);
+                                                }
+                                            }
                                         }
                                         // TODO: Maybe this needs to check other content types too, in case the version or legacy version keys were manually deleted.
                                         if (chunksInDimension.size === 0) {
@@ -1279,19 +1364,19 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                             const [x, z] = currentChunk.split(",").map(Number) as [x: number, z: number];
                                             if (x < locationRangeDialogResult.data.from.chunkX || x > locationRangeDialogResult.data.to.chunkX) continue;
                                             if (z < locationRangeDialogResult.data.from.chunkZ || z > locationRangeDialogResult.data.to.chunkZ) continue;
-                                            if (!props.tab.cachedDBKeys) {
+                                            if (!props.tab.cachedDBKeys || typeof chunksDat !== "object") {
                                                 void dialog.showMessageBox({
                                                     type: "error",
                                                     title: "Error",
-                                                    message: `The DB keys cache was reloaded while trying to delete chunks.`,
+                                                    message: `The DB keys cache or chunks.dat was reloaded while trying to delete chunks.`,
                                                     buttons: ["OK"],
                                                     noLink: true,
                                                 });
                                                 return;
                                             }
-                                            function* getExistingChunkKeys(): Generator<[rawKey: Buffer, contentType: DBChunkLinkedContentType]> {
+                                            function* getExistingChunkKeys(): Generator<[rawKey: Buffer, contentType: MCDBChunkLinkedContentType]> {
                                                 if (!props.tab.cachedDBKeys) return;
-                                                for (const contentType of DBChunkLinkedContentTypes) {
+                                                for (const contentType of MCDBChunkLinkedContentTypes) {
                                                     switch (contentType) {
                                                         case "AABBVolumes":
                                                         case "ActorDigestVersion":
@@ -1305,6 +1390,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                                         case "Data2D":
                                                         case "Data2DLegacy":
                                                         case "Data3D":
+                                                        case "Digest":
                                                         case "Entity":
                                                         case "FinalizedState":
                                                         case "GeneratedPreCavesAndCliffsBlending":
@@ -1317,7 +1403,8 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                                         case "PendingTicks":
                                                         case "RandomTicks":
                                                         case "Version":
-                                                        case "Digest": {
+                                                        case "unknown0x70":
+                                                        case "unknown0x71": {
                                                             const key: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(
                                                                 { x, z, dimension: currentDimension },
                                                                 contentType
@@ -1337,6 +1424,34 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                                                 { x, z, dimension: currentDimension },
                                                                 contentType
                                                             );
+                                                            for (const existingKey of props.tab.cachedDBKeys[contentType]) {
+                                                                if (existingKey.subarray(0, key.length).equals(key)) {
+                                                                    yield [existingKey, contentType];
+                                                                    if (!props.tab.cachedDBKeys) return;
+                                                                }
+                                                            }
+                                                            break;
+                                                        }
+                                                        case "JigsawStructureBlueprint": {
+                                                            const key: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(
+                                                                { x, z, dimension: currentDimension },
+                                                                contentType
+                                                            ).subarray(0, 13);
+                                                            for (const existingKey of props.tab.cachedDBKeys[contentType]) {
+                                                                if (existingKey.subarray(0, key.length).equals(key)) {
+                                                                    yield [existingKey, contentType];
+                                                                    if (!props.tab.cachedDBKeys) return;
+                                                                }
+                                                            }
+                                                            break;
+                                                        }
+                                                        // REVIEW: Make sure this works properly.
+                                                        case "VersionEnchant":
+                                                        case "VersionMarkInsert": {
+                                                            const key: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(
+                                                                { x, z, dimension: currentDimension, dimensionVersion: 999 },
+                                                                contentType
+                                                            ).subarray(0, -2);
                                                             for (const existingKey of props.tab.cachedDBKeys[contentType]) {
                                                                 if (existingKey.subarray(0, key.length).equals(key)) {
                                                                     yield [existingKey, contentType];
@@ -1392,13 +1507,30 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                                     })
                                                 );
                                             }
+                                            wipeChunkFromChunksDat: {
+                                                const chunkData = chunksDat.value.chunks.value.value[x]?.value[z];
+                                                if (chunkData?.update_map.value.value.length !== 256) {
+                                                    break wipeChunkFromChunksDat;
+                                                }
+                                                chunkData.block_ids.value.value.length = 0;
+                                                chunkData.block_data.value.value.length = 0;
+                                                chunkData.sky_light.value.value.length = 0;
+                                                chunkData.block_light.value.value.length = 0;
+                                                chunkData.update_map.value.value.length = 0;
+                                                chunkData.extra_data.value.value.length = 0;
+                                                totalChunksDatEntriesDeleted++;
+                                                if (!chunkHadKeyDeleted) {
+                                                    chunkHadKeyDeleted = true;
+                                                    totalChunksDeleted++;
+                                                }
+                                            }
                                             activeChunkDeletions.push(Promise.all(promises));
                                             if (activeChunkDeletions.length >= MAX_SIMULTANEOUS_CHUNK_DELETIONS) {
                                                 await Promise.all(activeChunkDeletions.splice(0, MAX_SIMULTANEOUS_CHUNK_DELETIONS));
                                             }
                                             // chunkPromises.push(Promise.all(promises));
                                         }
-                                        // await Promise.all(chunkPromises);
+                                        await Promise.all(activeChunkDeletions);
                                         const t2: number = performance.now(); // DEBUG
                                         console.debug(
                                             `Deleting chunks in range ${locationRangeDialogResult.data.from.chunkX} ${locationRangeDialogResult.data.from.chunkZ} to ${locationRangeDialogResult.data.to.chunkX} ${locationRangeDialogResult.data.to.chunkZ} took ${t2 - t1}ms.`
@@ -1408,7 +1540,12 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                             type: "info",
                                             title: "Chunks Deleted",
                                             message: `Deleted ${totalChunksDeleted} chunk${totalChunksDeleted === 1 ? "" : "s"} in ${t2 - t1}ms from ${locationRangeDialogResult.data.from.chunkX} ${locationRangeDialogResult.data.from.chunkZ} to ${locationRangeDialogResult.data.to.chunkX} ${locationRangeDialogResult.data.to.chunkZ}.`,
-                                            detail: `Deleted ${totalDBKeysDeleted} LevelDB entr${totalDBKeysDeleted === 1 ? "y" : "ies"}.`,
+                                            detail:
+                                                totalChunksDatEntriesDeleted ?
+                                                    totalDBKeysDeleted ?
+                                                        `Deleted ${totalDBKeysDeleted} LevelDB entr${totalDBKeysDeleted === 1 ? "y" : "ies"} and ${totalChunksDatEntriesDeleted} chunks.dat entr${totalChunksDatEntriesDeleted === 1 ? "y" : "ies"}.`
+                                                    :   `Deleted ${totalChunksDatEntriesDeleted} chunks.dat entr${totalChunksDatEntriesDeleted === 1 ? "y" : "ies"}.`
+                                                :   `Deleted ${totalDBKeysDeleted} LevelDB entr${totalDBKeysDeleted === 1 ? "y" : "ies"}.`,
                                             buttons: ["OK"],
                                             noLink: true,
                                         });
@@ -1427,6 +1564,16 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                             elem.disabled = false;
                                         } catch (e) {
                                             reportError(e);
+                                        }
+                                        try {
+                                            if (totalChunksDatEntriesDeleted && typeof chunksDat === "object") {
+                                                await writeFile(
+                                                    path.join(props.tab.tempPath ?? props.tab.path, "chunks.dat"),
+                                                    entryContentTypeToFormatMap.ChunksDat.serialize(chunksDat)
+                                                );
+                                            }
+                                        } catch (e) {
+                                            console.error("Error while saving chunks.dat:", e);
                                         }
                                     }
                                 }}
@@ -1678,6 +1825,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         const chunkLoadInterval: number = setInterval((): void => {
             // Wait for the level.dat to finish attempting to load before loading chunk data.
             if (isOldWorld === undefined && levelDatLoaded === "loading") return;
+            if (chunksDat === "loading") return;
             if (!engineRef.current) return;
             if (!engineRef.current.instance?.canvas) return;
 
@@ -1970,6 +2118,19 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     }
 
     function checkChunkForBiomeColorData(chunk: DimensionVectorXZ): boolean | null {
+        if (typeof chunksDat === "object") {
+            if (
+                (chunk.dimension === 0 || chunk.dimension === "overworld") &&
+                chunk.x >= 0 &&
+                chunk.z >= 0 &&
+                chunk.x < 32 &&
+                chunk.z < 32 &&
+                chunksDat.value.chunks.value.value[chunk.x]?.value[chunk.z]?.update_map.value.value.length === 256
+            ) {
+                return true;
+            }
+        } else if (chunksDat !== false && !props.tab.db) return null;
+        if (!props.tab.db) return false;
         if (!config.views.world.modeSettings["2D"].checkCachedDBKeysForBiomeDataKeysIfAvailable || !props.tab?.cachedDBKeys) return null;
         if (!data3dKeySet || data3dKeyCount !== props.tab.cachedDBKeys.Data3D.length) {
             data3dKeySet = new Set(props.tab.cachedDBKeys.Data3D.map((buf: Buffer): string => buf.toString("hex")));
@@ -1999,16 +2160,19 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         if (legacyTerrainKeySet?.has(generateChunkKeyFromIndices(chunk, "LegacyTerrain").toString("hex"))) {
             return true;
         }
-        return data3dKeySet && data2dKeySet && data2dLegacyKeySet && legacyTerrainKeySet ? false : null;
+        return data3dKeySet && data2dKeySet && data2dLegacyKeySet && legacyTerrainKeySet && chunksDat !== undefined && chunksDat !== "loading" ? false : null;
     }
     function normalizeHeightValue(value: number, min: number, range: number): number {
         return (value - min) / range;
     }
+    // IDEA: When only chunk.dat data is present, if the default render type is "biome", use "blocks_accurate" or "blocks_map" instead, once that is implemented.
+    // IDEA: Make the height map be the height map below the set Y level in some situations, maybe have an option for it.
     // BUG: In some older chunk verisons in the nether and possible other dimensions, the height map is actually not shifted up 1, so the nether would say 127 instead of 128, though this may just be it not including bedrock. The heightmap displays should be updated to reflect this.
     async function getChunkBiomeColorData(
         chunk: DimensionVectorXZ
     ): Promise<{ colorData: Uint8ClampedArray; biomeData: Int32Array; heightMap?: Uint16Array; heightRange?: [min: number, max: number] | null } | null> {
-        if (!props.tab?.db?.isOpen()) throw new Error("Database is not open.");
+        const dbOpen = !!props.tab?.db?.isOpen();
+        if (!dbOpen && typeof chunksDat !== "object") throw new Error("Database is not open and chunks.dat is either not present or not loaded.");
         if (config.views.world.modeSettings["2D"].checkCachedDBKeysForBiomeDataKeysIfAvailable && props.tab?.cachedDBKeys) {
             if (!data3dKeySet || data3dKeyCount !== props.tab.cachedDBKeys.Data3D.length) {
                 data3dKeySet = new Set(props.tab.cachedDBKeys.Data3D.map((buf: Buffer): string => buf.toString("hex")));
@@ -2034,6 +2198,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         let version: number | undefined;
         // FIXME: If the world is an old world, and both Data3D and Data2D are present, and the version is between 35 and 38 (inclusive), then the Data2D should be used instead of the Data3D.
         data3dParser: {
+            if (!props.tab?.db || !dbOpen) break data3dParser;
             const data3dKey: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(chunk, "Data3D");
             // if (CHECK_CACHED_DB_KEYS_FOR_DATA3D_KEY_IF_AVAILABLE && !props.tab.cachedDBKeys?.Data3D.some((key: Buffer): boolean => key.equals(data3dKey))) {
             //     break data3dParser;
@@ -2337,6 +2502,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             return { colorData, biomeData, heightMap, heightRange };
         }
         data2dParser: {
+            if (!props.tab?.db || !dbOpen) break data2dParser;
             const data2dKey: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(chunk, "Data2D");
             if (
                 !__cachedOldWorldData2D__ &&
@@ -2384,6 +2550,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             return { colorData, biomeData, heightMap, heightRange };
         }
         data2dLegacyParser: {
+            if (!props.tab?.db || !dbOpen) break data2dLegacyParser;
             const data2dLegacyKey: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(chunk, "Data2DLegacy");
             if (
                 config.views.world.modeSettings["2D"].checkCachedDBKeysForBiomeDataKeysIfAvailable &&
@@ -2439,6 +2606,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             return { colorData, biomeData, heightMap, heightRange };
         }
         legacyTerrainParser: {
+            if (!props.tab?.db || !dbOpen) break legacyTerrainParser;
             // REVIEW: LegacyTerrain may not actually contain biome IDs, the grass_color property either contains BiomeID,R,G,B entries or R,G,B,A entries, figure out which one it is.
             const legacyTerrainKey: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(chunk, "LegacyTerrain");
             if (
@@ -2490,6 +2658,33 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 }
             }
             return { colorData, biomeData, heightMap, heightRange };
+        }
+        chunksDatParser: {
+            if (typeof chunksDat !== "object") break chunksDatParser;
+            if (chunk.dimension !== "overworld" && chunk.dimension !== 0) break chunksDatParser;
+            if (chunk.x < 0 || chunk.z < 0 || chunk.x >= 32 || chunk.z >= 32) break chunksDatParser;
+            const chunkData = chunksDat.value.chunks.value.value[chunk.x]?.value[chunk.z];
+            if (!chunkData) break chunksDatParser;
+            if (chunkData.update_map.value.value.length !== 256) break chunksDatParser;
+            // const chunkUpdateMap: number[] = chunkData.update_map.value.value;
+            const chunkBlockIds: number[] = chunkData.block_ids.value.value;
+
+            for (let x = 0; x < 16; x++) {
+                for (let z = 0; z < 16; z++) {
+                    const colorDataIndex: number = offsetTo2DChunkBlockColorDataIndex({ x, z });
+                    const dataIndex: number = offsetTo2DChunkBlockDataIndex({ x, z });
+                    // TODO (Config): Add a config option or way to display the modification states, with a way to display which subchunks are modified, maybe have multiple modes for different ways of displaying it, or maybe have hover info for it.
+                    colorData.set(/* chunkUpdateMap[dataIndex] !== 0 ? [128, 0, 0, 255] : */ [128, 128, 128, 255], colorDataIndex); // TODO (Config): Make this base color configurable.
+                    biomeData[dataIndex] = -2;
+                    for (let y = 127; y >= 0; y--) {
+                        // FIXME: This needs to exclude liquid and partial blocks and maybe also have an option to not exclude liquid or partial blocks, just not exclude liquid blocks, or just not exclude partial blocks.
+                        if (chunkBlockIds[offsetToChunkBlock128Index({ x, y, z })] === 0) continue;
+                        heightMap[dataIndex] = y + 1;
+                        break;
+                    }
+                }
+            }
+            return { colorData, biomeData, heightMap, heightRange: [0, 128] };
         }
         return null;
     }
@@ -3682,10 +3877,23 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 onClose={(): void => void worldEditor2DDimensionSwitcherContextMenu_setOpen(false)}
             >
                 {(): JSX.Element => {
-                    const dimensionOptions: Record<Dimension | `${string}:${string}`, number> =
-                        typeof dimensionNameIdTable !== "object" ?
-                            (Object.fromEntries(dimensions.map((dimension: Dimension, i: number) => [dimension, i])) as Record<Dimension, number>)
-                        :   getDimensionTypesSync(dimensionNameIdTable);
+                    const dimensionOptions:
+                        | { overworld: 0 }
+                        | Record<Dimension | `${string}:${string}`, number>
+                        | Record<Dimension | DimensionMCCE | `${string}:${string}`, number> =
+                        !props.tab.db && typeof chunksDat === "object" ? { overworld: 0 }
+                        : typeof dimensionNameIdTable !== "object" ?
+                            {
+                                ...(props.tab.cachedDBKeys?.MCChinaDevDimension?.length ?
+                                    (Object.fromEntries(
+                                        dimensionsMCCE
+                                            .map((dimension: DimensionMCCE, i: number) => (!dimensions.includes(dimension as never) ? [dimension, i] : null))
+                                            .filter((dimension): dimension is [DimensionMCCE, number] => dimension !== null)
+                                    ) as Record<DimensionMCCE, number>)
+                                :   undefined),
+                                ...(Object.fromEntries(dimensions.map((dimension: Dimension, i: number) => [dimension, i])) as Record<Dimension, number>),
+                            }
+                        :   getDimensionTypesSync(dimensionNameIdTable, { includeMCCEDimensions: !!props.tab.cachedDBKeys?.MCChinaDevDimension?.length });
                     return (
                         <>
                             <MenuHeader>Dimension</MenuHeader>
@@ -3705,7 +3913,9 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                         </MenuItem>
                                     )
                                 )}
-                            {dimensionNameIdTable === "error" ?
+                            {!props.tab.db && typeof chunksDat === "object" ?
+                                null
+                            : dimensionNameIdTable === "error" ?
                                 <MenuItem disabled>Failed to load dimension name ID table, any custom dimensions are not shown.</MenuItem>
                             : dimensionNameIdTable === "loading" ?
                                 <MenuItem disabled>The dimension name ID table is still loading, any custom dimensions are not shown.</MenuItem>
@@ -4149,9 +4359,9 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             typeof chunkColorData === "object" ? chunkColorData.heightMap?.[offsetTo2DChunkBlockColorDataIndex(targetChunkDetails.block) / 4] : undefined;
         const minHeight: number | undefined = typeof chunkColorData === "object" ? chunkColorData.heightRange?.[0] : undefined;
         const noCachedDBKeys: boolean = props.tab.cachedDBKeys === undefined;
-        const existingKeys: ([rawKey: Buffer, contentType: DBChunkLinkedContentType] | [rawKeys: Buffer[], contentType: DBChunkLinkedContentType])[] = [];
+        const existingKeys: ([rawKey: Buffer, contentType: MCDBChunkLinkedContentType] | [rawKeys: Buffer[], contentType: MCDBChunkLinkedContentType])[] = [];
         if (props.tab.cachedDBKeys) {
-            for (const contentType of DBChunkLinkedContentTypes) {
+            for (const contentType of MCDBChunkLinkedContentTypes) {
                 switch (contentType) {
                     case "AABBVolumes":
                     case "ActorDigestVersion":
@@ -4165,6 +4375,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                     case "Data2D":
                     case "Data2DLegacy":
                     case "Data3D":
+                    case "Digest":
                     case "Entity":
                     case "FinalizedState":
                     case "GeneratedPreCavesAndCliffsBlending":
@@ -4177,7 +4388,8 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                     case "PendingTicks":
                     case "RandomTicks":
                     case "Version":
-                    case "Digest": {
+                    case "unknown0x70":
+                    case "unknown0x71": {
                         const key: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(
                             { ...targetChunkDetails.chunk, dimension: targetChunkDetails.dimension },
                             contentType
@@ -4192,6 +4404,30 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             { ...targetChunkDetails.chunk, dimension: targetChunkDetails.dimension },
                             contentType
                         );
+                        const keys: Buffer[] = props.tab.cachedDBKeys[contentType].filter((existingKey: Buffer): boolean =>
+                            existingKey.subarray(0, key.length).equals(key)
+                        );
+                        if (keys.length) existingKeys.push([keys, contentType]);
+                        break;
+                    }
+                    case "JigsawStructureBlueprint": {
+                        const key: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(
+                            { ...targetChunkDetails.chunk, dimension: targetChunkDetails.dimension },
+                            contentType
+                        ).subarray(0, 13);
+                        const keys: Buffer[] = props.tab.cachedDBKeys[contentType].filter((existingKey: Buffer): boolean =>
+                            existingKey.subarray(0, key.length).equals(key)
+                        );
+                        if (keys.length) existingKeys.push([keys, contentType]);
+                        break;
+                    }
+                    // REVIEW: Make sure this works properly.
+                    case "VersionEnchant":
+                    case "VersionMarkInsert": {
+                        const key: Buffer<ArrayBuffer> = generateChunkKeyFromIndices(
+                            { ...targetChunkDetails.chunk, dimension: targetChunkDetails.dimension, dimensionVersion: 999 },
+                            contentType
+                        ).subarray(0, -2);
                         const keys: Buffer[] = props.tab.cachedDBKeys[contentType].filter((existingKey: Buffer): boolean =>
                             existingKey.subarray(0, key.length).equals(key)
                         );
@@ -4249,55 +4485,89 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 </MenuItem> */}
                 <MenuDivider />
 
-                <SubMenu label="Open LevelDB entry...">
-                    {existingKeys.map(
-                        ([rawKey, contentType]: [rawKey: Buffer | Buffer[], contentType: DBChunkLinkedContentType]): JSX.Element =>
-                            rawKey instanceof Array ?
-                                <SubMenu label={contentType}>
-                                    {rawKey.map((key: Buffer): JSX.Element => {
-                                        const displayKey: string = getKeyDisplayName(key);
-                                        return (
-                                            <MenuItem
-                                                onClick={(): void => {
-                                                    props.tab.openTab({
-                                                        contentType,
-                                                        icon: "auto",
-                                                        name: displayKey,
-                                                        parentTab: props.tab,
-                                                        target: {
-                                                            type: "LevelDBEntry",
-                                                            key,
-                                                        },
-                                                    });
-                                                }}
-                                            >
-                                                {displayKey}
-                                            </MenuItem>
-                                        );
-                                    })}
-                                </SubMenu>
-                            :   <MenuItem
-                                    onClick={(): void => {
-                                        props.tab.openTab({
-                                            contentType,
-                                            icon: "auto",
-                                            name: getKeyDisplayName(rawKey),
-                                            parentTab: props.tab,
-                                            target: {
-                                                type: "LevelDBEntry",
-                                                key: rawKey,
-                                            },
-                                        });
-                                    }}
-                                >
-                                    {contentType}
-                                </MenuItem>
-                    )}
-                    {existingKeys.length === 0 &&
-                        (noCachedDBKeys ?
-                            <MenuItem disabled>The DB keys cache has not been loaded yet.</MenuItem>
-                        :   <MenuItem disabled>No LevelDB entries found for this chunk.</MenuItem>)}
-                </SubMenu>
+                {typeof chunksDat === "object" && ["overworld", 0].includes(targetChunkDetails.dimension) && (
+                    <MenuItem
+                        onClick={(): void => {
+                            props.tab.openTab({
+                                contentType: "Unknown",
+                                icon: "auto",
+                                name: `chunks.dat (${targetChunkDetails.chunk.x}, ${targetChunkDetails.chunk.z})`,
+                                parentTab: props.tab,
+                                target: {
+                                    type: "ChunksDatEntry",
+                                    chunk: targetChunkDetails.chunk,
+                                },
+                            });
+                        }}
+                        disabled={
+                            targetChunkDetails.chunk.x < 0 ||
+                            targetChunkDetails.chunk.z < 0 ||
+                            targetChunkDetails.chunk.x >= 32 ||
+                            targetChunkDetails.chunk.z >= 32
+                        }
+                    >
+                        Open chunks.dat entry
+                        {/* {(
+                            targetChunkDetails.chunk.x < 0 ||
+                            targetChunkDetails.chunk.z < 0 ||
+                            targetChunkDetails.chunk.x >= 32 ||
+                            targetChunkDetails.chunk.z >= 32
+                        ) ?
+                            " (out of bounds)"
+                        :   ""} */}
+                    </MenuItem>
+                )}
+                {props.tab.db && (
+                    <SubMenu label="Open LevelDB entry...">
+                        {existingKeys.map(
+                            ([rawKey, contentType]: [rawKey: Buffer | Buffer[], contentType: MCDBChunkLinkedContentType]): JSX.Element =>
+                                rawKey instanceof Array ?
+                                    <SubMenu label={contentType}>
+                                        {rawKey.map((key: Buffer): JSX.Element => {
+                                            const displayKey: string = getKeyDisplayName(key);
+                                            return (
+                                                <MenuItem
+                                                    onClick={(): void => {
+                                                        props.tab.openTab({
+                                                            contentType,
+                                                            icon: "auto",
+                                                            name: displayKey,
+                                                            parentTab: props.tab,
+                                                            target: {
+                                                                type: "LevelDBEntry",
+                                                                key,
+                                                            },
+                                                        });
+                                                    }}
+                                                >
+                                                    {displayKey}
+                                                </MenuItem>
+                                            );
+                                        })}
+                                    </SubMenu>
+                                :   <MenuItem
+                                        onClick={(): void => {
+                                            props.tab.openTab({
+                                                contentType,
+                                                icon: "auto",
+                                                name: getKeyDisplayName(rawKey),
+                                                parentTab: props.tab,
+                                                target: {
+                                                    type: "LevelDBEntry",
+                                                    key: rawKey,
+                                                },
+                                            });
+                                        }}
+                                    >
+                                        {contentType}
+                                    </MenuItem>
+                        )}
+                        {existingKeys.length === 0 &&
+                            (noCachedDBKeys ?
+                                <MenuItem disabled>The DB keys cache has not been loaded yet.</MenuItem>
+                            :   <MenuItem disabled>No LevelDB entries found for this chunk.</MenuItem>)}
+                    </SubMenu>
+                )}
                 <MenuDivider />
 
                 {/* TODO */}
@@ -4539,20 +4809,42 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                     onClick={(): void => {
                         cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
                         delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
+                        if (
+                            chunksDat !== "loading" &&
+                            chunksDat !== false &&
+                            [0, "overworld"].includes(targetChunkDetails.dimension) &&
+                            targetChunkDetails.chunk.x >= 0 &&
+                            targetChunkDetails.chunk.z >= 0 &&
+                            targetChunkDetails.chunk.x < 32 &&
+                            targetChunkDetails.chunk.z < 32
+                        ) {
+                            chunksDat = "loading";
+                            void loadChunksDat();
+                        }
                     }}
                 >
                     Reload chunk
                 </MenuItem>
                 <MenuItem
-                    title="Deletes this chunk's associated LevelDB entries"
+                    title="Deletes this chunk's associated LevelDB entries and data"
                     onClick={async (): Promise<void> => {
                         // FIXME: This does not delete entities that are in the Digest.
-                        if (!props.tab.db) return;
+                        if (
+                            !props.tab.db &&
+                            (typeof chunksDat !== "object" ||
+                                ![0, "overworld"].includes(targetChunkDetails.dimension) ||
+                                targetChunkDetails.chunk.x < 0 ||
+                                targetChunkDetails.chunk.z < 0 ||
+                                targetChunkDetails.chunk.x >= 32 ||
+                                targetChunkDetails.chunk.z >= 32)
+                        ) {
+                            return;
+                        }
                         if (config.views.world.modeSettings["2D"].showChunkDeletionWarnings) {
                             const confirmationResult: MessageBoxReturnValue = await dialog.showMessageBox({
                                 type: "warning",
                                 title: "Deleting Chunk",
-                                message: `Are you sure you want to delete this chunk's LevelDB entries?`,
+                                message: `Are you sure you want to delete this chunk's LevelDB entries and data?`,
                                 detail: "This action cannot be undone.",
                                 buttons: ["Proceed", "Cancel"],
                                 noLink: true,
@@ -4564,73 +4856,101 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             if (confirmationResult.checkboxChecked) config.views.world.modeSettings["2D"].showChunkDeletionWarnings = false;
                             if (confirmationResult.response === 1) return;
                         }
-                        for (const [key, contentType] of existingKeys) {
-                            if (key instanceof Array) {
-                                for (const currentKey of key) {
-                                    void props.tab.db.delete(currentKey).then((success: boolean): void => {
-                                        if (!success) return;
-                                        props.tab.setLevelDBIsModified();
-                                        if (contentType === "Data3D" && data3dKeyCount) {
-                                            data3dKeySet.delete(currentKey.toString("hex"));
-                                            data3dKeyCount = data3dKeySet.size;
-                                            cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
-                                            delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
-                                        } else if (contentType === "Data2D" && data2dKeyCount) {
-                                            data2dKeySet.delete(currentKey.toString("hex"));
-                                            data2dKeyCount = data2dKeySet.size;
-                                            cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
-                                            delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
-                                        } else if (contentType === "Data2DLegacy" && data2dLegacyKeyCount) {
-                                            data2dLegacyKeySet.delete(currentKey.toString("hex"));
-                                            data2dLegacyKeyCount = data2dLegacyKeySet.size;
-                                            cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
-                                            delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
-                                        } else if (contentType === "LegacyTerrain" && legacyTerrainKeyCount) {
-                                            legacyTerrainKeySet.delete(currentKey.toString("hex"));
-                                            legacyTerrainKeyCount = legacyTerrainKeySet.size;
-                                            cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
-                                            delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
-                                        }
-                                        if (!props.tab.cachedDBKeys) return;
-                                        const keyIndex: number = props.tab.cachedDBKeys[contentType].findIndex((dbKey): boolean => dbKey.equals(currentKey));
-                                        if (keyIndex === -1) return;
-                                        props.tab.cachedDBKeys[contentType].splice(keyIndex, 1);
-                                    });
+                        wipeChunkFromChunksDat: if (typeof chunksDat === "object") {
+                            const chunkData = chunksDat.value.chunks.value.value[targetChunkDetails.chunk.x]?.value[targetChunkDetails.chunk.z];
+                            if (!chunkData) break wipeChunkFromChunksDat;
+                            chunkData.block_ids.value.value.length = 0;
+                            chunkData.block_data.value.value.length = 0;
+                            chunkData.sky_light.value.value.length = 0;
+                            chunkData.block_light.value.value.length = 0;
+                            chunkData.update_map.value.value.length = 0;
+                            chunkData.extra_data.value.value.length = 0;
+                            await writeFile(
+                                path.join(props.tab.tempPath ?? props.tab.path, "chunks.dat"),
+                                entryContentTypeToFormatMap.ChunksDat.serialize(chunksDat)
+                            );
+                            cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
+                            delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
+                        }
+                        if (props.tab.db) {
+                            for (const [key, contentType] of existingKeys) {
+                                if (key instanceof Array) {
+                                    for (const currentKey of key) {
+                                        void props.tab.db.delete(currentKey).then((success: boolean): void => {
+                                            if (!success) return;
+                                            props.tab.setLevelDBIsModified();
+                                            if (contentType === "Data3D" && data3dKeyCount) {
+                                                data3dKeySet.delete(currentKey.toString("hex"));
+                                                data3dKeyCount = data3dKeySet.size;
+                                                cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
+                                                delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
+                                            } else if (contentType === "Data2D" && data2dKeyCount) {
+                                                data2dKeySet.delete(currentKey.toString("hex"));
+                                                data2dKeyCount = data2dKeySet.size;
+                                                cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
+                                                delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
+                                            } else if (contentType === "Data2DLegacy" && data2dLegacyKeyCount) {
+                                                data2dLegacyKeySet.delete(currentKey.toString("hex"));
+                                                data2dLegacyKeyCount = data2dLegacyKeySet.size;
+                                                cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
+                                                delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
+                                            } else if (contentType === "LegacyTerrain" && legacyTerrainKeyCount) {
+                                                legacyTerrainKeySet.delete(currentKey.toString("hex"));
+                                                legacyTerrainKeyCount = legacyTerrainKeySet.size;
+                                                cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
+                                                delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
+                                            }
+                                            if (!props.tab.cachedDBKeys) return;
+                                            const keyIndex: number = props.tab.cachedDBKeys[contentType].findIndex((dbKey): boolean =>
+                                                dbKey.equals(currentKey)
+                                            );
+                                            if (keyIndex === -1) return;
+                                            props.tab.cachedDBKeys[contentType].splice(keyIndex, 1);
+                                        });
+                                    }
+                                    continue;
                                 }
-                                continue;
+                                void props.tab.db.delete(key).then((success: boolean): void => {
+                                    if (!success) return;
+                                    props.tab.setLevelDBIsModified();
+                                    if (contentType === "Data3D" && data3dKeyCount) {
+                                        data3dKeySet.delete(key.toString("hex"));
+                                        data3dKeyCount = data3dKeySet.size;
+                                        cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
+                                        delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
+                                    } else if (contentType === "Data2D" && data2dKeyCount) {
+                                        data2dKeySet.delete(key.toString("hex"));
+                                        data2dKeyCount = data2dKeySet.size;
+                                        cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
+                                        delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
+                                    } else if (contentType === "Data2DLegacy" && data2dLegacyKeyCount) {
+                                        data2dLegacyKeySet.delete(key.toString("hex"));
+                                        data2dLegacyKeyCount = data2dLegacyKeySet.size;
+                                        cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
+                                        delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
+                                    } else if (contentType === "LegacyTerrain" && legacyTerrainKeyCount) {
+                                        legacyTerrainKeySet.delete(key.toString("hex"));
+                                        legacyTerrainKeyCount = legacyTerrainKeySet.size;
+                                        cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
+                                        delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
+                                    }
+                                    if (!props.tab.cachedDBKeys) return;
+                                    const keyIndex: number = props.tab.cachedDBKeys[contentType].findIndex((dbKey): boolean => dbKey.equals(key));
+                                    if (keyIndex === -1) return;
+                                    props.tab.cachedDBKeys[contentType].splice(keyIndex, 1);
+                                });
                             }
-                            void props.tab.db.delete(key).then((success: boolean): void => {
-                                if (!success) return;
-                                props.tab.setLevelDBIsModified();
-                                if (contentType === "Data3D" && data3dKeyCount) {
-                                    data3dKeySet.delete(key.toString("hex"));
-                                    data3dKeyCount = data3dKeySet.size;
-                                    cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
-                                    delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
-                                } else if (contentType === "Data2D" && data2dKeyCount) {
-                                    data2dKeySet.delete(key.toString("hex"));
-                                    data2dKeyCount = data2dKeySet.size;
-                                    cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
-                                    delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
-                                } else if (contentType === "Data2DLegacy" && data2dLegacyKeyCount) {
-                                    data2dLegacyKeySet.delete(key.toString("hex"));
-                                    data2dLegacyKeyCount = data2dLegacyKeySet.size;
-                                    cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
-                                    delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
-                                } else if (contentType === "LegacyTerrain" && legacyTerrainKeyCount) {
-                                    legacyTerrainKeySet.delete(key.toString("hex"));
-                                    legacyTerrainKeyCount = legacyTerrainKeySet.size;
-                                    cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
-                                    delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
-                                }
-                                if (!props.tab.cachedDBKeys) return;
-                                const keyIndex: number = props.tab.cachedDBKeys[contentType].findIndex((dbKey): boolean => dbKey.equals(key));
-                                if (keyIndex === -1) return;
-                                props.tab.cachedDBKeys[contentType].splice(keyIndex, 1);
-                            });
                         }
                     }}
-                    disabled={!existingKeys.length}
+                    disabled={
+                        !existingKeys.length &&
+                        (typeof chunksDat !== "object" ||
+                            targetChunkDetails.chunk.x < 0 ||
+                            targetChunkDetails.chunk.z < 0 ||
+                            targetChunkDetails.chunk.x >= 32 ||
+                            targetChunkDetails.chunk.z >= 32 ||
+                            ![0, "overworld"].includes(targetChunkDetails.dimension))
+                    }
                 >
                     Delete chunk
                 </MenuItem>

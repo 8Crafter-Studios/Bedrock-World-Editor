@@ -187,6 +187,12 @@ namespace exports {
                     search: {},
                 },
             },
+            viewFiles: {
+                modeSettings: {
+                    leveldb: {},
+                    files: {},
+                },
+            },
         },
     } as const satisfies DeepSubConfigKeyStructureOfConfig<Config>;
     /**
@@ -219,6 +225,10 @@ namespace exports {
                 "%appdata%/Minecraft Education Edition/Users/*/games/com.mojang",
                 "%appdata%/Minecraft Education Edition/games/com.mojang",
                 // There is no GDK version of Minecraft Education Preview yet.
+
+                // ======== Other (Windows) ========
+                // Minecraft China
+                "%appdata%/MinecraftPE_Netease",
 
                 // ======== Other Platforms ========
                 // Minecraft Education and Minecraft Education Beta (macOS)
@@ -279,6 +289,11 @@ namespace exports {
                 "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/Minecraft Education Edition/games/com.mojang",
                 // There is no GDK version of Minecraft Education Preview yet.
 
+                // ======== Other (Windows) ========
+                // Minecraft China
+                "/Volumes/*/Users/*/AppData/Roaming/MinecraftPE_Netease",
+                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/MinecraftPE_Netease",
+
                 // ======== Other Platforms ========
                 // All Minecraft Editions (iOS (mounted))
                 "/Volumes/*/games/com.mojang",
@@ -311,6 +326,7 @@ namespace exports {
             fileSizeUnits: "binary",
             quitOnCloseAllWindows: false,
             showWorldSizesOnWorldList: false,
+            showWorldStorageVersionsOnWorldList: false,
             useAsyncModeInEntryViews: "auto",
             asyncModeEntryThreshold: 2_500,
             asyncModeTotalKeyCountThreshold: 5_000_000,
@@ -438,6 +454,17 @@ namespace exports {
                         },
                         block: {},
                         search: {},
+                    },
+                },
+                viewFiles: {
+                    mode: "leveldb",
+                    modeSettings: {
+                        leveldb: {
+                            columns: ["DBKey", "ContentType"],
+                        },
+                        files: {
+                            columns: ["FilePath", "ContentType"],
+                        },
                     },
                 },
             },
@@ -668,6 +695,27 @@ namespace exports {
                     this.views.world.modeSettings["2D"].showGridDefault = 8;
                 }
             }
+            if (semver.compareBuild(currentConfigVersion, "1.0.0-beta.38+BUILD.3") < 0) {
+                {
+                    const currentMinecraftDataFolders: string[] = this.minecraftDataFolders;
+                    const originalLength: number = currentMinecraftDataFolders.length;
+                    for (const path of ["%appdata%/MinecraftPE_Netease"]) {
+                        if (!currentMinecraftDataFolders.includes(path)) currentMinecraftDataFolders.push(path);
+                    }
+                    if (currentMinecraftDataFolders.length !== originalLength) this.minecraftDataFolders = currentMinecraftDataFolders;
+                }
+                {
+                    const currentExtraMinecraftDataFolders: string[] = this.extraMinecraftDataFolders;
+                    const originalLength: number = currentExtraMinecraftDataFolders.length;
+                    for (const path of [
+                        "/Volumes/*/Users/*/AppData/Roaming/MinecraftPE_Netease",
+                        "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/MinecraftPE_Netease",
+                    ]) {
+                        if (!currentExtraMinecraftDataFolders.includes(path)) currentExtraMinecraftDataFolders.push(path);
+                    }
+                    if (currentExtraMinecraftDataFolders.length !== originalLength) this.extraMinecraftDataFolders = currentExtraMinecraftDataFolders;
+                }
+            }
             // TODO: Uncomment this at add the correct version number when grouped search mode for the raw players tab mode is implemented.
             // if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.?", { includePrerelease: true })) {
             //     this.views.players.modeSettings.raw.searchMode = "grouped";
@@ -836,6 +884,10 @@ namespace exports {
          *     "%appdata%/Minecraft Education Edition/games/com.mojang",
          *     // There is no GDK version of Minecraft Education Preview yet.
          *
+         *     // ======== Other (Windows) ========
+         *     // Minecraft China
+         *     "%appdata%/MinecraftPE_Netease",
+         *
          *     // ======== Other Platforms ========
          *     // Minecraft Education and Minecraft Education Beta (macOS)
          *     "Home/Library/Application Support/minecraftpe/games/com.mojang",
@@ -928,6 +980,11 @@ namespace exports {
          *     "%APP_DATA_FOLDER_PATH%/mounted_volumes/*\/Users/*\/AppData/Roaming/Minecraft Education Edition/Users/*\/games/com.mojang",
          *     "%APP_DATA_FOLDER_PATH%/mounted_volumes/*\/Users/*\/AppData/Roaming/Minecraft Education Edition/games/com.mojang",
          *     // There is no GDK version of Minecraft Education Preview yet.
+         *
+         *     // ======== Other (Windows) ========
+         *     // Minecraft China
+         *     "/Volumes/*\/Users/*\/AppData/Roaming/MinecraftPE_Netease",
+         *     "%APP_DATA_FOLDER_PATH%/mounted_volumes/*\/Users/*\/AppData/Roaming/MinecraftPE_Netease",
          *
          *     // ======== Other Platforms ========
          *     // All Minecraft Editions (iOS (mounted))
@@ -1310,13 +1367,27 @@ namespace exports {
         /**
          * Whether or not to show the world sizes on the world selector list on the main menu.
          *
+         * This may slow down the loading of the world selector list and increase disk usage while it is loading.
+         *
          * @default false
          */
+        // IDEA: Add a way to enable this only for regular world folder locations, and not for the extra ones.
         public get showWorldSizesOnWorldList(): boolean {
             return this.getConfigData().showWorldSizesOnWorldList ?? Config.defaults.showWorldSizesOnWorldList;
         }
         public set showWorldSizesOnWorldList(value: boolean | undefined) {
             this.saveChanges({ showWorldSizesOnWorldList: value ?? Config.defaults.showWorldSizesOnWorldList });
+        }
+        /**
+         * Whether or not to show the `level.dat` `StorageVersion` of worlds on the world selector list on the main menu.
+         *
+         * @default false
+         */
+        public get showWorldStorageVersionsOnWorldList(): boolean {
+            return this.getConfigData().showWorldStorageVersionsOnWorldList ?? Config.defaults.showWorldStorageVersionsOnWorldList;
+        }
+        public set showWorldStorageVersionsOnWorldList(value: boolean | undefined) {
+            this.saveChanges({ showWorldStorageVersionsOnWorldList: value ?? Config.defaults.showWorldStorageVersionsOnWorldList });
         }
         /**
          * Whether to use async mode in entry views.
@@ -3172,6 +3243,103 @@ namespace exports {
                 return WorldViewConfig_ModeSettings;
             })())(this);
         })(this);
+        public readonly viewFiles = new (class ViewFilesViewConfig extends DeepSubConfig<ViewsConfig> {
+            public get mode(): ConfigConstants.views.ViewFiles.ViewFilesTabMode {
+                return this[DeepSubConfig_configSymbol].#config.getConfigData().views?.viewFiles?.mode ?? Config.defaults.views.viewFiles.mode;
+            }
+            public set mode(value: ConfigConstants.views.ViewFiles.ViewFilesTabMode | undefined) {
+                this[DeepSubConfig_configSymbol].#config.saveChanges({ views: { viewFiles: { mode: value ?? Config.defaults.views.viewFiles.mode } } });
+            }
+            // eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- This is necessary.
+            public readonly modeSettings = new ((() => {
+                const subConfigClassSymbol: unique symbol = Symbol.for("ViewFilesViewConfig_ModeSettings_subConfig");
+                class ViewFilesViewConfig_ModeSettings
+                    extends DeepSubConfig<ViewFilesViewConfig>
+                    implements Record<ConfigConstants.views.ViewFiles.ViewFilesTabMode, (typeof subConfigValueClasses)[number]["prototype"]>
+                {
+                    public static readonly __subConfigClassSymbol__: symbol = subConfigClassSymbol;
+                    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- This is necessary.
+                    public static readonly [subConfigClassSymbol] = (() => {
+                        abstract class ViewFilesViewConfig_ModeSettings_SubConfig<
+                            T extends ConfigConstants.views.ViewFiles.ViewFilesTabMode,
+                            M extends (typeof ConfigConstants.views.ViewFiles.viewFilesTabModeToSectionIDs)[T] =
+                                (typeof ConfigConstants.views.ViewFiles.viewFilesTabModeToSectionIDs)[T],
+                            HasNullSection extends null extends M[number] ? true : false = null extends M[number] ? true : false,
+                            HasNonNullSection extends Extract<M[number], string> extends never ? false : true = Extract<M[number], string> extends never ? false
+                            :   true,
+                        > extends DeepSubConfig<ViewFilesViewConfig_ModeSettings> {
+                            public readonly modes: M;
+                            public constructor(
+                                config: ViewFilesViewConfig_ModeSettings,
+                                public readonly mode: T
+                            ) {
+                                super(config);
+                                this.modes = ConfigConstants.views.ViewFiles.viewFilesTabModeToSectionIDs[mode] as M;
+                            }
+                            public get columns(): HasNullSection extends true ?
+                                (typeof ConfigConstants.views.ViewFiles.viewFilesTabModeToColumnIDs)[Extract<
+                                    ConfigConstants.views.ViewFiles.ViewFilesTabSectionModeFromViewFilesTabModeAndSectionID<T, M[number]>,
+                                    keyof typeof ConfigConstants.views.ViewFiles.viewFilesTabModeToColumnIDs
+                                >][number][]
+                            :   never {
+                                if ((this.modes as M[number][]).includes(null)) {
+                                    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+                                    return (
+                                        (
+                                            this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.getConfigData()
+                                                .views?.viewFiles?.modeSettings?.[this.mode] as any
+                                        )?.columns ?? // eslint-disable-line @typescript-eslint/no-unsafe-member-access
+                                        (
+                                            Config.defaults.views.viewFiles.modeSettings[this.mode] as unknown as Extract<
+                                                (typeof Config)["defaults"]["views"]["viewFiles"]["modeSettings"][T],
+                                                { columns: any }
+                                            >
+                                        ).columns
+                                    );
+                                }
+                                return void 0 as never;
+                            }
+                            public set columns(
+                                value: HasNullSection extends true ?
+                                    (typeof ConfigConstants.views.ViewFiles.viewFilesTabModeToColumnIDs)[Extract<
+                                        ConfigConstants.views.ViewFiles.ViewFilesTabSectionModeFromViewFilesTabModeAndSectionID<T, M[number]>,
+                                        keyof typeof ConfigConstants.views.ViewFiles.viewFilesTabModeToColumnIDs
+                                    >][number][]
+                                :   never
+                            ) {
+                                if ((this.modes as M[number][]).includes(null)) {
+                                    this[DeepSubConfig_configSymbol][DeepSubConfig_configSymbol][DeepSubConfig_configSymbol].#config.saveChanges({
+                                        views: { viewFiles: { modeSettings: { [this.mode]: { columns: value } } } },
+                                    });
+                                }
+                            }
+                            public abstract readonly sections: HasNonNullSection extends true ?
+                                DeepSubConfig<any> & {
+                                    [K in NonNullable<M[number]>]: DeepSubConfig<any> & {
+                                        columns: (typeof ConfigConstants.views.ViewFiles.viewFilesTabModeToColumnIDs)[Extract<
+                                            ConfigConstants.views.ViewFiles.ViewFilesTabSectionModeFromViewFilesTabModeAndSectionID<T, NonNullable<M[number]>>,
+                                            keyof typeof ConfigConstants.views.ViewFiles.viewFilesTabModeToColumnIDs
+                                        >][number][];
+                                    };
+                                }
+                            :   never;
+                        }
+                        return ViewFilesViewConfig_ModeSettings_SubConfig;
+                    })();
+                    public readonly leveldb = new (class ViewFilesViewConfig_ModeSettings_leveldb extends ViewFilesViewConfig_ModeSettings[
+                        subConfigClassSymbol
+                    ]<"leveldb"> {
+                        declare public readonly sections: never;
+                    })(this, "leveldb");
+                    public readonly files = new (class ViewFilesViewConfig_ModeSettings_files extends ViewFilesViewConfig_ModeSettings[
+                        subConfigClassSymbol
+                    ]<"files"> {
+                        declare public readonly sections: never;
+                    })(this, "files");
+                }
+                return ViewFilesViewConfig_ModeSettings;
+            })())(this);
+        })(this);
     }
     const DeepSubConfig_configSymbol: unique symbol = Symbol.for("DeepSubConfig_sourceConfig");
     class DeepSubConfig<T extends Config | (typeof subConfigValueClasses)[number]["prototype"] = Config> {
@@ -3630,22 +3798,26 @@ namespace exports {
             export namespace ViewFiles {
                 export const columnIDToDisplayName = {
                     DBKey: "DB Key",
+                    FilePath: "File Path",
                     ContentType: "Content Type",
                 } as const satisfies { [key in ViewFilesTabModeToColumnType[ViewFilesTabSectionMode]]: string | { optionLabel: string; headerLabel: string } };
 
                 export const viewFilesTabModeToSectionIDs = {
-                    simple: [null],
+                    leveldb: [null],
+                    files: [null],
                 } as const satisfies { [key in ViewFilesTabMode]: (string | null)[] };
 
                 export const viewFilesTabModeSectionHeaderNames = {
-                    simple: [null],
+                    leveldb: [null],
+                    files: [null],
                 } as const satisfies { [key in ViewFilesTabMode]: (string | null)[] };
 
                 export const viewFilesTabModeToColumnIDs = {
-                    simple: ["DBKey", "ContentType"],
+                    leveldb: ["DBKey", "ContentType"],
+                    files: ["FilePath", "ContentType"],
                 } as const;
 
-                export type ViewFilesTabMode = "simple";
+                export type ViewFilesTabMode = "leveldb" | "files";
 
                 export type ViewFilesTabSectionModeFromViewFilesTabModeAndSectionID<
                     M extends ViewFilesTabMode,

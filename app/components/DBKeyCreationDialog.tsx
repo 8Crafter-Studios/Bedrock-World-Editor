@@ -1,10 +1,11 @@
 import {
-    DBChunkKeyEntryContentTypes,
-    DBEntryContentTypes,
+    MCDBChunkKeyEntryContentTypes,
+    MCDBEntryContentTypes,
     dimensions,
-    type DBChunkKeyEntryContentType,
-    type DBEntryContentType,
+    type MCDBChunkKeyEntryContentType,
+    type MCDBEntryContentType,
     type Dimension,
+    type DimensionMCCE,
 } from "mcbe-leveldb";
 import type { JSX, RefObject, TargetedEvent } from "preact";
 import { render, useRef } from "preact/compat";
@@ -14,8 +15,11 @@ import { render, useRef } from "preact/compat";
  */
 export interface ShowDBKeyCreationDialogOptions<O extends DBKeyCreationPromptOptionItemType> {
     options: (O | DBKeyCreationPromptOptionItemWithProperties<O>)[];
-    dimensionTypes?: Record<Dimension | `${string}:${string}`, number> | undefined;
-    dimensionTypeNameMapping?: Record<Dimension | `${string}:${string}`, string> | undefined;
+    dimensionTypes?: Record<Dimension | `${string}:${string}`, number> | Record<Dimension | DimensionMCCE | `${string}:${string}`, number> | undefined;
+    dimensionTypeNameMapping?:
+        | Record<Dimension | `${string}:${string}`, string>
+        | Record<Dimension | DimensionMCCE | `${string}:${string}`, string>
+        | undefined;
     // /**
     //  * The title of the dialog.
     //  *
@@ -57,11 +61,11 @@ type DBKeyCreationPromptOptionItemWithProperties<O extends DBKeyCreationPromptOp
     dimension: { type: O };
     entryType_chunk: {
         type: O;
-        defaultValue: DBChunkKeyEntryContentType;
+        defaultValue: MCDBChunkKeyEntryContentType;
     };
     entryType_any: {
         type: O;
-        defaultValue: DBEntryContentType;
+        defaultValue: MCDBEntryContentType;
     };
 }[O];
 
@@ -73,8 +77,8 @@ interface DBKeyCreationPromptOptionItemResults {
     chunkZ: number;
     subchunkIndex: number;
     dimension: Dimension | number;
-    entryType_chunk: DBChunkKeyEntryContentType;
-    entryType_any: DBEntryContentType;
+    entryType_chunk: MCDBChunkKeyEntryContentType;
+    entryType_any: MCDBEntryContentType;
 }
 
 /**
@@ -218,17 +222,23 @@ export function DBKeyCreationDialog<O extends DBKeyCreationPromptOptionItemType>
                                             }}
                                         >
                                             {props.dimensionTypes ?
-                                                (Object.entries(props.dimensionTypes) as [Dimension | `${string}:${string}`, number][])
+                                                (Object.entries(props.dimensionTypes) as [Dimension | DimensionMCCE | `${string}:${string}`, number][])
                                                     .sort(
                                                         (
-                                                            [, a]: [Dimension | `${string}:${string}`, number],
-                                                            [, b]: [Dimension | `${string}:${string}`, number]
+                                                            [, a]: [Dimension | DimensionMCCE | `${string}:${string}`, number],
+                                                            [, b]: [Dimension | DimensionMCCE | `${string}:${string}`, number]
                                                         ): number => a - b
                                                     )
                                                     .map(
-                                                        ([key, value]: [Dimension | `${string}:${string}`, number]): JSX.Element => (
-                                                            <option value={dimensions[value] ?? value} data-valuetype={typeof (dimensions[value] ?? value)}>
-                                                                {props.dimensionTypeNameMapping ? props.dimensionTypeNameMapping[key] : key}
+                                                        ([key, value]: [Dimension | DimensionMCCE | `${string}:${string}`, number]): JSX.Element => (
+                                                            // REVIEW: Should `?? dimensionsMCCE[value]` actually be included?
+                                                            <option
+                                                                value={dimensions[value] /* ?? dimensionsMCCE[value] */ ?? value}
+                                                                data-valuetype={typeof (dimensions[value] /* ?? dimensionsMCCE[value] */ ?? value)}
+                                                            >
+                                                                {props.dimensionTypeNameMapping ?
+                                                                    props.dimensionTypeNameMapping[key as keyof typeof props.dimensionTypeNameMapping]
+                                                                :   key}
                                                             </option>
                                                         )
                                                     )
@@ -264,8 +274,8 @@ export function DBKeyCreationDialog<O extends DBKeyCreationPromptOptionItemType>
                                             <option value="" selected={typeof option === "string"} disabled>
                                                 Choose Entry Type
                                             </option>
-                                            {DBChunkKeyEntryContentTypes.map(
-                                                (entryType: DBChunkKeyEntryContentType): JSX.Element => (
+                                            {MCDBChunkKeyEntryContentTypes.map(
+                                                (entryType: MCDBChunkKeyEntryContentType): JSX.Element => (
                                                     <option value={entryType} selected={entryType === (typeof option === "string" ? "" : option.defaultValue)}>
                                                         {entryType}
                                                     </option>
@@ -295,8 +305,8 @@ export function DBKeyCreationDialog<O extends DBKeyCreationPromptOptionItemType>
                                             <option value="" selected={typeof option === "string"} disabled>
                                                 Choose Entry Type
                                             </option>
-                                            {DBEntryContentTypes.map(
-                                                (entryType: DBEntryContentType): JSX.Element => (
+                                            {MCDBEntryContentTypes.map(
+                                                (entryType: MCDBEntryContentType): JSX.Element => (
                                                     <option value={entryType} selected={entryType === (typeof option === "string" ? "" : option.defaultValue)}>
                                                         {entryType}
                                                     </option>

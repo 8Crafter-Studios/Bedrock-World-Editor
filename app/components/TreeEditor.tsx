@@ -1103,7 +1103,7 @@ export default class TreeEditor extends React.Component<
                                 >
                                     <img src={treeEditorIcons.NBT.byteArray} style={{ width: "16px", imageRendering: "pixelated" }} aria-hidden="true" />
                                 </button>
-                                <button
+                                {/* <button
                                     type="button"
                                     title="Short Array"
                                     class="image-only-button"
@@ -1212,7 +1212,7 @@ export default class TreeEditor extends React.Component<
                                     ref={widgetButtons.NBT.shortArray}
                                 >
                                     <img src={treeEditorIcons.NBT.shortArray} style={{ width: "16px", imageRendering: "pixelated" }} aria-hidden="true" />
-                                </button>
+                                </button> */}
                                 <button
                                     type="button"
                                     title="Int Array"

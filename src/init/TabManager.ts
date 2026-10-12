@@ -1,18 +1,23 @@
 import { EventEmitter } from "node:events";
 import {
-    DBEntryContentTypes,
+    ChunksDatUtils,
     entryContentTypeToFormatMap,
     getContentTypeFromDBKey,
     getKeyDisplayName,
     getKeysOfTypesG,
+    MCDBEntryContentTypes,
+    MCEntryContentTypes,
     parseSNBTCompoundString,
     parseSpecificIntType,
     prettyPrintSNBT,
     prismarineToSNBT,
     toLong,
     writeSpecificIntType,
-    type DBEntryContentType,
     type EntryContentTypeFormatData,
+    type MCDBEntryContentType,
+    type MCEntryContentType,
+    type NBTSchemas,
+    type VectorXZ,
 } from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
 import type { TreeEditorDataStorageObjectInput } from "../../app/components/TreeEditor";
@@ -30,6 +35,8 @@ import { checkIsURIOrPath, normalizePathSlashes } from "../utils/pathUtils";
 import type { HexEditorDataStorageObject } from "../../app/components/BinaryHexEditor";
 import type { WorldEditorDataStorageObject } from "../../app/tabs/worldEditor";
 import { stringifyError } from "../utils/miscUtils";
+import type { CommentJSONValue } from "comment-json";
+import commentJSON from "comment-json";
 
 namespace exports {
     // type DefaultEventMap = [never];
@@ -92,6 +99,10 @@ namespace exports {
          * Emitted when the modification status of the tab changes.
          */
         modificationStatusChanged: [TabManagerTabModificationStatusChangedEvent];
+        /**
+         * Emitted when a status of the tab which is used in the tab bar and not covered by another event changes.
+         */
+        otherStatusChanged: [TabManagerTabOtherStatusChangedEvent];
         /**
          * Emitted when a tab starts saving.
          */
@@ -203,6 +214,19 @@ namespace exports {
         isModified: boolean;
     }
     /**
+     * Emitted when a status of the tab which is used in the tab bar and not covered by another event changes.
+     */
+    export interface TabManagerTabOtherStatusChangedEvent {
+        /**
+         * The tab that had one of its statuses changed.
+         */
+        tab: TabManagerTab;
+        /**
+         * The status that was changed.
+         */
+        status: "hasFragileLevelDB" | "fragileLevelDBAlreadyShattered";
+    }
+    /**
      * Emitted when a tab starts saving.
      */
     export interface TabManagerTabStartedSavingEvent {
@@ -298,6 +322,35 @@ namespace exports {
             this.setMaxListeners(1000000);
             this.setJumpListData();
             this.setDockMenuData();
+        }
+        /**
+         * Checks using the `level.dat` file whether the world was last used on a version that is affected by the bug where if the LevelDB is touched, the game will freak out whenever it opens the world.
+         *
+         * - `true` - The version is affected.
+         * - `"possible"` - It is unknown if this version is affected (versions before 1.0.0).
+         * - `"unknown"` - The version is unknown.
+         * - `false` - The version is not affected.
+         *
+         * @param levelDat The parsed `level.dat` file.
+         * @returns Whether the world was last used on a version that is affected by the bug.
+         *
+         * @todo Add a way to determine if a world is from one of the versions before lastOpenedWithVersion was added.
+         */
+        public checkWorldFragilityFromLevelDat(levelDat: NBTSchemas.NBTSchemaTypes.LevelDat): boolean | "possible" | "unknown" {
+            let fragileLevelDB: boolean | "possible" | "unknown" = false;
+            if (levelDat.value.lastOpenedWithVersion?.value.type === "int" && levelDat.value.lastOpenedWithVersion.value.value.length >= 4) {
+                const [major, minor, patch, build] = levelDat.value.lastOpenedWithVersion.value.value;
+                // REVIEW: See if it actually does affect 0.9.0 and the other pre-1.0.0 versions.
+                if (major < 1) fragileLevelDB = "possible";
+                else if (major === 1 && minor === 0 && patch === 0 && build < 16) fragileLevelDB = "possible";
+                // TEST: Make sure 1.0.0 actually is affected.
+                else if (major === 1 && minor < 2) fragileLevelDB = true;
+                else if (major === 1 && minor === 2 && patch === 0 && build < 11) fragileLevelDB = true;
+                // REVIEW: See if it actually does affect the 0.9.0 up through the last version with StorageVersion 4 that didn't have lastOpenedWithVersion.
+            } else if (levelDat.value.StorageVersion?.type === "int" && levelDat.value.StorageVersion.value === 4) fragileLevelDB = "possible";
+            else if (levelDat.value.StorageVersion?.type === "int" && levelDat.value.StorageVersion.value < 4) fragileLevelDB = false;
+            else fragileLevelDB = "unknown";
+            return fragileLevelDB;
         }
         public openTab(props: Omit<ConstructorParameters<typeof TabManagerTab>[0], "tabManager">): TabManagerTab {
             const tab = new TabManagerTab({ tabManager: this, ...props });
@@ -723,7 +776,7 @@ namespace exports {
         [type in "world" | "leveldb"]?: {
             [worldPath: string]: {
                 target: TabManagerSubTab["target"];
-                contentType: DBEntryContentType;
+                contentType: MCEntryContentType;
                 name: string;
                 icon?: string | undefined;
                 specialTabID?: TabManagerTabGenericSubTabID | undefined;
@@ -779,8 +832,12 @@ namespace exports {
         public path: string;
         /**
          * The database that this tab represents.
+         *
+         * If {@link type} is `world` and there is no `db` folder in the world, this will be `null`.
+         *
+         * Only used for the `world` and `leveldb` {@link type | types}.
          */
-        public db?: LevelDB | undefined;
+        public db?: LevelDB | null | undefined;
         /**
          * The search object that is used to search the database.
          */
@@ -790,7 +847,7 @@ namespace exports {
          */
         public cachedDBKeys?:
             | {
-                  [key in DBEntryContentType]: Buffer[];
+                  [key in MCDBEntryContentType]: Buffer[];
               }
             | undefined;
         /**
@@ -866,6 +923,31 @@ namespace exports {
          */
         public isNonIsolatedWorld: boolean = false;
         /**
+         * Whether the world was last used on a version that is affected by the bug where if the LevelDB is touched, the game will freak out whenever it opens the world.
+         *
+         * - `true` - The version is affected.
+         * - `"possible"` - It is unknown if this version is affected (versions in the range Beta 1.2.0.2 < x < 1.2.0.81).
+         * - `"unknown"` - The version is unknown.
+         * - `false` - The version is not affected.
+         * - `null` - The fragility state is not applicable to this tab type.
+         * - `undefined` - The fragility state has not been checked yet.
+         */
+        public hasFragileLevelDB: ReturnType<typeof tabManager.checkWorldFragilityFromLevelDat> | null | undefined;
+        /**
+         * A promise that resolves when the fragility of the LevelDB has been checked.
+         *
+         * This is not removed after it is resolved or rejected.
+         *
+         * Only present if the fragility state was not passed to the constructor;
+         */
+        public awaitFragilityCheck?: Promise<void>;
+        /**
+         * If the fragile LevelDB has been accessed and saved to the original files.
+         *
+         * This is to hide subsequent warnings.
+         */
+        public fragileLevelDBAlreadyShattered: boolean = false;
+        /**
          * Whether the tab is read-only.
          *
          * @readonly
@@ -894,7 +976,7 @@ namespace exports {
          *
          * Only used for the {@link TabManagerTabMode.CopyUntilSave} and {@link TabManagerTabMode.Copy} modes.
          *
-         * Only used for the `world` {@link type}
+         * Only used for the `world` {@link type}.
          */
         public pathsToRemoveOnSave: string[] = [];
         /**
@@ -919,6 +1001,10 @@ namespace exports {
             type: TabManagerTab["type"];
             mode?: TabManagerTabMode | undefined;
             isNonIsolatedWorld?: boolean | undefined;
+            hasFragileLevelDB?: ReturnType<typeof tabManager.checkWorldFragilityFromLevelDat> | undefined;
+            fragileLevelDBAlreadyShattered?: boolean | undefined;
+            subTabs?: Parameters<TabManagerTab["openTab"]>[] | undefined;
+            switchToTab?: Parameters<TabManagerTab["switchTab"]>[0] | undefined;
         }) {
             super();
             this.setMaxListeners(1000000);
@@ -928,6 +1014,8 @@ namespace exports {
             this.icon = props.icon ?? null;
             this.type = props.type;
             this.isNonIsolatedWorld = props.isNonIsolatedWorld ?? false;
+            this.hasFragileLevelDB = props.hasFragileLevelDB;
+            this.fragileLevelDBAlreadyShattered = props.fragileLevelDBAlreadyShattered ?? false;
             if (props.mode) this.mode = props.mode;
             switch (props.mode) {
                 case TabManagerTabMode.Readonly:
@@ -945,9 +1033,19 @@ namespace exports {
                     break;
             }
             this.initAccess(props.mode ?? TabManagerTabMode.CopyUntilSave);
-            this.getPinnedTabs().forEach((tab, i, a) =>
-                this.openTab({ ...tab, isPinned: true }, tab.active || (!a.some((tab) => tab.active) && i === a.length - 1))
-            );
+            if (props.hasFragileLevelDB === undefined) this.awaitFragilityCheck = this.checkFragility();
+            else this.initFragilityState();
+            if (props.subTabs) {
+                props.subTabs.forEach((tab) => this.openTab(tab[0], tab[1]));
+            } else {
+                this.getPinnedTabs().forEach((tab, i, a) =>
+                    this.openTab(
+                        { ...tab, isPinned: true },
+                        tab.active || (!a.some((tab) => tab.active) && i === a.length - 1 && props.switchToTab === undefined)
+                    )
+                );
+            }
+            if (props.switchToTab !== undefined) this.switchTab(props.switchToTab);
         }
         /**
          * Whether the tab has a sub-tab bar.
@@ -1054,31 +1152,36 @@ namespace exports {
                     break;
             }
             if (this.type === "world") {
-                this.db = new LevelDB(path.join(this.tempPath ?? this.path, "db"));
-                this.dbSearch = new TabManagerTab_LevelDBSearch(this);
-                this.awaitDBOpen = this.db.open().then(
-                    (): true => {
-                        void this.refreshCachedDBKeys();
-                        return true;
-                    },
-                    (err: unknown): false => {
-                        console.error(err);
-                        this.errorOnDBOpen = err;
-                        if (err instanceof Error && err.message === "Error: Corruption: CURRENT file does not end with newline") {
-                            if (
-                                existsSync(path.join(this.tempPath ?? this.path, "db", "CURRENT")) &&
-                                readFileSync(path.join(this.tempPath ?? this.path, "db", "CURRENT"))
-                                    .subarray(0, 17)
-                                    .equals(Buffer.from("00000000fcb9cf9b000000000000000024", "hex"))
-                            ) {
-                                this.errorDueToEncryptedLevelDB = true;
+                if (!existsSync(path.join(this.tempPath ?? this.path, "db"))) {
+                    this.db = null;
+                    this.dbSearch = new TabManagerTab_LevelDBSearch(this);
+                } else {
+                    this.db = new LevelDB(path.join(this.tempPath ?? this.path, "db"));
+                    this.dbSearch = new TabManagerTab_LevelDBSearch(this);
+                    this.awaitDBOpen = this.db.open().then(
+                        (): true => {
+                            void this.refreshCachedDBKeys();
+                            return true;
+                        },
+                        (err: unknown): false => {
+                            console.error(err);
+                            this.errorOnDBOpen = err;
+                            if (err instanceof Error && err.message === "Error: Corruption: CURRENT file does not end with newline") {
+                                if (
+                                    existsSync(path.join(this.tempPath ?? this.path, "db", "CURRENT")) &&
+                                    readFileSync(path.join(this.tempPath ?? this.path, "db", "CURRENT"))
+                                        .subarray(0, 17)
+                                        .equals(Buffer.from("00000000fcb9cf9b000000000000000024", "hex"))
+                                ) {
+                                    this.errorDueToEncryptedLevelDB = true;
+                                }
                             }
+                            return false;
                         }
-                        return false;
-                    }
-                );
+                    );
+                }
             } else if (this.type === "leveldb") {
-                this.db = new LevelDB(this.tempPath ?? this.path);
+                this.db = new LevelDB(this.tempPath ?? this.path, { createIfMissing: false });
                 this.dbSearch = new TabManagerTab_LevelDBSearch(this);
                 this.awaitDBOpen = this.db.open().then(
                     (): true => {
@@ -1102,11 +1205,18 @@ namespace exports {
                     }
                 );
             } else if (this.type === "nbt") {
-                let contentType: DBEntryContentType;
+                let contentType: MCEntryContentType;
                 let formatData: EntryContentTypeFormatData | undefined;
-                // BUG: This treats Java level.dat as Bedrock level.dat, what it should do is check if it is little-endian or big-endian and if it is little-endian, treat it as Bedrock and set the content type to LevelDat.
-                contentTypeGetter: if (["level.dat", "level.dat_old"].includes(path.basename(this.path))) contentType = "LevelDat";
-                else if (this.path.toLowerCase().endsWith(".mcstructure")) contentType = "StructureTemplate";
+                // BUG: This treats Java level.dat as Bedrock level.dat, what it should do is check if it is little-endian or big-endian and if it is little-endian, treat it as Bedrock and set the content type to LevelDat, or maybe just check for the existence of the Bedrock header.
+                contentTypeGetter: if (
+                    [
+                        "level.dat",
+                        "level.dat_old",
+                        "level.dat_new", // level.dat_new only exists while saving level.dat, it writes to level.dat_new, deletes level.dat_old, renames level.dat to level.dat_old, and renames level.dat_new to level.dat.
+                    ].includes(path.basename(this.path))
+                ) {
+                    contentType = "LevelDat";
+                } else if (this.path.toLowerCase().endsWith(".mcstructure")) contentType = "StructureTemplate";
                 else if (this.path.toLowerCase().endsWith(".snbt")) {
                     contentType = "StructureTemplate";
                     formatData = {
@@ -1120,14 +1230,14 @@ namespace exports {
                     if (components.length > 2) {
                         const preExt: string = components.at(-2)!;
                         if (
-                            DBEntryContentTypes.filter(
-                                (contentType: DBEntryContentType): boolean =>
+                            MCEntryContentTypes.filter(
+                                (contentType: MCEntryContentType): boolean =>
                                     entryContentTypeToFormatMap[contentType].type === "NBT" ||
                                     (entryContentTypeToFormatMap[contentType].type === "custom" &&
                                         entryContentTypeToFormatMap[contentType].resultType === "JSONNBT")
-                            ).includes(preExt as DBEntryContentType)
+                            ).includes(preExt as MCEntryContentType)
                         ) {
-                            contentType = preExt as DBEntryContentType;
+                            contentType = preExt as MCEntryContentType;
                             break contentTypeGetter;
                         }
                     }
@@ -1139,7 +1249,24 @@ namespace exports {
                 if (contentType === "Unknown" && !formatData) {
                     void (async (): Promise<void> => {
                         try {
-                            const format: NBT.NBTFormat = (await NBT.parse(await readFile(this.path))).type;
+                            const data: Buffer = await readFile(this.path);
+                            // TODO: Maybe make the player.dat detection more strict.
+                            if (path.basename(this.path) === "player.dat" && data.readUInt32LE(0) === 1) {
+                                contentType = "PlayerDat";
+                                return;
+                            }
+                            if (path.basename(this.path) === "entities.dat" && data.readUInt32BE(0) === 0x454e5400) {
+                                contentType = "EntitiesDat";
+                                return;
+                            }
+                            // TODO: Maybe make the chunk.dat detection more strict.
+                            if (path.basename(this.path) === "chunks.dat" && data.length >= 4096) {
+                                contentType = "ChunksDat";
+                                return;
+                            }
+                            // TODO: Add importedchunks.dat detection.
+                            // TODO: Figure out how the players folder is used and add support for files from it.
+                            const format: NBT.NBTFormat = (await NBT.parse(data)).type;
                             formatData = {
                                 type: "NBT",
                                 format:
@@ -1178,8 +1305,71 @@ namespace exports {
                 }
             }
         }
-        private async getCachedDBKeys(): Promise<Record<DBEntryContentType, Buffer[]>> {
-            const generator = getKeysOfTypesG(this.db!, DBEntryContentTypes);
+        private initFragilityState(): void {
+            switch (this.type) {
+                case "world":
+                case "leveldb":
+                    break;
+                case "nbt":
+                case "json":
+                case "xml":
+                case "text":
+                case "binary":
+                case "other":
+                default:
+                    this.hasFragileLevelDB = null;
+                    this.fragileLevelDBAlreadyShattered = false;
+                    return;
+            }
+            if (this.hasFragileLevelDB === undefined) throw new TypeError("hasFragileLevelDB is undefined");
+            if (this.hasFragileLevelDB !== false) {
+                switch (this.mode) {
+                    case TabManagerTabMode.Direct:
+                    case TabManagerTabMode.ReadonlyDirect:
+                        this.fragileLevelDBAlreadyShattered = true;
+                        this.emit("otherStatusChanged", { tab: this, status: "fragileLevelDBAlreadyShattered" });
+                        break;
+                    case TabManagerTabMode.Readonly:
+                    case TabManagerTabMode.CopyUntilSave:
+                    case TabManagerTabMode.Copy:
+                    default:
+                        break;
+                }
+            }
+        }
+        // TODO: Make this check level.dat_old.
+        private async checkFragility(): Promise<void> {
+            switch (this.type) {
+                case "world":
+                case "leveldb":
+                    break;
+                case "nbt":
+                case "json":
+                case "xml":
+                case "text":
+                case "binary":
+                case "other":
+                default:
+                    this.hasFragileLevelDB = null;
+                    this.fragileLevelDBAlreadyShattered = false;
+                    return;
+            }
+            const levelDatPath: string = path.join(this.tempPath ?? this.path, "level.dat");
+            if (!existsSync(levelDatPath)) return;
+            try {
+                const levelDat = await entryContentTypeToFormatMap.LevelDat.parse(readFileSync(levelDatPath));
+                this.hasFragileLevelDB = this.tabManager.checkWorldFragilityFromLevelDat(levelDat);
+                this.initFragilityState();
+                this.emit("otherStatusChanged", { tab: this, status: "hasFragileLevelDB" });
+            } catch (e) {
+                reportError(e);
+                this.hasFragileLevelDB = "unknown";
+                this.initFragilityState();
+            }
+        }
+        private async getCachedDBKeys(): Promise<Record<MCDBEntryContentType, Buffer[]>> {
+            const startTime: number = performance.now(); // DEBUG
+            const generator = getKeysOfTypesG(this.db!, MCDBEntryContentTypes);
 
             // Put this is brackets to allow the first yield to be garbage collected.
             {
@@ -1192,13 +1382,15 @@ namespace exports {
                 this.loadedCachedDBKeysProgress = key.count;
             }
 
+            const endTime: number = performance.now(); // DEBUG
+            console.debug("[getCachedDBKeys]", endTime - startTime, "ms", this.id, this);
             return result;
         }
         public async refreshCachedDBKeys(): Promise<boolean | undefined> {
             if (!this.db) return;
             this.cachedDBKeys = undefined;
             return await (this.awaitCachedDBKeys = this.getCachedDBKeys().then(
-                (keys: Record<DBEntryContentType, Buffer[]>): true => {
+                (keys: Record<MCDBEntryContentType, Buffer[]>): true => {
                     this.cachedDBKeys = keys;
                     return true;
                 },
@@ -1283,6 +1475,76 @@ namespace exports {
         // TODO: Maybe this shouldn't copy folders and files that are not necessary to copy, so that is there is a 60 GB development-related folder that isn't explicitly marked as never copy in WORLD_FOLDER_SUBPATHS_TO_NEVER_COPY, then it won't try to copy 60 GB of data.
         public async save(ignoreFailedTabSaves: boolean = false, unsafeMode: boolean = false): Promise<void> {
             if (this.isSaving || this.readonly || !this.saveEnabled || !this.tempPath || !this.tempFilePath) return;
+            if (!this.fragileLevelDBAlreadyShattered) {
+                switch (this.hasFragileLevelDB) {
+                    case true:
+                        switch (this.mode) {
+                            case TabManagerTabMode.Readonly:
+                            case TabManagerTabMode.CopyUntilSave:
+                                if (
+                                    (
+                                        await dialog.showMessageBox({
+                                            type: "warning",
+                                            title: "Bedrock World Editor",
+                                            message: `Are you sure you want to save this world? It has a fragile LevelDB and will appear corrupted to the version it was last used in if you save it.`,
+                                            detail: "This world was last opened in a version that is affected by a bug where if you access the LevelDB on it, the world will be very broken (it will work fine on versions not affected by the bug, but the versions that are affected will behave very strangely). Some effects of the bug include: World data wipes, extremely slow chunk loading and lag spikes, instant crashes (on low-end devices), extremely long world loading using 100% CPU, rubberbanding, etc.",
+                                            buttons: ["Proceed", "Cancel"],
+                                            noLink: true,
+                                        })
+                                    ).response
+                                ) {
+                                    return;
+                                }
+                                this.fragileLevelDBAlreadyShattered = true;
+                                this.emit("otherStatusChanged", { tab: this, status: "fragileLevelDBAlreadyShattered" });
+                                break;
+                            case TabManagerTabMode.ReadonlyDirect:
+                            case TabManagerTabMode.Direct:
+                            case TabManagerTabMode.Copy:
+                            default:
+                                break;
+                        }
+                        break;
+                    case "possible":
+                        switch (this.mode) {
+                            case TabManagerTabMode.Readonly:
+                            case TabManagerTabMode.CopyUntilSave:
+                                if (
+                                    (
+                                        await dialog.showMessageBox({
+                                            type: "warning",
+                                            title: "Bedrock World Editor",
+                                            message: `Are you sure you want to save this world? It might have a fragile LevelDB and may appear corrupted to the version it was last used in if you save it.`,
+                                            detail: "This world was last opened in a version that might have been affected by a bug where if you access the LevelDB on it, the world will be very broken (it will work fine on versions not affected by the bug, but the versions that are affected will behave very strangely). Some effects of the bug include: World data wipes, extremely slow chunk loading and lag spikes, instant crashes (on low-end devices), extremely long world loading using 100% CPU, rubberbanding, etc.",
+                                            buttons: ["Proceed", "Cancel"],
+                                            noLink: true,
+                                        })
+                                    ).response
+                                ) {
+                                    return;
+                                }
+                                this.fragileLevelDBAlreadyShattered = true;
+                                this.emit("otherStatusChanged", { tab: this, status: "fragileLevelDBAlreadyShattered" });
+                                break;
+                            case TabManagerTabMode.ReadonlyDirect:
+                            case TabManagerTabMode.Direct:
+                            case TabManagerTabMode.Copy:
+                            default:
+                                break;
+                        }
+                        break;
+                    case undefined:
+                        await this.awaitFragilityCheck;
+                        if (this.hasFragileLevelDB === undefined) throw new TypeError("hasFragileLevelDB is still undefined after awaitFragilityCheck");
+                        return void (await this.save(ignoreFailedTabSaves, unsafeMode));
+                    case "unknown":
+                    // TODO: Maybe add a warning here?
+                    case false:
+                    case null:
+                    default:
+                        break;
+                }
+            }
             this.isSaving = true;
             this.emit("startedSaving", { tab: this });
             const progressBar = new ProgressBar({
@@ -1543,6 +1805,7 @@ namespace exports {
             this.openTabs.splice(this.openTabs.indexOf(tab), 1);
             this.openTabs.splice(index < 0 ? index + 1 : index, 0, tab);
             this.emit("reorderTabs", { tabs: this.openTabs });
+            if (tab.isPinned) this.savePinnedTabsList();
         }
     }
 
@@ -1555,43 +1818,43 @@ namespace exports {
         value: NBT.TagType[];
     }
 
-    interface DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsOptionBase {
+    interface MCEntryContentTypeToTabManagerSubTabCurrentStateOptionsOptionBase {
         dataStorageObject?: DataStorageObject | undefined;
     }
 
-    type DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase2 = {
-        [key in Exclude<DBEntryContentType, keyof DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase>]: {
+    type MCEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase2 = {
+        [key in Exclude<MCEntryContentType, keyof MCEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase>]: {
             type: key;
-        } & DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsOptionBase &
+        } & MCEntryContentTypeToTabManagerSubTabCurrentStateOptionsOptionBase &
             ((typeof entryContentTypeToFormatMap)[key]["type"] extends "NBT" ? { viewMode?: "node" | "jsonnbt" | "snbt" | "raw" }
             : (typeof entryContentTypeToFormatMap)[key]["type"] extends "custom" ?
                 VerifyConstraint<(typeof entryContentTypeToFormatMap)[key], { type: "custom" }>["resultType"] extends "JSONNBT" ?
                     { viewMode?: "node" | "jsonnbt" | "snbt" | "raw" }
                 :   unknown
             :   unknown);
-    } & DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase;
+    } & MCEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase;
 
-    interface DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase {
+    interface MCEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase {
         StructureTemplate: {
             type: "StructureTemplate";
             viewMode?: "3D" | "2D" | "node" | "jsonnbt" | "snbt" | "raw";
-        } & DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsOptionBase;
+        } & MCEntryContentTypeToTabManagerSubTabCurrentStateOptionsOptionBase;
         FlatWorldLayers: {
             type: "FlatWorldLayers";
             viewMode?: "FlatWorldLayers" | "node" | "jsonnbt" | "snbt" | "raw";
-        } & DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsOptionBase;
+        } & MCEntryContentTypeToTabManagerSubTabCurrentStateOptionsOptionBase;
         Map: {
             type: "Map";
             viewMode?: "map" | "node" | "jsonnbt" | "snbt" | "raw";
-        } & DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsOptionBase;
+        } & MCEntryContentTypeToTabManagerSubTabCurrentStateOptionsOptionBase;
     }
 
-    export interface DBEntryContentTypeToTabManagerSubTabCurrentStateOptions
-        extends DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase, DBEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase2 {}
+    export interface MCEntryContentTypeToTabManagerSubTabCurrentStateOptions
+        extends MCEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase, MCEntryContentTypeToTabManagerSubTabCurrentStateOptionsBase2 {}
 
-    export interface TabManagerSubTabCurrentState<ContentType extends DBEntryContentType = DBEntryContentType> {
+    export interface TabManagerSubTabCurrentState<ContentType extends MCEntryContentType = MCEntryContentType> {
         scrollTop: number;
-        options: DBEntryContentTypeToTabManagerSubTabCurrentStateOptions[ContentType];
+        options: MCEntryContentTypeToTabManagerSubTabCurrentStateOptions[ContentType];
     }
 
     export interface GenericDataStorageObjectBase {
@@ -1620,6 +1883,12 @@ namespace exports {
     export interface GenericDataStorageObjectJSON extends GenericDataStorageObjectBase {
         data: Record<string | number, GenericDataStorageObjectJSON_JSONNodeValue>;
         dataType: "JSON";
+        sourceType: EntryContentTypeFormatData;
+    }
+
+    export interface GenericDataStorageObjectJSONC extends GenericDataStorageObjectBase {
+        data: CommentJSONValue;
+        dataType: "JSONC";
         sourceType: EntryContentTypeFormatData;
     }
 
@@ -1677,6 +1946,7 @@ namespace exports {
         | GenericDataStorageObjectNBTCompound
         | GenericDataStorageObjectNBT
         | GenericDataStorageObjectJSON
+        | GenericDataStorageObjectJSONC
         | GenericDataStorageObjectASCII
         | GenericDataStorageObjectUTF8
         | GenericDataStorageObjectHex
@@ -1689,7 +1959,7 @@ namespace exports {
         PartialWU<Omit<TreeEditorDataStorageObjectInput & MapEditorDataStorageObject & HexEditorDataStorageObject, KeysOfUnion<GenericDataStorageObject>>>;
 
     // TODO: Add icons for the content types that are missing icons.
-    const tabManagerSubTabContentTypeToDefaultIconMap: Record<DBEntryContentType, string | undefined> = {
+    const tabManagerSubTabContentTypeToDefaultIconMap: Record<MCEntryContentType | "ChunksDatEntry", string | undefined> = {
         AABBVolumes: "resource://images/ui/glyphs/mob_spawner.png",
         ActorDigestVersion: "resource://images/ui/glyphs/icon_panda_2stack_history.png", // Maybe an entity icon with a list icon on it with a history icon on that? Or maybe a layered entity icon (as in a stack of entity icons) with a history icon on that? And it should somehow convey that it is entity UUIDs and not entity data.
         ActorPrefix: "resource://images/ui/glyphs/icon_panda.png",
@@ -1718,24 +1988,35 @@ namespace exports {
         GeneratedPreCavesAndCliffsBlending: undefined,
         GenerationSeed: "resource://images/ui/glyphs/seeds_wheat.png",
         HardcodedSpawners: "resource://images/ui/glyphs/mob_spawner_cobweb.png",
-        LegacyBlockExtraData: undefined,
+        ImportedChunksDat: "resource://images/ui/glyphs/EnvSprite_cliff.png",
+        JigsawStructureBlueprint: "resource://images/ui/glyphs/jigsaw_front.png",
+        LANPlayerDat: "resource://images/ui/glyphs/icon_steve_lan.png",
+        LegacyBlockExtraData: "resource://images/ui/glyphs/BlockSprite_snowlogged-dandelion.png",
+        LegacyConsolePlayer: "resource://images/ui/glyphs/icon_steve_console.png",
         LegacyNether: undefined, // Maybe the same icon as the Nether content type, but with something to indicate it is the legacy format, such as a cobweb?
         LegacyOverworld: undefined, // Maybe the same icon as the Overworld content type, but with something to indicate it is the legacy format, such as a cobweb?
-        LegacyTerrain: undefined,
+        LegacyTerrain: "resource://images/ui/glyphs/grass_block_side_JE3_BE1.png",
         LegacyTheEnd: undefined, // Maybe the same icon as the TheEnd content type, but with something to indicate it is the legacy format, such as a cobweb?
         LegacyVersion: undefined, // Maybe a history icon, with something to indicate it is the legacy format, such as a cobweb?
         LevelChunkMetaDataDictionary: "resource://images/ui/glyphs/update_world_chunks_16x.png",
         LevelDat: "resource://images/ui/glyphs/settings_glyph_color_2x.png",
         LevelSpawnWasFixed: undefined,
         Map: "resource://images/ui/glyphs/icon_map.png",
+        MCChinaDevDimension: "resource://images/ui/glyphs/portalBg.png",
         MetaDataHash: undefined,
         MobEvents: undefined,
         MVillages: undefined,
+        NeteaseData: "resource://images/ui/glyphs/MCCN_Icon_16x.png",
+        NeteaseScriptGid: "resource://images/ui/glyphs/MCCN_Icon_Python_16x.png",
         Nether: "resource://images/ui/glyphs/portalBg.png",
         Overworld: "resource://images/ui/glyphs/portalBg.png",
         PendingTicks: undefined, // Something clock related. Maybe somehow indicating that it is planned/scheduled? Maybe with a calendar?
         Player: "resource://images/ui/glyphs/icon_steve_server.png",
         PlayerClient: "resource://images/ui/glyphs/icon_steve_client.png",
+        PlayerDat: "resource://images/ui/glyphs/icon_steve_dat.png",
+        POIRegion: undefined,
+        POIRegionRegistry: undefined,
+        POITypes: undefined,
         Portals: "resource://images/ui/glyphs/realmPortalSmall.png",
         PositionTrackingDB: "resource://images/ui/glyphs/lodestone_side.png",
         PositionTrackingLastId: "resource://images/ui/glyphs/lodestonecompass_item.png",
@@ -1743,12 +2024,18 @@ namespace exports {
         RealmsStoriesData: "resource://images/ui/glyphs/realmsStoriesIcon.png",
         SchedulerWT: "resource://images/ui/glyphs/icon_wandering_trader.png",
         Scoreboard: "resource://images/ui/glyphs/icon_best3.png",
+        SSTCommandLog: undefined,
+        SSTHashRegistry: undefined,
         StructureTemplate: "resource://images/ui/glyphs/structure_block.png",
-        SubChunkPrefix: undefined,
+        SubChunkPrefix: "resource://images/ui/glyphs/EnvSprite_chunk.png",
         TheEnd: "resource://images/ui/glyphs/portalBg.png",
         TickingArea: undefined, // Should be a clock icon. Maybe with an indication is is chunk loading related?
         Unknown: undefined, // Maybe a question mark icon? Or maybe leave it undefined?
+        unknown0x70: undefined, // TEMP: Figure out what this is first.
+        unknown0x71: undefined, // TEMP: Figure out what this is first.
         Version: undefined, // Maybe a history icon?
+        VersionMarkInsert: undefined, // TEMP: Figure out what this is actually used for first.
+        VersionEnchant: undefined, // TEMP: Figure out what this is actually used for first.
         VillageDwellers: undefined,
         VillageInfo: undefined,
         VillagePlayers: undefined,
@@ -1756,9 +2043,10 @@ namespace exports {
         VillageRaid: undefined,
         Villages: undefined,
         WorldClocks: "resource://images/ui/glyphs/icon_clock_17.png",
+        ChunksDatEntry: "resource://images/ui/glyphs/brick_stairs_JE4_BE1.png",
     };
 
-    export class TabManagerSubTab<ContentType extends DBEntryContentType = DBEntryContentType> {
+    export class TabManagerSubTab<ContentType extends MCEntryContentType = MCEntryContentType> {
         #hasUnsavedChanges: boolean = false;
         #isPinned: boolean = false;
         public static lastID: bigint = 0n;
@@ -1778,6 +2066,13 @@ namespace exports {
                    * The raw key of the entry.
                    */
                   key: Buffer;
+              }
+            | {
+                  type: "ChunksDatEntry";
+                  /**
+                   * The chunk indices of the entry.
+                   */
+                  chunk: VectorXZ;
               }
             | {
                   type: "File";
@@ -1810,16 +2105,28 @@ namespace exports {
         }) {
             this.parentTab = props.parentTab;
             this.name = props.name;
-            this.icon = props.icon === "auto" ? tabManagerSubTabContentTypeToDefaultIconMap[props.contentType] : props.icon;
+            if (props.icon === "auto") {
+                if (props.contentType === "Unknown") {
+                    if (props.target.type === "ChunksDatEntry") this.icon = tabManagerSubTabContentTypeToDefaultIconMap.ChunksDatEntry;
+                    else this.icon = tabManagerSubTabContentTypeToDefaultIconMap.Unknown;
+                } else this.icon = tabManagerSubTabContentTypeToDefaultIconMap[props.contentType];
+            } else this.icon = props.icon;
             this.target = props.target;
             this.contentType = props.contentType;
-            this.formatData = props.formatData;
+            if (this.target.type === "ChunksDatEntry" && !props.formatData) {
+                this.formatData = {
+                    type: "custom",
+                    resultType: "JSONNBT",
+                    parse: ChunksDatUtils.parseRawChunksDatChunk,
+                    serialize: ChunksDatUtils.chunksDatChunkToRaw,
+                };
+            } else this.formatData = props.formatData;
             this.specialTabID = props.specialTabID;
             this.currentState = {
                 scrollTop: 0,
                 options: {
                     type: props.contentType,
-                } as DBEntryContentTypeToTabManagerSubTabCurrentStateOptions[ContentType],
+                } as MCEntryContentTypeToTabManagerSubTabCurrentStateOptions[ContentType],
             };
             this.#isPinned = props.isPinned ?? false;
             this.readonly = props.readonly ?? false;
@@ -1864,6 +2171,18 @@ namespace exports {
          * @throws {unknown} If the data cannot be parsed.
          */
         public async parseRawData(rawData: Buffer, format?: EntryContentTypeFormatData): Promise<Pick<DataStorageObject, "sourceType" | "dataType" | "data">> {
+            if (this.target.type === "ChunksDatEntry") {
+                return {
+                    sourceType: {
+                        type: "custom",
+                        resultType: "JSONNBT",
+                        parse: ChunksDatUtils.parseRawChunksDatChunk,
+                        serialize: ChunksDatUtils.chunksDatChunkToRaw,
+                    },
+                    dataType: "NBTCompound",
+                    data: ChunksDatUtils.parseRawChunksDatChunk(rawData),
+                };
+            }
             format ??= this.formatData ?? (entryContentTypeToFormatMap[this.currentState.options.type] as EntryContentTypeFormatData);
             switch (format.type) {
                 case "NBT": {
@@ -1887,6 +2206,13 @@ namespace exports {
                         dataType: "JSON",
                         data: JSON.parse(rawData.toString("binary")) as GenericDataStorageObjectJSON["data"],
                     } as const satisfies Pick<GenericDataStorageObjectJSON & DataStorageObject, "sourceType" | "dataType" | "data">;
+                }
+                case "JSONC": {
+                    return {
+                        sourceType: format,
+                        dataType: "JSONC",
+                        data: commentJSON.parse(rawData.toString("binary")),
+                    } as const satisfies Pick<GenericDataStorageObjectJSONC & DataStorageObject, "sourceType" | "dataType" | "data">;
                 }
                 case "ASCII": {
                     return {
@@ -1979,7 +2305,8 @@ namespace exports {
          *
          * @throws {Error} If the parent tab has no associated LevelDB.
          * @throws {Error} If the LevelDB is not open and this sub-tab is a LevelDB entry.
-         * @throws {Error} If the LevelDB key or file associated with this sub-tab does not exist.
+         * @throws {ReferenceError} If the LevelDB key or file associated with this sub-tab does not exist.
+         * @throws {ReferenceError} If the `chunks.dat` file associated with this sub-tab does not exist.
          * @throws {Error} If the format type for this sub-tab's content type is not supported and `binary` is `false`.
          * @throws {unknown} If the LevelDB throws an error when trying to be read and this sub-tab is a LevelDB entry.
          * @throws {unknown} If the file throws an error when trying to be read and this sub-tab is a file.
@@ -1993,7 +2320,7 @@ namespace exports {
                     if (binary) {
                         const rawData: Buffer | null = await this.parentTab.db.get(this.target.key);
                         if (rawData === null) {
-                            throw new Error("The LevelDB key associated with this sub-tab does not exist.");
+                            throw new ReferenceError("The LevelDB key associated with this sub-tab does not exist.");
                         }
                         this.currentState.options.dataStorageObject ??= {} as DataStorageObject;
                         this.currentState.options.dataStorageObject.dataType = "binary";
@@ -2006,13 +2333,42 @@ namespace exports {
                         (entryContentTypeToFormatMap[this.currentState.options.type] as EntryContentTypeFormatData);
                     const rawData: Buffer | null = await this.parentTab.db.get(this.target.key);
                     if (rawData === null) {
-                        throw new Error("The LevelDB key associated with this sub-tab does not exist.");
+                        throw new ReferenceError("The LevelDB key associated with this sub-tab does not exist.");
                     }
                     this.currentState.options.dataStorageObject = {
                         hexEditor: this.currentState.options.dataStorageObject?.hexEditor,
                         mapEditor: this.currentState.options.dataStorageObject?.mapEditor,
                         treeEditor: this.currentState.options.dataStorageObject?.treeEditor,
                         ...(await this.parseRawData(rawData, format)),
+                    } as const satisfies DataStorageObject;
+                    break;
+                }
+                case "ChunksDatEntry": {
+                    const chunksDatPath: string = path.join(this.parentTab.tempPath ?? this.parentTab.path, "chunks.dat");
+                    if (!existsSync(chunksDatPath)) {
+                        throw new ReferenceError(`The chunks.dat file associated with this sub-tab does not exist: ${chunksDatPath}.`);
+                    }
+                    if (binary) {
+                        this.currentState.options.dataStorageObject ??= {} as DataStorageObject;
+                        this.currentState.options.dataStorageObject.dataType = "binary";
+                        this.currentState.options.dataStorageObject.data = ChunksDatUtils.readRawChunksDatChunk(
+                            await readFile(chunksDatPath),
+                            this.target.chunk
+                        );
+                        break;
+                    }
+                    this.currentState.options.dataStorageObject = {
+                        hexEditor: this.currentState.options.dataStorageObject?.hexEditor,
+                        mapEditor: this.currentState.options.dataStorageObject?.mapEditor,
+                        treeEditor: this.currentState.options.dataStorageObject?.treeEditor,
+                        sourceType: {
+                            type: "custom",
+                            resultType: "JSONNBT",
+                            parse: ChunksDatUtils.parseRawChunksDatChunk,
+                            serialize: ChunksDatUtils.chunksDatChunkToRaw,
+                        },
+                        dataType: "NBTCompound",
+                        data: ChunksDatUtils.readChunksDatChunk(await readFile(chunksDatPath), this.target.chunk),
                     } as const satisfies DataStorageObject;
                     break;
                 }
@@ -2131,6 +2487,10 @@ namespace exports {
                                 }
                                 case "JSON": {
                                     rawData = Buffer.from(JSON.stringify(data), "binary");
+                                    break;
+                                }
+                                case "JSONC": {
+                                    rawData = Buffer.from(commentJSON.stringify(data), "binary");
                                     break;
                                 }
                                 case "ASCII": {
@@ -2263,6 +2623,10 @@ namespace exports {
                                     rawData = Buffer.from(JSON.stringify(data), "binary");
                                     break;
                                 }
+                                case "JSONC": {
+                                    rawData = Buffer.from(commentJSON.stringify(data), "binary");
+                                    break;
+                                }
                                 case "ASCII": {
                                     console.warn(
                                         `Data type is ${this.currentState.options.dataStorageObject.dataType}, but format type is ${format.type}. This conversion is non-standard and may not work as expected.`,
@@ -2372,6 +2736,10 @@ namespace exports {
                             const data = this.currentState.options.dataStorageObject.data;
                             return Buffer.from(JSON.stringify(data), "binary");
                         }
+                        case "JSONC": {
+                            const data = this.currentState.options.dataStorageObject.data;
+                            return Buffer.from(commentJSON.stringify(data), "binary");
+                        }
                         case "ASCII": {
                             const data = this.currentState.options.dataStorageObject.data;
                             return Buffer.from(data, "ascii");
@@ -2417,6 +2785,13 @@ namespace exports {
                         default:
                             throw new Error(`Unsupported data type: ${format.type}`);
                     }
+                }
+                case "ChunksDatEntry": {
+                    if (this.currentState.options.dataStorageObject.dataType === "NBTCompound") {
+                        return ChunksDatUtils.chunksDatChunkToRaw(this.currentState.options.dataStorageObject.data as never);
+                    }
+                    if (this.currentState.options.dataStorageObject.dataType === "binary") return this.currentState.options.dataStorageObject.data;
+                    throw new Error(`Unsupported data type for ChunksDatEntry: ${this.currentState.options.dataStorageObject.dataType}`);
                 }
                 case "File": {
                     const format: EntryContentTypeFormatData = this.currentState.options.dataStorageObject.sourceType;
@@ -2685,6 +3060,10 @@ namespace exports {
                             const data = this.currentState.options.dataStorageObject.data;
                             return Buffer.from(JSON.stringify(data), "binary");
                         }
+                        case "JSONC": {
+                            const data = this.currentState.options.dataStorageObject.data;
+                            return Buffer.from(commentJSON.stringify(data), "binary");
+                        }
                         case "ASCII": {
                             const data = this.currentState.options.dataStorageObject.data;
                             return Buffer.from(data, "ascii");
@@ -2757,6 +3136,17 @@ namespace exports {
                     if (!this.parentTab.db.isOpen()) throw new Error("LevelDB is not open.");
 
                     await this.parentTab.db.put(this.target.key, await this.exportRawData(false));
+                    break;
+                }
+                case "ChunksDatEntry": {
+                    const chunksDatPath: string = path.join(this.parentTab.tempPath ?? this.parentTab.path, "chunks.dat");
+                    if (!existsSync(chunksDatPath)) {
+                        throw new ReferenceError(`The chunks.dat file associated with this sub-tab does not exist: ${chunksDatPath}`);
+                    }
+                    await writeFile(
+                        chunksDatPath,
+                        ChunksDatUtils.writeRawChunksDatChunk(await readFile(chunksDatPath), await this.exportRawData(false), this.target.chunk)
+                    );
                     break;
                 }
                 case "File": {
@@ -3003,13 +3393,13 @@ namespace exports {
                   excludeNonNBTResults?: boolean | undefined;
               }
             | undefined;
-        contentTypes?: DBEntryContentType[] | undefined;
-        excludeContentTypes?: DBEntryContentType[] | undefined;
+        contentTypes?: MCEntryContentType[] | undefined;
+        excludeContentTypes?: MCEntryContentType[] | undefined;
         searchTargets?:
             | (
                   | {
                         key: Buffer;
-                        contentType?: DBEntryContentType;
+                        contentType?: MCEntryContentType;
                         displayKey?: string;
                         valueType: EntryContentTypeFormatData;
                         // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- This is for documentation purposes.
@@ -3027,7 +3417,7 @@ namespace exports {
                     }
                   | {
                         key: Buffer;
-                        contentType?: DBEntryContentType;
+                        contentType?: MCEntryContentType;
                         displayKey?: string;
                         valueType?: undefined;
                         value?: undefined;
@@ -3205,7 +3595,7 @@ namespace exports {
                   T["searchTargets"] extends any[] ? T["searchTargets"][number]
                   :   {
                           key: Buffer<ArrayBufferLike>;
-                          contentType: DBEntryContentType;
+                          contentType: MCEntryContentType;
                       }
               >
             | (YU extends true ? undefined : never),
@@ -3219,17 +3609,17 @@ namespace exports {
                     throw new Error("LevelDB key cache not loaded.");
                 }
             }
-            const searchTargets: TabManagerTab_LevelDBSearchQuery["searchTargets"] & { contentType: DBEntryContentType; displayKey: string }[] =
+            const searchTargets: TabManagerTab_LevelDBSearchQuery["searchTargets"] & { contentType: MCEntryContentType; displayKey: string }[] =
                 query.searchTargets
                     ?.map((v) =>
                         v.contentType ?
-                            (v as typeof v & { contentType: DBEntryContentType; displayKey: string })
+                            (v as typeof v & { contentType: MCEntryContentType; displayKey: string })
                         :   { ...v, contentType: getContentTypeFromDBKey(v.key), displayKey: v.displayKey ?? getKeyDisplayName(v.key) }
                     )
                     .filter(({ contentType }): boolean =>
                         !query.excludeContentTypes?.includes(contentType) && query.contentTypes ? query.contentTypes.includes(contentType) : true
                     ) ??
-                (Object.entries(this.tab.cachedDBKeys!) as [DBEntryContentType, Buffer[]][])
+                (Object.entries(this.tab.cachedDBKeys!) as [MCEntryContentType, Buffer[]][])
                     .filter(([contentType]): boolean =>
                         !query.excludeContentTypes?.includes(contentType) && query.contentTypes ? query.contentTypes.includes(contentType) : true
                     )
@@ -3507,7 +3897,7 @@ namespace exports {
                   T["searchTargets"] extends any[] ? T["searchTargets"][number]
                   :   {
                           key: Buffer<ArrayBufferLike>;
-                          contentType: DBEntryContentType;
+                          contentType: MCEntryContentType;
                       }
               >
             | (YU extends true ? undefined : never),
@@ -3521,17 +3911,17 @@ namespace exports {
                     throw new Error("LevelDB key cache not loaded.");
                 }
             }
-            const searchTargets: TabManagerTab_LevelDBSearchQuery<true>["searchTargets"] & { contentType: DBEntryContentType; displayKey: string }[] =
+            const searchTargets: TabManagerTab_LevelDBSearchQuery<true>["searchTargets"] & { contentType: MCEntryContentType; displayKey: string }[] =
                 query.searchTargets
                     ?.map((v) =>
                         v.contentType ?
-                            (v as typeof v & { contentType: DBEntryContentType; displayKey: string })
+                            (v as typeof v & { contentType: MCEntryContentType; displayKey: string })
                         :   { ...v, contentType: getContentTypeFromDBKey(v.key), displayKey: v.displayKey ?? getKeyDisplayName(v.key) }
                     )
                     .filter(({ contentType }): boolean =>
                         !query.excludeContentTypes?.includes(contentType) && query.contentTypes ? query.contentTypes.includes(contentType) : true
                     ) ??
-                (Object.entries(this.tab.cachedDBKeys!) as [DBEntryContentType, Buffer[]][])
+                (Object.entries(this.tab.cachedDBKeys!) as [MCEntryContentType, Buffer[]][])
                     .filter(([contentType]): boolean =>
                         !query.excludeContentTypes?.includes(contentType) && query.contentTypes ? query.contentTypes.includes(contentType) : true
                     )
@@ -3827,6 +4217,7 @@ declare global {
     export import TabManagerTabSwitchTabEvent = exports.TabManagerTabSwitchTabEvent;
     export import TabManagerTabClosedTabEvent = exports.TabManagerTabClosedTabEvent;
     export import TabManagerTabModificationStatusChangedEvent = exports.TabManagerTabModificationStatusChangedEvent;
+    export import TabManagerTabOtherStatusChangedEvent = exports.TabManagerTabOtherStatusChangedEvent;
     export import TabManagerTabStartedSavingEvent = exports.TabManagerTabStartedSavingEvent;
     export import TabManagerTabStoppedSavingEvent = exports.TabManagerTabStoppedSavingEvent;
     export import TabManagerSubTabModificationStatusChangedEvent = exports.TabManagerSubTabModificationStatusChangedEvent;
@@ -3834,7 +4225,7 @@ declare global {
     export import tabManager = exports.tabManager;
     export import TabManagerTab = exports.TabManagerTab;
     export import TabManagerSubTab = exports.TabManagerSubTab;
-    export import DBEntryContentTypeToTabManagerSubTabCurrentStateOptions = exports.DBEntryContentTypeToTabManagerSubTabCurrentStateOptions;
+    export import DBEntryContentTypeToTabManagerSubTabCurrentStateOptions = exports.MCEntryContentTypeToTabManagerSubTabCurrentStateOptions;
     export import TabManagerSubTabCurrentState = exports.TabManagerSubTabCurrentState;
     export import TabManagerTabGenericSubTabID = exports.TabManagerTabGenericSubTabID;
     export import TabManagerGenericTabID = exports.TabManagerGenericTabID;

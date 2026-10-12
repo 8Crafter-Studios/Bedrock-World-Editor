@@ -40,11 +40,12 @@ import themeTomorrowNightBlue from "../themes/theme-tomorrow-night-blue";
 import { loader } from "@monaco-editor/react";
 import json5 from "json5";
 import {
+    entryContentTypeToFormatMap,
     extractSNBT,
     NBTSchemas,
     SNBTParseErrorDisplayNamespace,
     SNBTParseErrorTypeToCode,
-    type DBEntryContentType,
+    type MCEntryContentType,
     type ParseSNBTBaseOptions,
     type SNBTParseError,
     type SNBTParseErrorType,
@@ -216,10 +217,10 @@ class SimpleLanguageInfoProvider {
     public injectCSS(): void {
         const cssColors = this.registry.getColorMap();
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access -- TEMP: There are no type declarations for this. Maybe make some at some point.
-        const colorMap = cssColors.map(Color.Format.CSS.parseHex);
+        const colorMap = cssColors.map((Color as any).Format.CSS.parseHex);
         // This is needed to ensure the minimap gets the right colors.
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- TEMP: There are no type declarations for this. Maybe make some at some point.
-        TokenizationRegistry.setColorMap(colorMap);
+        (TokenizationRegistry as any).setColorMap(colorMap);
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- TEMP: There are no type declarations for this. Maybe make some at some point.
         const css = generateTokensCSSForColorMap(colorMap);
         const style = createStyleElementForColorsCSS();
@@ -560,6 +561,10 @@ async function main(_language: LanguageId): Promise<void> {
     // NOTE: This script lists all content types that are missing from the setDiagnosticsOptions.
     // const missingContentTypes = Object.keys(require("mcbe-leveldb").entryContentTypeToFormatMap).filter(v=>!monaco.languages.json.jsonDefaults.diagnosticsOptions.schemas.some(v2=>v2.uri===`inmemory://schemas/json/${v}`));
     // const missingContentTypesWithSchemas = missingContentTypes.filter(v=>v in require("mcbe-leveldb").NBTSchemas.nbtSchemas);
+    // ==== mcbe-leveldb dev mode ====
+    // const mcbe = await import(mcbeLeveldbUri);
+    // const missingContentTypes = Object.keys(mcbe.entryContentTypeToFormatMap).filter(v=>!monaco.languages.json.jsonDefaults.diagnosticsOptions.schemas.some(v2=>v2.uri===`inmemory://schemas/json/${v}`));
+    // const missingContentTypesWithSchemas = missingContentTypes.filter(v=>v in mcbe.NBTSchemas.nbtSchemas);
     function setJSONSchemas(attempt: number = 0, actionIfExistingSchemas: "skip" | "append" | "overwrite" = "overwrite"): void {
         if (actionIfExistingSchemas === "skip" && monaco.languages.json.jsonDefaults.diagnosticsOptions.schemas?.length) {
             setTimeout(setJSONSchemas.bind(void 0, 0, "skip"), 500);
@@ -1217,22 +1222,6 @@ async function main(_language: LanguageId): Promise<void> {
                     ),
                 },
                 {
-                    uri: "inmemory://schemas/json/LevelDat",
-                    fileMatch: [
-                        "**?contentType=LevelDat",
-                        "**?contentType=LevelDat&*",
-                        "**/JSONSchema/LevelDat",
-                        "**/ContentType:LevelDat",
-                        "**/ContentType:LevelDat/**",
-                    ],
-                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
-                        NBTSchemas.nbtSchemas.LevelDat,
-                        undefined,
-                        { makeValueSchema: true },
-                        true
-                    ),
-                },
-                {
                     uri: "inmemory://schemas/json/DynamicProperties",
                     fileMatch: [
                         "**?contentType=DynamicProperties",
@@ -1392,6 +1381,214 @@ async function main(_language: LanguageId): Promise<void> {
                         true
                     ),
                 },
+                {
+                    uri: "inmemory://schemas/json/LegacyBlockExtraData",
+                    fileMatch: [
+                        "**?contentType=LegacyBlockExtraData",
+                        "**?contentType=LegacyBlockExtraData&*",
+                        "**/JSONSchema/LegacyBlockExtraData",
+                        "**/ContentType:LegacyBlockExtraData",
+                        "**/ContentType:LegacyBlockExtraData/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.LegacyBlockExtraData,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/MCChinaDevDimension",
+                    fileMatch: [
+                        "**?contentType=MCChinaDevDimension",
+                        "**?contentType=MCChinaDevDimension&*",
+                        "**/JSONSchema/MCChinaDevDimension",
+                        "**/ContentType:MCChinaDevDimension",
+                        "**/ContentType:MCChinaDevDimension/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.MCChinaDevDimension,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/POITypes",
+                    fileMatch: [
+                        "**?contentType=POITypes",
+                        "**?contentType=POITypes&*",
+                        "**/JSONSchema/POITypes",
+                        "**/ContentType:POITypes",
+                        "**/ContentType:POITypes/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.POITypes,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/POIRegionRegistry",
+                    fileMatch: [
+                        "**?contentType=POIRegionRegistry",
+                        "**?contentType=POIRegionRegistry&*",
+                        "**/JSONSchema/POIRegionRegistry",
+                        "**/ContentType:POIRegionRegistry",
+                        "**/ContentType:POIRegionRegistry/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.POIRegionRegistry,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/POIRegion",
+                    fileMatch: [
+                        "**?contentType=POIRegion",
+                        "**?contentType=POIRegion&*",
+                        "**/JSONSchema/POIRegion",
+                        "**/ContentType:POIRegion",
+                        "**/ContentType:POIRegion/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.POIRegion,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/JigsawStructureBlueprint",
+                    fileMatch: [
+                        "**?contentType=JigsawStructureBlueprint",
+                        "**?contentType=JigsawStructureBlueprint&*",
+                        "**/JSONSchema/JigsawStructureBlueprint",
+                        "**/ContentType:JigsawStructureBlueprint",
+                        "**/ContentType:JigsawStructureBlueprint/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.JigsawStructureBlueprint,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/NeteaseData",
+                    fileMatch: [
+                        "**?contentType=NeteaseData",
+                        "**?contentType=NeteaseData&*",
+                        "**/JSONSchema/NeteaseData",
+                        "**/ContentType:NeteaseData",
+                        "**/ContentType:NeteaseData/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.NeteaseData,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/NeteaseScriptGid",
+                    fileMatch: [
+                        "**?contentType=NeteaseScriptGid",
+                        "**?contentType=NeteaseScriptGid&*",
+                        "**/JSONSchema/NeteaseScriptGid",
+                        "**/ContentType:NeteaseScriptGid",
+                        "**/ContentType:NeteaseScriptGid/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.NeteaseScriptGid,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/PlayerDat",
+                    fileMatch: [
+                        "**?contentType=PlayerDat",
+                        "**?contentType=PlayerDat&*",
+                        "**/JSONSchema/PlayerDat",
+                        "**/ContentType:PlayerDat",
+                        "**/ContentType:PlayerDat/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.PlayerDat,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/LANPlayerDat",
+                    fileMatch: [
+                        "**?contentType=LANPlayerDat",
+                        "**?contentType=LANPlayerDat&*",
+                        "**/JSONSchema/LANPlayerDat",
+                        "**/ContentType:LANPlayerDat",
+                        "**/ContentType:LANPlayerDat/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.LANPlayerDat,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/ChunksDat",
+                    fileMatch: [
+                        "**?contentType=ChunksDat",
+                        "**?contentType=ChunksDat&*",
+                        "**/JSONSchema/ChunksDat",
+                        "**/ContentType:ChunksDat",
+                        "**/ContentType:ChunksDat/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.ChunksDat,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/ImportedChunksDat",
+                    fileMatch: [
+                        "**?contentType=ImportedChunksDat",
+                        "**?contentType=ImportedChunksDat&*",
+                        "**/JSONSchema/ImportedChunksDat",
+                        "**/ContentType:ImportedChunksDat",
+                        "**/ContentType:ImportedChunksDat/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.ImportedChunksDat,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/ChunksDatEntry",
+                    fileMatch: [
+                        "**?contentType=ChunksDatEntry",
+                        "**?contentType=ChunksDatEntry&*",
+                        "**/JSONSchema/ChunksDatEntry",
+                        "**/ContentType:ChunksDatEntry",
+                        "**/ContentType:ChunksDatEntry/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.ChunksDatChunk,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
                 ...[1, 2, 3, 4, 6, 8, 16, 32]
                     .flatMap(
                         (v: number) =>
@@ -1413,6 +1610,21 @@ async function main(_language: LanguageId): Promise<void> {
         });
         if ((monaco.languages.json.jsonDefaults.diagnosticsOptions.schemas?.length ?? 0) > 0) {
             console.debug("Set JSON schemas.", monaco.languages.json.jsonDefaults);
+            const missingContentTypes: string[] = Object.keys(entryContentTypeToFormatMap).filter(
+                (v: string): boolean => !monaco.languages.json.jsonDefaults.diagnosticsOptions.schemas!.some((v2) => v2.uri === `inmemory://schemas/json/${v}`)
+            );
+            const missingContentTypesWithSchemas: string[] = missingContentTypes.filter((v) => v in NBTSchemas.nbtSchemas);
+            if (missingContentTypesWithSchemas.length > 0) {
+                console.debug(
+                    "[moanco-editor-registers::setJSONSchemas] %s",
+                    // This adds a custom collapsible label.
+                    "%cMissing schemas for content types:%c%O",
+                    "color: light-dark(#888800, #eeee00)",
+                    "",
+                    // This hides the "Array" text.
+                    new { "\r": class extends Array {} }["\r"]().concat(missingContentTypesWithSchemas)
+                );
+            }
             setTimeout(setJSONSchemas.bind(void 0, 0, "skip"), 500);
         } else {
             console.debug(`Failed to set JSON schemas, retrying in 50ms (attempt ${attempt + 1}).`, monaco.languages.json.jsonDefaults);
@@ -1586,7 +1798,7 @@ async function main(_language: LanguageId): Promise<void> {
             console.debug("[MonacoEditorAutoCompletionData]:", tokens);
             console.debug("[MonacoEditorAutoCompletionData]:", mergedTokens);
             console.debug("[MonacoEditorAutoCompletionData]:", model, model.id, model.uri);
-            const contentType: DBEntryContentType = (new URLSearchParams(model.uri.query).get("contentType") as DBEntryContentType | null) ?? "Unknown";
+            const contentType: MCEntryContentType = (new URLSearchParams(model.uri.query).get("contentType") as MCEntryContentType | null) ?? "Unknown";
             if (tokenAtCursor) {
                 // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
                 switch (true) {

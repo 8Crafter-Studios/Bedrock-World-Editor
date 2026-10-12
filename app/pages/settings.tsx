@@ -106,7 +106,25 @@ function SettingsTabRenderer(props: SettingsTabRendererProps): JSX.Element {
                     <label
                         for="settings_general_showWorldSizesOnWorldList"
                         class="nsel ndrg"
-                        title="Whether or not to show the world sizes on the world selector list on the main menu."
+                        title="Whether or not to show the level.dat StorageVersion of worlds on the world selector list on the main menu."
+                    >
+                        <input
+                            id="settings_general_showWorldStorageVersionsOnWorldList"
+                            type="checkbox"
+                            checked={config.showWorldStorageVersionsOnWorldList}
+                            onChange={(event: TargetedEvent<HTMLInputElement, Event>): void => {
+                                config.showWorldStorageVersionsOnWorldList = event.currentTarget.checked;
+                            }}
+                        />
+                        Show World Storage Versions on World List
+                    </label>
+                    <br class="nsel ndrg" />
+                    <label
+                        for="settings_general_showWorldSizesOnWorldList"
+                        class="nsel ndrg"
+                        title="Whether or not to show the world sizes on the world selector list on the main menu.
+
+This may slow down the loading of the world selector list and increase disk usage while it is loading."
                     >
                         <input
                             id="settings_general_showWorldSizesOnWorldList"

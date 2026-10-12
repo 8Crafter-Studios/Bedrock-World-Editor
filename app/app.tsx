@@ -3,10 +3,17 @@ import { render } from "preact/compat";
 import LeftSidebar from "./components/LeftSidebar";
 import DebugOverlay from "./components/DebugOverlay";
 import TabBar from "./components/TabBar";
-import { entryContentTypeToFormatMap, gameModes, toLong, type EntryContentTypeFormatData, type NBTSchemas } from "mcbe-leveldb";
+import {
+    entryContentTypeToFormatMap,
+    gameModes,
+    levelDatStorageVersionToMCVersionRangeMap,
+    toLong,
+    type EntryContentTypeFormatData,
+    type LevelDatStorageVersionToMCVersionRangeMapType,
+    type NBTSchemas,
+} from "mcbe-leveldb";
 import { Dirent, existsSync, globSync, readdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import NBT from "prismarine-nbt";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import WorldSettingsTab from "./tabs/worldSettings";
 import SubTabBar from "./components/SubTabBar";
@@ -27,7 +34,7 @@ import FunTab from "./tabs/fun";
 import { ControlledMenu, MenuDivider, MenuItem } from "@szhsin/react-menu";
 import { APP_DATA_FOLDER_PATH } from "../src/utils/URLs";
 import TicksTab from "./tabs/ticks";
-import { readdir, stat } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import { formatFileSizeBinary, formatFileSizeMetric } from "../src/utils/fileSizeUtils";
 import IntegrationsTab from "./tabs/integrations";
 import TextEditorTab from "./tabs/textEditor";
@@ -243,7 +250,9 @@ export default function App(): JSX.Element {
                 <defs>
                     <filter id="crispify">
                         <feComponentTransfer>
-                            <feFuncA type="discrete" tableValues="0 1" />
+                            {/* <feFuncA type="discrete" tableValues="0 1" /> */}{" "}
+                            {/* This one mostly works for Mojangles, though sometimes a V will be 3px thick instead of 2px. */}
+                            <feFuncA type="gamma" exponent="40" amplitude="200" offset="0"></feFuncA> {/* This one works flawlessly for Minecraft-Seven. */}
                         </feComponentTransfer>
                     </filter>
                 </defs>
@@ -261,6 +270,8 @@ export interface MinecraftWorldDisplayDetails {
     thumbnailPath?: string | undefined;
     lastOpenedWithVerison: `v${string}` | null;
     createdInVersion: `v${string}` | null;
+    minimumCompatibleClientVersion: `v${string}` | null;
+    storageVersion: number | null;
     lastPlayed: Date | null;
     favorited: boolean;
     /**
@@ -272,7 +283,7 @@ export interface MinecraftWorldDisplayDetails {
      */
     size?: Promise<number> | number | undefined;
     startCount: bigint;
-    playTime: bigint;
+    playTime: bigint | null;
     gameMode: number;
     hardcore: boolean;
     multiplayer: boolean;
@@ -282,6 +293,12 @@ export interface MinecraftWorldDisplayDetails {
     editorOnly: boolean;
     createdInEditor: boolean;
     isolated: boolean;
+    /**
+     * Whether the world was last used on a version that is affected by the bug where if the LevelDB is touched, the game will freak out whenever it opens the world.
+     *
+     * @see {@link tabManager.checkWorldFragilityFromLevelDat}
+     */
+    fragileLevelDB: ReturnType<typeof tabManager.checkWorldFragilityFromLevelDat>;
 }
 
 /**
@@ -338,6 +355,10 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
         folderPath: string;
         isolated: boolean;
     }
+    const failedWorldReadLogs: {
+        type: "failed" | "usedFallback";
+        consoleLogItems: unknown[];
+    }[] = [];
     return (
         await Promise.all(
             [
@@ -425,13 +446,50 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
                             NBTSchemas.NBTSchemaTypes.LevelDat | undefined
                         > => {
                             try {
-                                return (await NBT.parse(readFileSync(path.join(folderPath, "level.dat"), { encoding: null }))).parsed;
+                                return await entryContentTypeToFormatMap.LevelDat.parse(await readFile(path.join(folderPath, "level.dat"), { encoding: null }));
                             } catch (e) {
-                                console.error("Error while reading level.dat:", e, "folderPath:", folderPath);
+                                let levelDatOldFailure: boolean = false;
                                 try {
-                                    return (await NBT.parse(readFileSync(path.join(folderPath, "level.dat_old"), { encoding: null }))).parsed;
-                                } catch (e) {
-                                    console.error("Error while reading level.dat_old:", e, "folderPath:", folderPath);
+                                    if (existsSync(path.join(folderPath, "level.dat_old"))) {
+                                        return await entryContentTypeToFormatMap.LevelDat.parse(
+                                            await readFile(path.join(folderPath, "level.dat_old"), { encoding: null })
+                                        );
+                                    }
+                                    levelDatOldFailure = true;
+                                    failedWorldReadLogs.push({
+                                        type: "failed",
+                                        consoleLogItems: [
+                                            "Unable to load details for world; Error while reading level.dat, and level.dat_old not found. level.dat error:",
+                                            e,
+                                            "folderPath:",
+                                            folderPath,
+                                        ],
+                                    });
+                                } catch (e2) {
+                                    levelDatOldFailure = true;
+                                    failedWorldReadLogs.push({
+                                        type: "failed",
+                                        consoleLogItems: [
+                                            "Unable to load details for world; Error while reading both level.dat and level.dat_old. level.dat error:",
+                                            e,
+                                            "level.dat_old error:",
+                                            e2,
+                                            "folderPath:",
+                                            folderPath,
+                                        ],
+                                    });
+                                } finally {
+                                    if (!levelDatOldFailure) {
+                                        failedWorldReadLogs.push({
+                                            type: "usedFallback",
+                                            consoleLogItems: [
+                                                "Used level.dat_old as fallback for world due to an error while reading level.dat:",
+                                                e,
+                                                "folderPath:",
+                                                folderPath,
+                                            ],
+                                        });
+                                    }
                                 }
                             }
                             return undefined;
@@ -440,7 +498,7 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
                         const name: string =
                             levelDat.value.LevelName?.value ??
                             (existsSync(path.join(folderPath, "levelname.txt")) ?
-                                readFileSync(path.join(folderPath, "levelname.txt"), { encoding: "utf-8" })
+                                await readFile(path.join(folderPath, "levelname.txt"), { encoding: "utf-8" })
                             :   "Unknown Name");
                         const size: Promise<number> | undefined =
                             getSizes ?
@@ -465,28 +523,60 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
                                 :   globSync(path.join(folderPath, "world_icon.*"))[0],
                             lastOpenedWithVerison:
                                 levelDat.value.lastOpenedWithVersion ? `v${levelDat.value.lastOpenedWithVersion.value.value.join(".")}` : null,
+                            minimumCompatibleClientVersion:
+                                levelDat.value.MinimumCompatibleClientVersion ?
+                                    `v${levelDat.value.MinimumCompatibleClientVersion.value.value.join(".")}`
+                                :   null,
                             createdInVersion: levelDat.value.InventoryVersion ? `v${levelDat.value.InventoryVersion.value}` : null,
-                            lastPlayed: levelDat.value.LastPlayed ? new Date(Number(toLong(levelDat.value.LastPlayed.value) * 1000n)) : null,
+                            storageVersion: levelDat.value.StorageVersion?.value ?? null,
+                            lastPlayed:
+                                levelDat.value.LastPlayed ? new Date(Number(toLong(levelDat.value.LastPlayed.value) * 1000n))
+                                : levelDat.value.LegacyLastPlayed ? new Date(levelDat.value.LegacyLastPlayed.value * 1000)
+                                : null,
                             favorited: favoritedWorldsData?.includes(normalizePath(folderPath)) ?? false,
                             size,
                             startCount: 0xffffffffn - toLong(levelDat.value.worldStartCount?.value ?? [0, -1]),
-                            playTime: toLong(levelDat.value.currentTick?.value ?? [0, 0]),
-                            gameMode: levelDat.value.GameType?.value ?? -1,
+                            playTime:
+                                (levelDat.value.currentTick?.value ?? levelDat.value.Time?.value) === undefined ?
+                                    null
+                                :   toLong((levelDat.value.currentTick?.value ?? levelDat.value.Time?.value)!),
+                            gameMode: levelDat.value.GameType?.value ?? ((levelDat.value.StorageVersion?.value ?? NaN) <= 1 ? 1 : -1),
                             hardcore: levelDat.value.IsHardcore?.value === 1,
-                            multiplayer: levelDat.value.MultiplayerGameIntent?.value === 1,
+                            multiplayer: (levelDat.value.MultiplayerGameIntent?.value ?? 1) === 1,
                             fromLockedTemplate: levelDat.value.isFromLockedTemplate?.value === 1,
                             fromWorldTemplate: levelDat.value.isFromWorldTemplate?.value === 1,
                             singleUseWorld: levelDat.value.isSingleUseWorld?.value === 1,
                             editorOnly: levelDat.value.editorWorldType?.value === 1,
                             createdInEditor: levelDat.value.isCreatedInEditor?.value === 1,
                             isolated,
+                            fragileLevelDB: tabManager.checkWorldFragilityFromLevelDat(levelDat),
                         };
                     } catch (e) {
                         console.error(e);
                         return;
                     }
                 })
-        )
+        ).finally((): void => {
+            if (!failedWorldReadLogs.length) return;
+            console.groupCollapsed("World read failures and warnings:");
+            const failedLogs = failedWorldReadLogs.filter((log): log is { type: "failed"; consoleLogItems: string[] } => log.type === "failed");
+            const fallbackLogs = failedWorldReadLogs.filter((log): log is { type: "usedFallback"; consoleLogItems: string[] } => log.type === "usedFallback");
+            if (failedLogs.length) {
+                console.groupCollapsed("World read failures:");
+                for (const failedLog of failedLogs) {
+                    console.error(...failedLog.consoleLogItems);
+                }
+                console.groupEnd();
+            }
+            if (fallbackLogs.length) {
+                console.groupCollapsed("World read fallbacks:");
+                for (const fallbackLog of fallbackLogs) {
+                    console.warn(...fallbackLog.consoleLogItems);
+                }
+                console.groupEnd();
+            }
+            console.groupEnd();
+        })
     ).filter((world: MinecraftWorldDisplayDetails | undefined): world is MinecraftWorldDisplayDetails => !!world);
 }
 
@@ -583,6 +673,34 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
             </div>
         );
     }
+    function StorageVersionMCVersionRangeToDisplayVersion({ storageVersion }: { storageVersion: number | null }): JSX.Element | undefined {
+        if (storageVersion === null) return <span style="color: red;">null</span>;
+        const versionRange = (levelDatStorageVersionToMCVersionRangeMap as LevelDatStorageVersionToMCVersionRangeMapType)[
+            storageVersion as keyof typeof levelDatStorageVersionToMCVersionRangeMap
+        ];
+        if (!versionRange) return <span style="color: red;">null</span>;
+        if (versionRange === "?") return <span style={{ color: "red" }}>Unknown version range</span>;
+        function stringifyVersionSegment(
+            segment: Extract<LevelDatStorageVersionToMCVersionRangeMapType[keyof LevelDatStorageVersionToMCVersionRangeMapType], unknown[]>[number]
+        ): string | undefined {
+            if (segment === "N/A") return undefined;
+            if (segment === "?") return "?";
+            return `v${segment.slice(0, 3).join(".")}.${Array.isArray(segment[3]) ? segment[3].join("/") : segment[3]}`;
+        }
+        const startSegment: string | undefined = stringifyVersionSegment(versionRange[0]);
+        const endSegment: string | undefined = stringifyVersionSegment(versionRange[1]);
+        if (startSegment) {
+            if (endSegment) {
+                return (
+                    <span>
+                        {startSegment}-{endSegment}
+                    </span>
+                );
+            }
+            return <span>&gt;= {startSegment}</span>;
+        } else if (endSegment) return <span>&lt; {endSegment}</span>;
+        return <span style="color: red;">null</span>;
+    }
     function RenderWorlds(): JSX.SpecificElement<"div">[] {
         const mcAppName: string = app.getApplicationNameForProtocol("minecraft:");
         const mcPreviewAppName: string = app.getApplicationNameForProtocol("minecraft-preview:");
@@ -590,7 +708,7 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
             .toSorted((a: MinecraftWorldDisplayDetails, b: MinecraftWorldDisplayDetails): number =>
                 a.favorited && !b.favorited ? -1
                 : b.favorited && !a.favorited ? 1
-                : b.lastPlayed!.getTime() - a.lastPlayed!.getTime()
+                : (b.lastPlayed?.getTime() ?? 0) - (a.lastPlayed?.getTime() ?? 0)
             )
             .map((world: MinecraftWorldDisplayDetails, index: number): JSX.SpecificElement<"div"> => {
                 const [worldContextMenu_isOpen, worldContextMenu_setOpen] = useState(false);
@@ -607,7 +725,7 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                     worldContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
                     worldContextMenu_setOpen(true);
                 }
-                const hoverInfo = `${world.name}\nLast Opened With: ${world.lastOpenedWithVerison}\nCreated In: ${world.createdInVersion}\nLast Played: ${
+                const hoverInfo = `${world.name}\nLast Opened With: ${world.lastOpenedWithVerison}${world.minimumCompatibleClientVersion ? `\nMinimum Compatible Client Version: ${world.minimumCompatibleClientVersion}` : ""}\nCreated In: ${world.createdInVersion}\nLast Played: ${
                     world.lastPlayed?.toLocaleString() ?? "null"
                 }\nPath: ${world.path}${
                     config.showWorldSizesOnWorldList ?
@@ -617,16 +735,15 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                             :   "Loading..."
                         }`
                     :   ""
-                }\nWorld Start Count: ${world.startCount}\nPlay Time: ${(world.playTime / 20n / 60n / 60n / 24n).toString().padStart(2, "0")}:${(
-                    (world.playTime / 20n / 60n / 60n) %
-                    24n
-                )
-                    .toString()
-                    .padStart(2, "0")}:${((world.playTime / 20n / 60n) % 60n).toString().padStart(2, "0")}:${((world.playTime / 20n) % 60n)
-                    .toString()
-                    .padStart(2, "0")}.${
-                    (world.playTime % 20n) * 5n
-                }\nGame Mode: ${world.gameMode === -1 ? "Unknown" : (gameModes[world.gameMode] ?? world.gameMode)}${world.hardcore ? "\nHardcore" : ""}\n${
+                }\nWorld Start Count: ${world.startCount}\nPlay Time: ${
+                    world.playTime === null ?
+                        "null"
+                    :   `${(world.playTime / 20n / 60n / 60n / 24n).toString().padStart(2, "0")}:${((world.playTime / 20n / 60n / 60n) % 24n)
+                            .toString()
+                            .padStart(2, "0")}:${((world.playTime / 20n / 60n) % 60n).toString().padStart(2, "0")}:${((world.playTime / 20n) % 60n)
+                            .toString()
+                            .padStart(2, "0")}.${(world.playTime % 20n) * 5n}`
+                }\nStorage Version: ${world.storageVersion}\nGame Mode: ${world.gameMode === -1 ? "Unknown" : (gameModes[world.gameMode] ?? world.gameMode)}${world.hardcore ? "\nHardcore" : ""}\n${
                     world.multiplayer ? "Multiplayer" : "Singleplayer"
                 }${world.fromLockedTemplate ? "\nFrom Locked Template" : ""}${world.fromWorldTemplate ? "\nFrom World Template" : ""}${
                     world.singleUseWorld ? "\nSingle Use World" : ""
@@ -664,6 +781,7 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                                         type: "world",
                                         icon: world.thumbnailPath,
                                         isNonIsolatedWorld: !world.isolated,
+                                        hasFragileLevelDB: world.fragileLevelDB,
                                     });
                                 } catch (e) {
                                     if (e instanceof Error && e.message.startsWith("ENOSPC, No space left on device")) {
@@ -779,7 +897,15 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                                         />
                                     )}
                                     <span class="worldSelectorListItemWorldVersion">
-                                        {world.lastOpenedWithVerison ?? <span style="color: red;">null</span>}
+                                        {world.lastOpenedWithVerison ?? <StorageVersionMCVersionRangeToDisplayVersion storageVersion={world.storageVersion} />}
+                                        {world.storageVersion !== null && config.showWorldStorageVersionsOnWorldList ?
+                                            <>
+                                                {" "}
+                                                <span style="color: color-mix(in lab, var(--text-color) 50%, gray);">
+                                                    &lt;0x{world.storageVersion.toString(16).toUpperCase().padStart(2, "0")}&gt;
+                                                </span>
+                                            </>
+                                        :   ""}
                                     </span>
                                 </div>
                             </div>
@@ -802,6 +928,7 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                                                     type: "world",
                                                     icon: world.thumbnailPath,
                                                     isNonIsolatedWorld: !world.isolated,
+                                                    hasFragileLevelDB: world.fragileLevelDB,
                                                 }),
                                             10
                                         );
@@ -821,6 +948,7 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                                                     icon: world.thumbnailPath,
                                                     mode: TabManagerTabMode.Readonly,
                                                     isNonIsolatedWorld: !world.isolated,
+                                                    hasFragileLevelDB: world.fragileLevelDB,
                                                 }),
                                             10
                                         );
@@ -842,6 +970,32 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                                         ) {
                                             return;
                                         }
+                                        if (
+                                            world.fragileLevelDB === true &&
+                                            dialog.showMessageBoxSync({
+                                                type: "warning",
+                                                title: "Bedrock World Editor",
+                                                message: `Are you sure you want to open this world? It has a fragile LevelDB and will appear corrupted to the version it was last used in if you open it in Direct Mode. You should open it in Read-Only Mode instead.`,
+                                                detail: "This world was last opened in a version that is affected by a bug where if you access the LevelDB on it, the world will be very broken (it will work fine on versions not affected by the bug, but the versions that are affected will behave very strangely). Some effects of the bug include: World data wipes, extremely slow chunk loading and lag spikes, instant crashes (on low-end devices), extremely long world loading using 100% CPU, rubberbanding, etc.",
+                                                buttons: ["Proceed", "Cancel"],
+                                                noLink: true,
+                                            })
+                                        ) {
+                                            return;
+                                        }
+                                        if (
+                                            world.fragileLevelDB === "possible" &&
+                                            dialog.showMessageBoxSync({
+                                                type: "warning",
+                                                title: "Bedrock World Editor",
+                                                message: `Are you sure you want to open this world? It might have a fragile LevelDB and may appear corrupted to the version it was last used in if you open it in Direct Mode. You should open it in Read-Only Mode instead.`,
+                                                detail: "This world was last opened in a version that might have been affected by a bug where if you access the LevelDB on it, the world will be very broken (it will work fine on versions not affected by the bug, but the versions that are affected will behave very strangely). Some effects of the bug include: World data wipes, extremely slow chunk loading and lag spikes, instant crashes (on low-end devices), extremely long world loading using 100% CPU, rubberbanding, etc.",
+                                                buttons: ["Proceed", "Cancel"],
+                                                noLink: true,
+                                            })
+                                        ) {
+                                            return;
+                                        }
                                         tabManager.switchTab("loading");
                                         setTimeout(
                                             (): void =>
@@ -852,6 +1006,7 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                                                     icon: world.thumbnailPath,
                                                     mode: TabManagerTabMode.Direct,
                                                     isNonIsolatedWorld: !world.isolated,
+                                                    hasFragileLevelDB: world.fragileLevelDB,
                                                 }),
                                             10
                                         );
@@ -1373,6 +1528,7 @@ export function WorldEditorTabRenderer(props: {
                     case "UTF-8":
                     case "SNBT": // TODO: Add SNBT editor tab.
                     case "JSON": // TODO: Add JSON editor tab.
+                    case "JSONC": // TODO: Add JSONC editor tab.
                         return <TextEditorTab tab={props.tab} />;
                     case "int": // TODO: Add int editor tab.
                     case "binary":
@@ -1477,6 +1633,7 @@ export function LevelDBEditorTabRenderer(props: {
                     case "UTF-8":
                     case "SNBT": // TODO: Add SNBT editor tab.
                     case "JSON": // TODO: Add JSON editor tab.
+                    case "JSONC": // TODO: Add JSONC editor tab.
                         return <TextEditorTab tab={props.tab} />;
                     case "int": // TODO: Add int editor tab.
                     case "binary":
@@ -1555,6 +1712,7 @@ export function NBTFileEditorTabRenderer(props: {
                 case "ASCII":
                 case "UTF-8":
                 case "JSON":
+                case "JSONC":
                 case "int":
                 case "binary":
                 case "binaryPlainText":
@@ -1742,7 +1900,7 @@ tabManager.on("switchTab", ({ previousTab, newTab }: TabManagerSwitchTabEvent): 
 window.addEventListener("keydown", (event: KeyboardEvent): void => {
     // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
     switch (true) {
-        case document.activeElement === document.body && event.code === "KeyS" && !event.shiftKey && event.ctrlKey: {
+        case document.activeElement === document.body && event.code === "KeyS" && !event.shiftKey && (process.platform === "darwin" ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey): {
             event.preventDefault();
             const currentTab = tabManager.selectedTab;
             if (currentTab instanceof TabManagerTab) {

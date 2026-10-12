@@ -933,7 +933,9 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                     if (!tab.cachedDBKeys) return;
                                     let dimensionTypes: Record<Dimension | `${string}:${string}`, number> | undefined;
                                     try {
-                                        dimensionTypes = await getDimensionTypes(tab.db);
+                                        dimensionTypes = await getDimensionTypes(tab.db, {
+                                            includeMCCEDimensions: !!tab.cachedDBKeys?.MCChinaDevDimension?.length,
+                                        });
                                     } catch (e) {
                                         console.error("Error while getting dimension types for prompt for creating a new RandomTicks entry:", e);
                                     }
@@ -1003,9 +1005,11 @@ async function getTicksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                     if (!tab.cachedDBKeys) return;
                                     let dimensionTypes: Record<Dimension | `${string}:${string}`, number> | undefined;
                                     try {
-                                        dimensionTypes = await getDimensionTypes(tab.db);
+                                        dimensionTypes = await getDimensionTypes(tab.db, {
+                                            includeMCCEDimensions: !!tab.cachedDBKeys?.MCChinaDevDimension?.length,
+                                        });
                                     } catch (e) {
-                                        console.error("Error while getting dimension types for prompt for creating a new RandomTicks entry:", e);
+                                        console.error("Error while getting dimension types for prompt for creating a new PendingTicks entry:", e);
                                     }
                                     const creationOptions = await showDBKeyCreationDialog({
                                         options: ["chunkX", "chunkZ", "dimension"],

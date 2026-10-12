@@ -21,8 +21,6 @@ export function setMobileLeftSidebarVisibility(value?: boolean): void {
     else $("#left_sidebar").removeClass("active-nav");
 }
 
-// IDEA: Make the highlight on the left sidebar item for a sub-tab with a matching content type being active be different from the highlight for when that left sidebar tab is actually directly active.
-
 /**
  * The left sidebar.
  *
@@ -35,7 +33,8 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.Element {
         if (tab === null) return null;
         switch (tab.contentType) {
             case "ActorPrefix":
-            case "Entity":
+            case "Entity": // TODO: Add the Entities content type to the Entities left sidebar tab.
+            case "EntitiesDat": // TODO: Add entities from entities.dat to the Entities left sidebar tab.
                 return "entities";
             case "BlockEntity":
                 return "block-entities";
@@ -50,6 +49,9 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.Element {
                 return "ticks";
             case "Player":
             case "PlayerClient":
+            case "LegacyConsolePlayer": // TODO: Add legacy console players to the Players left sidebar tab.
+            case "PlayerDat":
+            case "LANPlayerDat":
                 return "players";
             case "Portals":
                 return "portals";
@@ -81,9 +83,15 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.Element {
             case "MetaDataHash":
             case "BlendingData":
             case "ActorDigestVersion":
+            case "VersionEnchant":
+            case "VersionMarkInsert":
+            case "unknown0x70":
+            case "unknown0x71":
             case "LegacyVersion":
             case "AABBVolumes":
+            case "JigsawStructureBlueprint":
             case "Digest":
+            case "ChunksDat":
                 return "world";
             case "VillageDwellers":
             case "VillageInfo":
@@ -115,16 +123,32 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.Element {
             case "LevelChunkMetaDataDictionary":
             case "RealmsStoriesData":
             case "WorldClocks":
+            case "POITypes":
+            case "POIRegionRegistry":
+            case "POIRegion":
+            case "MCChinaDevDimension":
+            case "SSTCommandLog":
+            case "SSTHashRegistry":
+            case "NeteaseData":
+            case "NeteaseScriptGid":
+            case "ImportedChunksDat":
             case "Unknown":
             default:
                 return "view-files";
         }
     }
     useEffect((): (() => void) => {
-        $(`#left_sidebar .sidebar_button[data-path-id=${tabManagerSubTabToSubTabID(props.tab.selectedTab)}]`).addClass("active");
-        function onSubTabSwitch({ previousTab, newTab }: TabManagerTabSwitchTabEvent): void {
-            $(`#left_sidebar .sidebar_button[data-path-id=${tabManagerSubTabToSubTabID(previousTab)}]`).removeClass("active");
-            $(`#left_sidebar .sidebar_button[data-path-id=${tabManagerSubTabToSubTabID(newTab)}]`).addClass("active");
+        if (typeof props.tab.selectedTab === "string") $(`#left_sidebar .sidebar_button[data-path-id=${props.tab.selectedTab}]`).addClass("active");
+        else if (typeof props.tab.selectedTab?.specialTabID === "string") {
+            $(`#left_sidebar .sidebar_button[data-path-id=${props.tab.selectedTab.specialTabID}]`).addClass("active");
+        } else $(`#left_sidebar .sidebar_button[data-path-id=${tabManagerSubTabToSubTabID(props.tab.selectedTab)}]`).addClass("active-sub-tab");
+        function onSubTabSwitch({ newTab }: TabManagerTabSwitchTabEvent): void {
+            $(`#left_sidebar .sidebar_button.active`).removeClass("active");
+            $(`#left_sidebar .sidebar_button.active-sub-tab`).removeClass("active-sub-tab");
+            if (typeof newTab === "string") $(`#left_sidebar .sidebar_button[data-path-id=${newTab}]`).addClass("active");
+            else if (typeof newTab?.specialTabID === "string") {
+                $(`#left_sidebar .sidebar_button[data-path-id=${newTab.specialTabID}]`).addClass("active");
+            } else $(`#left_sidebar .sidebar_button[data-path-id=${tabManagerSubTabToSubTabID(newTab)}]`).addClass("active-sub-tab");
             const repairForcedWorldCorruptionButton: HTMLElement | null = document.querySelector(
                 '.sidebar_button[data-path-id="repair-forced-world-corruption"]'
             );

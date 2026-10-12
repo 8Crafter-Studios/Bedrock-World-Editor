@@ -1,16 +1,17 @@
 import { Editor, type Monaco } from "@monaco-editor/react";
-import type { DBEntryContentType } from "mcbe-leveldb";
+import type { MCEntryContentType } from "mcbe-leveldb";
 import * as monaco from "monaco-editor";
 import type { JSX } from "preact";
 import { LoadingScreenContents } from "../app";
 import { useRef } from "preact/compat";
+import commentJSON from "comment-json";
 
 /**
  * Props for the {@link TextEditor} component.
  */
 export interface TextEditorProps {
     dataStorageObject: GenericDataStorageObject;
-    contentType?: DBEntryContentType;
+    contentType?: MCEntryContentType;
     /**
      * A callback function that is called when a value is changed in the tree editor.
      *
@@ -61,13 +62,13 @@ export interface TextEditorProps {
  */
 export default function TextEditor(props: TextEditorProps): JSX.Element {
     type PossibleDataType = GenericDataStorageObject["dataType"];
-    const supportedDataTypes = ["ASCII", "UTF-8", "binaryPlainText"] as const satisfies readonly PossibleDataType[];
+    const supportedDataTypes = ["ASCII", "UTF-8", "binaryPlainText", "JSON" /* TEMP */, "JSONC"] as const satisfies readonly PossibleDataType[];
     function checkIfSupported(
         storageObject: GenericDataStorageObject
     ): storageObject is Extract<GenericDataStorageObject, { dataType: (typeof supportedDataTypes)[number] }> {
         return (supportedDataTypes as readonly PossibleDataType[]).includes(storageObject.dataType);
     }
-    if (!checkIfSupported(props.dataStorageObject)) return <p style="color: red;">JSON is not supported.</p>;
+    if (!checkIfSupported(props.dataStorageObject)) return <p style="color: red;">{props.dataStorageObject.dataType} is not supported.</p>;
     const editorRef = useRef<typeof Editor>(null);
     function handleEditorDidMount(editor: monaco.editor.IStandaloneCodeEditor, monaco: Monaco): void {
         // editor.getid
@@ -92,7 +93,12 @@ export default function TextEditor(props: TextEditorProps): JSX.Element {
                 if (!checkIfSupported(props.dataStorageObject)) return;
                 lastChangeTime = Date.now();
                 try {
-                    props.dataStorageObject.data = editorValue;
+                    // TEMP
+                    if (props.dataStorageObject.dataType === "JSON") {
+                        props.dataStorageObject.data = JSON.parse(editorValue) as Record<string | number, GenericDataStorageObjectJSON_JSONNodeValue>;
+                    } else if (props.dataStorageObject.dataType === "JSONC") {
+                        props.dataStorageObject.data = commentJSON.parse(editorValue);
+                    } else props.dataStorageObject.data = editorValue;
                     props.onValueChange?.(props.dataStorageObject, { newValue: value, type: "changeContents" });
                 } catch (e) {
                     console.error(e);
@@ -121,8 +127,23 @@ export default function TextEditor(props: TextEditorProps): JSX.Element {
                 </div>
             }
             onChange={handleEditorValueChanged}
-            language="plaintext"
-            value={dataLoaded ? String(props.dataStorageObject.data) : "Data is not loaded."}
+            language={
+                props.dataStorageObject.dataType === "JSON" ? "json"
+                : props.dataStorageObject.dataType === "JSONC" ?
+                    "jsonc"
+                :   "plaintext"
+            }
+            value={
+                dataLoaded ?
+                    String(
+                        // TEMP: Remove this object check once the JSON editor is implemented
+                        props.dataStorageObject.dataType === "JSONC" ? commentJSON.stringify(props.dataStorageObject.data)
+                            // TEMP: Remove this object check once the JSON editor is implemented
+                        : props.dataStorageObject.dataType === "JSON" ? JSON.stringify(props.dataStorageObject.data)
+                        : props.dataStorageObject.data
+                    )
+                :   "Data is not loaded."
+            }
             onMount={handleEditorDidMount}
             options={{
                 readOnly: !!props.readonly || !dataLoaded,

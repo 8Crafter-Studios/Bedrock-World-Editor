@@ -8,6 +8,7 @@ import { ControlledMenu, MenuDivider, MenuItem, SubMenu } from "@szhsin/react-me
 import { app, dialog } from "@electron/remote";
 import type { MessageBoxReturnValue, SaveDialogReturnValue } from "electron";
 import path from "node:path";
+import commentJSON from "comment-json";
 
 /**
  * Props for the {@link SubTabBar} component.
@@ -509,7 +510,7 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                                     SNBT
                                 </MenuItem>
                             )}
-                            {tabDataStorageObject?.dataType === "JSON" && (
+                            {tabDataStorageObject && (tabDataStorageObject.dataType === "JSON" || tabDataStorageObject.dataType === "JSONC") && (
                                 <MenuItem
                                     onClick={async (): Promise<void> => {
                                         tabDataStorageObject = props.tab.currentState.options.dataStorageObject;
@@ -524,7 +525,7 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                                             });
                                             return;
                                         }
-                                        if (tabDataStorageObject.dataType !== "JSON") {
+                                        if (tabDataStorageObject.dataType !== "JSON" && tabDataStorageObject.dataType !== "JSONC") {
                                             dialog.showMessageBoxSync({
                                                 type: "error",
                                                 title: "Invalid Data Type",
@@ -546,7 +547,10 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                                         if (saveResult.canceled) return;
                                         switch (tabDataStorageObject.dataType) {
                                             case "JSON":
-                                                writeFileSync(saveResult.filePath, JSON.stringify(tabDataStorageObject.data.parsed, null, 0));
+                                                writeFileSync(saveResult.filePath, JSON.stringify(tabDataStorageObject.data, null, 0));
+                                                break;
+                                            case "JSONC":
+                                                writeFileSync(saveResult.filePath, commentJSON.stringify(tabDataStorageObject.data, null, 0));
                                                 break;
                                             default:
                                                 throw new Error(`Unsupported data type: ${(tabDataStorageObject as GenericDataStorageObject).dataType}`);
@@ -684,7 +688,7 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                             <img
                                 title="Read-only"
                                 src="resource://images/ui/glyphs/Lock-Locked.png"
-                                style="margin-left: 0.5em; width: 18px; height: 18px; vertical-align: middle;"
+                                style="margin-left: 0.5em; margin-top -1px; margin-bottom: -1px; width: 18px; height: 18px; vertical-align: middle;"
                             />
                         )}
                         <div

@@ -1,13 +1,14 @@
 import type { JSX, RefObject, TargetedKeyboardEvent, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef, useState } from "preact/compat";
 import {
-    DBEntryContentTypes,
+    MCDBEntryContentTypes,
     entryContentTypeToFormatMap,
     getKeyDisplayName,
     prettyPrintSNBT,
     prismarineToSNBT,
-    type DBEntryContentType,
+    type MCDBEntryContentType,
     type EntryContentTypeFormatData,
+    type MCFileEntryContentType,
 } from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
 import { ControlledMenu, MenuItem, SubMenu, type ClickEvent as ContextMenu_ClickEvent } from "@szhsin/react-menu";
@@ -20,6 +21,11 @@ import { clipboard, dialog } from "@electron/remote";
 import type { MessageBoxReturnValue } from "electron";
 import Notice from "../components/Notice";
 import { stringifyError } from "../../src/utils/miscUtils";
+import { readFile, rm } from "node:fs/promises";
+import { readdirRecursiveSafe } from "../../src/utils/folderContentsUtils";
+import { existsSync, type Dirent } from "node:fs";
+import path from "node:path";
+import commentJSON from "comment-json";
 
 // TODO: Implement Async Mode for this tab.
 
@@ -82,8 +88,8 @@ export const viewFilesTabSearchSyntax: SearchSyntaxHelpInfo = {
                     <p>
                         Supported content types:
                         <ul>
-                            {DBEntryContentTypes.map(
-                                (contentType: DBEntryContentType): JSX.SpecificElement<"li"> => (
+                            {MCDBEntryContentTypes.map(
+                                (contentType: MCDBEntryContentType): JSX.SpecificElement<"li"> => (
                                     <li>{contentType}</li>
                                 )
                             )}
@@ -278,7 +284,8 @@ export const viewFilesTabSearchSyntax: SearchSyntaxHelpInfo = {
  */
 // IDEA: Maybe make the view files tab also show files.
 export default function ViewFilesTab(props: ViewFilesTabProps): JSX.SpecificElement<"div"> {
-    if (!props.tab.db) return <div>The viewFiles sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
+    // Worlds can use this tab without a LevelDB because pre-0.9.0 worlds did not have a LevelDB but still had data.
+    if (!props.tab.db && props.tab.type !== "world") return <div>The viewFiles sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
     const containerRef: RefObject<HTMLTableElement> = useRef<HTMLTableElement>(null);
     const abortController: AbortController = new AbortController();
     useEffect((): (() => void) => {
@@ -309,7 +316,7 @@ export default function ViewFilesTab(props: ViewFilesTabProps): JSX.SpecificElem
         }
     );
     const loadingScreenMessageContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
-    if (!props.tab.db.isOpen()) {
+    if (props.tab.db && !props.tab.db.isOpen()) {
         void props.tab.awaitDBOpen!.then(async (): Promise<void> => {
             if (loadingScreenMessageContainerRef.current && !props.tab.cachedDBKeys) {
                 const formatter = new Intl.NumberFormat();
@@ -332,7 +339,7 @@ export default function ViewFilesTab(props: ViewFilesTabProps): JSX.SpecificElem
             </div>
         );
     }
-    if (!props.tab.cachedDBKeys) {
+    if (props.tab.db && !props.tab.cachedDBKeys) {
         const formatter = new Intl.NumberFormat();
         queueMicrotask(async (): Promise<void> => {
             await sleep(20);
@@ -361,18 +368,28 @@ export default function ViewFilesTab(props: ViewFilesTabProps): JSX.SpecificElem
     );
 }
 
-interface KeyData {
+interface LevelDBKeyData {
     rawKey: Buffer;
     displayKey: string;
-    contentType: DBEntryContentType;
+    contentType: MCDBEntryContentType;
+    valueType: EntryContentTypeFormatData;
+    value?: any;
+    // data: { parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata };
+}
+
+interface FileKeyData {
+    rawKey: Buffer;
+    file: string;
+    displayKey: string;
+    contentType: MCFileEntryContentType;
+    formatData?: EntryContentTypeFormatData | undefined;
     valueType: EntryContentTypeFormatData;
     value?: any;
     // data: { parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata };
 }
 
 async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal): Promise<JSX.Element> {
-    if (!tab.db) return <div>The view files sub-tab is not supported for this tab, there is no associated LevelDB.</div>;
-    if (!tab.db.isOpen() && !((await tab.awaitDBOpen) ?? true)) {
+    if (tab.db && !tab.db.isOpen() && !((await tab.awaitDBOpen) ?? true)) {
         if (tab.errorDueToEncryptedLevelDB) {
             return (
                 <Notice
@@ -396,25 +413,101 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
             </div>
         );
     }
-    if (!tab.cachedDBKeys) await tab.awaitCachedDBKeys!;
+    if (tab.db && !tab.cachedDBKeys) await tab.awaitCachedDBKeys!;
     signal.throwIfAborted();
-    const keys: KeyData[] = (Object.keys(tab.cachedDBKeys!) as (keyof typeof tab.cachedDBKeys)[])
-        .flatMap((contentType: keyof NonNullable<typeof tab.cachedDBKeys>): { contentType: DBEntryContentType; key: Buffer }[] =>
-            tab.cachedDBKeys![contentType].map((key: Buffer): { contentType: DBEntryContentType; key: Buffer } => ({
+    const leveldbKeys: LevelDBKeyData[] =
+        tab.db ?
+            (Object.keys(tab.cachedDBKeys!) as (keyof typeof tab.cachedDBKeys)[])
+                .flatMap((contentType: keyof NonNullable<typeof tab.cachedDBKeys>): { contentType: MCDBEntryContentType; key: Buffer }[] =>
+                    tab.cachedDBKeys![contentType].map((key: Buffer): { contentType: MCDBEntryContentType; key: Buffer } => ({
+                        contentType,
+                        key,
+                    }))
+                )
+                .map(
+                    ({ contentType, key }: { contentType: MCDBEntryContentType; key: Buffer }): LevelDBKeyData => ({
+                        rawKey: key,
+                        displayKey: getKeyDisplayName(key),
+                        contentType,
+                        valueType: entryContentTypeToFormatMap[contentType],
+                        // data: await NBT.parse((await tab.db!.get(key))!),
+                    })
+                )
+        :   [];
+    const fileKeys: FileKeyData[] = [];
+    {
+        const basePath: string = tab.tempPath ?? tab.path;
+        for (const file of await readdirRecursiveSafe(basePath, [], (dir: string, entry: Dirent<string>): boolean => {
+            if (entry.name.startsWith(".")) return false;
+            if (dir === basePath) {
+                if (entry.isDirectory()) {
+                    if (entry.name === "db") return false;
+                    if (entry.name === "resource_packs") return false;
+                    if (entry.name === "behavior_packs") return false;
+                }
+            }
+            return true;
+        })) {
+            if (!file.isFile()) continue;
+            const relativePath: string = path.relative(basePath, `${file.parentPath}/${file.name}`);
+            if (relativePath.startsWith("..")) continue;
+            let contentType: MCFileEntryContentType = "Unknown";
+            let formatData: EntryContentTypeFormatData | undefined;
+            getFileEntryContentType: {
+                if (["level.dat", "level.dat_old", "level.dat_new"].includes(relativePath)) contentType = "LevelDat";
+                else if (relativePath === "player.dat") contentType = "PlayerDat";
+                // REVIEW
+                else if (/^players\/-?[0-9]+\.dat$/.test(relativePath)) contentType = "LANPlayerDat";
+                else if (relativePath === "entities.dat") contentType = "EntitiesDat";
+                else if (relativePath === "chunks.dat") contentType = "ChunksDat";
+                else if (relativePath === "importedchunks.dat") contentType = "ImportedChunksDat";
+                // TODO
+                // else if (["world_resource_packs.json", "world_behavior_packs.json"].includes(relativePath)) contentType = "WorldPacksJSON";
+                // else if (["world_resource_packs_history.json", "world_behavior_packs_history.json"].includes(relativePath)) {
+                //     contentType = "WorldPacksHistoryJSON";
+                // } else if (/^pack_icon\.(?:png|jpg|jpeg|webp)$/i.test(relativePath) && relativePath.startsWith("pack_icon")) contentType = "PackIcon";
+                else {
+                    const extension: string = path.extname(relativePath).toLowerCase();
+                    switch (extension) {
+                        case ".json":
+                            formatData = {
+                                type: "JSON",
+                                allowComments: true,
+                            };
+                            break;
+                        case ".jsonc":
+                            formatData = {
+                                type: "JSONC",
+                            };
+                            break;
+                        case ".txt":
+                            formatData = {
+                                type: "UTF-8",
+                            };
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                break getFileEntryContentType;
+            }
+            fileKeys.push({
+                rawKey: Buffer.from(relativePath, "utf-8"),
+                file: relativePath,
+                displayKey: relativePath,
                 contentType,
-                key,
-            }))
-        )
-        .map(
-            ({ contentType, key }: { contentType: DBEntryContentType; key: Buffer }): KeyData => ({
-                rawKey: key,
-                displayKey: getKeyDisplayName(key),
-                contentType,
+                formatData,
                 valueType: entryContentTypeToFormatMap[contentType],
-                // data: await NBT.parse((await tab.db!.get(key))!),
-            })
-        );
-    let keySearchResults: KeyData[] = keys;
+            });
+        }
+    }
+    let mode: ConfigConstants.views.ViewFiles.ViewFilesTabMode =
+        tab.db ?
+            tab.type === "leveldb" ?
+                "leveldb"
+            :   config.views.viewFiles.mode
+        :   "files";
+    let keySearchResults: LevelDBKeyData[] | FileKeyData[] = mode === "files" ? fileKeys : leveldbKeys;
     // UNDONE: The view files tab does not need to preload all the data.
     // for (const key of keys) {
     //     valueTypeSwitcher: switch (key.valueType?.type) {
@@ -493,12 +586,17 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
     //             throw new Error(`Unknown value type: ${key.valueType?.type as string}`);
     //     }
     // }
-    let keyValuesLoaded: boolean = false;
+    const keyValuesLoaded: Record<ConfigConstants.views.ViewFiles.ViewFilesTabMode, boolean> = {
+        leveldb: false,
+        files: false,
+    };
     let currentUpdateTablesContentsFunction: ((reloadData: boolean) => Promise<void>) | null = null;
     let tablesContents: JSX.Element[][] = [
         await getViewFilesTabContentsRows({
             tab,
-            keys,
+            leveldbKeys,
+            fileKeys,
+            mode,
             get updateTablesContents(): ((reloadData: boolean) => Promise<void>) | null {
                 return currentUpdateTablesContentsFunction;
             },
@@ -514,27 +612,40 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
             searchButton: useRef<HTMLButtonElement>(null),
             helpButton: useRef<HTMLButtonElement>(null),
         };
-        // const viewOptionsRefs = {
-        //     viewOptionsContainer: useRef<HTMLDivElement>(null),
-        //     viewOptionsTabbedSelector: useRef<HTMLDivElement>(null),
-        // };
+        const viewOptionsRefs = {
+            viewOptionsContainer: useRef<HTMLDivElement>(null),
+            viewOptionsTabbedSelector: useRef<HTMLDivElement>(null),
+            leveldbModeWidgetOverlays: {
+                clearEntries: useRef<HTMLDivElement>(null),
+                newEntry: useRef<HTMLDivElement>(null),
+            } satisfies Record<string, RefObject<HTMLElement>>,
+            filesModeWidgetOverlays: {
+                // TODO
+                // clearFiles: useRef<HTMLDivElement>(null),
+                // newFile: useRef<HTMLDivElement>(null),
+            } satisfies Record<string, RefObject<HTMLElement>>,
+        };
         function TablesContents(): JSX.Element {
             return (
                 <>
-                    {...(["simple"] as const).map((_sectionID: "simple", index: number): JSX.Element => {
-                        function Test1(): JSX.Element {
-                            const bodyRef: RefObject<HTMLTableSectionElement> = useRef<HTMLTableSectionElement>(null);
-                            useEffect((): (() => void) => {
-                                return (): void => {
-                                    if (bodyRef.current) render(null, bodyRef.current);
-                                };
-                            });
-                            // const [columnHeadersContextMenu_isOpen, columnHeadersContextMenu_setOpen] = useState(false);
-                            // const [columnHeadersContextMenu_anchorPoint, columnHeadersContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
-                            return (
-                                <>
-                                    {/* TO-DO: Add in this context menu once the bug with it is fixed. https://github.com/szhsin/react-menu/issues/1591 */}
-                                    {/* <ControlledMenu
+                    {...ConfigConstants.views.ViewFiles.viewFilesTabModeToSectionIDs[mode].map(
+                        (
+                            _sectionID: (typeof ConfigConstants.views.ViewFiles.viewFilesTabModeToSectionIDs)[typeof mode][number],
+                            index: number
+                        ): JSX.Element => {
+                            function Test1(): JSX.Element {
+                                const bodyRef: RefObject<HTMLTableSectionElement> = useRef<HTMLTableSectionElement>(null);
+                                useEffect((): (() => void) => {
+                                    return (): void => {
+                                        if (bodyRef.current) render(null, bodyRef.current);
+                                    };
+                                });
+                                // const [columnHeadersContextMenu_isOpen, columnHeadersContextMenu_setOpen] = useState(false);
+                                // const [columnHeadersContextMenu_anchorPoint, columnHeadersContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
+                                return (
+                                    <>
+                                        {/* TO-DO: Add in this context menu once the bug with it is fixed. https://github.com/szhsin/react-menu/issues/1591 */}
+                                        {/* <ControlledMenu
                                             anchorPoint={columnHeadersContextMenu_anchorPoint}
                                             state={columnHeadersContextMenu_isOpen ? "open" : "closed"}
                                             direction="right"
@@ -544,89 +655,124 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                             <MenuItem>Copy</MenuItem>
                                             <MenuItem>Paste</MenuItem>
                                         </ControlledMenu> */}
-                                    <table class="nsel" style="flex: 1; overflow: auto; margin: 5px;">
-                                        <thead>
-                                            <tr
-                                            /* onContextMenu={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                        <table class="nsel" style="flex: 1; overflow: auto; margin: 5px;">
+                                            <thead>
+                                                <tr
+                                                /* onContextMenu={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                                                         if (typeof document.hasFocus === "function" && !document.hasFocus()) return;
 
                                                         event.preventDefault();
                                                         columnHeadersContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
                                                         columnHeadersContextMenu_setOpen(true);
                                                     }} */
-                                            >
-                                                {...(["DBKey", "ContentType"] as const).map(
-                                                    (
-                                                        columnID: (typeof ConfigConstants.views.ViewFiles.viewFilesTabModeToColumnIDs)["simple"][number]
-                                                    ): JSX.SpecificElement<"th"> => {
-                                                        const displayName = ConfigConstants.views.ViewFiles.columnIDToDisplayName[columnID];
-                                                        return <th>{displayName}</th>;
-                                                    }
-                                                )}
-                                            </tr>
-                                        </thead>
-                                        <tbody ref={bodyRef}>{...tablesContents[index]!.slice(0, 20)}</tbody>
-                                        <tfoot>
-                                            <tr class="table-footer-row-page-navigation">
-                                                <td colSpan={ConfigConstants.views.ViewFiles.viewFilesTabModeToColumnIDs.simple.length}>
-                                                    <PageNavigation
-                                                        totalPages={Math.ceil(tablesContents[index]!.length / 20)}
-                                                        onPageChange={(page: number): void => {
-                                                            if (!bodyRef.current) return;
-                                                            render(null, bodyRef.current);
-                                                            render(<>{...tablesContents[index]!.slice((page - 1) * 20, page * 20)}</>, bodyRef.current);
-                                                        }}
-                                                    />
-                                                </td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </>
-                            );
+                                                >
+                                                    {...config.views.viewFiles.modeSettings[mode].columns.map(
+                                                        (
+                                                            columnID: (typeof ConfigConstants.views.ViewFiles.viewFilesTabModeToColumnIDs)[typeof mode][number]
+                                                        ): JSX.SpecificElement<"th"> => {
+                                                            const displayName = ConfigConstants.views.ViewFiles.columnIDToDisplayName[columnID];
+                                                            return <th>{displayName}</th>;
+                                                        }
+                                                    )}
+                                                </tr>
+                                            </thead>
+                                            <tbody ref={bodyRef}>{...tablesContents[index]!.slice(0, 20)}</tbody>
+                                            <tfoot>
+                                                <tr class="table-footer-row-page-navigation">
+                                                    <td colSpan={ConfigConstants.views.ViewFiles.viewFilesTabModeToColumnIDs[mode].length}>
+                                                        <PageNavigation
+                                                            totalPages={Math.ceil(tablesContents[index]!.length / 20)}
+                                                            onPageChange={(page: number): void => {
+                                                                if (!bodyRef.current) return;
+                                                                render(null, bodyRef.current);
+                                                                render(<>{...tablesContents[index]!.slice((page - 1) * 20, page * 20)}</>, bodyRef.current);
+                                                            }}
+                                                        />
+                                                    </td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </>
+                                );
+                            }
+                            return <Test1 />;
                         }
-                        return <Test1 />;
-                    })}
+                    )}
                 </>
             );
         }
         const query: Omit<TabManagerTab_LevelDBSearchQuery, "searchTargets"> & {
-            searchTargets: (
-                | {
-                      key: Buffer<ArrayBufferLike>;
-                      displayKey: string;
-                      contentType: DBEntryContentType;
-                      data: KeyData;
-                      searchableContents: string[];
-                  }
-                | {
-                      key: Buffer<ArrayBufferLike>;
-                      displayKey: string;
-                      value: any;
-                      valueType: EntryContentTypeFormatData;
-                      contentType: DBEntryContentType;
-                      data: KeyData;
-                      searchableContents: string[];
-                  }
-            )[];
+            searchTargets:
+                | (
+                      | {
+                            key: Buffer<ArrayBufferLike>;
+                            displayKey: string;
+                            contentType: MCDBEntryContentType;
+                            data: LevelDBKeyData;
+                            searchableContents: string[];
+                        }
+                      | {
+                            key: Buffer<ArrayBufferLike>;
+                            displayKey: string;
+                            value: any;
+                            valueType: EntryContentTypeFormatData;
+                            contentType: MCDBEntryContentType;
+                            data: LevelDBKeyData;
+                            searchableContents: string[];
+                        }
+                  )[]
+                | (
+                      | {
+                            key: Buffer<ArrayBufferLike>;
+                            displayKey: string;
+                            contentType: MCFileEntryContentType;
+                            data: FileKeyData;
+                            searchableContents: string[];
+                        }
+                      | {
+                            key: Buffer<ArrayBufferLike>;
+                            displayKey: string;
+                            value: any;
+                            valueType: EntryContentTypeFormatData;
+                            contentType: MCFileEntryContentType;
+                            data: FileKeyData;
+                            searchableContents: string[];
+                        }
+                  )[];
         } = {
-            searchTargets: keys.map(
-                (key: KeyData) =>
-                    ({
-                        key: key.rawKey,
-                        displayKey: key.displayKey,
-                        // value: key.data,
-                        // valueType: entryContentTypeToFormatMap.ActorPrefix,
-                        contentType: key.contentType,
-                        data: key,
-                        searchableContents: [key.displayKey],
-                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
-            ),
+            searchTargets:
+                mode === "leveldb" ?
+                    leveldbKeys.map(
+                        (key: LevelDBKeyData) =>
+                            ({
+                                key: key.rawKey,
+                                displayKey: key.displayKey,
+                                // value: key.data,
+                                // valueType: entryContentTypeToFormatMap.ActorPrefix,
+                                contentType: key.contentType,
+                                data: key,
+                                searchableContents: [key.displayKey],
+                            }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
+                    )
+                :   fileKeys.map(
+                        (key: FileKeyData) =>
+                            ({
+                                key: key.rawKey,
+                                displayKey: key.displayKey,
+                                // value: key.data,
+                                // valueType: entryContentTypeToFormatMap.ActorPrefix,
+                                contentType: key.contentType,
+                                data: key,
+                                searchableContents: [key.displayKey],
+                            }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
+                    ),
         };
         async function updateTablesContents(reloadData: boolean): Promise<void> {
             // TODO: Add an error handler to this function.
             if (!tablesContainerRef.current) return;
             if (reloadData) {
                 console.debug(query);
+                mode = config.views.viewFiles.mode;
                 const hasNBTContentsQuery: boolean = !!(
                     (
                         (query.nbtTags?.allOf && query.nbtTags?.allOf.length > 0) ||
@@ -653,15 +799,21 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                     (query.contentsStringContents?.oneOf && query.contentsStringContents?.oneOf.length > 0) ||
                     (query.contentsStringContents?.noneOf && query.contentsStringContents?.noneOf.length > 0)
                 );
-                if (!keyValuesLoaded && (hasNBTContentsQuery || hasGenericContentsQuery)) {
+                if (!keyValuesLoaded[mode] && (hasNBTContentsQuery || hasGenericContentsQuery)) {
                     let i: number = 0;
                     let t: number = Date.now();
-                    for (const key of keys) {
+                    for (const key of mode === "files" ? fileKeys : leveldbKeys) {
                         i++;
                         if (t + 10 < Date.now()) {
                             t = Date.now();
                             if (loadingScreenMessageContainerRef.current) {
-                                loadingScreenMessageContainerRef.current.textContent = `Reading ${hasGenericContentsQuery ? "LevelDB entry" : "NBT"} data: ${i}/${keys.length}...`;
+                                loadingScreenMessageContainerRef.current.textContent = `Reading ${
+                                    hasGenericContentsQuery ?
+                                        mode === "files" ?
+                                            "files"
+                                        :   "LevelDB entry"
+                                    :   "NBT"
+                                } data: ${i}/${leveldbKeys.length}...`;
                             }
                         }
                         if (key.value !== undefined) continue;
@@ -670,7 +822,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                         valueTypeSwitcher: switch (key.valueType?.type) {
                             case "UTF-8": {
                                 try {
-                                    const data = await tab.db!.get(key.rawKey);
+                                    const data = await ("file" in key ? readFile(path.join(tab.path, key.file)) : tab.db!.get(key.rawKey));
                                     key.value = data?.toString("utf-8") ?? undefined;
                                 } catch (e) {
                                     console.error(e);
@@ -680,7 +832,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                             case "SNBT": {
                                 if (!hasNBTContentsQuery) break;
                                 try {
-                                    const data = await tab.db!.get(key.rawKey);
+                                    const data = await ("file" in key ? readFile(path.join(tab.path, key.file)) : tab.db!.get(key.rawKey));
                                     key.value = data?.toString("utf-8") ?? undefined;
                                 } catch (e) {
                                     console.error(e);
@@ -689,7 +841,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                             }
                             case "ASCII": {
                                 try {
-                                    const data = await tab.db!.get(key.rawKey);
+                                    const data = await ("file" in key ? readFile(path.join(tab.path, key.file)) : tab.db!.get(key.rawKey));
                                     key.value = data?.toString("ascii") ?? undefined;
                                 } catch (e) {
                                     console.error(e);
@@ -699,7 +851,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                             case "binary":
                             case "binaryPlainText": {
                                 try {
-                                    const data = await tab.db!.get(key.rawKey);
+                                    const data = await ("file" in key ? readFile(path.join(tab.path, key.file)) : tab.db!.get(key.rawKey));
                                     key.value = data?.toString("binary") ?? undefined;
                                 } catch (e) {
                                     console.error(e);
@@ -709,7 +861,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                             case "NBT": {
                                 if (!hasNBTContentsQuery) break;
                                 try {
-                                    const data = await tab.db!.get(key.rawKey);
+                                    const data = await ("file" in key ? readFile(path.join(tab.path, key.file)) : tab.db!.get(key.rawKey));
                                     key.value =
                                         data !== null ?
                                             await NBT.parse(
@@ -728,8 +880,17 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                             }
                             case "JSON": {
                                 try {
-                                    const data = await tab.db!.get(key.rawKey);
+                                    const data = await ("file" in key ? readFile(path.join(tab.path, key.file)) : tab.db!.get(key.rawKey));
                                     key.value = data ? (JSON.parse(data.toString("utf-8")) as unknown) : undefined;
+                                } catch (e) {
+                                    console.error(e);
+                                }
+                                break;
+                            }
+                            case "JSONC": {
+                                try {
+                                    const data = await ("file" in key ? readFile(path.join(tab.path, key.file)) : tab.db!.get(key.rawKey));
+                                    key.value = data ? (commentJSON.parse(data.toString("utf-8")) as unknown) : undefined;
                                 } catch (e) {
                                     console.error(e);
                                 }
@@ -737,7 +898,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                             }
                             case "int": {
                                 try {
-                                    const data = await tab.db!.get(key.rawKey);
+                                    const data = await ("file" in key ? readFile(path.join(tab.path, key.file)) : tab.db!.get(key.rawKey));
                                     key.value = data ? BigInt(`0x${data.slice(0, key.valueType.bytes).toString("hex")}`).toString(10) : undefined;
                                 } catch (e) {
                                     console.error(e);
@@ -746,7 +907,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                             }
                             case "hex": {
                                 try {
-                                    const data = await tab.db!.get(key.rawKey);
+                                    const data = await ("file" in key ? readFile(path.join(tab.path, key.file)) : tab.db!.get(key.rawKey));
                                     key.value = data ? data.toString("hex") : undefined;
                                 } catch (e) {
                                     console.error(e);
@@ -759,7 +920,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                     case "SNBT": {
                                         if (!hasNBTContentsQuery) break valueTypeSwitcher;
                                         try {
-                                            const data = await tab.db!.get(key.rawKey);
+                                            const data = await ("file" in key ? readFile(path.join(tab.path, key.file)) : tab.db!.get(key.rawKey));
                                             key.value = data !== null ? await key.valueType.parse(data) : null;
                                         } catch (e) {
                                             console.error(e);
@@ -792,94 +953,178 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                         (!query.excludeContentTypes || query.excludeContentTypes.length === 0) &&
                         hasNBTContentsQuery
                     ) {
-                        keyValuesLoaded = true;
+                        keyValuesLoaded[mode] = true;
                     }
-                    query.searchTargets = keys.map(
-                        (key: KeyData) =>
-                            ({
-                                key: key.rawKey,
-                                displayKey: key.displayKey,
-                                value: key.value!,
-                                valueType: key.valueType,
-                                contentType: key.contentType,
-                                data: key,
-                                searchableContents: [
-                                    key.displayKey,
-                                    ...(key.value ?
-                                        [
-                                            key.valueType.type === "NBT" ?
-                                                ((): string => {
-                                                    try {
-                                                        // return prettyPrintSNBT(prismarineToSNBT((key.value as { parsed: NBT.NBT }).parsed), { indent: 0 });
-                                                        // Disable directly searching SNBT.
-                                                        return "";
-                                                    } catch {
-                                                        return "";
-                                                    }
-                                                })()
-                                            : key.valueType.type === "custom" && key.valueType.resultType === "JSONNBT" ?
-                                                ((): string => {
-                                                    try {
-                                                        // return prettyPrintSNBT(prismarineToSNBT(key.value), { indent: 0 });
-                                                        // Disable directly searching SNBT.
-                                                        return "";
-                                                    } catch {
-                                                        return "";
-                                                    }
-                                                })()
-                                            : key.valueType.type === "JSON" ? JSON.stringify(key.value)
-                                            : typeof key.value !== "function" && typeof key.value !== "object" && typeof key.value !== "symbol" ?
-                                                String(key.value)
-                                            :   "",
-                                        ]
-                                    :   []),
-                                ],
-                                customDataFields: {
-                                    contents:
-                                        key.value ?
-                                            key.valueType.type === "NBT" ?
-                                                ((): string | undefined => {
-                                                    try {
-                                                        return prettyPrintSNBT(prismarineToSNBT((key.value as { parsed: NBT.NBT }).parsed), { indent: 0 });
-                                                    } catch {
-                                                        return undefined;
-                                                    }
-                                                })()
-                                            : key.valueType.type === "custom" && key.valueType.resultType === "JSONNBT" ?
-                                                ((): string | undefined => {
-                                                    try {
-                                                        return prettyPrintSNBT(prismarineToSNBT(key.value), { indent: 0 });
-                                                    } catch {
-                                                        return undefined;
-                                                    }
-                                                })()
-                                            : key.valueType.type === "JSON" ? JSON.stringify(key.value)
-                                            : typeof key.value !== "function" && typeof key.value !== "object" && typeof key.value !== "symbol" ?
-                                                String(key.value)
-                                            :   undefined
-                                        :   undefined,
-                                },
-                            }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
-                    );
+                    query.searchTargets =
+                        mode === "leveldb" ?
+                            leveldbKeys.map(
+                                (key: LevelDBKeyData) =>
+                                    ({
+                                        key: key.rawKey,
+                                        displayKey: key.displayKey,
+                                        value: key.value!,
+                                        valueType: key.valueType,
+                                        contentType: key.contentType,
+                                        data: key,
+                                        searchableContents: [
+                                            key.displayKey,
+                                            ...(key.value ?
+                                                [
+                                                    key.valueType.type === "NBT" ?
+                                                        ((): string => {
+                                                            try {
+                                                                // return prettyPrintSNBT(prismarineToSNBT((key.value as { parsed: NBT.NBT }).parsed), { indent: 0 });
+                                                                // Disable directly searching SNBT.
+                                                                return "";
+                                                            } catch {
+                                                                return "";
+                                                            }
+                                                        })()
+                                                    : key.valueType.type === "custom" && key.valueType.resultType === "JSONNBT" ?
+                                                        ((): string => {
+                                                            try {
+                                                                // return prettyPrintSNBT(prismarineToSNBT(key.value), { indent: 0 });
+                                                                // Disable directly searching SNBT.
+                                                                return "";
+                                                            } catch {
+                                                                return "";
+                                                            }
+                                                        })()
+                                                    : key.valueType.type === "JSON" ? JSON.stringify(key.value)
+                                                    : key.valueType.type === "JSONC" ? commentJSON.stringify(key.value)
+                                                    : typeof key.value !== "function" && typeof key.value !== "object" && typeof key.value !== "symbol" ?
+                                                        String(key.value)
+                                                    :   "",
+                                                ]
+                                            :   []),
+                                        ],
+                                        customDataFields: {
+                                            contents:
+                                                key.value ?
+                                                    key.valueType.type === "NBT" ?
+                                                        ((): string | undefined => {
+                                                            try {
+                                                                return prettyPrintSNBT(prismarineToSNBT((key.value as { parsed: NBT.NBT }).parsed), {
+                                                                    indent: 0,
+                                                                });
+                                                            } catch {
+                                                                return undefined;
+                                                            }
+                                                        })()
+                                                    : key.valueType.type === "custom" && key.valueType.resultType === "JSONNBT" ?
+                                                        ((): string | undefined => {
+                                                            try {
+                                                                return prettyPrintSNBT(prismarineToSNBT(key.value), { indent: 0 });
+                                                            } catch {
+                                                                return undefined;
+                                                            }
+                                                        })()
+                                                    : key.valueType.type === "JSON" ? JSON.stringify(key.value)
+                                                    : key.valueType.type === "JSONC" ? commentJSON.stringify(key.value)
+                                                    : typeof key.value !== "function" && typeof key.value !== "object" && typeof key.value !== "symbol" ?
+                                                        String(key.value)
+                                                    :   undefined
+                                                :   undefined,
+                                        },
+                                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
+                            )
+                        :   fileKeys.map(
+                                (key: FileKeyData) =>
+                                    ({
+                                        key: key.rawKey,
+                                        displayKey: key.displayKey,
+                                        value: key.value!,
+                                        valueType: key.valueType,
+                                        contentType: key.contentType,
+                                        data: key,
+                                        searchableContents: [
+                                            key.displayKey,
+                                            ...(key.value ?
+                                                [
+                                                    key.valueType.type === "NBT" ?
+                                                        ((): string => {
+                                                            try {
+                                                                // return prettyPrintSNBT(prismarineToSNBT((key.value as { parsed: NBT.NBT }).parsed), { indent: 0 });
+                                                                // Disable directly searching SNBT.
+                                                                return "";
+                                                            } catch {
+                                                                return "";
+                                                            }
+                                                        })()
+                                                    : key.valueType.type === "custom" && key.valueType.resultType === "JSONNBT" ?
+                                                        ((): string => {
+                                                            try {
+                                                                // return prettyPrintSNBT(prismarineToSNBT(key.value), { indent: 0 });
+                                                                // Disable directly searching SNBT.
+                                                                return "";
+                                                            } catch {
+                                                                return "";
+                                                            }
+                                                        })()
+                                                    : key.valueType.type === "JSON" ? JSON.stringify(key.value)
+                                                    : key.valueType.type === "JSONC" ? commentJSON.stringify(key.value)
+                                                    : typeof key.value !== "function" && typeof key.value !== "object" && typeof key.value !== "symbol" ?
+                                                        String(key.value)
+                                                    :   "",
+                                                ]
+                                            :   []),
+                                        ],
+                                        customDataFields: {
+                                            contents:
+                                                key.value ?
+                                                    key.valueType.type === "NBT" ?
+                                                        ((): string | undefined => {
+                                                            try {
+                                                                return prettyPrintSNBT(prismarineToSNBT((key.value as { parsed: NBT.NBT }).parsed), {
+                                                                    indent: 0,
+                                                                });
+                                                            } catch {
+                                                                return undefined;
+                                                            }
+                                                        })()
+                                                    : key.valueType.type === "custom" && key.valueType.resultType === "JSONNBT" ?
+                                                        ((): string | undefined => {
+                                                            try {
+                                                                return prettyPrintSNBT(prismarineToSNBT(key.value), { indent: 0 });
+                                                            } catch {
+                                                                return undefined;
+                                                            }
+                                                        })()
+                                                    : key.valueType.type === "JSON" ? JSON.stringify(key.value)
+                                                    : key.valueType.type === "JSONC" ? commentJSON.stringify(key.value)
+                                                    : typeof key.value !== "function" && typeof key.value !== "object" && typeof key.value !== "symbol" ?
+                                                        String(key.value)
+                                                    :   undefined
+                                                :   undefined,
+                                        },
+                                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
+                            );
                 }
                 tablesContents = await Promise.all(
-                    ConfigConstants.views.ViewFiles.viewFilesTabModeToSectionIDs.simple.map(
-                        async (_sectionID: (typeof ConfigConstants.views.ViewFiles.viewFilesTabModeToSectionIDs)["simple"][number]): Promise<JSX.Element[]> =>
+                    ConfigConstants.views.ViewFiles.viewFilesTabModeToSectionIDs[mode].map(
+                        async (
+                            _sectionID: (typeof ConfigConstants.views.ViewFiles.viewFilesTabModeToSectionIDs)[typeof mode][number]
+                        ): Promise<JSX.Element[]> =>
                             await getViewFilesTabContentsRows({
                                 tab,
-                                keys:
-                                    Object.keys(query).length > 1 ?
-                                        await (async (): Promise<KeyData[]> => {
-                                            const iterator = tab.dbSearch!.search(query, true);
+                                leveldbKeys:
+                                    mode === "leveldb" && Object.keys(query).length > 1 ?
+                                        await (async (): Promise<LevelDBKeyData[]> => {
+                                            const iterator = tab.dbSearch!.search(
+                                                query as Omit<typeof query, "searchTargets"> & {
+                                                    searchTargets: Extract<(typeof query)["searchTargets"], { data: LevelDBKeyData }[]>;
+                                                },
+                                                true
+                                            );
                                             let i: number = 0;
                                             let t: number = Date.now();
-                                            const results: KeyData[] = [];
+                                            const results: LevelDBKeyData[] = [];
                                             const formatter = new Intl.NumberFormat();
                                             for (const value of iterator) {
                                                 i++;
                                                 if (t + 15 < Date.now()) {
                                                     if (loadingScreenMessageContainerRef.current) {
-                                                        loadingScreenMessageContainerRef.current.textContent = `Searching LevelDB: ${formatter.format(i)}/${formatter.format(keys.length)} (${formatter.format(results.length)} results)...`;
+                                                        loadingScreenMessageContainerRef.current.textContent = `Searching LevelDB: ${formatter.format(i)}/${formatter.format(leveldbKeys.length)} (${formatter.format(results.length)} results)...`;
                                                     }
                                                     signal.throwIfAborted();
                                                     await sleep(5);
@@ -891,7 +1136,38 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                             keySearchResults = results;
                                             return results;
                                         })()
-                                    :   (keySearchResults = keys),
+                                    :   (keySearchResults = leveldbKeys),
+                                fileKeys:
+                                    mode === "files" && Object.keys(query).length > 1 ?
+                                        await (async (): Promise<FileKeyData[]> => {
+                                            const iterator = tab.dbSearch!.search(
+                                                query as Omit<typeof query, "searchTargets"> & {
+                                                    searchTargets: Extract<(typeof query)["searchTargets"], { data: FileKeyData }[]>;
+                                                },
+                                                true
+                                            );
+                                            let i: number = 0;
+                                            let t: number = Date.now();
+                                            const results: FileKeyData[] = [];
+                                            const formatter = new Intl.NumberFormat();
+                                            for (const value of iterator) {
+                                                i++;
+                                                if (t + 15 < Date.now()) {
+                                                    if (loadingScreenMessageContainerRef.current) {
+                                                        loadingScreenMessageContainerRef.current.textContent = `Searching files: ${formatter.format(i)}/${formatter.format(leveldbKeys.length)} (${formatter.format(results.length)} results)...`;
+                                                    }
+                                                    signal.throwIfAborted();
+                                                    await sleep(5);
+                                                    t = Date.now();
+                                                }
+                                                if (!value) continue;
+                                                results.push(value.originalObject.data);
+                                            }
+                                            keySearchResults = results;
+                                            return results;
+                                        })()
+                                    :   (keySearchResults = fileKeys),
+                                mode,
                                 get updateTablesContents(): ((reloadData: boolean) => Promise<void>) | null {
                                     return currentUpdateTablesContentsFunction;
                                 },
@@ -904,43 +1180,92 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
         }
         currentUpdateTablesContentsFunction = updateTablesContents;
         useEffect((): (() => void) => {
+            function onModeChanged(newModeValue: ConfigConstants.views.ViewFiles.ViewFilesTabMode): void {
+                for (const element of Object.values(viewOptionsRefs.leveldbModeWidgetOverlays)) {
+                    if (!element.current) continue;
+                    element.current.hidden = newModeValue !== "leveldb";
+                }
+                // TODO
+                // for (const element of Object.values(viewOptionsRefs.filesModeOptions)) {
+                //     if (!element.current) continue;
+                //     element.current.hidden = newModeValue !== "files";
+                // }
+                void updateTablesContents(true);
+            }
+            function onLevelDBModeColumnsChanged(): void {
+                if (mode !== "leveldb") return;
+                void updateTablesContents(false);
+            }
+            function onFilesModeColumnsChanged(): void {
+                if (mode !== "files") return;
+                void updateTablesContents(false);
+            }
+            config.on("settingChanged:views.viewFiles.mode", onModeChanged);
+            config.on("settingChanged:views.viewFiles.modeSettings.leveldb.columns", onLevelDBModeColumnsChanged);
+            config.on("settingChanged:views.viewFiles.modeSettings.files.columns", onFilesModeColumnsChanged);
             return (): void => {
+                config.off("settingChanged:views.viewFiles.mode", onModeChanged);
+                config.off("settingChanged:views.viewFiles.modeSettings.leveldb.columns", onLevelDBModeColumnsChanged);
+                config.off("settingChanged:views.viewFiles.modeSettings.files.columns", onFilesModeColumnsChanged);
                 if (tablesContainerRef.current) render(null, tablesContainerRef.current);
             };
         });
         let lastHideErrorPopupFunction: (() => void) | undefined;
         return (
             <>
-                {/* <div
-                    class="widget-overlay-bar widget-overlay-bar-transparent"
-                    style="display: flex; flex-direction: row;"
-                    ref={viewOptionsRefs.viewOptionsContainer}
-                >
+                <EditorWidgetOverlayBar barContainerRef={viewOptionsRefs.viewOptionsContainer}>
                     <div class="widget-overlay tabbed-selector" ref={viewOptionsRefs.viewOptionsTabbedSelector}>
                         <button
                             type="button"
-                            class={mode === "simple" ? "selected" : ""}
+                            class={mode === "leveldb" ? "selected" : ""}
                             onClick={(event: TargetedMouseEvent<HTMLButtonElement>): void => {
                                 if (event.currentTarget.classList.contains("selected")) return;
                                 $(event.currentTarget).siblings("button").removeClass("selected");
                                 $(event.currentTarget).addClass("selected");
-                                config.views.viewFiles.mode = "simple";
+                                config.views.viewFiles.mode = "leveldb";
                             }}
+                            disabled={!tab.db}
                         >
-                            Simple
+                            LevelDB
                         </button>
+                        <button
+                            type="button"
+                            class={mode === "files" ? "selected" : ""}
+                            onClick={(event: TargetedMouseEvent<HTMLButtonElement>): void => {
+                                if (event.currentTarget.classList.contains("selected")) return;
+                                $(event.currentTarget).siblings("button").removeClass("selected");
+                                $(event.currentTarget).addClass("selected");
+                                config.views.viewFiles.mode = "files";
+                            }}
+                            disabled={tab.type === "leveldb"}
+                        >
+                            Files
+                        </button>
+                        {/* TODO */}
+                        {/* <button
+                            type="button"
+                            class={mode === "files" ? "selected" : ""}
+                            onClick={(event: TargetedMouseEvent<HTMLButtonElement>): void => {
+                                if (event.currentTarget.classList.contains("selected")) return;
+                                $(event.currentTarget).siblings("button").removeClass("selected");
+                                $(event.currentTarget).addClass("selected");
+                                config.views.viewFiles.mode = "files";
+                            }}
+                            disabled={tab.type === "leveldb"}
+                        >
+                            chunks.dat
+                        </button> */}
                     </div>
-                </div> */}
-                <EditorWidgetOverlayBar>
-                    <div class="widget-overlay tabbed-selector">
+                    <div class="widget-overlay tabbed-selector" hidden={mode !== "leveldb"} ref={viewOptionsRefs.leveldbModeWidgetOverlays.clearEntries}>
                         <button
                             type="button"
                             title="Clear Entries"
                             onClick={async (): Promise<void> => {
+                                if (mode !== "leveldb") return;
                                 if (!tab.db) return;
                                 if (!tab.db.isOpen()) return;
                                 if (!tab.cachedDBKeys) return;
-                                if (keySearchResults === keys) {
+                                if (keySearchResults === leveldbKeys) {
                                     const prompt1Result: MessageBoxReturnValue = await dialog.showMessageBox({
                                         type: "warning",
                                         title: "Deleting ALL LevelDB Entries",
@@ -977,13 +1302,28 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                     });
                                     if (promptResult.response !== 0) return;
                                 }
+                                if (mode !== "leveldb") return;
+                                const searchResults = [...keySearchResults] as LevelDBKeyData[] | FileKeyData[];
+                                function assertIsValidKeySearchResultsType(
+                                    value: typeof keySearchResults
+                                ): asserts value is Exclude<typeof keySearchResults, FileKeyData[]> {
+                                    if (value[0] && "file" in value[0]) {
+                                        throw new Error("keySearchResults contains file entries instead of LevelDB entries.");
+                                    }
+                                }
+                                assertIsValidKeySearchResultsType(searchResults);
                                 await Promise.all(
-                                    keySearchResults.map(
-                                        async (key: KeyData): Promise<void> =>
+                                    searchResults.map(
+                                        async (key: LevelDBKeyData): Promise<void> =>
                                             void (await tab.db!.delete(key.rawKey).then((success: boolean): void => {
                                                 if (!success) return;
                                                 tab.setLevelDBIsModified();
-                                                keySearchResults.splice(keySearchResults.indexOf(key), 1);
+                                                deleteKeySearchResultsKey: {
+                                                    const keySearchResultsKeyIndex: number = keySearchResults.indexOf(key as never);
+                                                    if (keySearchResultsKeyIndex === -1) break deleteKeySearchResultsKey;
+                                                    keySearchResults.splice(keySearchResultsKeyIndex, 1);
+                                                }
+                                                searchResults.splice(searchResults.indexOf(key), 1);
                                                 deleteSearchTargetsKey: {
                                                     const searchTargetsKeyIndex: number = query.searchTargets.findIndex((key2): boolean => key2.data === key);
                                                     if (searchTargetsKeyIndex === -1) break deleteSearchTargetsKey;
@@ -992,8 +1332,8 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                                 if (tab.cachedDBKeys?.[key.contentType]?.includes(key.rawKey)) {
                                                     tab.cachedDBKeys[key.contentType].splice(tab.cachedDBKeys[key.contentType].indexOf(key.rawKey), 1);
                                                 }
-                                                if (keys.includes(key)) {
-                                                    keys.splice(keys.indexOf(key), 1);
+                                                if (leveldbKeys.includes(key)) {
+                                                    leveldbKeys.splice(leveldbKeys.indexOf(key), 1);
                                                 }
                                             }))
                                     )
@@ -1011,7 +1351,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                             Clear Entries
                         </button>
                     </div>
-                    <div class="widget-overlay tabbed-selector">
+                    <div class="widget-overlay tabbed-selector" hidden={mode !== "leveldb"} ref={viewOptionsRefs.leveldbModeWidgetOverlays.newEntry}>
                         <button
                             type="button"
                             title="New Entry"
@@ -1076,6 +1416,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                             New Entry
                         </button>
                     </div>
+                    {/* TODO: Add a Clear Files and New File button. */}
                 </EditorWidgetOverlayBar>
                 <div class="search-controls-container" ref={searchRefs.searchAreaContainer}>
                     <input
@@ -1323,7 +1664,9 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                     query.customDataFields.contents.oneOf ??= [];
                                     query.customDataFields.contents.oneOf.push(...queryData["^contents"]);
                                 }
+                                // BUG: Add wildcard handling to this.
                                 function showInvalidContentTypeErrorWithMostSimilarContentTypes(contentType: string): void {
+                                    contentType = contentType.replaceAll("*", ""); // TEMP: This is just until wildcard handling is added.
                                     const similarVals: {
                                         /**
                                          * The quality of the similarity.
@@ -1341,7 +1684,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                         4
                                     );
                                     if (contentType.length > 0) {
-                                        contentTypesLoop: for (const v2 of DBEntryContentTypes) {
+                                        contentTypesLoop: for (const v2 of MCDBEntryContentTypes) {
                                             const LOCAL_MAX_NONEXISTENT_CHARACTERS: number = Math.min(
                                                 Math.max(0, v2.length - 2, Math.floor(v2.length / 2)),
                                                 4,
@@ -1404,8 +1747,15 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                 if (queryData["-type"] !== undefined) {
                                     query.excludeContentTypes ??= [];
                                     query.excludeContentTypes.push(
-                                        ...queryData["-type"].map((v: string): DBEntryContentType => {
-                                            const val = DBEntryContentTypes.find((v2: string): boolean => v2.toLowerCase() === v.toLowerCase());
+                                        ...queryData["-type"].flatMap((v: string): MCDBEntryContentType | MCDBEntryContentType[] => {
+                                            if (v.includes("*")) {
+                                                const regex = new RegExp(`^${v.split("*").map(RegExp.escape).join(".*")}$`, "i");
+                                                const vals = MCDBEntryContentTypes.filter((v2: string): boolean => regex.test(v2));
+                                                if (vals.length) return vals;
+                                                showInvalidContentTypeErrorWithMostSimilarContentTypes(v);
+                                                throw new Error("Error to return but already handled.");
+                                            }
+                                            const val = MCDBEntryContentTypes.find((v2: string): boolean => v2.toLowerCase() === v.toLowerCase());
                                             if (val) return val;
                                             showInvalidContentTypeErrorWithMostSimilarContentTypes(v);
                                             throw new Error("Error to return but already handled.");
@@ -1415,8 +1765,15 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                 if (queryData["|type"] !== undefined) {
                                     query.contentTypes ??= [];
                                     query.contentTypes.push(
-                                        ...queryData["|type"].map((v: string): DBEntryContentType => {
-                                            const val = DBEntryContentTypes.find((v2: string): boolean => v2.toLowerCase() === v.toLowerCase());
+                                        ...queryData["|type"].flatMap((v: string): MCDBEntryContentType | MCDBEntryContentType[] => {
+                                            if (v.includes("*")) {
+                                                const regex = new RegExp(`^${v.split("*").map(RegExp.escape).join(".*")}$`, "i");
+                                                const vals = MCDBEntryContentTypes.filter((v2: string): boolean => regex.test(v2));
+                                                if (vals.length) return vals;
+                                                showInvalidContentTypeErrorWithMostSimilarContentTypes(v);
+                                                throw new Error("Error to return but already handled.");
+                                            }
+                                            const val = MCDBEntryContentTypes.find((v2: string): boolean => v2.toLowerCase() === v.toLowerCase());
                                             if (val) return val;
                                             showInvalidContentTypeErrorWithMostSimilarContentTypes(v);
                                             throw new Error("Error to return but already handled.");
@@ -1426,8 +1783,17 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                 if (queryData.type !== undefined) {
                                     query.contentTypes ??= [];
                                     query.contentTypes.push(
-                                        ...queryData.type.map((v: string): DBEntryContentType => {
-                                            const val = DBEntryContentTypes.find((v2: string): boolean => v2.toLowerCase() === v.toLowerCase());
+                                        ...queryData.type.flatMap((v: string): MCDBEntryContentType | MCDBEntryContentType[] => {
+                                            if (v.includes("*")) {
+                                                const regex = new RegExp(`^${v.split("*").map(RegExp.escape).join(".*")}$`, "i");
+                                                console.log(regex);
+                                                const vals = MCDBEntryContentTypes.filter((v2: string): boolean => regex.test(v2));
+                                                console.log(MCDBEntryContentTypes, vals);
+                                                if (vals.length) return vals;
+                                                showInvalidContentTypeErrorWithMostSimilarContentTypes(v);
+                                                throw new Error("Error to return but already handled.");
+                                            }
+                                            const val = MCDBEntryContentTypes.find((v2: string): boolean => v2.toLowerCase() === v.toLowerCase());
                                             if (val) return val;
                                             showInvalidContentTypeErrorWithMostSimilarContentTypes(v);
                                             throw new Error("Error to return but already handled.");
@@ -1557,115 +1923,52 @@ async function getViewFilesTabContentsRows(data: {
      */
     tab: TabManagerTab;
     /**
-     * The full list of client key data (including what isn't going to be displayed).
+     * The full list of LevelDB key data.
      */
-    keys: KeyData[];
+    leveldbKeys: LevelDBKeyData[];
+    /**
+     * The full list of LevelDB key data.
+     */
+    fileKeys: FileKeyData[];
+    /**
+     * The mode of the tab.
+     */
+    mode: ConfigConstants.views.ViewFiles.ViewFilesTabSectionMode;
     get updateTablesContents(): ((reloadData: boolean) => Promise<void>) | null;
 }): Promise<JSX.Element[]> {
-    const columns = ConfigConstants.views.ViewFiles.viewFilesTabModeToColumnIDs.simple;
-    return data.keys.map((key: KeyData): JSX.Element => {
-        let copyContextMenuItemValue: CopyContextMenuItemValue | null = null as CopyContextMenuItemValue | null;
-        function Row(): JSX.Element {
-            // IDEA: Add a confirmation dialog here before deleting the entry, and make it able to be disabled in the config. This should be done for all other tabs as well.
-            const [entryContextMenu_isOpen, entryContextMenu_setOpen] = useState(false);
-            const [entryContextMenu_anchorPoint, entryContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
-            function onEntryRightClick(event: TargetedMouseEvent<HTMLTableRowElement>): void {
-                event.preventDefault();
-                event.stopPropagation();
-                // const clickPosition: { x: number; y: number } = {
-                //     x: event.clientX,
-                //     y: event.clientY,
-                // };
-                // console.log(clickPosition);
+    // IDEA: Maybe add a chunks.dat mode, which would allow you to search chunks for data in worlds from before Pocket Edition 0.9.0 Alpha.
+    switch (data.mode) {
+        case "leveldb": {
+            const columns = ConfigConstants.views.ViewFiles.viewFilesTabModeToColumnIDs[data.mode];
+            return data.leveldbKeys.map((key: LevelDBKeyData): JSX.Element => {
+                let copyContextMenuItemValue: CopyContextMenuItemValue | null = null as CopyContextMenuItemValue | null;
+                function Row(): JSX.Element {
+                    // IDEA: Add a confirmation dialog here before deleting the entry, and make it able to be disabled in the config. This should be done for all other tabs as well.
+                    const [entryContextMenu_isOpen, entryContextMenu_setOpen] = useState(false);
+                    const [entryContextMenu_anchorPoint, entryContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
+                    function onEntryRightClick(event: TargetedMouseEvent<HTMLTableRowElement>): void {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        // const clickPosition: { x: number; y: number } = {
+                        //     x: event.clientX,
+                        //     y: event.clientY,
+                        // };
+                        // console.log(clickPosition);
 
-                copyContextMenuItemValue = null;
-                valueCopyContextItemConfiguration: if (rowRef.current && event.target !== null && event.target instanceof Element) {
-                    const containerCell: HTMLTableCellElement | null = event.target.closest("td");
-                    if (containerCell?.parentElement !== rowRef.current) break valueCopyContextItemConfiguration;
-                    if (containerCell.dataset.copyData === undefined) break valueCopyContextItemConfiguration;
-                    copyContextMenuItemValue = JSON.parse(containerCell.dataset.copyData) as CopyContextMenuItemValue;
-                }
+                        copyContextMenuItemValue = null;
+                        valueCopyContextItemConfiguration: if (rowRef.current && event.target !== null && event.target instanceof Element) {
+                            const containerCell: HTMLTableCellElement | null = event.target.closest("td");
+                            if (containerCell?.parentElement !== rowRef.current) break valueCopyContextItemConfiguration;
+                            if (containerCell.dataset.copyData === undefined) break valueCopyContextItemConfiguration;
+                            copyContextMenuItemValue = JSON.parse(containerCell.dataset.copyData) as CopyContextMenuItemValue;
+                        }
 
-                entryContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
-                entryContextMenu_setOpen(true);
-            }
-            function onEntryMiddleClick(_event: TargetedMouseEvent<HTMLTableRowElement>): void {
-                data.tab.openTab(
-                    {
-                        // TODO: In the future, add support for getting their skin head or profile picture.
-                        contentType: key.contentType,
-                        icon: "auto",
-                        name: key.displayKey,
-                        parentTab: data.tab,
-                        target: {
-                            type: "LevelDBEntry",
-                            key: key.rawKey,
-                        },
-                    },
-                    false
-                );
-            }
-            const rowRef: RefObject<HTMLTableRowElement> = useRef<HTMLTableRowElement>(null);
-            return (
-                <>
-                    <ControlledMenu
-                        anchorPoint={entryContextMenu_anchorPoint}
-                        state={entryContextMenu_isOpen ? "open" : "closed"}
-                        direction="right"
-                        onClose={(): void => void entryContextMenu_setOpen(false)}
-                    >
-                        <MenuItem
-                            onClick={async (): Promise<void> => {
-                                if (!data.tab.db) return;
-                                if (!data.tab.db.isOpen()) return;
-                                if (!data.tab.cachedDBKeys) return;
-                                // IDEA: Add a confirmation dialog here before deleting the entry, and make it able to be disabled in the config.
-                                await data.tab.db.delete(key.rawKey);
-                                data.tab.setLevelDBIsModified();
-                                const cachedIndex: number = data.tab.cachedDBKeys[key.contentType].findIndex((cachedKey: Buffer): boolean =>
-                                    key.rawKey.equals(cachedKey)
-                                );
-                                if (cachedIndex !== -1) data.tab.cachedDBKeys[key.contentType].splice(cachedIndex, 1);
-                                void data.updateTablesContents?.(true);
-                            }}
-                        >
-                            Delete LevelDB Entry
-                        </MenuItem>
-                        {!copyContextMenuItemValue || copyContextMenuItemValue.value !== undefined || !copyContextMenuItemValue.formatOptions ?
-                            <MenuItem
-                                onClick={(_event: ContextMenu_ClickEvent): void => {
-                                    // if (!(event.syntheticEvent.currentTarget instanceof HTMLLIElement)) return;
-                                    // event.syntheticEvent.currentTarget.ariaDisabled = "true";
-                                    // event.syntheticEvent.currentTarget.classList.add("szh-menu__item--disabled");
-                                    if (copyContextMenuItemValue?.value === undefined) return;
-                                    clipboard.writeText(copyContextMenuItemValue.value);
-                                    // copyContextMenuItemValue = null;
-                                }}
-                                disabled={copyContextMenuItemValue?.value === undefined}
-                            >
-                                Copy Cell Value
-                            </MenuItem>
-                        :   null}
-                        {!!copyContextMenuItemValue?.formatOptions && (
-                            <SubMenu label="Copy Cell Value as...">
-                                {...copyContextMenuItemValue.formatOptions.map(
-                                    (formatOption: NonNullable<CopyContextMenuItemValue["formatOptions"]>[number]): JSX.Element => (
-                                        <MenuItem
-                                            onClick={(_event: ContextMenu_ClickEvent): void => {
-                                                clipboard.writeText(formatOption.value);
-                                                copyContextMenuItemValue = null;
-                                            }}
-                                        >
-                                            {formatOption.label}
-                                        </MenuItem>
-                                    )
-                                )}
-                            </SubMenu>
-                        )}
-                    </ControlledMenu>
-                    <tr
-                        onDblClick={(): void => {
-                            data.tab.openTab({
+                        entryContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
+                        entryContextMenu_setOpen(true);
+                    }
+                    function onEntryMiddleClick(_event: TargetedMouseEvent<HTMLTableRowElement>): void {
+                        data.tab.openTab(
+                            {
                                 // TODO: In the future, add support for getting their skin head or profile picture.
                                 contentType: key.contentType,
                                 icon: "auto",
@@ -1675,54 +1978,335 @@ async function getViewFilesTabContentsRows(data: {
                                     type: "LevelDBEntry",
                                     key: key.rawKey,
                                 },
-                            });
-                        }}
-                        onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
-                            // Treat Alt+Click as a middle click.
-                            if (!event.altKey) return;
-                            onEntryMiddleClick(event);
-                        }}
-                        onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
-                            if (event.button !== 1) return;
-                            onEntryMiddleClick(event);
-                        }}
-                        onContextMenu={onEntryRightClick}
-                        ref={rowRef}
-                    >
-                        {columns.map((column: (typeof columns)[number]): JSX.Element => {
-                            switch (column) {
-                                case "DBKey":
-                                    return (
-                                        <td
-                                            data-copy-data={JSON.stringify({
-                                                formatOptions: [
-                                                    { label: "Raw key hex", value: key.rawKey.toString("hex") },
-                                                    { label: "Display key", value: key.displayKey },
-                                                ],
-                                            } satisfies CopyContextMenuItemValue)}
-                                        >
-                                            {key.displayKey}
-                                        </td>
-                                    );
-                                case "ContentType":
-                                    // const contentType: DBEntryContentType = getContentTypeFromDBKey(key.rawKey);
-                                    return (
-                                        <td data-copy-data={JSON.stringify({ value: key.contentType } satisfies CopyContextMenuItemValue)}>
-                                            {key.contentType}
-                                        </td>
-                                    );
-                                default:
-                                    return (
-                                        <td>
-                                            <span style="color: red;">ERROR: MISSING COLUMN HANDLER</span>
-                                        </td>
-                                    );
-                            }
-                        })}
-                    </tr>
-                </>
-            );
+                            },
+                            false
+                        );
+                    }
+                    const rowRef: RefObject<HTMLTableRowElement> = useRef<HTMLTableRowElement>(null);
+                    return (
+                        <>
+                            <ControlledMenu
+                                anchorPoint={entryContextMenu_anchorPoint}
+                                state={entryContextMenu_isOpen ? "open" : "closed"}
+                                direction="right"
+                                onClose={(): void => void entryContextMenu_setOpen(false)}
+                            >
+                                <MenuItem
+                                    onClick={async (): Promise<void> => {
+                                        if (!data.tab.db) return;
+                                        if (!data.tab.db.isOpen()) return;
+                                        if (!data.tab.cachedDBKeys) return;
+                                        // IDEA: Add a confirmation dialog here before deleting the entry, and make it able to be disabled in the config.
+                                        await data.tab.db.delete(key.rawKey);
+                                        data.tab.setLevelDBIsModified();
+                                        const cachedIndex: number = data.tab.cachedDBKeys[key.contentType].findIndex((cachedKey: Buffer): boolean =>
+                                            key.rawKey.equals(cachedKey)
+                                        );
+                                        if (cachedIndex !== -1) data.tab.cachedDBKeys[key.contentType].splice(cachedIndex, 1);
+                                        void data.updateTablesContents?.(true);
+                                    }}
+                                >
+                                    Delete LevelDB Entry
+                                </MenuItem>
+                                {!copyContextMenuItemValue || copyContextMenuItemValue.value !== undefined || !copyContextMenuItemValue.formatOptions ?
+                                    <MenuItem
+                                        onClick={(_event: ContextMenu_ClickEvent): void => {
+                                            // if (!(event.syntheticEvent.currentTarget instanceof HTMLLIElement)) return;
+                                            // event.syntheticEvent.currentTarget.ariaDisabled = "true";
+                                            // event.syntheticEvent.currentTarget.classList.add("szh-menu__item--disabled");
+                                            if (copyContextMenuItemValue?.value === undefined) return;
+                                            clipboard.writeText(copyContextMenuItemValue.value);
+                                            // copyContextMenuItemValue = null;
+                                        }}
+                                        disabled={copyContextMenuItemValue?.value === undefined}
+                                    >
+                                        Copy Cell Value
+                                    </MenuItem>
+                                :   null}
+                                {!!copyContextMenuItemValue?.formatOptions && (
+                                    <SubMenu label="Copy Cell Value as...">
+                                        {...copyContextMenuItemValue.formatOptions.map(
+                                            (formatOption: NonNullable<CopyContextMenuItemValue["formatOptions"]>[number]): JSX.Element => (
+                                                <MenuItem
+                                                    onClick={(_event: ContextMenu_ClickEvent): void => {
+                                                        clipboard.writeText(formatOption.value);
+                                                        copyContextMenuItemValue = null;
+                                                    }}
+                                                >
+                                                    {formatOption.label}
+                                                </MenuItem>
+                                            )
+                                        )}
+                                    </SubMenu>
+                                )}
+                            </ControlledMenu>
+                            <tr
+                                onDblClick={(): void => {
+                                    data.tab.openTab({
+                                        // TODO: In the future, add support for getting their skin head or profile picture.
+                                        contentType: key.contentType,
+                                        icon: "auto",
+                                        name: key.displayKey,
+                                        parentTab: data.tab,
+                                        target: {
+                                            type: "LevelDBEntry",
+                                            key: key.rawKey,
+                                        },
+                                    });
+                                }}
+                                onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                    // Treat Alt+Click as a middle click.
+                                    if (!event.altKey) return;
+                                    onEntryMiddleClick(event);
+                                }}
+                                onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                    if (event.button !== 1) return;
+                                    onEntryMiddleClick(event);
+                                }}
+                                onContextMenu={onEntryRightClick}
+                                ref={rowRef}
+                            >
+                                {columns.map((column: (typeof columns)[number]): JSX.Element => {
+                                    switch (column) {
+                                        case "DBKey":
+                                            return (
+                                                <td
+                                                    data-copy-data={JSON.stringify({
+                                                        formatOptions: [
+                                                            { label: "Raw key hex", value: key.rawKey.toString("hex") },
+                                                            { label: "Display key", value: key.displayKey },
+                                                        ],
+                                                    } satisfies CopyContextMenuItemValue)}
+                                                >
+                                                    {key.displayKey}
+                                                </td>
+                                            );
+                                        case "ContentType":
+                                            // const contentType: MCDBEntryContentType = getContentTypeFromDBKey(key.rawKey);
+                                            return (
+                                                <td data-copy-data={JSON.stringify({ value: key.contentType } satisfies CopyContextMenuItemValue)}>
+                                                    {key.contentType}
+                                                </td>
+                                            );
+                                        default:
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">ERROR: MISSING COLUMN HANDLER</span>
+                                                </td>
+                                            );
+                                    }
+                                })}
+                            </tr>
+                        </>
+                    );
+                }
+                return <Row />;
+            });
         }
-        return <Row />;
-    });
+        case "files": {
+            const columns = ConfigConstants.views.ViewFiles.viewFilesTabModeToColumnIDs[data.mode];
+            return data.fileKeys.map((key: FileKeyData): JSX.Element => {
+                let copyContextMenuItemValue: CopyContextMenuItemValue | null = null as CopyContextMenuItemValue | null;
+                function Row(): JSX.Element {
+                    // IDEA: Add a confirmation dialog here before deleting the entry, and make it able to be disabled in the config. This should be done for all other tabs as well.
+                    const [entryContextMenu_isOpen, entryContextMenu_setOpen] = useState(false);
+                    const [entryContextMenu_anchorPoint, entryContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
+                    function onEntryRightClick(event: TargetedMouseEvent<HTMLTableRowElement>): void {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        // const clickPosition: { x: number; y: number } = {
+                        //     x: event.clientX,
+                        //     y: event.clientY,
+                        // };
+                        // console.log(clickPosition);
+
+                        copyContextMenuItemValue = null;
+                        valueCopyContextItemConfiguration: if (rowRef.current && event.target !== null && event.target instanceof Element) {
+                            const containerCell: HTMLTableCellElement | null = event.target.closest("td");
+                            if (containerCell?.parentElement !== rowRef.current) break valueCopyContextItemConfiguration;
+                            if (containerCell.dataset.copyData === undefined) break valueCopyContextItemConfiguration;
+                            copyContextMenuItemValue = JSON.parse(containerCell.dataset.copyData) as CopyContextMenuItemValue;
+                        }
+
+                        entryContextMenu_setAnchorPoint({ x: event.clientX, y: event.clientY });
+                        entryContextMenu_setOpen(true);
+                    }
+                    function onEntryMiddleClick(_event: TargetedMouseEvent<HTMLTableRowElement>): void {
+                        if (key.file === "chunks.dat") {
+                            // TODO (Config): Add a way to disable this popup.
+                            if (
+                                dialog.showMessageBoxSync({
+                                    type: "warning",
+                                    title: "Opening Large File",
+                                    message: "Are you sure you want to open chunks.dat?",
+                                    // REVIEW: See if I need \n\n instead of just \n.
+                                    detail: "chunks.dat is very large (usually around 21.0 MiB), and as a result the Prismarine-NBT, SNBT, and Raw editor modes will likely not work.\nIt is recommended that you open the data for the chunk you want to edit via the 2D world map instead.",
+                                    buttons: ["Proceed", "Cancel"],
+                                    noLink: true,
+                                    // Make the default option to cancel as this is a very dangerous operation.
+                                    defaultId: 1,
+                                    cancelId: 1,
+                                })
+                            ) {
+                                return;
+                            }
+                        }
+                        data.tab.openTab(
+                            {
+                                contentType: key.contentType,
+                                formatData: key.formatData,
+                                icon: "auto",
+                                name: key.displayKey,
+                                parentTab: data.tab,
+                                target: {
+                                    type: "File",
+                                    path: key.file,
+                                },
+                            },
+                            false
+                        );
+                    }
+                    const rowRef: RefObject<HTMLTableRowElement> = useRef<HTMLTableRowElement>(null);
+                    return (
+                        <>
+                            <ControlledMenu
+                                anchorPoint={entryContextMenu_anchorPoint}
+                                state={entryContextMenu_isOpen ? "open" : "closed"}
+                                direction="right"
+                                onClose={(): void => void entryContextMenu_setOpen(false)}
+                            >
+                                <MenuItem
+                                    onClick={async (): Promise<void> => {
+                                        const filePath: string = path.join(data.tab.tempPath ?? data.tab.path, key.file);
+                                        if (!existsSync(filePath)) return;
+                                        // IDEA: Add a confirmation dialog here before deleting the file, and make it able to be disabled in the config.
+                                        await rm(filePath, { recursive: true, force: true });
+                                        data.tab.setFileAsModified(key.file); // REVIEW: Maybe this should be marked in a different way?
+                                        void data.updateTablesContents?.(true);
+                                    }}
+                                >
+                                    Delete File
+                                </MenuItem>
+                                {!copyContextMenuItemValue || copyContextMenuItemValue.value !== undefined || !copyContextMenuItemValue.formatOptions ?
+                                    <MenuItem
+                                        onClick={(_event: ContextMenu_ClickEvent): void => {
+                                            // if (!(event.syntheticEvent.currentTarget instanceof HTMLLIElement)) return;
+                                            // event.syntheticEvent.currentTarget.ariaDisabled = "true";
+                                            // event.syntheticEvent.currentTarget.classList.add("szh-menu__item--disabled");
+                                            if (copyContextMenuItemValue?.value === undefined) return;
+                                            clipboard.writeText(copyContextMenuItemValue.value);
+                                            // copyContextMenuItemValue = null;
+                                        }}
+                                        disabled={copyContextMenuItemValue?.value === undefined}
+                                    >
+                                        Copy Cell Value
+                                    </MenuItem>
+                                :   null}
+                                {!!copyContextMenuItemValue?.formatOptions && (
+                                    <SubMenu label="Copy Cell Value as...">
+                                        {...copyContextMenuItemValue.formatOptions.map(
+                                            (formatOption: NonNullable<CopyContextMenuItemValue["formatOptions"]>[number]): JSX.Element => (
+                                                <MenuItem
+                                                    onClick={(_event: ContextMenu_ClickEvent): void => {
+                                                        clipboard.writeText(formatOption.value);
+                                                        copyContextMenuItemValue = null;
+                                                    }}
+                                                >
+                                                    {formatOption.label}
+                                                </MenuItem>
+                                            )
+                                        )}
+                                    </SubMenu>
+                                )}
+                            </ControlledMenu>
+                            <tr
+                                onDblClick={(): void => {
+                                    if (key.file === "chunks.dat") {
+                                        // TODO (Config): Add a way to disable this popup.
+                                        if (
+                                            dialog.showMessageBoxSync({
+                                                type: "warning",
+                                                title: "Opening Large File",
+                                                message: "Are you sure you want to open chunks.dat?",
+                                                // REVIEW: See if I need \n\n instead of just \n.
+                                                detail: "chunks.dat is very large (usually around 21.0 MiB), and as a result the Prismarine-NBT, SNBT, and Raw editor modes will likely not work.\nIt is recommended that you open the data for the chunk you want to edit via the 2D world map instead.",
+                                                buttons: ["Proceed", "Cancel"],
+                                                noLink: true,
+                                                // Make the default option to cancel as this is a very dangerous operation.
+                                                defaultId: 1,
+                                                cancelId: 1,
+                                            })
+                                        ) {
+                                            return;
+                                        }
+                                    }
+                                    data.tab.openTab({
+                                        contentType: key.contentType,
+                                        formatData: key.formatData,
+                                        icon: "auto",
+                                        name: key.displayKey,
+                                        parentTab: data.tab,
+                                        target: {
+                                            type: "File",
+                                            path: key.file,
+                                        },
+                                    });
+                                }}
+                                onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                    // Treat Alt+Click as a middle click.
+                                    if (!event.altKey) return;
+                                    onEntryMiddleClick(event);
+                                }}
+                                onAuxClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
+                                    if (event.button !== 1) return;
+                                    onEntryMiddleClick(event);
+                                }}
+                                onContextMenu={onEntryRightClick}
+                                ref={rowRef}
+                            >
+                                {columns.map((column: (typeof columns)[number]): JSX.Element => {
+                                    switch (column) {
+                                        case "FilePath":
+                                            return (
+                                                <td
+                                                    data-copy-data={JSON.stringify({
+                                                        formatOptions: [
+                                                            ...(data.tab.tempPath !== undefined ?
+                                                                [
+                                                                    { label: "Original Path", value: path.join(data.tab.path, key.file) },
+                                                                    { label: "Temp Path", value: path.join(data.tab.path, key.file) },
+                                                                ]
+                                                            :   [{ label: "Path", value: path.join(data.tab.path, key.file) }]),
+                                                            { label: "Relative path", value: key.file },
+                                                        ],
+                                                    } satisfies CopyContextMenuItemValue)}
+                                                >
+                                                    {key.displayKey}
+                                                </td>
+                                            );
+                                        case "ContentType":
+                                            // const contentType: MCDBEntryContentType = getContentTypeFromDBKey(key.rawKey);
+                                            return (
+                                                <td data-copy-data={JSON.stringify({ value: key.contentType } satisfies CopyContextMenuItemValue)}>
+                                                    {key.contentType}
+                                                </td>
+                                            );
+                                        default:
+                                            return (
+                                                <td>
+                                                    <span style="color: red;">ERROR: MISSING COLUMN HANDLER</span>
+                                                </td>
+                                            );
+                                    }
+                                })}
+                            </tr>
+                        </>
+                    );
+                }
+                return <Row />;
+            });
+        }
+        // TODO: Maybe add an error message here?
+        // no default
+    }
 }

@@ -16,9 +16,9 @@ This app supports Windows, Linux, and macOS (Darwin). iOS and Android support is
 
 Even though iOS is not supported yet, you can still edit worlds from your iPhone/iPad without needing to transfer them to your computer. You can edit your iPhone/iPad's worlds directly from the app on your computer, and if your computer runs macOS, you don't even need a cable, you can edit them over Wi-Fi. This does not require jailbreaking either, you can do it on any iPhone/iPad. More information can be found [here](https://wiki.8crafter.com/bwe/advanced/editing-ios-worlds).
 
-<!-- TODO: Add China Edition to the list once v1.0.0-beta.38 is released. -->
+<!-- TODO: Test Pocket Edition v0.1.0 Demo. -->
 
-The app fully supports every version of Bedrock Edition and Education Edition as far back as MCPE Alpha 0.9.0, with partial support all the way back to the very first MCPE version (MCPE Alpha 0.1.0).
+The app fully supports every version of Bedrock Edition, Pocket Edition, Education Edition, and China Edition all the way back to the very first Pocket Edition version (Pocked Edition v0.1.0 Alpha).
 
 More information on the app can be found on the [wiki](https://wiki.8crafter.com/bwe/).
 

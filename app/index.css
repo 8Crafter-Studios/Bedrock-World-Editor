@@ -88,6 +88,16 @@ img {
 }
 
 @font-face {
+    font-family: "Minecraft-Seven-v2B";
+    src: url("/resources/fonts/MinecraftSevenv2B-Regular.otf");
+    unicode-range:
+        U+000D, U+0020-007E, U+00A0-00B4, U+00B6-00BB, U+00BF-0148, U+014A-017E, U+0192, U+01FC-01FF, U+0218-021B, U+0237, U+02C6-02C9, U+02D8-02DD,
+        U+0384-0386, U+0388-038A, U+038C, U+038E-03A1, U+03A3-03CE, U+0400-045F, U+0490-0491, U+1E02-1E03, U+1E0A-1E0B, U+1E1E-1E1F, U+1E22-1E23, U+1E30-1E31,
+        U+1E40-1E41, U+1E56-1E57, U+1E60-1E61, U+1E6A-1E6B, U+1E80-1E85, U+1E9E, U+1EF2-1EF3, U+2013-2015, U+2018-201A, U+201C-201E, U+2020-2022, U+2026,
+        U+2030, U+2039-203A, U+2044, U+2074, U+20AC, U+2122, U+2126, U+2206, U+220F, U+2211-2212, U+221E, U+25CA, U+F6C3, U+F8FF, U+FB01-FB02;
+}
+
+@font-face {
     font-family: "Minecraft-Seven-v4";
     src: url("/resources/fonts/Minecraft-Seven-v4-c1725.ttf");
     unicode-range:
@@ -515,6 +525,30 @@ page_background[theme_color_bg] {
 .sidebar_button:hover,
 .sidebar_button:focus-visible {
     background-color: #fff5;
+    /* & > img {
+        opacity: 1;
+    } */
+}
+
+.sidebar_button.active-sub-tab {
+    background-color: #0f82;
+    /* & > img {
+        opacity: 1;
+    } */
+    &::before {
+        content: "";
+        border-left: 2px solid #bbbbbb;
+        width: calc(100% - 1px);
+        height: 48px;
+        position: absolute;
+        top: 0px;
+        left: 0px;
+    }
+}
+
+.sidebar_button.active-sub-tab:hover,
+.sidebar_button.active-sub-tab:focus-visible {
+    background-color: #98f0ca55;
     /* & > img {
         opacity: 1;
     } */

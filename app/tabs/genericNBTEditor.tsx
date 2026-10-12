@@ -109,9 +109,20 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
     function MissingLevelDBKeyNotice(): JSX.SpecificElement<"div"> {
         return (
             <div>
-                <h2>The LevelDB key associated with this sub-tab does not exist.</h2>
+                <h2>
+                    The{" "}
+                    {props.tab.target.type === "File" ?
+                        "File"
+                    : props.tab.target.type === "ChunksDatEntry" ?
+                        "chunks.dat entry"
+                    : props.tab.target.type === "LevelDBEntry" ?
+                        "LevelDB key"
+                    :   "?"}{" "}
+                    associated with this sub-tab does not exist.
+                </h2>
                 {((): boolean => {
                     if (props.tab.target.type === "File") return false;
+                    if (props.tab.target.type === "ChunksDatEntry") return false;
                     const contentType = props.tab.contentType === "Unknown" ? getContentTypeFromDBKey(props.tab.target.key) : props.tab.contentType;
                     const format: EntryContentTypeFormatData = props.tab.formatData ?? entryContentTypeToFormatMap[contentType];
                     if (!((format.type === "NBT") /*  || (format.type === "custom" && format.resultType === "JSONNBT") */)) return false;
@@ -121,6 +132,7 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                         type="button"
                         onClick={async (): Promise<void> => {
                             if (props.tab.target.type === "File") return;
+                            if (props.tab.target.type === "ChunksDatEntry") return;
                             const contentType = props.tab.contentType === "Unknown" ? getContentTypeFromDBKey(props.tab.target.key) : props.tab.contentType;
                             const format: EntryContentTypeFormatData = props.tab.formatData ?? entryContentTypeToFormatMap[contentType];
                             if (!((format.type === "NBT") /*  || (format.type === "custom" && format.resultType === "JSONNBT") */)) return;
@@ -248,6 +260,18 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                         missingLevelDBKey = true;
                         return;
                     }
+                    if (reason instanceof Error && reason.message.startsWith("The chunks.dat file associated with this sub-tab does not exist:")) {
+                        render(null, containerRef.current);
+                        render(<MissingLevelDBKeyNotice />, containerRef.current);
+                        missingLevelDBKey = true;
+                        return;
+                    }
+                    if (reason instanceof Error && reason.message.startsWith("The file associated with this sub-tab does not exist:")) {
+                        render(null, containerRef.current);
+                        render(<MissingLevelDBKeyNotice />, containerRef.current);
+                        missingLevelDBKey = true;
+                        return;
+                    }
                     render(null, containerRef.current);
                     render(<DataLoadFailureNotice reason={reason} />, containerRef.current);
                     dataLoadFailureNoticeReasonExists = true;
@@ -298,6 +322,8 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                             props.props.tab.hasUnsavedChanges = true;
                             if (props.props.tab.target.type === "LevelDBEntry") {
                                 props.props.tab.parentTab.setLevelDBIsModified();
+                            } else if (props.props.tab.target.type === "ChunksDatEntry") {
+                                props.props.tab.parentTab.setFileAsModified("chunks.dat");
                             } else {
                                 props.props.tab.parentTab.setFileAsModified(props.props.tab.target.path);
                             }
@@ -315,6 +341,8 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                             props.props.tab.hasUnsavedChanges = true;
                             if (props.props.tab.target.type === "LevelDBEntry") {
                                 props.props.tab.parentTab.setLevelDBIsModified();
+                            } else if (props.props.tab.target.type === "ChunksDatEntry") {
+                                props.props.tab.parentTab.setFileAsModified("chunks.dat");
                             } else {
                                 props.props.tab.parentTab.setFileAsModified(props.props.tab.target.path);
                             }
@@ -336,6 +364,8 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                             props.props.tab.hasUnsavedChanges = true;
                             if (props.props.tab.target.type === "LevelDBEntry") {
                                 props.props.tab.parentTab.setLevelDBIsModified();
+                            } else if (props.props.tab.target.type === "ChunksDatEntry") {
+                                props.props.tab.parentTab.setFileAsModified("chunks.dat");
                             } else {
                                 props.props.tab.parentTab.setFileAsModified(props.props.tab.target.path);
                             }
@@ -358,6 +388,8 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                             props.props.tab.hasUnsavedChanges = true;
                             if (props.props.tab.target.type === "LevelDBEntry") {
                                 props.props.tab.parentTab.setLevelDBIsModified();
+                            } else if (props.props.tab.target.type === "ChunksDatEntry") {
+                                props.props.tab.parentTab.setFileAsModified("chunks.dat");
                             } else {
                                 props.props.tab.parentTab.setFileAsModified(props.props.tab.target.path);
                             }

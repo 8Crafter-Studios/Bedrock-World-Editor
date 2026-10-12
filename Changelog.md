@@ -6,11 +6,56 @@
 
 # v1.0.0-beta.38
 
+## Critical Fixes
+
+-   Fixed an issue where pasting in editors that used Monaco Editor did not work in the packaged app ([#1](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/1)).
+
 ## Additions
 
+-   Added a "Files" mode to the "View Files" left sidebar tab, which allows you to see the files in the world folder (certain files/folders are excluded: anything starting with `.`, the `db` folder, the `resource_packs` folder, and the `behavior_packs` folder). The list of LevelDB entries (which is what was in the tab prior to this update) is accessible through the default "LevelDB" mode.
+-   The app now supports worlds from versions before Pocket Edition v0.2.0 Alpha. Meaning all versions are now fully supported.
+-   Added full support for Minecraft China Edition.
+-   Added full support for the Minecraft China Edition dev dimensions.
+-   Added detections for worlds from versions that are affected by the "Fragile LevelDB" bug. If a world is detected as having this bug, there will be a little legacy glass pane icon on the tab and there will be a warning before saving the world. If you proceed with the save of the world, the icon will switch to a shattered glass pane icon (which is actually one of the early glass pane textures) and there will be no warnings before saving that world until to tab is closed and reopened.
+    -   This "Fragile LevelDB" bug affects ALL NBT/LevelDB/world editor, anything that modifies the LevelDB, including things like the Universal Minecraft Editor/Tool.
+    -   The bug is that if you access the LevelDB on the world, the world will be very broken (it will work fine on versions not affected by the bug, but the versions that are affected will behave very strangely). Some effects of the bug include: World data wipes, extremely slow chunk loading and lag spikes, instant crashes (on low-end devices), extremely long world loading using 100% CPU, rubberbanding, etc.
+    -   The bug was fixed in beta 1.2.0.11. It is known to happen from 1.0.0 until 1.2.0.11, but it has yet to be tested if the bug affects 0.9.0 through 1.0.0 as well. <!-- TODO: When it is figured out what 1.0.0 beta added the bug, update this. -->
+    -   On worlds from versions between 0.9.0 (inclusive) and 1.0.0 (exclusive), as it is not yet known whether they are affected by the bug, it will display as a "Possibly Fragile LevelDB", with a modern glass pane texture instead, and a slightly different warning message.
 -   Added support for opening and editing NBT files directly (as in not part of a world) ([#11](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/11)).
 -   Added support for opening and editing LevelDBs directly (as in not part of a world) ([#12](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/12)).
 -   Added the "Heightmap" render type to the 2D world map.
+-   `LevelDat` `StorageVersion` `1` is now supported.
+-   Added the paths to the world folder locations for Minecraft China Edition on macOS to the config.
+-   Added support for editing the `LegacyBlockExtraData` content type.
+-   Added support for the `JigsawStructureBlueprint` content type.
+-   Added support for the `POITypes` content type.
+-   Added support for the `POIRegionRegistry` content type.
+-   Added support for the `POIRegion` content type.
+-   Added support for the `PlayerDat` content type.
+-   Added support for the `LANPlayerDat` content type.
+-   Added support for the `EntitiesDat` content type.
+-   Added support for the `ChunksDat` content type.
+-   Added support for the `ImportedChunksDat` content type.
+-   Added support for the `LegacyConsolePlayer` content type.
+-   Added support for the `VersionEnchant` content type (MCCE exclusive).
+-   Added support for the `VersionMarkInsert` content type (MCCE exclusive).
+-   Added support for the `unknown0x70` content type (MCCE exclusive).
+-   Added support for the `unknown0x71` content type (MCCE exclusive).
+-   Added support for the `SSTCommandLog` content type (MCCE exclusive).
+-   Added support for the `SSTHashRegistry` content type (MCCE exclusive).
+-   Added support for the `MCChinaDevDimension` content type (MCCE exclusive).
+-   Added support for the `NeteaseData` content type (MCCE exclusive).
+-   Added support for the `NeteaseScriptGid` content type (MCCE exclusive).
+-   Added an icon for sub-tabs of content type `SubChunkPrefix`.
+-   Added an icon for sub-tabs of content type `LegacyTerrain`.
+-   Added an icon for sub-tabs of content type `LegacyBlockExtraData`.
+-   Added the "Show World Storage Versions on World List" option to the "General" settings section.
+-   Players from `level.dat`, `player.dat`, and `players/<PlayerID>.dat` are now shown in the "Players" left sidebar tab.
+-   The "Players" left sidebar tab is now accessible on worlds that don't have a LevelDB (`db` folder).
+-   The "View Files" left sidebar tab is now accessible on worlds that don't have a LevelDB (`db` folder).
+-   The 2D world map can now render chunks from `chunks.dat`.
+-   The 2D world map can determine the world border from `chunks.dat` is the world doesn't have a LevelDB (`db` folder).
+-   Added an `Open chunks.dat entry` context menu option to the 2D world map. It is only visible when `chunks.dat` is present.
 -   Added hover and active tints to the refresh world list button on the start screen.
 -   Added focus tints to many buttons throughout the app so it is now possible to see if a button is focused with tab.
 -   The Show Grid Lines option in the 2D world map has been changed from a toggle to having an "Always", "With Threshold", and "Never" option. The "With Threshold" option allows you to specify a threshold at which the grid lines are shown. Ehen the zoom level is at or above that threshold the grid lines are shown.
@@ -18,18 +63,64 @@
 -   Added ALT text for world icons on the world selection menu so that if a world has an invalid image, it won't display the entire hover info where the icon should be.
 -   Added a custom icon for the "NBT File" option in the add tab popup menu.
 -   NBT File tabs now have icons.
+-   The world hover info in the world selection menu can now read the play time for worlds from versions before Pocket Edition v0.11.0 Alpha.
+-   Added the minimum compatible client version to the world hover info in the world selection menu.
+-   Added the storage version to the world hover info in the world selection menu.
+-   Added wildcard syntax support to the `type` query in the "View Files" left sidebar tab.
+-   Made the display value getters for the "Spawn" and "Spawn (Compact)" columns in the "Players" left sidebar tab a lot more robust.
+-   The "Location" and "Spawn" columns in the "Players" left sidebar tab can now show China Edition dev dimension names (dm3-dm20) instead of their numeric IDs (if at least one China Edition dev dimension is present on the world).
+-   Added the Temp Folder line to the "Tab" debug overlay.
+-   Added the Window ID line to the "Tab" debug overlay, it is only visible when no tab is active.
+-   The Tab ID line of the "Tab" debug overlay now includes the window ID in the format `<WindowID>-<TabID>` instead of just the tab ID.
+-   Added support for `format_version` `2` to the `StructureTemplate` NBT schema.
+-   The "Packs" left sidebar tab can now detect resource and behavior packs that are stored outside of the world files for Minecraft China Edition.
+-   Added a warning about increased world selector loading times and increased disk usage while loading the world list to the hover info of the "Show World Sizes on World List" setting.
+-   The sub-tabs and active sub-tab of a tab are now preserved when using the `Reload Tab` context menu option.
+-   If a world does not have a `lastOpenedWithVersion` field in `level.dat`, the world selection menu will now display the possible version range of the world based on the `StorageVersion` field of `level.dat` instead of `null`, if the `StorageVersion` field is missing it will still display `null`.
 
 ## Changes
 
+-   Many major NBT schema fixes and improvements, see the [`mcbe-leveldb` changelog](https://github.com/8Crafter-Studios/mcbe-leveldb/blob/main/Changelog.md) for more details (v1.0.0-beta.37 used v1.23.0 of `mcbe-leveldb`, this version uses v1.24.0).
 -   The app no longer copies the `resource_packs`, `behavior_packs`, or `.git` folders of worlds when they are opened, and when saving it does not delete them (before it would delete them to replace them with the copied version from the temp folder). This will fix an issue where world with large resource packs, behavior packs, or git repositories would take a very long time to open or save ([#63](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/63)).
+-   Made the display value getters for the "Spawn" and "Spawn (Compact)" columns in the "Players" left sidebar tab a lot more robust.
+-   The scroll position of the debug overlays is now preserved when switching debug overlay modes.
+-   The scroll position of the debug overlays now restores the previous scroll position if the maximum scroll decreases below the set scroll position and then increases again, instead of the scroll position staying at the smaller scroll position (if the user did not attempt to scroll the debug overlay in that time).
+-   The debug overlays now use a modified version of the Minecraft Seven v2 font (called Minecraft Seven v2B) instead of the Mojangles font, which is much more accurate to the actual Minecraft font.
+-   The left sidebar tabs now have a different highlight for when a sub-tab that is accessible through that left sidebar tab is active compared to when that left sidebar tab itself is directly active.
+-   The window numbers in the select open tab dialog now use the index in the list of non-dialog app windows, rather than the window ID number (the window ID number is still displayed in parentheses after the window number).
+-   On macOS, the keyboard shortcut to save the current tab has been switched from CTRL+S to CMD+S.
+-   If the dimensions of entities in the "Entities" left sidebar tab cannot be displayed because the world is too large so it isn't checking it to improve performance, the dimension will now be shown as `Dimension Unavailable` instead of `Unknown Dimension`.
+-   When a sub-tab's associated file is missing (for file sub-tabs), it now has the same special error screen that LevelDB entry sub-tabs have when their associated LevelDB key is missing.
+-   The `Open LevelDB entry...` csubmenu of the context menu of the 2D world map is now hidden when the world doesn't have a LevelDB (`db` folder).
+-   All dimensions other than the Overworld are now hidden from the dimension selector on the 2D world map when `chunks.dat` is present and the world doesn't have a LevelDB (`db` folder).
+
+## Removals
+
+-   Removed the "Short Array" add tag button from the Node editor as there is no short array type in NBT.
 
 ## Fixes
 
+-   Fixed a bug where if `level.dat` was editied, it would always set the `StorageVersion` in the file header to `10` instead of using the one in the `StorageVersion` field of the NBT.
+-   A world with a missing last played time will no longer cause the world list to crash and show no worlds in the list.
 -   Fixed a bug where clicking the app icon in the mobile friendly start screen did not refresh the world list.
 -   The `Activate Pack`, `Deactivate Pack`, and `Delete Pack From History` context menu options in the "Packs" tab are now hidden in read-only mode.
 -   Fixed a typo in the direct mode warning message.
 -   Fixed a bug where a scroll bar was sometimes visible on the top left hover info overlay in the 2D world map.
 -   Fixed a bug where the "Nether Chunk" and "Nether Coordinates" in the top left hover info overlay in the 2D world map were not shown when the `NetherScale` field was not present in the `level.dat` file.
+-   Fixed a bug where the order of pinned sub-tabs did not automatically save when a pinned sub-tab was moved.
+-   Fixed a bug where the height range on some old worlds was not detected in some old worlds.
+-   Non-LevelDB content types are no longer shown in the "Cached DB Keys" list in the "Tab" debug overlay.
+-   Unset player spawn points are now properly detected as such in Minecraft versions prior to beta 1.16.0.57.
+-   The dimension of player spawn points are now properly detected in Minecraft versions prior to beta 1.16.0.57.
+-   Fixed a bug where sometimes a character in the debug overlay would randomly be thick.
+-   The add tab popup menu is now properly positioned below the add tab button when the button is offset downwards due to wrapping from tabs.
+-   Fixed a bug where the lock icon on read-only tabs and sub-tabs would cause the height of the tab bar to get slightly larger.
+-   The app no longer creates a LevelDB if the world doesn't have one.
+-   If a world does not have the `MultiplayerGameIntent` in `level.dat`, the hover info for that world in the world selction menu will now display it as "Multiplayer" instead of "Singleplayer".
+
+## Performance Improvements
+
+-   Performance improvements while loading the worlds list.
 
 # v1.0.0-beta.37
 

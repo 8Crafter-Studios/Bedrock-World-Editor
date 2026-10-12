@@ -4,9 +4,10 @@ import { app } from "@electron/remote";
 import os from "node:os";
 import v8 from "node:v8";
 import { existsSync } from "node:fs";
-import { DBEntryContentTypesGrouping, type DBEntryContentType, type DBEntryContentTypeGroup } from "mcbe-leveldb";
+import { MCEntryContentTypesGrouping, type MCDBEntryContentType, type MCEntryContentTypeGroup } from "mcbe-leveldb";
 import { execSync } from "node:child_process";
 import { createObservable, type Observable } from "../../src/utils/miscUtils";
+import path from "node:path";
 
 const FPS_SAMPLE_SIZE = 10;
 
@@ -104,10 +105,21 @@ export default function DebugOverlay(): JSX.SpecificElement<"div"> {
     let currentDebugOverlayScrollTop: number = 0;
     const debugOverlayAbortController: AbortController = new AbortController();
     useEffect((): (() => void) => {
+        if (!containerRef.current) throw new ReferenceError("containerRef.current is null");
+        const lastObservedElementScrollHeights = new WeakMap<Element, number>();
         function debugHUDChangeCallback(mode: typeof config.debugHUD): void {
             if (!containerRef.current) return;
+            mutationObserver.disconnect();
             render(null, containerRef.current);
-            render(<DebugOverlayContents mode={mode} />, containerRef.current);
+            render(<DebugOverlayContents mode={mode} />, containerRef.current, (): void => {
+                if (!containerRef.current) throw new ReferenceError("containerRef.current is null");
+                containerRef.current.querySelectorAll("& > .scrollable-debug-overlay.debug-overlay-scroll-from-top").forEach((v: Element): void => {
+                    if (lastObservedElementScrollHeights.get(v) === v.scrollHeight) return;
+                    v.scrollTop = currentDebugOverlayScrollTop;
+                    lastObservedElementScrollHeights.set(v, v.scrollHeight);
+                });
+                mutationObserver.observe(containerRef.current, { childList: true, subtree: true });
+            });
         }
         window.addEventListener(
             "keydown",
@@ -132,14 +144,27 @@ export default function DebugOverlay(): JSX.SpecificElement<"div"> {
             { signal: debugOverlayAbortController.signal }
         );
 
+        const mutationObserver: MutationObserver = new MutationObserver((): void => {
+            containerRef.current?.querySelectorAll("& > .scrollable-debug-overlay.debug-overlay-scroll-from-top").forEach((v: Element): void => {
+                if (lastObservedElementScrollHeights.get(v) === v.scrollHeight) return;
+                v.scrollTop = currentDebugOverlayScrollTop;
+                lastObservedElementScrollHeights.set(v, v.scrollHeight);
+            });
+        });
+        containerRef.current.querySelectorAll("& > .scrollable-debug-overlay.debug-overlay-scroll-from-top").forEach((v: Element): void => {
+            lastObservedElementScrollHeights.set(v, v.scrollHeight);
+        });
+        mutationObserver.observe(containerRef.current, { childList: true, subtree: true });
+
         config.on("settingChanged:debugHUD", debugHUDChangeCallback);
         return (): void => {
+            mutationObserver.disconnect();
             config.off("settingChanged:debugHUD", debugHUDChangeCallback);
             if (containerRef.current) render(null, containerRef.current);
         };
     }, []);
     return (
-        <div style={{ display: "contents", fontFamily: "Mojangles", overflowWrap: "break-word" }} ref={containerRef}>
+        <div style={{ display: "contents", fontFamily: "Minecraft-Seven-v2B", overflowWrap: "break-word" }} ref={containerRef}>
             <DebugOverlayContents mode={config.debugHUD} />
         </div>
     );
@@ -1328,6 +1353,7 @@ function DebugOverlay_Config_Views(): JSX.Element {
 function DebugOverlay_Tab(): JSX.Element {
     const formatter = new Intl.NumberFormat();
     const rightContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
+    const currentWindowId: number = getCurrentWindow().id;
     function CrispyDropShadowSpan(props: JSX.HTMLAttributes<HTMLSpanElement>): JSX.Element {
         return (
             <span {...Object.fromEntries(Object.entries(props).filter(([key, _value]: [key: string, value: any]): boolean => key !== "children"))}>
@@ -1391,6 +1417,22 @@ function DebugOverlay_Tab(): JSX.Element {
                                 Tab Mode:{" "}
                             </CrispyDropShadowSpan>
                             <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value">{tab.mode}</CrispyDropShadowSpan>
+                        </span>
+                        <span
+                            class="crispy"
+                            style={{
+                                display: "block",
+                            }}
+                        >
+                            <CrispyDropShadowSpan class="debug-overlay-config-mode-item-label" data-color="#AAAAAAFF">
+                                Temp Folder:{" "}
+                            </CrispyDropShadowSpan>
+                            {tab.tempPath !== undefined ?
+                                <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value">{path.basename(tab.tempPath)}</CrispyDropShadowSpan>
+                            :   <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#FF5555FF">
+                                    null
+                                </CrispyDropShadowSpan>
+                            }
                         </span>
                         {/* <span
                             class="crispy"
@@ -1466,7 +1508,9 @@ function DebugOverlay_Tab(): JSX.Element {
                             <CrispyDropShadowSpan class="debug-overlay-config-mode-item-label" data-color="#AAAAAAFF">
                                 Tab ID:{" "}
                             </CrispyDropShadowSpan>
-                            <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value">{tab.id}</CrispyDropShadowSpan>
+                            <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value">
+                                {currentWindowId}-{tab.id}
+                            </CrispyDropShadowSpan>
                         </span>
                         <span
                             class="crispy"
@@ -1509,9 +1553,9 @@ function DebugOverlay_Tab(): JSX.Element {
                             Object.entries(
                                 Object.entries(tab.cachedDBKeys)
                                     .map(([k, v]): [key: string, value: number] => [k, v.length])
-                                    .reduce((p: Partial<Record<DBEntryContentTypeGroup, number>>, [k, v]) => {
-                                        const group: DBEntryContentTypeGroup =
-                                            DBEntryContentTypesGrouping[k as DBEntryContentType] ?? (k as DBEntryContentTypeGroup);
+                                    .reduce((p: Partial<Record<MCEntryContentTypeGroup, number>>, [k, v]) => {
+                                        const group: MCEntryContentTypeGroup =
+                                            MCEntryContentTypesGrouping[k as MCDBEntryContentType] ?? (k as MCEntryContentTypeGroup);
                                         if (p[group] !== undefined) {
                                             p[group] += v;
                                         } else {
@@ -1550,7 +1594,20 @@ function DebugOverlay_Tab(): JSX.Element {
                             </CrispyDropShadowSpan>
                         }
                     </>
-                :   <></>}
+                :   <>
+                        <span
+                            class="crispy"
+                            style={{
+                                display: "block",
+                            }}
+                        >
+                            <CrispyDropShadowSpan class="debug-overlay-config-mode-item-label" data-color="#AAAAAAFF">
+                                Window ID:{" "}
+                            </CrispyDropShadowSpan>
+                            <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value">{currentWindowId}</CrispyDropShadowSpan>
+                        </span>
+                    </>
+                }
             </>
         );
     }

@@ -19,6 +19,35 @@ If you want to locally run the app without having to wait to the installer to bu
 2.  Run `npm i`.
 3.  Run `npm run start`.
 
+## DevTools Configuration
+
+> [!NOTE]  
+> This is a list of options that you should enable or disable where the default value may not match. Options that are required to be enabled/disabled but are already so by default may not be included in this list.
+
+These are some settings that you should change in DevTools in the app.
+
+To access these settings, first press `F12` to open DevTools. Then click the settings gear in the top right:\
+![DevTools Settings Button](.github/assets/images/DevTools_settings_button.png)
+
+### Required
+
+-   Preferences
+    -   Console
+        -   Show CORS errors in console
+        -   Custom Formatters
+
+### Optional (Recommended)
+
+-   Preferences
+    -   Console
+        -   Timestamps
+    -   Debugger
+        -   Disable async stack traces (this will fix the issue where many things in the app like world loading takes over 3.5x as long with DevTools open).
+-   Experiments
+    -   Experiments
+        -   Enable full accessibility tree view in the Elements panel
+        <!-- -   Enable automatic contrast issue reporting via the issues panel -->
+
 ## Code Style
 
 > [!NOTE]  

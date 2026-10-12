@@ -1266,9 +1266,9 @@ async function getEntitiesTabContentsRows(data: {
                                                                 }
                                                             })()
                                                         :   key.data.parsed.value.DimensionId.value))
-                                                    :   ((data.entityDimensionMappings &&
-                                                            getEntityDimensionFromMappings(key.rawKey, data.entityDimensionMappings)) ??
-                                                        "Unknown Dimension")
+                                                    : data.entityDimensionMappings ?
+                                                        (getEntityDimensionFromMappings(key.rawKey, data.entityDimensionMappings) ?? "Unknown Dimension")
+                                                    :   "Dimension Unavailable"
                                                 }`
                                             :   <span style="color: red;">null</span>}
                                         </td>
