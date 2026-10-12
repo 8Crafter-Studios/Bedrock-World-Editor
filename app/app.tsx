@@ -1,4 +1,4 @@
-import type { JSX, RefObject } from "preact";
+import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import { render } from "preact/compat";
 import LeftSidebar from "./components/LeftSidebar";
 import DebugOverlay from "./components/DebugOverlay";
@@ -301,6 +301,125 @@ export interface MinecraftWorldDisplayDetails {
     fragileLevelDB: ReturnType<typeof tabManager.checkWorldFragilityFromLevelDat>;
 }
 
+// TODO (Config): Maybe add a config option for this.
+const WORLD_FOLDER_LOCATIONS_CACHE_MAX_AGE: number = 30_000; /* 30 seconds */
+
+/**
+ * The cache for world folder locations.
+ */
+export const worldFolderLocationsCache = {
+    _lastForceReload: -1,
+    _lastCheck: {
+        parsed: -1,
+        parsedIsolated: -1,
+        parsedExtra: -1,
+        parsedExtraIsolated: -1,
+    },
+    cachedPaths: {
+        parsed: [] as string[],
+        parsedIsolated: [] as string[],
+        parsedExtra: [] as string[],
+        parsedExtraIsolated: [] as string[],
+    },
+    _loadPromises: {
+        parsed: undefined as Promise<string[]> | undefined,
+        parsedIsolated: undefined as Promise<string[]> | undefined,
+        parsedExtra: undefined as Promise<string[]> | undefined,
+        parsedExtraIsolated: undefined as Promise<string[]> | undefined,
+    },
+    // REVIEW
+    /**
+     * Loads the world folder locations of the specified types from the config and returns them, or the cached ones.
+     *
+     * @param types The types of world folder locations to load.
+     * @param force Whether to forcefully reload the world folder locations.
+     * @param skipLastForceReloadAssignment Whether to skip assigning the last reload time. This will prevent other types from being force reloaded when they are next fetched.
+     * @returns The world folder locations of the specified types.
+     */
+    async loadPaths<T extends "parsed" | "parsedIsolated" | "parsedExtra" | "parsedExtraIsolated">(
+        types: T[],
+        force = false,
+        skipLastForceReloadAssignment = false
+    ): Promise<Pick<typeof this.cachedPaths, T>> {
+        if (force && !skipLastForceReloadAssignment) this._lastForceReload = Date.now();
+        const result: Pick<typeof this.cachedPaths, T> = {} as Pick<typeof this.cachedPaths, T>;
+        await Promise.all(
+            types.map(async (type: T): Promise<void> => {
+                if (!(force || Date.now() - this._lastCheck[type] > WORLD_FOLDER_LOCATIONS_CACHE_MAX_AGE) || this._lastForceReload > this._lastCheck[type]) {
+                    if (this._loadPromises[type]) await this._loadPromises[type].catch((): void => {});
+                    if (this._lastCheck[type] !== -1) {
+                        result[type] = this.cachedPaths[type];
+                        return;
+                    }
+                }
+                const startTime: number = Date.now();
+                this._lastCheck[type] = startTime;
+                try {
+                    const promise: Promise<string[]> =
+                        config[
+                            type === "parsed" ? ("getParsedMinecraftDataFolders" satisfies keyof typeof config)
+                            : type === "parsedIsolated" ? ("getParsedIsolatedMinecraftWorldsFolders" satisfies keyof typeof config)
+                            : type === "parsedExtra" ? ("getParsedExtraMinecraftDataFolders" satisfies keyof typeof config)
+                            : ("getParsedExtraIsolatedMinecraftWorldsFolders" satisfies keyof typeof config)
+                        ]();
+                    this._loadPromises[type] = promise;
+                    const paths: string[] = await promise;
+                    if (this._loadPromises[type] === promise) this._loadPromises[type] = undefined;
+                    result[type] = paths;
+                    if (this._lastCheck[type] > startTime) return;
+                    this.cachedPaths[type] = paths;
+                } catch (e) {
+                    if (this._lastCheck[type] <= startTime) this._lastCheck[type] = -1;
+                    throw e;
+                }
+            })
+        );
+        return result;
+    },
+    /**
+     * Loads the world folder locations of the specified types from the config and returns them as a single flat array, or the cached ones.
+     *
+     * @param types The types of world folder locations to load.
+     * @param force Whether to forcefully reload the world folder locations.
+     * @param skipLastForceReloadAssignment Whether to skip assigning the last forced reload time. This will prevent other types from being force reloaded when they are next fetched.
+     * @returns The world folder locations of the specified types as a single flat array.
+     */
+    async loadPathsAsList<T extends "parsed" | "parsedIsolated" | "parsedExtra" | "parsedExtraIsolated">(
+        types: T[],
+        force = false,
+        skipLastForceReloadAssignment = false
+    ): Promise<string[]> {
+        if (force && !skipLastForceReloadAssignment) this._lastForceReload = Date.now();
+        const paths = await this.loadPaths(types, force, true);
+        return types.flatMap((type: T): string[] => paths[type]);
+    },
+    /**
+     * Loads the world folder locations of the specified types from the config or uses the cached ones, and either returns true as soon as a location if found, or false after all have been checked and there are no matches.
+     *
+     * This continues to load the folders even after a match is found and the function returns true.
+     *
+     * @param types The types of world folder locations to load.
+     * @param force Whether to forcefully reload the world folder locations.
+     * @param skipLastForceReloadAssignment Whether to skip assigning the last reload time. This will prevent other types from being force reloaded when they are next fetched.
+     * @returns A promise that resolves with true if a match is found, false otherwise.
+     */
+    async loadAndCheckForPathsEntries(
+        types: ("parsed" | "parsedIsolated" | "parsedExtra" | "parsedExtraIsolated")[],
+        force = false,
+        skipLastForceReloadAssignment = false
+    ): Promise<boolean> {
+        if (force && !skipLastForceReloadAssignment) this._lastForceReload = Date.now();
+        const result: PromiseWithResolvers<boolean> = Promise.withResolvers<boolean>();
+        Promise.all(
+            types.map(async (type: "parsed" | "parsedIsolated" | "parsedExtra" | "parsedExtraIsolated"): Promise<void> => {
+                const paths: string[] = await this.loadPathsAsList([type], force, true);
+                if (paths.length) result.resolve(true);
+            })
+        ).then(result.resolve.bind(void 0, false), result.reject);
+        return await result.promise;
+    },
+};
+
 /**
  * Gets the Minecraft worlds that should be displayed on app's world selection menu.
  *
@@ -322,9 +441,9 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
      */
     const favoritedWorldsData: readonly string[] | null =
         existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json")) ?
-            ((): string[] | null => {
+            await (async (): Promise<string[] | null> => {
                 try {
-                    const favoritedWorldsData = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8")) as string[];
+                    const favoritedWorldsData = JSON.parse(await readFile(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8")) as string[];
                     // Verify that the data is an array.
                     if (!(favoritedWorldsData instanceof Array)) {
                         throw new TypeError(
@@ -362,7 +481,7 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
     return (
         await Promise.all(
             [
-                ...[...new Set(all ? [...config.parsedMinecraftDataFolders, ...config.parsedExtraMinecraftDataFolders] : config.parsedMinecraftDataFolders)]
+                ...[...new Set(await worldFolderLocationsCache.loadPathsAsList(all ? ["parsed", "parsedExtra"] : ["parsed"]))]
                     .filter(
                         (folderPath: string): boolean => existsSync(path.join(folderPath, "minecraftWorlds")) || existsSync(path.join(folderPath, "worlds"))
                     )
@@ -378,13 +497,7 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
                     })
                     .flat()
                     .map((v: string): FolderPathIsolationDetails => ({ folderPath: v, isolated: false })),
-                ...[
-                    ...new Set(
-                        all ?
-                            [...config.parsedIsolatedMinecraftWorldsFolders, ...config.parsedExtraIsolatedMinecraftWorldsFolders]
-                        :   config.parsedIsolatedMinecraftWorldsFolders
-                    ),
-                ]
+                ...[...new Set(await worldFolderLocationsCache.loadPathsAsList(all ? ["parsedIsolated", "parsedExtraIsolated"] : ["parsedIsolated"]))]
                     .filter((folderPath: string): boolean => existsSync(folderPath))
                     .map((folderPath: string): string[] => {
                         return readdirSync(folderPath, {
@@ -542,7 +655,20 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
                                 :   toLong((levelDat.value.currentTick?.value ?? levelDat.value.Time?.value)!),
                             gameMode: levelDat.value.GameType?.value ?? ((levelDat.value.StorageVersion?.value ?? NaN) <= 1 ? 1 : -1),
                             hardcore: levelDat.value.IsHardcore?.value === 1,
-                            multiplayer: (levelDat.value.MultiplayerGameIntent?.value ?? 1) === 1,
+                            multiplayer:
+                                (levelDat.value.MultiplayerGameIntent?.value ?? 1) ===
+                                // TODO: Once XBLBroadcast is added to the schema, uncomment this.
+                                /* levelDat.value.MultiplayerGame?.value ??
+                                    ((
+                                        (levelDat.value.LANBroadcastIntent?.value ?? levelDat.value.LANBroadcast?.value) === 1 ||
+                                        (levelDat.value.XBLBroadcastIntent?.value ?? levelDat.value.XBLBroadcast?.value ?? 0) >= 1 ||
+                                        (levelDat.value.LANBroadcastIntent?.value ??
+                                            levelDat.value.LANBroadcast?.value ??
+                                            levelDat.value.XBLBroadcastIntent?.value ??
+                                            levelDat.value.XBLBroadcast?.value) === undefined
+                                    ) ?
+                                        1
+                                    :   0) */ 1,
                             fromLockedTemplate: levelDat.value.isFromLockedTemplate?.value === 1,
                             fromWorldTemplate: levelDat.value.isFromWorldTemplate?.value === 1,
                             singleUseWorld: levelDat.value.isSingleUseWorld?.value === 1,
@@ -618,7 +744,7 @@ export const preloadedIcons = {
  * Props for the {@link WorldSelector} component.
  */
 export interface WorldSelectorProps {
-    forceTriggerUpdateRef?: RefObject<() => void>;
+    forceTriggerUpdateRef?: RefObject<() => Promise<void>>;
 }
 
 /**
@@ -642,15 +768,17 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
     }
     useEffect((): void => void getMinecraftWorlds(false, config.showWorldSizesOnWorldList).then(refreshData), []);
     if (props.forceTriggerUpdateRef) {
-        props.forceTriggerUpdateRef.current = (): void => void getMinecraftWorlds(showingMore, config.showWorldSizesOnWorldList).then(refreshData);
+        props.forceTriggerUpdateRef.current = async (): Promise<void> => {
+            // Force reload the cached world folder locations.
+            await worldFolderLocationsCache.loadPaths(["parsed", "parsedIsolated", "parsedExtra", "parsedExtraIsolated"], true);
+            refreshData(await getMinecraftWorlds(showingMore, config.showWorldSizesOnWorldList));
+        };
     }
     if (
         data.length === 0 &&
-        // Check each one individually so if one of them contains folders, we don't need to parse the rest.
-        config.parsedMinecraftDataFolders.length === 0 &&
-        config.parsedIsolatedMinecraftWorldsFolders.length === 0 &&
-        config.parsedExtraMinecraftDataFolders.length === 0 &&
-        config.parsedExtraIsolatedMinecraftWorldsFolders.length === 0
+        // Check each group individually so if one of groups contains folders, we don't need to parse the other groups.
+        !worldFolderLocationsCache.loadAndCheckForPathsEntries(["parsed", "parsedIsolated"], true, true) &&
+        !worldFolderLocationsCache.loadAndCheckForPathsEntries(["parsedExtra", "parsedExtraIsolated"], true, true)
     ) {
         return (
             <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: center;">
@@ -1158,7 +1286,7 @@ export function StartScreen(): JSX.SpecificElement<"div"> {
  * @returns The JSX element for the start screen contents.
  */
 export function StartScreenContents(): JSX.Element {
-    const forceTriggerUpdateRef: RefObject<() => void> = useRef<() => void>(null);
+    const forceTriggerUpdateRef: RefObject<() => Promise<void>> = useRef<() => Promise<void>>(null);
     return (
         <>
             <div
@@ -1172,8 +1300,22 @@ export function StartScreenContents(): JSX.Element {
                     class="nsel ndrg reloadWorldListButton"
                     style="margin-left: 9px; width: 32px; cursor: pointer;"
                     title="Reload world list"
-                    onClick={(): void => {
-                        forceTriggerUpdateRef.current?.();
+                    onClick={(event: TargetedMouseEvent<HTMLImageElement>): void => {
+                        const currentTarget: HTMLImageElement = event.currentTarget;
+                        if (currentTarget.dataset.disabled) return;
+                        currentTarget.dataset.disabled = "true";
+                        currentTarget.classList.remove("error");
+                        forceTriggerUpdateRef.current?.().then(
+                            (): void => {
+                                delete currentTarget.dataset.disabled;
+                            },
+                            (e: unknown): void => {
+                                delete currentTarget.dataset.disabled;
+                                reportError(e);
+                                // The setTimout is just in case there was not a long enough delay before the error occurred.
+                                setTimeout((): void => void currentTarget.classList.add("error"), 1);
+                            }
+                        );
                     }}
                 />
                 <div style="flex: 1; overflow: auto; line-height: 1.25em;">
@@ -1192,8 +1334,22 @@ export function StartScreenContents(): JSX.Element {
                     class="nsel ndrg reloadWorldListButton"
                     style="margin-top: 35px; width: 128px; cursor: pointer;"
                     title="Reload world list"
-                    onClick={(): void => {
-                        forceTriggerUpdateRef.current?.();
+                    onClick={(event: TargetedMouseEvent<HTMLImageElement>): void => {
+                        const currentTarget: HTMLImageElement = event.currentTarget;
+                        if (currentTarget.dataset.disabled) return;
+                        currentTarget.dataset.disabled = "true";
+                        currentTarget.classList.remove("error");
+                        forceTriggerUpdateRef.current?.().then(
+                            (): void => {
+                                delete currentTarget.dataset.disabled;
+                            },
+                            (e: unknown): void => {
+                                delete currentTarget.dataset.disabled;
+                                reportError(e);
+                                // The setTimout is just in case there was not a long enough delay before the error occurred.
+                                setTimeout((): void => void currentTarget.classList.add("error"), 1);
+                            }
+                        );
                     }}
                 />
                 <div style="flex: 1; overflow: auto; line-height: 1.25em;">

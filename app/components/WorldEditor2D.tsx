@@ -1727,7 +1727,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                             void dialog.showMessageBox({
                                                 type: "error",
                                                 title: "Error",
-                                                message: "An error occured while loading the needed data from level.dat.",
+                                                message: "An error occurred while loading the needed data from level.dat.",
                                                 buttons: ["OK"],
                                                 noLink: true,
                                             });

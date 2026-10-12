@@ -9,6 +9,7 @@ import type { MessageBoxReturnValue, OpenDialogReturnValue } from "electron";
 import { ControlledMenu, MenuDivider, MenuItem, type ClickEvent } from "@szhsin/react-menu";
 import path from "node:path";
 import { setMobileLeftSidebarVisibility } from "./LeftSidebar";
+import { worldFolderLocationsCache } from "../app";
 
 export default function TabBar(): JSX.Element {
     const tabContainerRef: RefObject<HTMLUListElement> = useRef(null);
@@ -623,7 +624,7 @@ export default function TabBar(): JSX.Element {
                         </MenuItem>
                     }
                     {props.tab.type === "world" &&
-                        (config.parsedMinecraftDataFolders.some((folder: string): boolean =>
+                        ([...new Set(Object.values(worldFolderLocationsCache.cachedPaths).flat())].some((folder: string): boolean =>
                             props.tab.path.replaceAll("\\", "/").startsWith(folder.replaceAll("\\", "/").replace(/(?<!\/)$/, "/"))
                         ) ||
                             props.tab.isFavorited) && (

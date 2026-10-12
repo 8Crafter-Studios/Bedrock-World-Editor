@@ -77,6 +77,7 @@
 -   Added a warning about increased world selector loading times and increased disk usage while loading the world list to the hover info of the "Show World Sizes on World List" setting.
 -   The sub-tabs and active sub-tab of a tab are now preserved when using the `Reload Tab` context menu option.
 -   If a world does not have a `lastOpenedWithVersion` field in `level.dat`, the world selection menu will now display the possible version range of the world based on the `StorageVersion` field of `level.dat` instead of `null`, if the `StorageVersion` field is missing it will still display `null`.
+-   The reload world list button now flashes red if a fatal error occurrs while reloading the world list.
 
 ## Changes
 
@@ -93,6 +94,7 @@
 -   When a sub-tab's associated file is missing (for file sub-tabs), it now has the same special error screen that LevelDB entry sub-tabs have when their associated LevelDB key is missing.
 -   The `Open LevelDB entry...` csubmenu of the context menu of the 2D world map is now hidden when the world doesn't have a LevelDB (`db` folder).
 -   All dimensions other than the Overworld are now hidden from the dimension selector on the 2D world map when `chunks.dat` is present and the world doesn't have a LevelDB (`db` folder).
+-   The reload world list button is now disabled after clicking it until the world list has finished reloading.
 
 ## Removals
 
@@ -119,10 +121,14 @@
 -   If a world does not have the `MultiplayerGameIntent` in `level.dat`, the hover info for that world in the world selction menu will now display it as "Multiplayer" instead of "Singleplayer".
 -   Closing a tab that is not the active tab no longer switches your active tab.
 -   Fixed a bug where the "Show more" button could sometimes get stuck indefinitely on "Loading...".
+-   The `Favorite` context menu option of tabs in the tab bar is now also visible for worlds in isolated, extra, and extra isolated world folder locations, instead of only the main world folder locations list.
+-   Miscellaneous typo fixes.
 
 ## Performance Improvements
 
--   Performance improvements while loading the worlds list.
+-   Major world list loading time improvements.
+-   The world folder location detection is now asynchronous, allowing for faster world list loading and preventing the app from freezing while the world list is loading.
+-   The tab bar no longer causes a small stutter upon rendering.
 
 # v1.0.0-beta.37
 

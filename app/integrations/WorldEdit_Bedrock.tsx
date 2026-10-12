@@ -1702,7 +1702,7 @@ const thisIntegration = {
                                 },
                                 (reason: unknown): void => {
                                     reportError(reason);
-                                    // TODO: Add a way to disaplay that an error occured while loading this action.
+                                    // TODO: Add a way to disaplay that an error occurred while loading this action.
                                 }
                             );
                         }}
@@ -1825,7 +1825,7 @@ const thisIntegration = {
                                 },
                                 (reason: unknown): void => {
                                     reportError(reason);
-                                    // TODO: Add a way to disaplay that an error occured while loading this action.
+                                    // TODO: Add a way to disaplay that an error occurred while loading this action.
                                 }
                             );
                         }}
@@ -2186,7 +2186,7 @@ const thisIntegration = {
                     },
                     (reason: unknown): void => {
                         reportError(reason);
-                        // TODO: Add a way to disaplay that an error occured while loading this action.
+                        // TODO: Add a way to disaplay that an error occurred while loading this action.
                     }
                 );
             }
@@ -2218,7 +2218,7 @@ const thisIntegration = {
                     },
                     (reason: unknown): void => {
                         reportError(reason);
-                        // TODO: Add a way to disaplay that an error occured while loading this action.
+                        // TODO: Add a way to disaplay that an error occurred while loading this action.
                     }
                 );
             }
@@ -2238,7 +2238,7 @@ const thisIntegration = {
                         },
                         (reason: unknown): void => {
                             reportError(reason);
-                            // TODO: Add a way to disaplay that an error occured while loading this action.
+                            // TODO: Add a way to disaplay that an error occurred while loading this action.
                         }
                     )
                     .finally((): void => {

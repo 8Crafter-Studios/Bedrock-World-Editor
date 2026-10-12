@@ -1846,7 +1846,7 @@ async function getPacksTabContentsRows(data: {
                                                     void dialog.showMessageBox({
                                                         type: "error",
                                                         title: "Error",
-                                                        message: `An error occured while deactivating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                        message: `An error occurred while deactivating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                         detail: String(e),
                                                         buttons: ["OK"],
                                                         noLink: true,
@@ -1889,7 +1889,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -1951,7 +1951,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -2399,7 +2399,7 @@ async function getPacksTabContentsRows(data: {
                                                     void dialog.showMessageBox({
                                                         type: "error",
                                                         title: "Error",
-                                                        message: `An error occured while deactivating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                        message: `An error occurred while deactivating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                         detail: String(e),
                                                         buttons: ["OK"],
                                                         noLink: true,
@@ -2442,7 +2442,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -2504,7 +2504,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -2663,7 +2663,7 @@ async function getPacksTabContentsRows(data: {
                                                     void dialog.showMessageBox({
                                                         type: "error",
                                                         title: "Error",
-                                                        message: `An error occured while deactivating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                        message: `An error occurred while deactivating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                         detail: String(e),
                                                         buttons: ["OK"],
                                                         noLink: true,
@@ -2706,7 +2706,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -2768,7 +2768,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -3216,7 +3216,7 @@ async function getPacksTabContentsRows(data: {
                                                     void dialog.showMessageBox({
                                                         type: "error",
                                                         title: "Error",
-                                                        message: `An error occured while deactivating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                        message: `An error occurred while deactivating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                         detail: String(e),
                                                         buttons: ["OK"],
                                                         noLink: true,
@@ -3259,7 +3259,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -3321,7 +3321,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -3485,7 +3485,7 @@ async function getPacksTabContentsRows(data: {
                                                     void dialog.showMessageBox({
                                                         type: "error",
                                                         title: "Error",
-                                                        message: `An error occured while activating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                        message: `An error occurred while activating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                         detail: String(e),
                                                         buttons: ["OK"],
                                                         noLink: true,
@@ -3528,7 +3528,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -3590,7 +3590,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -4048,7 +4048,7 @@ async function getPacksTabContentsRows(data: {
                                                     void dialog.showMessageBox({
                                                         type: "error",
                                                         title: "Error",
-                                                        message: `An error occured while activating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                        message: `An error occurred while activating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                         detail: String(e),
                                                         buttons: ["OK"],
                                                         noLink: true,
@@ -4091,7 +4091,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -4153,7 +4153,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -4317,7 +4317,7 @@ async function getPacksTabContentsRows(data: {
                                                     void dialog.showMessageBox({
                                                         type: "error",
                                                         title: "Error",
-                                                        message: `An error occured while activating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                        message: `An error occurred while activating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                         detail: String(e),
                                                         buttons: ["OK"],
                                                         noLink: true,
@@ -4360,7 +4360,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -4422,7 +4422,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -4880,7 +4880,7 @@ async function getPacksTabContentsRows(data: {
                                                     void dialog.showMessageBox({
                                                         type: "error",
                                                         title: "Error",
-                                                        message: `An error occured while activating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                        message: `An error occurred while activating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                         detail: String(e),
                                                         buttons: ["OK"],
                                                         noLink: true,
@@ -4923,7 +4923,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -4985,7 +4985,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occured while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,

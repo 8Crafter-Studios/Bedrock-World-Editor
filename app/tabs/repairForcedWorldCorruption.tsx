@@ -60,7 +60,7 @@ export default function RepairForcedWorldCorruptionTab(props: RepairForcedWorldC
                     <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: center;">
                         <Notice
                             title="Error"
-                            subtitle="An error occured while repairing the forced world corruption."
+                            subtitle="An error occurred while repairing the forced world corruption."
                             detail={null}
                             image="generic_error"
                             style={{ height: "auto" }}

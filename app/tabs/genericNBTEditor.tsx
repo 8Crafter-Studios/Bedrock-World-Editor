@@ -73,7 +73,7 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                 <Notice
                     title="Failed to Load Data"
                     subtitle={null}
-                    detail="An error occured while loading the data, it may be corrupted or invalid. Try loading the data in raw mode instead by using the button below."
+                    detail="An error occurred while loading the data, it may be corrupted or invalid. Try loading the data in raw mode instead by using the button below."
                     image="generic_error"
                     style={{ height: "auto" }}
                 />

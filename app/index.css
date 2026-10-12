@@ -1672,6 +1672,31 @@ select.search-mode-dropdown:open::picker-icon {
 .reloadWorldListButton:active {
     filter: brightness(1.4);
 }
+.reloadWorldListButton[data-disabled] {
+    filter: brightness(0.75) contrast(0.75);
+}
+.reloadWorldListButton.error {
+    animation: reload-world-list-button-error-tint 0.4s linear 2;
+}
+
+@keyframes reload-world-list-button-error-tint {
+    0% {
+        filter: sepia(100%) saturate(3000%) brightness(70%) hue-rotate(325deg);
+        -webkit-animation-timing-function: steps(1, end);
+        -moz-animation-timing-function: steps(1, end);
+        -ms-animation-timing-function: steps(1, end);
+        -o-animation-timing-function: steps(1, end);
+        animation-timing-function: steps(1, end);
+    }
+    50% {
+        filter: none;
+        -webkit-animation-timing-function: steps(1, end);
+        -moz-animation-timing-function: steps(1, end);
+        -ms-animation-timing-function: steps(1, end);
+        -o-animation-timing-function: steps(1, end);
+        animation-timing-function: steps(1, end);
+    }
+}
 
 .add-tab-popup-menu {
     z-index: 100;

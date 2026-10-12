@@ -865,7 +865,7 @@ namespace exports {
          */
         public errorOnDBOpen?: unknown;
         /**
-         * If an error occured while opening the database because it was encrypted.
+         * If an error occurred while opening the database because it was encrypted.
          *
          * Only present if an error occurred while opening the database and the database is encrypted.
          */

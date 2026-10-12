@@ -3,11 +3,12 @@ import { hydrate, render, useEffect, useRef } from "preact/compat";
 import { app } from "@electron/remote";
 import os from "node:os";
 import v8 from "node:v8";
-import { existsSync } from "node:fs";
+// import { existsSync } from "node:fs";
 import { MCEntryContentTypesGrouping, type MCDBEntryContentType, type MCEntryContentTypeGroup } from "mcbe-leveldb";
 import { execSync } from "node:child_process";
 import { createObservable, type Observable } from "../../src/utils/miscUtils";
 import path from "node:path";
+import { worldFolderLocationsCache } from "../app";
 
 const FPS_SAMPLE_SIZE = 10;
 
@@ -788,10 +789,10 @@ function DebugOverlay_Config(): JSX.Element {
     }
     function RightContents(): JSX.Element {
         const configData: ConfigJSON = config.getConfigData();
-        const parsedMinecraftDataFolders: string[] = config.parsedMinecraftDataFolders;
-        const parsedExtraMinecraftDataFolders: string[] = config.parsedExtraMinecraftDataFolders;
-        const existingMinecraftDataFolders: boolean[] = parsedMinecraftDataFolders.map((location: string): boolean => existsSync(location));
-        const existingExtraMinecraftDataFolders: boolean[] = parsedExtraMinecraftDataFolders.map((location: string): boolean => existsSync(location));
+        // const parsedMinecraftDataFolders: string[] = worldFolderLocationsCache.cachedPaths.parsed;
+        // const parsedExtraMinecraftDataFolders: string[] = worldFolderLocationsCache.cachedPaths.parsedExtra;
+        // const existingMinecraftDataFolders: boolean[] = parsedMinecraftDataFolders.map((location: string): boolean => existsSync(location));
+        // const existingExtraMinecraftDataFolders: boolean[] = parsedExtraMinecraftDataFolders.map((location: string): boolean => existsSync(location));
         return (
             <>
                 {/* <span
@@ -961,7 +962,7 @@ function DebugOverlay_Config(): JSX.Element {
                     >{`Minecraft Data Folders [${configData.minecraftDataFolders.length}]`}</CrispyDropShadowSpan>
                 </span>
                 {configData.minecraftDataFolders.map(
-                    (location: string, index: number): JSX.Element => (
+                    (location: string, _index: number): JSX.Element => (
                         <span
                             class="crispy"
                             style={{
@@ -971,7 +972,54 @@ function DebugOverlay_Config(): JSX.Element {
                             {/* TODO: Fix this to check correctly if it has any matches. */}
                             {
                                 /* parsedMinecraftDataFolders[index] */ false ?
-                                    existingMinecraftDataFolders[index] ?
+                                    /* existingMinecraftDataFolders[index] */ true ?
+                                        <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#54FF54FF">
+                                            [E]
+                                        </CrispyDropShadowSpan>
+                                    :   <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#FF5454FF">
+                                            [X]
+                                        </CrispyDropShadowSpan>
+
+                                :   <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#FFA854FF">
+                                        [?]
+                                    </CrispyDropShadowSpan>
+
+                            }{" "}
+                            <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value">{`[${location}]`}</CrispyDropShadowSpan>
+                        </span>
+                    )
+                )}
+                <span
+                    class="crispy"
+                    style={{
+                        display: "block",
+                    }}
+                >
+                    &nbsp;
+                </span>
+                <span
+                    class="crispy"
+                    style={{
+                        display: "block",
+                    }}
+                >
+                    <CrispyDropShadowSpan
+                        class="debug-overlay-config-mode-item-label"
+                        data-color="#FFFF54FF"
+                    >{`Isolated Minecraft Worlds Folders [${configData.isolatedMinecraftWorldsFolders.length}]`}</CrispyDropShadowSpan>
+                </span>
+                {configData.isolatedMinecraftWorldsFolders.map(
+                    (location: string, _index: number): JSX.Element => (
+                        <span
+                            class="crispy"
+                            style={{
+                                display: "block",
+                            }}
+                        >
+                            {/* TODO: Fix this to check correctly if it has any matches. */}
+                            {
+                                /* parsedMinecraftDataFolders[index] */ false ?
+                                    /* existingMinecraftDataFolders[index] */ true ?
                                         <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#54FF54FF">
                                             [E]
                                         </CrispyDropShadowSpan>
@@ -1008,7 +1056,7 @@ function DebugOverlay_Config(): JSX.Element {
                     >{`Extra Minecraft Data Folders [${configData.extraMinecraftDataFolders.length}]`}</CrispyDropShadowSpan>
                 </span>
                 {configData.extraMinecraftDataFolders.map(
-                    (location: string, index: number): JSX.Element => (
+                    (location: string, _index: number): JSX.Element => (
                         <span
                             class="crispy"
                             style={{
@@ -1018,7 +1066,7 @@ function DebugOverlay_Config(): JSX.Element {
                             {/* TODO: Fix this to check correctly if it has any matches. */}
                             {
                                 /* parsedExtraMinecraftDataFolders[index] */ false ?
-                                    existingExtraMinecraftDataFolders[index] ?
+                                    /* existingExtraMinecraftDataFolders[index] */ true ?
                                         <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#54FF54FF">
                                             [E]
                                         </CrispyDropShadowSpan>
@@ -1052,17 +1100,64 @@ function DebugOverlay_Config(): JSX.Element {
                     <CrispyDropShadowSpan
                         class="debug-overlay-config-mode-item-label"
                         data-color="#FFFF54FF"
-                    >{`Parsed Minecraft Data Folders [${parsedMinecraftDataFolders.length}]`}</CrispyDropShadowSpan>
+                    >{`Extra Isolated Minecraft Worlds Folders [${configData.extraIsolatedMinecraftWorldsFolders.length}]`}</CrispyDropShadowSpan>
                 </span>
-                {parsedMinecraftDataFolders.map(
-                    (location: string, index: number): JSX.Element => (
+                {configData.extraIsolatedMinecraftWorldsFolders.map(
+                    (location: string, _index: number): JSX.Element => (
                         <span
                             class="crispy"
                             style={{
                                 display: "block",
                             }}
                         >
-                            {existingMinecraftDataFolders[index] ?
+                            {/* TODO: Fix this to check correctly if it has any matches. */}
+                            {
+                                /* parsedExtraMinecraftDataFolders[index] */ false ?
+                                    /* existingExtraMinecraftDataFolders[index] */ true ?
+                                        <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#54FF54FF">
+                                            [E]
+                                        </CrispyDropShadowSpan>
+                                    :   <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#FF5454FF">
+                                            [X]
+                                        </CrispyDropShadowSpan>
+
+                                :   <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#FFA854FF">
+                                        [?]
+                                    </CrispyDropShadowSpan>
+
+                            }{" "}
+                            <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value">{`[${location}]`}</CrispyDropShadowSpan>
+                        </span>
+                    )
+                )}
+                <span
+                    class="crispy"
+                    style={{
+                        display: "block",
+                    }}
+                >
+                    &nbsp;
+                </span>
+                <span
+                    class="crispy"
+                    style={{
+                        display: "block",
+                    }}
+                >
+                    <CrispyDropShadowSpan
+                        class="debug-overlay-config-mode-item-label"
+                        data-color="#FFFF54FF"
+                    >{`Parsed Minecraft Data Folders Cache [${worldFolderLocationsCache.cachedPaths.parsed.length}]`}</CrispyDropShadowSpan>
+                </span>
+                {worldFolderLocationsCache.cachedPaths.parsed.map(
+                    (location: string, _index: number): JSX.Element => (
+                        <span
+                            class="crispy"
+                            style={{
+                                display: "block",
+                            }}
+                        >
+                            {/* existingMinecraftDataFolders[index] */ true ?
                                 <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#54FF54FF">
                                     [E]
                                 </CrispyDropShadowSpan>
@@ -1082,7 +1177,6 @@ function DebugOverlay_Config(): JSX.Element {
                 >
                     &nbsp;
                 </span>
-                {/* TODO: Add entries for isolated Minecraft data folders. */}
                 <span
                     class="crispy"
                     style={{
@@ -1092,17 +1186,95 @@ function DebugOverlay_Config(): JSX.Element {
                     <CrispyDropShadowSpan
                         class="debug-overlay-config-mode-item-label"
                         data-color="#FFFF54FF"
-                    >{`Parsed Extra Minecraft Data Folders [${parsedExtraMinecraftDataFolders.length}]`}</CrispyDropShadowSpan>
+                    >{`Parsed Isolated Minecraft Worlds Folders Cache [${worldFolderLocationsCache.cachedPaths.parsedIsolated.length}]`}</CrispyDropShadowSpan>
                 </span>
-                {parsedExtraMinecraftDataFolders.map(
-                    (location: string, index: number): JSX.Element => (
+                {worldFolderLocationsCache.cachedPaths.parsedIsolated.map(
+                    (location: string, _index: number): JSX.Element => (
                         <span
                             class="crispy"
                             style={{
                                 display: "block",
                             }}
                         >
-                            {existingExtraMinecraftDataFolders[index] ?
+                            {/* existingMinecraftDataFolders[index] */ true ?
+                                <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#54FF54FF">
+                                    [E]
+                                </CrispyDropShadowSpan>
+                            :   <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#FF5454FF">
+                                    [X]
+                                </CrispyDropShadowSpan>
+                            }{" "}
+                            <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value">{`[${location}]`}</CrispyDropShadowSpan>
+                        </span>
+                    )
+                )}
+                <span
+                    class="crispy"
+                    style={{
+                        display: "block",
+                    }}
+                >
+                    &nbsp;
+                </span>
+                <span
+                    class="crispy"
+                    style={{
+                        display: "block",
+                    }}
+                >
+                    <CrispyDropShadowSpan
+                        class="debug-overlay-config-mode-item-label"
+                        data-color="#FFFF54FF"
+                    >{`Parsed Extra Minecraft Data Folders Cache [${worldFolderLocationsCache.cachedPaths.parsedExtra.length}]`}</CrispyDropShadowSpan>
+                </span>
+                {worldFolderLocationsCache.cachedPaths.parsedExtra.map(
+                    (location: string, _index: number): JSX.Element => (
+                        <span
+                            class="crispy"
+                            style={{
+                                display: "block",
+                            }}
+                        >
+                            {/* existingExtraMinecraftDataFolders[index] */ true ?
+                                <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#54FF54FF">
+                                    [E]
+                                </CrispyDropShadowSpan>
+                            :   <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#FF5454FF">
+                                    [X]
+                                </CrispyDropShadowSpan>
+                            }{" "}
+                            <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value">{`[${location}]`}</CrispyDropShadowSpan>
+                        </span>
+                    )
+                )}
+                <span
+                    class="crispy"
+                    style={{
+                        display: "block",
+                    }}
+                >
+                    &nbsp;
+                </span>
+                <span
+                    class="crispy"
+                    style={{
+                        display: "block",
+                    }}
+                >
+                    <CrispyDropShadowSpan
+                        class="debug-overlay-config-mode-item-label"
+                        data-color="#FFFF54FF"
+                    >{`Parsed Extra Isolated Minecraft Worlds Folders Cache [${worldFolderLocationsCache.cachedPaths.parsedExtraIsolated.length}]`}</CrispyDropShadowSpan>
+                </span>
+                {worldFolderLocationsCache.cachedPaths.parsedExtraIsolated.map(
+                    (location: string, _index: number): JSX.Element => (
+                        <span
+                            class="crispy"
+                            style={{
+                                display: "block",
+                            }}
+                        >
+                            {/* existingExtraMinecraftDataFolders[index] */ true ?
                                 <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#54FF54FF">
                                     [E]
                                 </CrispyDropShadowSpan>

@@ -70,7 +70,7 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
                 <Notice
                     title="Failed to Load Data"
                     subtitle={null}
-                    detail="An unexpected error occured while loading the data, please report this bug."
+                    detail="An unexpected error occurred while loading the data, please report this bug."
                     image="generic_error"
                     style={{ height: "auto" }}
                 />

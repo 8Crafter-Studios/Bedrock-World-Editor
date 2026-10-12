@@ -7,7 +7,7 @@
  * @supports Main, Preload, Renderer
  */
 import { existsSync, mkdirSync, readFileSync, Stats, watchFile, writeFileSync } from "node:fs";
-import { globSync } from "glob";
+import { glob } from "glob";
 import path from "node:path";
 // import os from "node:os";
 import { APP_DATA_FOLDER_PATH } from "./URLs";
@@ -1031,135 +1031,155 @@ namespace exports {
             this.saveChanges({ extraIsolatedMinecraftWorldsFolders: value ?? Config.defaults.extraIsolatedMinecraftWorldsFolders });
         }
         /**
-         * The parsed Minecraft data folder search locations.
+         * Finds all matching Minecraft data folder search locations.
          *
          * This replaces special codes with their corresponding environment variable values.
+         *
+         * @returns The parsed Minecraft data folder search locations.
          */
-        public get parsedMinecraftDataFolders(): string[] {
-            return this.minecraftDataFolders
-                .map((location: string): string[] =>
-                    globSync(
-                        location
-                            .replaceAll(/%appdata%/gi, process.env.APPDATA!)
-                            .replace(/^Home(?=\/)/, process.env.HOME!)
-                            .replaceAll(/%userprofile%/gi, process.env.USERPROFILE!)
-                            .replaceAll(/%programdata%/gi, process.env.ProgramData!)
-                            .replaceAll(/%programfiles%/gi, process.env.ProgramFiles!)
-                            .replaceAll(/%localappdata%/gi, process.env.LOCALAPPDATA!)
-                            .replaceAll(/%temp%/gi, process.env.TEMP!)
-                            .replaceAll(/%tmp%/gi, process.env.TMP!)
-                            .replaceAll(/%tmpdir%/gi, process.env.TMPDIR!)
-                            .replaceAll(/%public%/gi, process.env.PUBLIC!)
-                            .replaceAll(/%Home%/gi, process.env.HOME!)
-                            .replaceAll(/%APP_DATA_FOLDER_PATH%/gi, APP_DATA_FOLDER_PATH)
-                            .split("\\")
-                            .join("/")
-                            .replace(/(?<!\/)$/, "/"),
-                        {
-                            absolute: true,
-                            realpath: true,
-                        }
+        public async getParsedMinecraftDataFolders(): Promise<string[]> {
+            return (
+                await Promise.all(
+                    this.minecraftDataFolders.map(
+                        async (location: string): Promise<string[]> =>
+                            await glob(
+                                location
+                                    .replaceAll(/%appdata%/gi, process.env.APPDATA!)
+                                    .replace(/^Home(?=\/)/, process.env.HOME!)
+                                    .replaceAll(/%userprofile%/gi, process.env.USERPROFILE!)
+                                    .replaceAll(/%programdata%/gi, process.env.ProgramData!)
+                                    .replaceAll(/%programfiles%/gi, process.env.ProgramFiles!)
+                                    .replaceAll(/%localappdata%/gi, process.env.LOCALAPPDATA!)
+                                    .replaceAll(/%temp%/gi, process.env.TEMP!)
+                                    .replaceAll(/%tmp%/gi, process.env.TMP!)
+                                    .replaceAll(/%tmpdir%/gi, process.env.TMPDIR!)
+                                    .replaceAll(/%public%/gi, process.env.PUBLIC!)
+                                    .replaceAll(/%Home%/gi, process.env.HOME!)
+                                    .replaceAll(/%APP_DATA_FOLDER_PATH%/gi, APP_DATA_FOLDER_PATH)
+                                    .split("\\")
+                                    .join("/")
+                                    .replace(/(?<!\/)$/, "/"),
+                                {
+                                    absolute: true,
+                                    realpath: true,
+                                }
+                            )
                     )
                 )
-                .flat();
+            ).flat();
         }
         /**
-         * The parsed isolated Minecraft worlds folder search locations.
+         * Finds all matching isolated Minecraft worlds folder search locations.
          *
          * This replaces special codes with their corresponding environment variable values.
+         *
+         * @returns The parsed isolated Minecraft worlds folder search locations.
          */
-        public get parsedIsolatedMinecraftWorldsFolders(): string[] {
-            return this.isolatedMinecraftWorldsFolders
-                .map((location: string): string[] =>
-                    globSync(
-                        location
-                            .replaceAll(/%appdata%/gi, process.env.APPDATA!)
-                            .replace(/^Home(?=\/)/, process.env.HOME!)
-                            .replaceAll(/%userprofile%/gi, process.env.USERPROFILE!)
-                            .replaceAll(/%programdata%/gi, process.env.ProgramData!)
-                            .replaceAll(/%programfiles%/gi, process.env.ProgramFiles!)
-                            .replaceAll(/%localappdata%/gi, process.env.LOCALAPPDATA!)
-                            .replaceAll(/%temp%/gi, process.env.TEMP!)
-                            .replaceAll(/%tmp%/gi, process.env.TMP!)
-                            .replaceAll(/%tmpdir%/gi, process.env.TMPDIR!)
-                            .replaceAll(/%public%/gi, process.env.PUBLIC!)
-                            .replaceAll(/%Home%/gi, process.env.HOME!)
-                            .replaceAll(/%APP_DATA_FOLDER_PATH%/gi, APP_DATA_FOLDER_PATH)
-                            .split("\\")
-                            .join("/")
-                            .replace(/(?<!\/)$/, "/"),
-                        {
-                            absolute: true,
-                            realpath: true,
-                        }
+        public async getParsedIsolatedMinecraftWorldsFolders(): Promise<string[]> {
+            return (
+                await Promise.all(
+                    this.isolatedMinecraftWorldsFolders.map(
+                        async (location: string): Promise<string[]> =>
+                            await glob(
+                                location
+                                    .replaceAll(/%appdata%/gi, process.env.APPDATA!)
+                                    .replace(/^Home(?=\/)/, process.env.HOME!)
+                                    .replaceAll(/%userprofile%/gi, process.env.USERPROFILE!)
+                                    .replaceAll(/%programdata%/gi, process.env.ProgramData!)
+                                    .replaceAll(/%programfiles%/gi, process.env.ProgramFiles!)
+                                    .replaceAll(/%localappdata%/gi, process.env.LOCALAPPDATA!)
+                                    .replaceAll(/%temp%/gi, process.env.TEMP!)
+                                    .replaceAll(/%tmp%/gi, process.env.TMP!)
+                                    .replaceAll(/%tmpdir%/gi, process.env.TMPDIR!)
+                                    .replaceAll(/%public%/gi, process.env.PUBLIC!)
+                                    .replaceAll(/%Home%/gi, process.env.HOME!)
+                                    .replaceAll(/%APP_DATA_FOLDER_PATH%/gi, APP_DATA_FOLDER_PATH)
+                                    .split("\\")
+                                    .join("/")
+                                    .replace(/(?<!\/)$/, "/"),
+                                {
+                                    absolute: true,
+                                    realpath: true,
+                                }
+                            )
                     )
                 )
-                .flat();
+            ).flat();
         }
         /**
-         * The parsed extra Minecraft data folder search locations.
+         * Finds all matching extra Minecraft data folder search locations.
          *
          * This replaces special codes with their corresponding environment variable values.
+         *
+         * @returns The parsed extra Minecraft data folder search locations.
          */
-        public get parsedExtraMinecraftDataFolders(): string[] {
-            return this.extraMinecraftDataFolders
-                .map((location: string): string[] =>
-                    globSync(
-                        location
-                            .replaceAll(/%appdata%/gi, process.env.APPDATA!)
-                            .replace(/^Home(?=\/)/, process.env.HOME!)
-                            .replaceAll(/%userprofile%/gi, process.env.USERPROFILE!)
-                            .replaceAll(/%programdata%/gi, process.env.ProgramData!)
-                            .replaceAll(/%programfiles%/gi, process.env.ProgramFiles!)
-                            .replaceAll(/%localappdata%/gi, process.env.LOCALAPPDATA!)
-                            .replaceAll(/%temp%/gi, process.env.TEMP!)
-                            .replaceAll(/%tmp%/gi, process.env.TMP!)
-                            .replaceAll(/%tmpdir%/gi, process.env.TMPDIR!)
-                            .replaceAll(/%public%/gi, process.env.PUBLIC!)
-                            .replaceAll(/%Home%/gi, process.env.HOME!)
-                            .replaceAll(/%APP_DATA_FOLDER_PATH%/gi, APP_DATA_FOLDER_PATH)
-                            .split("\\")
-                            .join("/")
-                            .replace(/(?<!\/)$/, "/"),
-                        {
-                            absolute: true,
-                        }
+        public async getParsedExtraMinecraftDataFolders(): Promise<string[]> {
+            return (
+                await Promise.all(
+                    this.extraMinecraftDataFolders.map(
+                        async (location: string): Promise<string[]> =>
+                            await glob(
+                                location
+                                    .replaceAll(/%appdata%/gi, process.env.APPDATA!)
+                                    .replace(/^Home(?=\/)/, process.env.HOME!)
+                                    .replaceAll(/%userprofile%/gi, process.env.USERPROFILE!)
+                                    .replaceAll(/%programdata%/gi, process.env.ProgramData!)
+                                    .replaceAll(/%programfiles%/gi, process.env.ProgramFiles!)
+                                    .replaceAll(/%localappdata%/gi, process.env.LOCALAPPDATA!)
+                                    .replaceAll(/%temp%/gi, process.env.TEMP!)
+                                    .replaceAll(/%tmp%/gi, process.env.TMP!)
+                                    .replaceAll(/%tmpdir%/gi, process.env.TMPDIR!)
+                                    .replaceAll(/%public%/gi, process.env.PUBLIC!)
+                                    .replaceAll(/%Home%/gi, process.env.HOME!)
+                                    .replaceAll(/%APP_DATA_FOLDER_PATH%/gi, APP_DATA_FOLDER_PATH)
+                                    .split("\\")
+                                    .join("/")
+                                    .replace(/(?<!\/)$/, "/"),
+                                {
+                                    absolute: true,
+                                }
+                            )
                     )
                 )
-                .flat();
+            ).flat();
         }
         /**
-         * The parsed extra isolated Minecraft worlds folder search locations.
+         * Finds all matching extra isolated Minecraft worlds folder search locations.
          *
          * This replaces special codes with their corresponding environment variable values.
+         *
+         * @returns The parsed extra isolated Minecraft worlds folder search locations.
          */
-        public get parsedExtraIsolatedMinecraftWorldsFolders(): string[] {
-            return this.extraIsolatedMinecraftWorldsFolders
-                .map((location: string): string[] =>
-                    globSync(
-                        location
-                            .replaceAll(/%appdata%/gi, process.env.APPDATA!)
-                            .replace(/^Home(?=\/)/, process.env.HOME!)
-                            .replaceAll(/%userprofile%/gi, process.env.USERPROFILE!)
-                            .replaceAll(/%programdata%/gi, process.env.ProgramData!)
-                            .replaceAll(/%programfiles%/gi, process.env.ProgramFiles!)
-                            .replaceAll(/%localappdata%/gi, process.env.LOCALAPPDATA!)
-                            .replaceAll(/%temp%/gi, process.env.TEMP!)
-                            .replaceAll(/%tmp%/gi, process.env.TMP!)
-                            .replaceAll(/%tmpdir%/gi, process.env.TMPDIR!)
-                            .replaceAll(/%public%/gi, process.env.PUBLIC!)
-                            .replaceAll(/%Home%/gi, process.env.HOME!)
-                            .replaceAll(/%APP_DATA_FOLDER_PATH%/gi, APP_DATA_FOLDER_PATH)
-                            .split("\\")
-                            .join("/")
-                            .replace(/(?<!\/)$/, "/"),
-                        {
-                            absolute: true,
-                            realpath: true,
-                        }
+        public async getParsedExtraIsolatedMinecraftWorldsFolders(): Promise<string[]> {
+            return (
+                await Promise.all(
+                    this.extraIsolatedMinecraftWorldsFolders.map(
+                        async (location: string): Promise<string[]> =>
+                            await glob(
+                                location
+                                    .replaceAll(/%appdata%/gi, process.env.APPDATA!)
+                                    .replace(/^Home(?=\/)/, process.env.HOME!)
+                                    .replaceAll(/%userprofile%/gi, process.env.USERPROFILE!)
+                                    .replaceAll(/%programdata%/gi, process.env.ProgramData!)
+                                    .replaceAll(/%programfiles%/gi, process.env.ProgramFiles!)
+                                    .replaceAll(/%localappdata%/gi, process.env.LOCALAPPDATA!)
+                                    .replaceAll(/%temp%/gi, process.env.TEMP!)
+                                    .replaceAll(/%tmp%/gi, process.env.TMP!)
+                                    .replaceAll(/%tmpdir%/gi, process.env.TMPDIR!)
+                                    .replaceAll(/%public%/gi, process.env.PUBLIC!)
+                                    .replaceAll(/%Home%/gi, process.env.HOME!)
+                                    .replaceAll(/%APP_DATA_FOLDER_PATH%/gi, APP_DATA_FOLDER_PATH)
+                                    .split("\\")
+                                    .join("/")
+                                    .replace(/(?<!\/)$/, "/"),
+                                {
+                                    absolute: true,
+                                    realpath: true,
+                                }
+                            )
                     )
                 )
-                .flat();
+            ).flat();
         }
         /**
          * The list of integrations that should be automatically applied without prompting.
