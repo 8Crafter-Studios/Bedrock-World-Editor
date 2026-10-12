@@ -118,6 +118,7 @@
 -   The app no longer creates a LevelDB if the world doesn't have one.
 -   If a world does not have the `MultiplayerGameIntent` in `level.dat`, the hover info for that world in the world selction menu will now display it as "Multiplayer" instead of "Singleplayer".
 -   Closing a tab that is not the active tab no longer switches your active tab.
+-   Fixed a bug where the "Show more" button could sometimes get stuck indefinitely on "Loading...".
 
 ## Performance Improvements
 

@@ -1106,6 +1106,8 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
             <div style={{ display: "contents" }} ref={renderWorldsContainerRef}>
                 <RenderWorlds />
             </div>
+            {/* IDEA: Maybe make this button have a hover tint. */}
+            {/* IDEA: Maybe make this button have a disabled tint, and change the cursor when it is disabled. */}
             <div
                 class="nsel ndrg"
                 style={{
@@ -1120,11 +1122,12 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                     if (event.currentTarget.dataset.disabled) return;
                     const newShowingMoreValue: boolean = !showingMore;
                     updateShowingMore(newShowingMoreValue);
-                    event.currentTarget.textContent = "Loading...";
-                    event.currentTarget.dataset.disabled = "true";
+                    const currentTarget: HTMLDivElement = event.currentTarget;
+                    currentTarget.textContent = "Loading...";
+                    currentTarget.dataset.disabled = "true";
                     void getMinecraftWorlds(newShowingMoreValue, config.showWorldSizesOnWorldList).then((worlds: MinecraftWorldDisplayDetails[]): void => {
-                        event.currentTarget.textContent = newShowingMoreValue ? "Show less" : "Show more";
-                        delete event.currentTarget.dataset.disabled;
+                        currentTarget.textContent = newShowingMoreValue ? "Show less" : "Show more";
+                        delete currentTarget.dataset.disabled;
                         refreshData(worlds);
                     });
                 }}
@@ -1900,7 +1903,10 @@ tabManager.on("switchTab", ({ previousTab, newTab }: TabManagerSwitchTabEvent): 
 window.addEventListener("keydown", (event: KeyboardEvent): void => {
     // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
     switch (true) {
-        case document.activeElement === document.body && event.code === "KeyS" && !event.shiftKey && (process.platform === "darwin" ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey): {
+        case document.activeElement === document.body &&
+            event.code === "KeyS" &&
+            !event.shiftKey &&
+            (process.platform === "darwin" ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey): {
             event.preventDefault();
             const currentTab = tabManager.selectedTab;
             if (currentTab instanceof TabManagerTab) {
