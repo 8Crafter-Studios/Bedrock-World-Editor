@@ -320,13 +320,6 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                         dataStorageObject={props.props.tab.currentState.options.dataStorageObject! as never}
                         onValueChange={(): undefined => {
                             props.props.tab.hasUnsavedChanges = true;
-                            if (props.props.tab.target.type === "LevelDBEntry") {
-                                props.props.tab.parentTab.setLevelDBIsModified();
-                            } else if (props.props.tab.target.type === "ChunksDatEntry") {
-                                props.props.tab.parentTab.setFileAsModified("chunks.dat");
-                            } else {
-                                props.props.tab.parentTab.setFileAsModified(props.props.tab.target.path);
-                            }
                             delete props.props.tab.currentState.options.dataStorageObject?.lastEditedInModel;
                         }}
                         readonly={props.props.tab.readonly}
@@ -339,13 +332,6 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                         dataStorageObject={props.props.tab.currentState.options.dataStorageObject!}
                         onValueChange={(): undefined => {
                             props.props.tab.hasUnsavedChanges = true;
-                            if (props.props.tab.target.type === "LevelDBEntry") {
-                                props.props.tab.parentTab.setLevelDBIsModified();
-                            } else if (props.props.tab.target.type === "ChunksDatEntry") {
-                                props.props.tab.parentTab.setFileAsModified("chunks.dat");
-                            } else {
-                                props.props.tab.parentTab.setFileAsModified(props.props.tab.target.path);
-                            }
                         }}
                         readonly={props.props.tab.readonly}
                         path={`tab://${props.props.tab.parentTab.id}/${props.props.tab.id}/jsonnbt`}
@@ -362,13 +348,6 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                         dataStorageObject={props.props.tab.currentState.options.dataStorageObject!}
                         onValueChange={(): undefined => {
                             props.props.tab.hasUnsavedChanges = true;
-                            if (props.props.tab.target.type === "LevelDBEntry") {
-                                props.props.tab.parentTab.setLevelDBIsModified();
-                            } else if (props.props.tab.target.type === "ChunksDatEntry") {
-                                props.props.tab.parentTab.setFileAsModified("chunks.dat");
-                            } else {
-                                props.props.tab.parentTab.setFileAsModified(props.props.tab.target.path);
-                            }
                         }}
                         readonly={props.props.tab.readonly}
                         path={`tab://${props.props.tab.parentTab.id}/${props.props.tab.id}/snbt`}
@@ -386,13 +365,6 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                         dataStorageObject={props.props.tab.currentState.options.dataStorageObject! as HexEditorDataStorageObject}
                         onValueChange={(): undefined => {
                             props.props.tab.hasUnsavedChanges = true;
-                            if (props.props.tab.target.type === "LevelDBEntry") {
-                                props.props.tab.parentTab.setLevelDBIsModified();
-                            } else if (props.props.tab.target.type === "ChunksDatEntry") {
-                                props.props.tab.parentTab.setFileAsModified("chunks.dat");
-                            } else {
-                                props.props.tab.parentTab.setFileAsModified(props.props.tab.target.path);
-                            }
                             delete props.props.tab.currentState.options.dataStorageObject?.lastEditedInModel;
                         }}
                         readonly={props.props.tab.readonly}

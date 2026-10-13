@@ -116,13 +116,6 @@ export default function TextEditorTab(props: TextEditorTabProps): JSX.SpecificEl
                 dataStorageObject={props.props.tab.currentState.options.dataStorageObject!}
                 onValueChange={(): undefined => {
                     props.props.tab.hasUnsavedChanges = true;
-                    if (props.props.tab.target.type === "LevelDBEntry") {
-                        props.props.tab.parentTab.setLevelDBIsModified();
-                    } else if (props.props.tab.target.type === "ChunksDatEntry") {
-                        props.props.tab.parentTab.setFileAsModified("chunks.dat");
-                    } else {
-                        props.props.tab.parentTab.setFileAsModified(props.props.tab.target.path);
-                    }
                 }}
                 readonly={props.props.tab.readonly}
                 path={`tab://${props.props.tab.parentTab.id}/${props.props.tab.id}/text`}

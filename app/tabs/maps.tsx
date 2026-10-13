@@ -22,7 +22,7 @@ import SearchSyntaxHelpMenu from "../components/SearchSyntaxHelpMenu";
 import { viewFilesTabSearchSyntax } from "./viewFiles";
 import { MapEditor } from "../components/MapEditor";
 import Notice from "../components/Notice";
-import { clipboard } from "@electron/remote";
+import { clipboard, dialog } from "@electron/remote";
 
 /**
  * Props for the {@link MapsTab} component.
@@ -1220,7 +1220,17 @@ async function getMapsTabContentsRows(data: {
                                             if (!data.tab.db.isOpen()) return;
                                             if (!data.tab.cachedDBKeys) return;
                                             // IDEA: Add a confirmation dialog here before deleting the entry, and make it able to be disabled in the config.
-                                            await data.tab.db.delete(key.rawKey);
+                                            const deletionSuccess: boolean = await data.tab.db.delete(key.rawKey);
+                                            if (!deletionSuccess) {
+                                                await dialog.showMessageBox({
+                                                    type: "error",
+                                                    title: "Error",
+                                                    message: "Something went wrong while deleting the entry.",
+                                                    buttons: ["OK"],
+                                                    noLink: true,
+                                                });
+                                                return;
+                                            }
                                             data.tab.setLevelDBIsModified();
                                             const cachedIndex: number = data.tab.cachedDBKeys.Map.findIndex((cachedKey: Buffer): boolean =>
                                                 key.rawKey.equals(cachedKey)
@@ -1642,7 +1652,17 @@ async function getMapsTabContentsRows(data: {
                                             if (!data.tab.db.isOpen()) return;
                                             if (!data.tab.cachedDBKeys) return;
                                             // IDEA: Add a confirmation dialog here before deleting the entry, and make it able to be disabled in the config.
-                                            await data.tab.db.delete(key.rawKey);
+                                            const deletionSuccess: boolean = await data.tab.db.delete(key.rawKey);
+                                            if (!deletionSuccess) {
+                                                await dialog.showMessageBox({
+                                                    type: "error",
+                                                    title: "Error",
+                                                    message: "Something went wrong while deleting the entry.",
+                                                    buttons: ["OK"],
+                                                    noLink: true,
+                                                });
+                                                return;
+                                            }
                                             data.tab.setLevelDBIsModified();
                                             const cachedIndex: number = data.tab.cachedDBKeys.Map.findIndex((cachedKey: Buffer): boolean =>
                                                 key.rawKey.equals(cachedKey)

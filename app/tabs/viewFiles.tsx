@@ -1302,65 +1302,69 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                             await getViewFilesTabContentsRows({
                                 tab,
                                 leveldbKeys:
-                                    mode === "leveldb" ? Object.keys(query).length > 1 ?
-                                        await (async (): Promise<LevelDBKeyData[]> => {
-                                            const iterator = tab.dbSearch!.search(
-                                                query as Omit<typeof query, "searchTargets"> & {
-                                                    searchTargets: Extract<(typeof query)["searchTargets"], { data: LevelDBKeyData }[]>;
-                                                },
-                                                true
-                                            );
-                                            let i: number = 0;
-                                            let t: number = Date.now();
-                                            const results: LevelDBKeyData[] = [];
-                                            const formatter = new Intl.NumberFormat();
-                                            for (const value of iterator) {
-                                                i++;
-                                                if (t + 15 < Date.now()) {
-                                                    if (loadingScreenMessageContainerRef.current) {
-                                                        loadingScreenMessageContainerRef.current.textContent = `Searching LevelDB: ${formatter.format(i)}/${formatter.format(leveldbKeys.length)} (${formatter.format(results.length)} results)...`;
+                                    mode === "leveldb" ?
+                                        Object.keys(query).length > 1 ?
+                                            await (async (): Promise<LevelDBKeyData[]> => {
+                                                const iterator = tab.dbSearch!.search(
+                                                    query as Omit<typeof query, "searchTargets"> & {
+                                                        searchTargets: Extract<(typeof query)["searchTargets"], { data: LevelDBKeyData }[]>;
+                                                    },
+                                                    true
+                                                );
+                                                let i: number = 0;
+                                                let t: number = Date.now();
+                                                const results: LevelDBKeyData[] = [];
+                                                const formatter = new Intl.NumberFormat();
+                                                for (const value of iterator) {
+                                                    i++;
+                                                    if (t + 15 < Date.now()) {
+                                                        if (loadingScreenMessageContainerRef.current) {
+                                                            loadingScreenMessageContainerRef.current.textContent = `Searching LevelDB: ${formatter.format(i)}/${formatter.format(leveldbKeys.length)} (${formatter.format(results.length)} results)...`;
+                                                        }
+                                                        signal.throwIfAborted();
+                                                        await sleep(5);
+                                                        t = Date.now();
                                                     }
-                                                    signal.throwIfAborted();
-                                                    await sleep(5);
-                                                    t = Date.now();
+                                                    if (!value) continue;
+                                                    results.push(value.originalObject.data);
                                                 }
-                                                if (!value) continue;
-                                                results.push(value.originalObject.data);
-                                            }
-                                            keySearchResults = results;
-                                            return results;
-                                        })()
-                                    :   (keySearchResults = leveldbKeys) : leveldbKeys,
+                                                keySearchResults = results;
+                                                return results;
+                                            })()
+                                        :   (keySearchResults = leveldbKeys)
+                                    :   leveldbKeys,
                                 fileKeys:
-                                    mode === "files" ? Object.keys(query).length > 1 ?
-                                        await (async (): Promise<FileKeyData[]> => {
-                                            const iterator = tab.dbSearch!.search(
-                                                query as Omit<typeof query, "searchTargets"> & {
-                                                    searchTargets: Extract<(typeof query)["searchTargets"], { data: FileKeyData }[]>;
-                                                },
-                                                true
-                                            );
-                                            let i: number = 0;
-                                            let t: number = Date.now();
-                                            const results: FileKeyData[] = [];
-                                            const formatter = new Intl.NumberFormat();
-                                            for (const value of iterator) {
-                                                i++;
-                                                if (t + 15 < Date.now()) {
-                                                    if (loadingScreenMessageContainerRef.current) {
-                                                        loadingScreenMessageContainerRef.current.textContent = `Searching files: ${formatter.format(i)}/${formatter.format(leveldbKeys.length)} (${formatter.format(results.length)} results)...`;
+                                    mode === "files" ?
+                                        Object.keys(query).length > 1 ?
+                                            await (async (): Promise<FileKeyData[]> => {
+                                                const iterator = tab.dbSearch!.search(
+                                                    query as Omit<typeof query, "searchTargets"> & {
+                                                        searchTargets: Extract<(typeof query)["searchTargets"], { data: FileKeyData }[]>;
+                                                    },
+                                                    true
+                                                );
+                                                let i: number = 0;
+                                                let t: number = Date.now();
+                                                const results: FileKeyData[] = [];
+                                                const formatter = new Intl.NumberFormat();
+                                                for (const value of iterator) {
+                                                    i++;
+                                                    if (t + 15 < Date.now()) {
+                                                        if (loadingScreenMessageContainerRef.current) {
+                                                            loadingScreenMessageContainerRef.current.textContent = `Searching files: ${formatter.format(i)}/${formatter.format(leveldbKeys.length)} (${formatter.format(results.length)} results)...`;
+                                                        }
+                                                        signal.throwIfAborted();
+                                                        await sleep(5);
+                                                        t = Date.now();
                                                     }
-                                                    signal.throwIfAborted();
-                                                    await sleep(5);
-                                                    t = Date.now();
+                                                    if (!value) continue;
+                                                    results.push(value.originalObject.data);
                                                 }
-                                                if (!value) continue;
-                                                results.push(value.originalObject.data);
-                                            }
-                                            keySearchResults = results;
-                                            return results;
-                                        })()
-                                    :   (keySearchResults = fileKeys) : fileKeys,
+                                                keySearchResults = results;
+                                                return results;
+                                            })()
+                                        :   (keySearchResults = fileKeys)
+                                    :   fileKeys,
                                 mode,
                                 get updateTablesContents(): ((reloadData: boolean) => Promise<void>) | null {
                                     return currentUpdateTablesContentsFunction;
@@ -2347,7 +2351,17 @@ async function getViewFilesTabContentsRows(data: {
                                         if (!data.tab.db.isOpen()) return;
                                         if (!data.tab.cachedDBKeys) return;
                                         // IDEA: Add a confirmation dialog here before deleting the entry, and make it able to be disabled in the config.
-                                        await data.tab.db.delete(key.rawKey);
+                                        const deletionSuccess: boolean = await data.tab.db.delete(key.rawKey);
+                                        if (!deletionSuccess) {
+                                            await dialog.showMessageBox({
+                                                type: "error",
+                                                title: "Error",
+                                                message: "Something went wrong while deleting the entry.",
+                                                buttons: ["OK"],
+                                                noLink: true,
+                                            });
+                                            return;
+                                        }
                                         data.tab.setLevelDBIsModified();
                                         const cachedIndex: number = data.tab.cachedDBKeys[key.contentType].findIndex((cachedKey: Buffer): boolean =>
                                             key.rawKey.equals(cachedKey)

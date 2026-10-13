@@ -811,6 +811,10 @@ namespace exports {
      */
     export class TabManagerTab extends EventEmitter<TabManagerTabEventMap> {
         /**
+         * The last recorded modification state of this tab.
+         */
+        #lastModificationState: boolean = false;
+        /**
          * The last ID used for a tab.
          */
         public static lastID: bigint = 0n;
@@ -1032,6 +1036,17 @@ namespace exports {
                 default:
                     break;
             }
+            this.#lastModificationState = this.isModified();
+            this.on("closeTab", (event: TabManagerTabClosedTabEvent): void => {
+                if (!this.#lastModificationState || !event.tab.hasUnsavedChanges || this.isModified()) return;
+                this.#lastModificationState = false;
+                this.emit("modificationStatusChanged", { tab: this, isModified: false });
+            });
+            this.on("subTabModificationStatusChanged", (event: TabManagerSubTabModificationStatusChangedEvent): void => {
+                if (this.#lastModificationState === event.isModified || this.#lastModificationState === this.isModified()) return;
+                this.#lastModificationState = event.isModified;
+                this.emit("modificationStatusChanged", { tab: this, isModified: event.isModified });
+            });
             this.initAccess(props.mode ?? TabManagerTabMode.CopyUntilSave);
             if (props.hasFragileLevelDB === undefined) this.awaitFragilityCheck = this.checkFragility();
             else this.initFragilityState();
@@ -1443,14 +1458,26 @@ namespace exports {
             writeFileSync(path.join(APP_DATA_FOLDER_PATH, "pinned_subtabs.json"), JSON.stringify(pinnedTabsData));
         }
         public isModified(): boolean {
-            return this.modifiedFiles.files.length > 0 || this.modifiedFiles.leveldb;
+            return this.modifiedFiles.leveldb || this.modifiedFiles.files.length > 0 || this.openTabs.some((tab): boolean => tab.isModified());
         }
         public setModifications(modifications: typeof this.modifiedFiles): void {
-            if (this.readonly) return;
+            if (this.readonly || ![TabManagerTabMode.CopyUntilSave].includes(this.mode)) return;
+            const wasModified: boolean = this.isModified();
             this.modifiedFiles = modifications;
+            if (wasModified !== this.isModified()) this.emit("modificationStatusChanged", { tab: this, isModified: this.isModified() });
         }
+        /**
+         * Marks a file as having changes written to disk in the copy of the files, that have not yet been copied to the original files.
+         *
+         * This is only for when the changes to the file have already been written to disk in the copy of the files.
+         *
+         * Only used for the {@link TabManagerTabMode.CopyUntilSave} mode.
+         *
+         * @param file The relative file path.
+         * @param isModified Whether the file is modified.
+         */
         public setFileAsModified(file: string, isModified: boolean = true): void {
-            if (this.readonly || (this.modifiedFiles.files.includes(file) && isModified) || (!this.modifiedFiles.files.includes(file) && !isModified)) return;
+            if (this.readonly || ![TabManagerTabMode.CopyUntilSave].includes(this.mode) || this.modifiedFiles.files.includes(file) === isModified) return;
             const wasModified: boolean = this.isModified();
             if (isModified) {
                 this.modifiedFiles.files.push(file);
@@ -1459,8 +1486,17 @@ namespace exports {
             }
             if (wasModified !== this.isModified()) this.emit("modificationStatusChanged", { tab: this, isModified: this.isModified() });
         }
+        /**
+         * Marks the levelDB as having changes written to disk in the copy of the files, that have not yet been copied to the original files.
+         *
+         * This is only for when the changes to the LevelDB have already been written to disk in the copy of the files.
+         *
+         * Only used for the {@link TabManagerTabMode.CopyUntilSave} mode.
+         *
+         * @param isModified Whether the LevelDB is modified.
+         */
         public setLevelDBIsModified(isModified: boolean = true): void {
-            if (this.readonly || this.modifiedFiles.leveldb === isModified) return;
+            if (this.readonly || ![TabManagerTabMode.CopyUntilSave].includes(this.mode) || this.modifiedFiles.leveldb === isModified) return;
             const wasModified: boolean = this.isModified();
             this.modifiedFiles.leveldb = isModified;
             if (wasModified !== this.isModified()) this.emit("modificationStatusChanged", { tab: this, isModified: this.isModified() });
@@ -2156,7 +2192,23 @@ namespace exports {
             const wasModified: boolean = this.isModified();
             this.#hasUnsavedChanges = value;
             if (wasModified !== this.isModified()) this.parentTab.emit("subTabModificationStatusChanged", { tab: this, isModified: this.isModified() });
-            if (this.target.type === "File") this.parentTab.setFileAsModified(this.target.path, value);
+        }
+        /**
+         * Marks this tab as having its changes written disk in the copy of the files, that have not yet been copied to the original files.
+         *
+         * This is only for when the changes in this tab have already been written to disk in the copy of the files.
+         *
+         * Only used for the {@link TabManagerTabMode.CopyUntilSave} mode.
+         */
+        public markChangesAsSavedToDiskInCopy(): void {
+            if (![TabManagerTabMode.CopyUntilSave].includes(this.parentTab.mode)) return;
+            if (this.target.type === "File" && ["world", "leveldb"].includes(this.parentTab.type)) {
+                this.parentTab.setFileAsModified(this.target.path);
+            } else if (this.target.type === "LevelDBEntry" && ["world", "leveldb"].includes(this.parentTab.type)) {
+                this.parentTab.setLevelDBIsModified();
+            } else if (this.target.type === "ChunksDatEntry" && ["world"].includes(this.parentTab.type)) {
+                this.parentTab.setFileAsModified("chunks.dat");
+            }
         }
         public isModified(): boolean {
             return this.hasUnsavedChanges || this.activeChanges.length > 0;
@@ -2824,6 +2876,10 @@ namespace exports {
                                     rawData = Buffer.from(JSON.stringify(data), "binary");
                                     break;
                                 }
+                                case "JSONC": {
+                                    rawData = Buffer.from(commentJSON.stringify(data), "binary");
+                                    break;
+                                }
                                 case "ASCII": {
                                     console.warn(
                                         `Data type is ${this.currentState.options.dataStorageObject.dataType}, but format type is ${format.type}. This conversion is non-standard and may not work as expected.`,
@@ -2952,6 +3008,10 @@ namespace exports {
                                 }
                                 case "JSON": {
                                     rawData = Buffer.from(JSON.stringify(data), "binary");
+                                    break;
+                                }
+                                case "JSONC": {
+                                    rawData = Buffer.from(commentJSON.stringify(data), "binary");
                                     break;
                                 }
                                 case "ASCII": {
@@ -3205,14 +3265,8 @@ namespace exports {
                     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/dot-notation
                     throw new Error(`Unsupported target type: ${this.target["type"]}`);
             }
+            this.markChangesAsSavedToDiskInCopy();
             this.hasUnsavedChanges = false;
-            if (
-                this.target.type === "File" &&
-                ![TabManagerTabMode.CopyUntilSave].includes(this.parentTab.mode) &&
-                ["world", "leveldb"].includes(this.parentTab.type)
-            ) {
-                this.parentTab.setFileAsModified(this.target.path, false);
-            }
         }
         /**
          * Closes this sub-tab.
@@ -3923,12 +3977,14 @@ namespace exports {
                             (v as typeof v & { contentType: MCEntryContentType; displayKey: string })
                         :   { ...v, contentType: getContentTypeFromDBKey(v.key), displayKey: v.displayKey ?? getKeyDisplayName(v.key) }
                     )
-                    .filter(({ contentType }): boolean =>
-                        !query.excludeContentTypes?.includes(contentType) && (query.contentTypes ? query.contentTypes.includes(contentType) : true)
+                    .filter(
+                        ({ contentType }): boolean =>
+                            !query.excludeContentTypes?.includes(contentType) && (query.contentTypes ? query.contentTypes.includes(contentType) : true)
                     ) ??
                 (Object.entries(this.tab.cachedDBKeys!) as [MCEntryContentType, Buffer[]][])
-                    .filter(([contentType]): boolean =>
-                        !query.excludeContentTypes?.includes(contentType) && (query.contentTypes ? query.contentTypes.includes(contentType) : true)
+                    .filter(
+                        ([contentType]): boolean =>
+                            !query.excludeContentTypes?.includes(contentType) && (query.contentTypes ? query.contentTypes.includes(contentType) : true)
                     )
                     .flatMap(([contentType, keys]) => keys.map((key) => ({ key, contentType, displayKey: getKeyDisplayName(key) })));
             // console.log(5);

@@ -110,11 +110,6 @@ export function MapEditor(props: MapRendererProps): JSX.Element {
     function markTabAsModified(): void {
         if (props.tab) {
             props.tab.hasUnsavedChanges = true;
-            if (props.tab.target.type === "LevelDBEntry") {
-                props.tab.parentTab.setLevelDBIsModified();
-            } else {
-                props.tab.parentTab.setFileAsModified(props.tab.target.path);
-            }
         }
     }
 

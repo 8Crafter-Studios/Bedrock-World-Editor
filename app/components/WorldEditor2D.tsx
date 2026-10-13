@@ -1571,6 +1571,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                                     path.join(props.tab.tempPath ?? props.tab.path, "chunks.dat"),
                                                     entryContentTypeToFormatMap.ChunksDat.serialize(chunksDat)
                                                 );
+                                                props.tab.setFileAsModified("chunks.dat");
                                             }
                                         } catch (e) {
                                             console.error("Error while saving chunks.dat:", e);
@@ -4869,6 +4870,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 path.join(props.tab.tempPath ?? props.tab.path, "chunks.dat"),
                                 entryContentTypeToFormatMap.ChunksDat.serialize(chunksDat)
                             );
+                            props.tab.setFileAsModified("chunks.dat");
                             cachedChunkColorData.get(targetChunkDetails.chunk.x)?.delete(targetChunkDetails.chunk.z);
                             delete cachedChunkImageBitmaps[targetChunkDetails.chunk.x]?.[targetChunkDetails.chunk.z];
                         }

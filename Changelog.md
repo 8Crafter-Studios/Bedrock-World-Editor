@@ -94,9 +94,11 @@
 -   On macOS, the keyboard shortcut to save the current tab has been switched from CTRL+S to CMD+S.
 -   If the dimensions of entities in the "Entities" left sidebar tab cannot be displayed because the world is too large so it isn't checking it to improve performance, the dimension will now be shown as `Dimension Unavailable` instead of `Unknown Dimension`.
 -   When a sub-tab's associated file is missing (for file sub-tabs), it now has the same special error screen that LevelDB entry sub-tabs have when their associated LevelDB key is missing.
--   The `Open LevelDB entry...` csubmenu of the context menu of the 2D world map is now hidden when the world doesn't have a LevelDB (`db` folder).
+-   The `Open LevelDB entry...` submenu of the context menu of the 2D world map is now hidden when the world doesn't have a LevelDB (`db` folder).
 -   All dimensions other than the Overworld are now hidden from the dimension selector on the 2D world map when `chunks.dat` is present and the world doesn't have a LevelDB (`db` folder).
 -   The reload world list button is now disabled after clicking it until the world list has finished reloading.
+-   Major overhaul of how the unsaved tabs system works, it should now be much less buggy. It now differentiates between unsaved changes in a sub-tab that have not been written to the copy of the world files, and unsaved changes that have.
+-   Added an error message when the `Delete LevelDB Entry` context menu option of the "Maps", "Ticks", and "View Files" left sidebar tabs fails to delete the LevelDB entry.
 
 ## Removals
 
@@ -126,6 +128,8 @@
 -   The `Favorite` context menu option of tabs in the tab bar is now also visible for worlds in isolated, extra, and extra isolated world folder locations, instead of only the main world folder locations list.
 -   Fixed a bug where negated `type` queries caused the content type check to be skipped entirely.
 -   Fixed bugs where some loading screens were positioned at the top of the screen rather than the center and needed to be scrolled to have their message visible.
+-   Saving a file sub-tab that has unsaved changes no longer maks the parent tab as not having unsaved changes in copy until save mode if that file was the only thing modified.
+-   Discarding the changes of a file sub-tab no longer marks the parent tab as not having unsaved changes in copy until save mode when the file the file has unsaved changes written to disk in the copy of the files and that file was the only thing modified.
 -   Miscellaneous typo fixes.
 
 ## Performance Improvements

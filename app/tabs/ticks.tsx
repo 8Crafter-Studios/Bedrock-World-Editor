@@ -1513,7 +1513,17 @@ async function getTicksTabContentsRows(data: {
                                         if (!data.tab.db) return;
                                         if (!data.tab.db.isOpen()) return;
                                         if (!data.tab.cachedDBKeys) return;
-                                        await data.tab.db.delete(randomTickKey.rawKey);
+                                        const deletionSuccess: boolean = await data.tab.db.delete(randomTickKey.rawKey);
+                                        if (!deletionSuccess) {
+                                            await dialog.showMessageBox({
+                                                type: "error",
+                                                title: "Error",
+                                                message: "Something went wrong while deleting the entry.",
+                                                buttons: ["OK"],
+                                                noLink: true,
+                                            });
+                                            return;
+                                        }
                                         data.tab.setLevelDBIsModified();
                                         const cachedIndex: number = data.tab.cachedDBKeys.RandomTicks.findIndex((key: Buffer): boolean =>
                                             randomTickKey.rawKey.equals(key)
@@ -1659,7 +1669,17 @@ async function getTicksTabContentsRows(data: {
                                         if (!data.tab.db.isOpen()) return;
                                         if (!data.tab.cachedDBKeys) return;
                                         // IDEA: Add a confirmation dialog here before deleting the entry, and make it able to be disabled in the config.
-                                        await data.tab.db.delete(pendingTickKey.rawKey);
+                                        const deletionSuccess: boolean = await data.tab.db.delete(pendingTickKey.rawKey);
+                                        if (!deletionSuccess) {
+                                            await dialog.showMessageBox({
+                                                type: "error",
+                                                title: "Error",
+                                                message: "Something went wrong while deleting the entry.",
+                                                buttons: ["OK"],
+                                                noLink: true,
+                                            });
+                                            return;
+                                        }
                                         data.tab.setLevelDBIsModified();
                                         const cachedIndex: number = data.tab.cachedDBKeys.PendingTicks.findIndex((key: Buffer): boolean =>
                                             pendingTickKey.rawKey.equals(key)
