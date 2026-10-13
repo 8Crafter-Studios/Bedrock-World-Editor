@@ -67,6 +67,7 @@
 -   Added the minimum compatible client version to the world hover info in the world selection menu.
 -   Added the storage version to the world hover info in the world selection menu.
 -   Added wildcard syntax support to the `type` query in the "View Files" left sidebar tab.
+-   Added a `typesgroup` query to the "View Files" left sidebar tab.
 -   Made the display value getters for the "Spawn" and "Spawn (Compact)" columns in the "Players" left sidebar tab a lot more robust.
 -   The "Location" and "Spawn" columns in the "Players" left sidebar tab can now show China Edition dev dimension names (dm3-dm20) instead of their numeric IDs (if at least one China Edition dev dimension is present on the world).
 -   Added the Temp Folder line to the "Tab" debug overlay.
@@ -122,6 +123,7 @@
 -   Closing a tab that is not the active tab no longer switches your active tab.
 -   Fixed a bug where the "Show more" button could sometimes get stuck indefinitely on "Loading...".
 -   The `Favorite` context menu option of tabs in the tab bar is now also visible for worlds in isolated, extra, and extra isolated world folder locations, instead of only the main world folder locations list.
+-   Fixed a bug where negated `type` queries caused the content type check to be skipped entirely.
 -   Miscellaneous typo fixes.
 
 ## Performance Improvements

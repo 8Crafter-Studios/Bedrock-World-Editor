@@ -3619,12 +3619,14 @@ namespace exports {
                             (v as typeof v & { contentType: MCEntryContentType; displayKey: string })
                         :   { ...v, contentType: getContentTypeFromDBKey(v.key), displayKey: v.displayKey ?? getKeyDisplayName(v.key) }
                     )
-                    .filter(({ contentType }): boolean =>
-                        !query.excludeContentTypes?.includes(contentType) && query.contentTypes ? query.contentTypes.includes(contentType) : true
+                    .filter(
+                        ({ contentType }): boolean =>
+                            !query.excludeContentTypes?.includes(contentType) && (query.contentTypes ? query.contentTypes.includes(contentType) : true)
                     ) ??
                 (Object.entries(this.tab.cachedDBKeys!) as [MCEntryContentType, Buffer[]][])
-                    .filter(([contentType]): boolean =>
-                        !query.excludeContentTypes?.includes(contentType) && query.contentTypes ? query.contentTypes.includes(contentType) : true
+                    .filter(
+                        ([contentType]): boolean =>
+                            !query.excludeContentTypes?.includes(contentType) && (query.contentTypes ? query.contentTypes.includes(contentType) : true)
                     )
                     .flatMap(([contentType, keys]) => keys.map((key) => ({ key, contentType, displayKey: getKeyDisplayName(key) })));
             // console.log(5);
@@ -3922,11 +3924,11 @@ namespace exports {
                         :   { ...v, contentType: getContentTypeFromDBKey(v.key), displayKey: v.displayKey ?? getKeyDisplayName(v.key) }
                     )
                     .filter(({ contentType }): boolean =>
-                        !query.excludeContentTypes?.includes(contentType) && query.contentTypes ? query.contentTypes.includes(contentType) : true
+                        !query.excludeContentTypes?.includes(contentType) && (query.contentTypes ? query.contentTypes.includes(contentType) : true)
                     ) ??
                 (Object.entries(this.tab.cachedDBKeys!) as [MCEntryContentType, Buffer[]][])
                     .filter(([contentType]): boolean =>
-                        !query.excludeContentTypes?.includes(contentType) && query.contentTypes ? query.contentTypes.includes(contentType) : true
+                        !query.excludeContentTypes?.includes(contentType) && (query.contentTypes ? query.contentTypes.includes(contentType) : true)
                     )
                     .flatMap(([contentType, keys]) => keys.map((key) => ({ key, contentType, displayKey: getKeyDisplayName(key) })));
             // console.log(5);

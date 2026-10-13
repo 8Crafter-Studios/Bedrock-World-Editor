@@ -1,7 +1,6 @@
 import type { JSX, RefObject, TargetedKeyboardEvent, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef, useState } from "preact/compat";
 import {
-    MCDBEntryContentTypes,
     entryContentTypeToFormatMap,
     getKeyDisplayName,
     prettyPrintSNBT,
@@ -9,6 +8,9 @@ import {
     type MCDBEntryContentType,
     type EntryContentTypeFormatData,
     type MCFileEntryContentType,
+    MCEntryContentTypesGrouping,
+    type MCEntryContentType,
+    MCEntryContentTypes,
 } from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
 import { ControlledMenu, MenuItem, SubMenu, type ClickEvent as ContextMenu_ClickEvent } from "@szhsin/react-menu";
@@ -73,7 +75,7 @@ export const viewFilesTabSearchSyntax: SearchSyntaxHelpInfo = {
     },
     filters: {
         dbkey: {
-            description: "Searches the human-readable LevelDB key (the one displayed in the DB Key column) for the text.",
+            description: "Searches the human-readable LevelDB key or relative file path (the one displayed in the DB Key or File Path column) for the text.",
         },
         type: {
             description:
@@ -88,8 +90,8 @@ export const viewFilesTabSearchSyntax: SearchSyntaxHelpInfo = {
                     <p>
                         Supported content types:
                         <ul>
-                            {MCDBEntryContentTypes.map(
-                                (contentType: MCDBEntryContentType): JSX.SpecificElement<"li"> => (
+                            {MCEntryContentTypes.map(
+                                (contentType: MCEntryContentType): JSX.SpecificElement<"li"> => (
                                     <li>{contentType}</li>
                                 )
                             )}
@@ -115,17 +117,63 @@ export const viewFilesTabSearchSyntax: SearchSyntaxHelpInfo = {
                     <code>type:Data3D type:Block</code> - Only searches entries with the Data3D or Block content type.
                 </p>,
                 <p>
-                    <code>-type:Data3D -type:Block</code> - Searches entries with and content type other than Data3D or Block.
+                    <code>-type:Data3D -type:Block</code> - Searches entries with a content type other than Data3D or Block.
+                </p>,
+            ],
+        },
+        typegroup: {
+            description:
+                'Filters by the content type group of the entry (the groups used in the "Tab" debug overlay). This is like the "type" filter, but it allows searching for a group of related content types instead of entering each content type individually. Click "See more..." below for a list of supported content types.',
+            extendedDescription: (
+                <>
+                    <p>Filters by the content type group of the entry (the one displayed in the "Tab" debug overlay).</p>
+                    <p>
+                        This is like the "type" filter, but it allows searching for a group of related content types instead of entering each content type
+                        individually. This is very useful when searching for NBT, as it can take quite a while on large worlds, but filtering by the content
+                        types you want to search in can make it almost instant.
+                    </p>
+                    <p>
+                        Supported content type groups:
+                        <ul>
+                            {[...new Set(Object.values(MCEntryContentTypesGrouping))].map(
+                                (contentType: (typeof MCEntryContentTypesGrouping)[keyof typeof MCEntryContentTypesGrouping]): JSX.SpecificElement<"li"> => (
+                                    <li>{contentType}</li>
+                                )
+                            )}
+                        </ul>
+                    </p>
+                    <p>
+                        Supported prefix operators:
+                        <ul>
+                            <li>"|" - Any Of</li>
+                            <li>"-" - None Of</li>
+                        </ul>
+                    </p>
+                </>
+            ),
+            examples: [
+                <p>
+                    <code>typegroup:Dimension</code> - Only searches entries with a content type under the Dimension group.
+                </p>,
+                <p>
+                    <code>|typegroup:Dimension</code> - Only searches entries with a content type under the Dimension group.
+                </p>,
+                <p>
+                    <code>typegroup:Dimension typegroup:Netease</code> - Only searches entries with a content type under either the Dimension or Netease groups.
+                </p>,
+                <p>
+                    <code>-typegroup:Dimension -typegroup:Netease</code> - Searches entries with a content type that is neither under the Dimension group nor
+                    the Netease group.
                 </p>,
             ],
         },
         contents: {
             description:
-                "Searches the LevelDB entry value. This will cause searching to take a lot longer on larger worlds, it is highly recommended to use a <code>type</code> filter to limit the search.",
+                "Searches the LevelDB entry value. This will cause searching to take a lot longer on larger worlds, it is highly recommended to use a <code>type</code> or <code>typegroup</code> filter to limit the search.",
         },
         nbt: {
             description:
-                "Searches the NBT data of entries. This will cause searching to take a lot longer on larger worlds, it is highly recommended to use a <code>type</code> filter to limit the search.",
+                "Searches the NBT data of entries. This will cause searching to take a lot longer on larger worlds, it is highly recommended to use a <code>type</code> or <code>typegroup</code> filter to limit the search.",
             extendedDescription: (
                 <>
                     <p>
@@ -772,6 +820,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
             if (!tablesContainerRef.current) return;
             if (reloadData) {
                 console.debug(query);
+                const lastMode: ConfigConstants.views.ViewFiles.ViewFilesTabMode = mode;
                 mode = config.views.viewFiles.mode;
                 const hasNBTContentsQuery: boolean = !!(
                     (
@@ -955,6 +1004,151 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                     ) {
                         keyValuesLoaded[mode] = true;
                     }
+                    query.searchTargets =
+                        mode === "leveldb" ?
+                            leveldbKeys.map(
+                                (key: LevelDBKeyData) =>
+                                    ({
+                                        key: key.rawKey,
+                                        displayKey: key.displayKey,
+                                        value: key.value!,
+                                        valueType: key.valueType,
+                                        contentType: key.contentType,
+                                        data: key,
+                                        searchableContents: [
+                                            key.displayKey,
+                                            ...(key.value ?
+                                                [
+                                                    key.valueType.type === "NBT" ?
+                                                        ((): string => {
+                                                            try {
+                                                                // return prettyPrintSNBT(prismarineToSNBT((key.value as { parsed: NBT.NBT }).parsed), { indent: 0 });
+                                                                // Disable directly searching SNBT.
+                                                                return "";
+                                                            } catch {
+                                                                return "";
+                                                            }
+                                                        })()
+                                                    : key.valueType.type === "custom" && key.valueType.resultType === "JSONNBT" ?
+                                                        ((): string => {
+                                                            try {
+                                                                // return prettyPrintSNBT(prismarineToSNBT(key.value), { indent: 0 });
+                                                                // Disable directly searching SNBT.
+                                                                return "";
+                                                            } catch {
+                                                                return "";
+                                                            }
+                                                        })()
+                                                    : key.valueType.type === "JSON" ? JSON.stringify(key.value)
+                                                    : key.valueType.type === "JSONC" ? commentJSON.stringify(key.value)
+                                                    : typeof key.value !== "function" && typeof key.value !== "object" && typeof key.value !== "symbol" ?
+                                                        String(key.value)
+                                                    :   "",
+                                                ]
+                                            :   []),
+                                        ],
+                                        customDataFields: {
+                                            contents:
+                                                key.value ?
+                                                    key.valueType.type === "NBT" ?
+                                                        ((): string | undefined => {
+                                                            try {
+                                                                return prettyPrintSNBT(prismarineToSNBT((key.value as { parsed: NBT.NBT }).parsed), {
+                                                                    indent: 0,
+                                                                });
+                                                            } catch {
+                                                                return undefined;
+                                                            }
+                                                        })()
+                                                    : key.valueType.type === "custom" && key.valueType.resultType === "JSONNBT" ?
+                                                        ((): string | undefined => {
+                                                            try {
+                                                                return prettyPrintSNBT(prismarineToSNBT(key.value), { indent: 0 });
+                                                            } catch {
+                                                                return undefined;
+                                                            }
+                                                        })()
+                                                    : key.valueType.type === "JSON" ? JSON.stringify(key.value)
+                                                    : key.valueType.type === "JSONC" ? commentJSON.stringify(key.value)
+                                                    : typeof key.value !== "function" && typeof key.value !== "object" && typeof key.value !== "symbol" ?
+                                                        String(key.value)
+                                                    :   undefined
+                                                :   undefined,
+                                        },
+                                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
+                            )
+                        :   fileKeys.map(
+                                (key: FileKeyData) =>
+                                    ({
+                                        key: key.rawKey,
+                                        displayKey: key.displayKey,
+                                        value: key.value!,
+                                        valueType: key.valueType,
+                                        contentType: key.contentType,
+                                        data: key,
+                                        searchableContents: [
+                                            key.displayKey,
+                                            ...(key.value ?
+                                                [
+                                                    key.valueType.type === "NBT" ?
+                                                        ((): string => {
+                                                            try {
+                                                                // return prettyPrintSNBT(prismarineToSNBT((key.value as { parsed: NBT.NBT }).parsed), { indent: 0 });
+                                                                // Disable directly searching SNBT.
+                                                                return "";
+                                                            } catch {
+                                                                return "";
+                                                            }
+                                                        })()
+                                                    : key.valueType.type === "custom" && key.valueType.resultType === "JSONNBT" ?
+                                                        ((): string => {
+                                                            try {
+                                                                // return prettyPrintSNBT(prismarineToSNBT(key.value), { indent: 0 });
+                                                                // Disable directly searching SNBT.
+                                                                return "";
+                                                            } catch {
+                                                                return "";
+                                                            }
+                                                        })()
+                                                    : key.valueType.type === "JSON" ? JSON.stringify(key.value)
+                                                    : key.valueType.type === "JSONC" ? commentJSON.stringify(key.value)
+                                                    : typeof key.value !== "function" && typeof key.value !== "object" && typeof key.value !== "symbol" ?
+                                                        String(key.value)
+                                                    :   "",
+                                                ]
+                                            :   []),
+                                        ],
+                                        customDataFields: {
+                                            contents:
+                                                key.value ?
+                                                    key.valueType.type === "NBT" ?
+                                                        ((): string | undefined => {
+                                                            try {
+                                                                return prettyPrintSNBT(prismarineToSNBT((key.value as { parsed: NBT.NBT }).parsed), {
+                                                                    indent: 0,
+                                                                });
+                                                            } catch {
+                                                                return undefined;
+                                                            }
+                                                        })()
+                                                    : key.valueType.type === "custom" && key.valueType.resultType === "JSONNBT" ?
+                                                        ((): string | undefined => {
+                                                            try {
+                                                                return prettyPrintSNBT(prismarineToSNBT(key.value), { indent: 0 });
+                                                            } catch {
+                                                                return undefined;
+                                                            }
+                                                        })()
+                                                    : key.valueType.type === "JSON" ? JSON.stringify(key.value)
+                                                    : key.valueType.type === "JSONC" ? commentJSON.stringify(key.value)
+                                                    : typeof key.value !== "function" && typeof key.value !== "object" && typeof key.value !== "symbol" ?
+                                                        String(key.value)
+                                                    :   undefined
+                                                :   undefined,
+                                        },
+                                    }) as const satisfies NonNullable<TabManagerTab_LevelDBSearchQuery["searchTargets"]>[number]
+                            );
+                } else if (mode !== lastMode) {
                     query.searchTargets =
                         mode === "leveldb" ?
                             leveldbKeys.map(
@@ -1461,7 +1655,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                     // noneOf
                                     "-",
                                 ] as const;
-                                const keywords = ["dbkey", "nbt", "type", "contents"] as const;
+                                const keywords = ["dbkey", "nbt", "type", "typegroup", "contents"] as const;
                                 function getKeywordedOperators<T extends string, O extends string = "" | (typeof keywordPrefixOperators)[number]>(
                                     keywords: readonly T[],
                                     operators: readonly O[] = ["", ...keywordPrefixOperators] as O[]
@@ -1503,9 +1697,10 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                 for (const key in queryData) {
                                     if (!Object.hasOwn(queryData, key)) continue;
                                     if (
-                                        [...getKeywordedOperators(["dbkey", "nbt", "contents"]), ...getKeywordedOperators(["type"], ["", "|", "-"])].includes(
-                                            key as never
-                                        )
+                                        [
+                                            ...getKeywordedOperators(["dbkey", "nbt", "contents"]),
+                                            ...getKeywordedOperators(["type", "typegroup"], ["", "|", "-"]),
+                                        ].includes(key as never)
                                     ) {
                                         continue;
                                     }
@@ -1684,7 +1879,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                         4
                                     );
                                     if (contentType.length > 0) {
-                                        contentTypesLoop: for (const v2 of MCDBEntryContentTypes) {
+                                        contentTypesLoop: for (const v2 of MCEntryContentTypes) {
                                             const LOCAL_MAX_NONEXISTENT_CHARACTERS: number = Math.min(
                                                 Math.max(0, v2.length - 2, Math.floor(v2.length / 2)),
                                                 4,
@@ -1744,18 +1939,113 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                         }
                                     }
                                 }
+                                const contentTypeGroups = [...new Set(Object.values(MCEntryContentTypesGrouping))];
+                                const contentTypeGroupToContentTypesMap = (Object.keys(MCEntryContentTypesGrouping) as MCEntryContentType[]).reduce(
+                                    (
+                                        acc: Record<(typeof contentTypeGroups)[number], MCEntryContentType[]>,
+                                        contentType: MCEntryContentType
+                                    ): Record<(typeof contentTypeGroups)[number], MCEntryContentType[]> => {
+                                        if (acc[MCEntryContentTypesGrouping[contentType]]?.includes(contentType)) return acc;
+                                        (acc[MCEntryContentTypesGrouping[contentType]] ??= []).push(contentType);
+                                        return acc;
+                                    },
+                                    {} as Record<(typeof contentTypeGroups)[number], MCEntryContentType[]>
+                                );
+                                // BUG: Add wildcard handling to this.
+                                function showInvalidContentTypeGroupErrorWithMostSimilarContentTypes(contentTypeGroup: string): void {
+                                    contentTypeGroup = contentTypeGroup.replaceAll("*", ""); // TEMP: This is just until wildcard handling is added.
+                                    const similarVals: {
+                                        /**
+                                         * The quality of the similarity.
+                                         *
+                                         * Lower is more similar.
+                                         */
+                                        quality: number;
+                                        /**
+                                         * The value.
+                                         */
+                                        value: string;
+                                    }[] = [];
+                                    const MAX_NONEXISTENT_CHARACTERS: number = Math.min(
+                                        Math.max(0, contentTypeGroup.length - 2, Math.floor(contentTypeGroup.length / 2)),
+                                        4
+                                    );
+                                    if (contentTypeGroup.length > 0) {
+                                        contentTypeGroupsLoop: for (const v2 of contentTypeGroups) {
+                                            const LOCAL_MAX_NONEXISTENT_CHARACTERS: number = Math.min(
+                                                Math.max(0, v2.length - 2, Math.floor(v2.length / 2)),
+                                                4,
+                                                MAX_NONEXISTENT_CHARACTERS
+                                            );
+                                            let i: number = 0;
+                                            let i2: number = 0;
+                                            let totalDistanceBetweenCharacters: number = 0;
+                                            let nonExistentCharacters: number = 0;
+                                            while (i2 < v2.length && i < contentTypeGroup.length) {
+                                                const index: number = v2.toLowerCase().indexOf(contentTypeGroup[i]!.toLowerCase(), i2);
+                                                i++;
+                                                if (index === -1) {
+                                                    nonExistentCharacters++;
+                                                    if (nonExistentCharacters > LOCAL_MAX_NONEXISTENT_CHARACTERS) continue contentTypeGroupsLoop;
+                                                    continue;
+                                                } else {
+                                                    totalDistanceBetweenCharacters += index - i2;
+                                                    i2 = index + 1;
+                                                }
+                                            }
+                                            if (
+                                                i !== contentTypeGroup.length &&
+                                                contentTypeGroup.length - i + nonExistentCharacters > LOCAL_MAX_NONEXISTENT_CHARACTERS
+                                            ) {
+                                                continue;
+                                            }
+                                            const substringIndex: number = v2.toLowerCase().indexOf(contentTypeGroup.toLowerCase());
+                                            if (substringIndex !== -1) {
+                                                totalDistanceBetweenCharacters -= Math.max(0, 50 - substringIndex * 5);
+                                            }
+                                            similarVals.push({
+                                                quality: totalDistanceBetweenCharacters + nonExistentCharacters * 10,
+                                                value: v2,
+                                            });
+                                        }
+                                    }
+                                    if (similarVals.length === 0) {
+                                        showError({ message: `Unknown content type group: ${contentTypeGroup}` });
+                                    } else {
+                                        similarVals.sort((a: (typeof similarVals)[number], b: (typeof similarVals)[number]): number => a.quality - b.quality);
+                                        if (1 in similarVals && similarVals[0]!.quality === similarVals[1].quality) {
+                                            const suggestionVals: string[] = similarVals
+                                                .slice(
+                                                    0,
+                                                    similarVals.findIndex(
+                                                        (v2: { quality: number; value: string }): boolean => v2.quality !== similarVals[0]!.quality
+                                                    )
+                                                )
+                                                .map((v2): string => v2.value);
+                                            showError({
+                                                message: `Unknown content type group: ${contentTypeGroup}, did you mean ${
+                                                    suggestionVals.length === 2 ?
+                                                        `${suggestionVals[0]!} or ${suggestionVals[1]!}`
+                                                    :   `${suggestionVals.slice(0, -1).join(", ")}, or ${suggestionVals.at(-1)!}`
+                                                }?`,
+                                            });
+                                        } else {
+                                            showError({ message: `Unknown content type group: ${contentTypeGroup}, did you mean ${similarVals[0]!.value}?` });
+                                        }
+                                    }
+                                }
                                 if (queryData["-type"] !== undefined) {
                                     query.excludeContentTypes ??= [];
                                     query.excludeContentTypes.push(
-                                        ...queryData["-type"].flatMap((v: string): MCDBEntryContentType | MCDBEntryContentType[] => {
+                                        ...queryData["-type"].flatMap((v: string): MCEntryContentType | MCEntryContentType[] => {
                                             if (v.includes("*")) {
                                                 const regex = new RegExp(`^${v.split("*").map(RegExp.escape).join(".*")}$`, "i");
-                                                const vals = MCDBEntryContentTypes.filter((v2: string): boolean => regex.test(v2));
+                                                const vals = MCEntryContentTypes.filter((v2: string): boolean => regex.test(v2));
                                                 if (vals.length) return vals;
                                                 showInvalidContentTypeErrorWithMostSimilarContentTypes(v);
                                                 throw new Error("Error to return but already handled.");
                                             }
-                                            const val = MCDBEntryContentTypes.find((v2: string): boolean => v2.toLowerCase() === v.toLowerCase());
+                                            const val = MCEntryContentTypes.find((v2: string): boolean => v2.toLowerCase() === v.toLowerCase());
                                             if (val) return val;
                                             showInvalidContentTypeErrorWithMostSimilarContentTypes(v);
                                             throw new Error("Error to return but already handled.");
@@ -1765,15 +2055,15 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                 if (queryData["|type"] !== undefined) {
                                     query.contentTypes ??= [];
                                     query.contentTypes.push(
-                                        ...queryData["|type"].flatMap((v: string): MCDBEntryContentType | MCDBEntryContentType[] => {
+                                        ...queryData["|type"].flatMap((v: string): MCEntryContentType | MCEntryContentType[] => {
                                             if (v.includes("*")) {
                                                 const regex = new RegExp(`^${v.split("*").map(RegExp.escape).join(".*")}$`, "i");
-                                                const vals = MCDBEntryContentTypes.filter((v2: string): boolean => regex.test(v2));
+                                                const vals = MCEntryContentTypes.filter((v2: string): boolean => regex.test(v2));
                                                 if (vals.length) return vals;
                                                 showInvalidContentTypeErrorWithMostSimilarContentTypes(v);
                                                 throw new Error("Error to return but already handled.");
                                             }
-                                            const val = MCDBEntryContentTypes.find((v2: string): boolean => v2.toLowerCase() === v.toLowerCase());
+                                            const val = MCEntryContentTypes.find((v2: string): boolean => v2.toLowerCase() === v.toLowerCase());
                                             if (val) return val;
                                             showInvalidContentTypeErrorWithMostSimilarContentTypes(v);
                                             throw new Error("Error to return but already handled.");
@@ -1783,19 +2073,79 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                 if (queryData.type !== undefined) {
                                     query.contentTypes ??= [];
                                     query.contentTypes.push(
-                                        ...queryData.type.flatMap((v: string): MCDBEntryContentType | MCDBEntryContentType[] => {
+                                        ...queryData.type.flatMap((v: string): MCEntryContentType | MCEntryContentType[] => {
                                             if (v.includes("*")) {
                                                 const regex = new RegExp(`^${v.split("*").map(RegExp.escape).join(".*")}$`, "i");
                                                 console.log(regex);
-                                                const vals = MCDBEntryContentTypes.filter((v2: string): boolean => regex.test(v2));
-                                                console.log(MCDBEntryContentTypes, vals);
+                                                const vals = MCEntryContentTypes.filter((v2: string): boolean => regex.test(v2));
+                                                console.log(MCEntryContentTypes, vals);
                                                 if (vals.length) return vals;
                                                 showInvalidContentTypeErrorWithMostSimilarContentTypes(v);
                                                 throw new Error("Error to return but already handled.");
                                             }
-                                            const val = MCDBEntryContentTypes.find((v2: string): boolean => v2.toLowerCase() === v.toLowerCase());
+                                            const val = MCEntryContentTypes.find((v2: string): boolean => v2.toLowerCase() === v.toLowerCase());
                                             if (val) return val;
                                             showInvalidContentTypeErrorWithMostSimilarContentTypes(v);
+                                            throw new Error("Error to return but already handled.");
+                                        })
+                                    );
+                                }
+                                if (queryData["|typegroup"] !== undefined) {
+                                    query.contentTypes ??= [];
+                                    query.contentTypes.push(
+                                        ...queryData["|typegroup"].flatMap((v: string): MCEntryContentType[] => {
+                                            if (v.includes("*")) {
+                                                const regex = new RegExp(`^${v.split("*").map(RegExp.escape).join(".*")}$`, "i");
+                                                const vals = contentTypeGroups
+                                                    .filter((v2): boolean => regex.test(v2))
+                                                    .flatMap((v2) => contentTypeGroupToContentTypesMap[v2]);
+                                                if (vals.length) return vals;
+                                                showInvalidContentTypeGroupErrorWithMostSimilarContentTypes(v);
+                                                throw new Error("Error to return but already handled.");
+                                            }
+                                            const val = contentTypeGroups.find((v2: string): boolean => v2.toLowerCase() === v.toLowerCase());
+                                            if (val) return contentTypeGroupToContentTypesMap[val];
+                                            showInvalidContentTypeGroupErrorWithMostSimilarContentTypes(v);
+                                            throw new Error("Error to return but already handled.");
+                                        })
+                                    );
+                                }
+                                if (queryData.typegroup !== undefined) {
+                                    query.contentTypes ??= [];
+                                    query.contentTypes.push(
+                                        ...queryData.typegroup.flatMap((v: string): MCEntryContentType[] => {
+                                            if (v.includes("*")) {
+                                                const regex = new RegExp(`^${v.split("*").map(RegExp.escape).join(".*")}$`, "i");
+                                                const vals = contentTypeGroups
+                                                    .filter((v2): boolean => regex.test(v2))
+                                                    .flatMap((v2) => contentTypeGroupToContentTypesMap[v2]);
+                                                if (vals.length) return vals;
+                                                showInvalidContentTypeGroupErrorWithMostSimilarContentTypes(v);
+                                                throw new Error("Error to return but already handled.");
+                                            }
+                                            const val = contentTypeGroups.find((v2: string): boolean => v2.toLowerCase() === v.toLowerCase());
+                                            if (val) return contentTypeGroupToContentTypesMap[val];
+                                            showInvalidContentTypeGroupErrorWithMostSimilarContentTypes(v);
+                                            throw new Error("Error to return but already handled.");
+                                        })
+                                    );
+                                }
+                                if (queryData["-typegroup"] !== undefined) {
+                                    query.excludeContentTypes ??= [];
+                                    query.excludeContentTypes.push(
+                                        ...queryData["-typegroup"].flatMap((v: string): MCEntryContentType[] => {
+                                            if (v.includes("*")) {
+                                                const regex = new RegExp(`^${v.split("*").map(RegExp.escape).join(".*")}$`, "i");
+                                                const vals = contentTypeGroups
+                                                    .filter((v2): boolean => regex.test(v2))
+                                                    .flatMap((v2) => contentTypeGroupToContentTypesMap[v2]);
+                                                if (vals.length) return vals;
+                                                showInvalidContentTypeGroupErrorWithMostSimilarContentTypes(v);
+                                                throw new Error("Error to return but already handled.");
+                                            }
+                                            const val = contentTypeGroups.find((v2: string): boolean => v2.toLowerCase() === v.toLowerCase());
+                                            if (val) return contentTypeGroupToContentTypesMap[val];
+                                            showInvalidContentTypeGroupErrorWithMostSimilarContentTypes(v);
                                             throw new Error("Error to return but already handled.");
                                         })
                                     );
