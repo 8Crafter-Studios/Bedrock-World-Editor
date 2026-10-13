@@ -79,6 +79,9 @@ const entitiesTabSearchSyntax: SearchSyntaxHelpInfo = {
                 <>
                     <p>Searches for entities by the namespaced ID (the one displayed in the Type ID column).</p>
                     <p>
+                        If no namespace is provided, <code>minecraft:</code> will be assumed.
+                    </p>
+                    <p>
                         Supported prefix operators:
                         <ul>
                             <li>"|" - Any Of</li>
@@ -97,12 +100,12 @@ const entitiesTabSearchSyntax: SearchSyntaxHelpInfo = {
                     <code>|typeid:minecraft:sheep</code> - Searches for entities with a namespaced ID of <code>minecraft:sheep</code>.
                 </p>,
                 <p>
-                    <code>typeid:minecraft:sheep typeid:minecraft:item</code> - Searches for entities with a namespaced ID of <code>minecraft:sheep</code> or{" "}
+                    <code>typeid:minecraft:sheep typeid:item</code> - Searches for entities with a namespaced ID of <code>minecraft:sheep</code> or{" "}
                     <code>minecraft:item</code>.
                 </p>,
                 <p>
-                    <code>-typeid:minecraft:sheep -typeid:minecraft:item</code> - Searches for entities that do not have a namespaced ID of{" "}
-                    <code>minecraft:sheep</code> or <code>minecraft:item</code>.
+                    <code>-typeid:sheep -typeid:minecraft:item</code> - Searches for entities that do not have a namespaced ID of <code>minecraft:sheep</code>{" "}
+                    or <code>minecraft:item</code>.
                 </p>,
             ],
         },
@@ -778,7 +781,7 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
                                         return queries.map((v: string): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery => {
                                             return {
                                                 path: ["identifier"],
-                                                value: v,
+                                                value: v.includes(":") ? v : `minecraft:${v}`,
                                                 caseSensitivePath: true,
                                             };
                                         });

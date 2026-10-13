@@ -99,6 +99,7 @@
 -   The reload world list button is now disabled after clicking it until the world list has finished reloading.
 -   Major overhaul of how the unsaved tabs system works, it should now be much less buggy. It now differentiates between unsaved changes in a sub-tab that have not been written to the copy of the world files, and unsaved changes that have.
 -   Added an error message when the `Delete LevelDB Entry` context menu option of the "Maps", "Ticks", and "View Files" left sidebar tabs fails to delete the LevelDB entry.
+-   The `minecraft:` prefix is no longer required for vanilla entities for the `typeid` search query in the "Entities" left sidebar tab.
 
 ## Removals
 
