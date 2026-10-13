@@ -79,6 +79,7 @@
 -   The sub-tabs and active sub-tab of a tab are now preserved when using the `Reload Tab` context menu option.
 -   If a world does not have a `lastOpenedWithVersion` field in `level.dat`, the world selection menu will now display the possible version range of the world based on the `StorageVersion` field of `level.dat` instead of `null`, if the `StorageVersion` field is missing it will still display `null`.
 -   The reload world list button now flashes red if a fatal error occurrs while reloading the world list.
+-   Added a better screen for when the "Repair Forced World Corruption" tab does not detect any forced world corruption.
 
 ## Changes
 
@@ -124,6 +125,7 @@
 -   Fixed a bug where the "Show more" button could sometimes get stuck indefinitely on "Loading...".
 -   The `Favorite` context menu option of tabs in the tab bar is now also visible for worlds in isolated, extra, and extra isolated world folder locations, instead of only the main world folder locations list.
 -   Fixed a bug where negated `type` queries caused the content type check to be skipped entirely.
+-   Fixed bugs where some loading screens were positioned at the top of the screen rather than the center and needed to be scrolled to have their message visible.
 -   Miscellaneous typo fixes.
 
 ## Performance Improvements

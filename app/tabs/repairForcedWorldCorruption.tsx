@@ -29,7 +29,7 @@ export default function RepairForcedWorldCorruptionTab(props: RepairForcedWorldC
             if (props.tab.cachedDBKeys!.ForcedWorldCorruption.length === 0) {
                 if (!containerRef.current) return;
                 render(null, containerRef.current);
-                render(<LoadingScreenContents message="Nothing to repair." />, containerRef.current);
+                render(<Notice title="Nothing to Repair" subtitle={null} detail={"No forced world corruption was detected."} image="nothing_to_see" />, containerRef.current);
             } else {
                 for (const key of props.tab.cachedDBKeys!.ForcedWorldCorruption) {
                     await props.tab.db!.delete(key);
@@ -77,7 +77,7 @@ export default function RepairForcedWorldCorruptionTab(props: RepairForcedWorldC
     });
     return (
         <div style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center;">
-            <div style="flex: 1; overflow: auto;" ref={containerRef}>
+            <div style="flex: 1; overflow: auto; display: flex; flex-direction: column; width: 100%;" ref={containerRef}>
                 <LoadingScreenContents message="Repairing forced world corruption..." />
             </div>
         </div>

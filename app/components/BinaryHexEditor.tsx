@@ -569,7 +569,7 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
         return (
             <div class="hexEditorContainer" ref={editorConainterRef}>
                 <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
-                    <div style="flex: 1; overflow: auto;">
+                    <div style="flex: 1; overflow: auto; display: flex; flex-direction: column;">
                         <LoadingScreenContents message="Converting to binary..." />
                     </div>
                 </div>

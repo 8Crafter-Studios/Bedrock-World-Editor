@@ -135,7 +135,7 @@ export default function TextEditorTab(props: TextEditorTabProps): JSX.SpecificEl
     }
     return (
         <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
-            <div style="flex: 1; overflow: auto;" ref={containerRef}>
+            <div style="flex: 1; overflow: auto; display: flex; flex-direction: column;" ref={containerRef}>
                 {asyncMode || !props.tab.currentState.options.dataStorageObject ?
                     <LoadingScreenContents />
                 :   <Contents props={props} options={props.tab.currentState.options} />}
