@@ -1302,7 +1302,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                             await getViewFilesTabContentsRows({
                                 tab,
                                 leveldbKeys:
-                                    mode === "leveldb" && Object.keys(query).length > 1 ?
+                                    mode === "leveldb" ? Object.keys(query).length > 1 ?
                                         await (async (): Promise<LevelDBKeyData[]> => {
                                             const iterator = tab.dbSearch!.search(
                                                 query as Omit<typeof query, "searchTargets"> & {
@@ -1330,9 +1330,9 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                             keySearchResults = results;
                                             return results;
                                         })()
-                                    :   (keySearchResults = leveldbKeys),
+                                    :   (keySearchResults = leveldbKeys) : leveldbKeys,
                                 fileKeys:
-                                    mode === "files" && Object.keys(query).length > 1 ?
+                                    mode === "files" ? Object.keys(query).length > 1 ?
                                         await (async (): Promise<FileKeyData[]> => {
                                             const iterator = tab.dbSearch!.search(
                                                 query as Omit<typeof query, "searchTargets"> & {
@@ -1360,7 +1360,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                             keySearchResults = results;
                                             return results;
                                         })()
-                                    :   (keySearchResults = fileKeys),
+                                    :   (keySearchResults = fileKeys) : fileKeys,
                                 mode,
                                 get updateTablesContents(): ((reloadData: boolean) => Promise<void>) | null {
                                     return currentUpdateTablesContentsFunction;
