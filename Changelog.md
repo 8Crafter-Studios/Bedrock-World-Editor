@@ -50,6 +50,7 @@
 -   Added an icon for sub-tabs of content type `LegacyTerrain`.
 -   Added an icon for sub-tabs of content type `LegacyBlockExtraData`.
 -   Added the "Show World Storage Versions on World List" option to the "General" settings section.
+-   Added the "Enable Performance Graphs" option to the "Debug" settings section. When enabled, you can show FPS, event loop lag, and frame callback delay performance graphs with `Ctrl+F3+2`, `Ctrl+F3+3`, and `Ctrl+F3+4` respectively (or Command instead of Ctrl on macOS).
 -   Players from `level.dat`, `player.dat`, and `players/<PlayerID>.dat` are now shown in the "Players" left sidebar tab.
 -   The "Players" left sidebar tab is now accessible on worlds that don't have a LevelDB (`db` folder).
 -   The "View Files" left sidebar tab is now accessible on worlds that don't have a LevelDB (`db` folder).

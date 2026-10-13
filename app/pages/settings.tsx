@@ -1072,6 +1072,24 @@ On larger worlds, each chunk causes more lag to load than it would on a smaller 
                         Show Native FPS Counter (Requires Restart)
                     </label>
                     <br class="nsel ndrg" />
+                    <label
+                        for="settings_debug_enablePerfGraphs"
+                        class="nsel ndrg"
+                        title="Whether or not to enable the performance graphs.
+
+They can be shown/hidden with Ctrl+F3+2, Ctrl+F3+3, and Ctrl+F3+4."
+                    >
+                        <input
+                            id="settings_debug_enablePerfGraphs"
+                            type="checkbox"
+                            checked={config.enablePerfGraphs}
+                            onChange={(event: TargetedEvent<HTMLInputElement, Event>): void => {
+                                config.enablePerfGraphs = event.currentTarget.checked;
+                            }}
+                        />
+                        Enable Performance Graphs (Requires Restart or Reload)
+                    </label>
+                    <br class="nsel ndrg" />
                     <label for="settings_debug_debugHUDDropShadow" class="nsel ndrg">
                         <input
                             id="settings_debug_debugHUDDropShadow"

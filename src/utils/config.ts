@@ -333,6 +333,7 @@ namespace exports {
             noLookupEntityDimensionDigestKeyThreshold: 100_000,
             disableFrameRateLimit: false,
             showNativeFpsCounter: false,
+            enablePerfGraphs: false,
             volume: { master: 100, ui: 100 },
             views: {
                 players: {
@@ -1474,6 +1475,19 @@ namespace exports {
         }
         public set showNativeFpsCounter(value: boolean | undefined) {
             this.saveChanges({ showNativeFpsCounter: value ?? Config.defaults.showNativeFpsCounter });
+        }
+        /**
+         * Whether or not to enable the performance graphs.
+         *
+         * Requires a restart or page reload to take effect.
+         *
+         * @default false
+         */
+        public get enablePerfGraphs(): boolean {
+            return this.getConfigData().enablePerfGraphs ?? Config.defaults.enablePerfGraphs;
+        }
+        public set enablePerfGraphs(value: boolean | undefined) {
+            this.saveChanges({ enablePerfGraphs: value ?? Config.defaults.enablePerfGraphs });
         }
         /**
          * Whether or not to disable the 60 FPS frame rate limit.
