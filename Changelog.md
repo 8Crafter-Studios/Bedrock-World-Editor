@@ -138,6 +138,7 @@
 -   Discarding the changes of a file sub-tab no longer marks the parent tab as not having unsaved changes in copy until save mode when the file the file has unsaved changes written to disk in the copy of the files and that file was the only thing modified.
 -   Fixed a bug where portals on the 2D world map were offset 7.5 blocks to the right and down from their actual position in the world.
 -   The keys in the `SubChunkPrefix` submenu of the `Open LevelDB entry...` submenu of the context menu of the 2D world map are now sorted in ascending order by their subchunk prefix.
+-   The arrow in the chunk block coordinate ranges in the context menu of the 2D world map now uses a different unicode character for the dash in order for it to be properly aligned with the greater than sign.
 -   Miscellaneous typo fixes.
 
 ## Performance Improvements

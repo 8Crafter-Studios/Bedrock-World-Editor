@@ -4660,7 +4660,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                         );
                     }}
                 >
-                    ({formatter.format(targetChunkDetails.chunk.x * 16)} / {formatter.format(targetChunkDetails.chunk.z * 16)}) -&gt; (
+                    ({formatter.format(targetChunkDetails.chunk.x * 16)} / {formatter.format(targetChunkDetails.chunk.z * 16)}) &#x2212;&gt; (
                     {formatter.format(targetChunkDetails.chunk.x * 16 + 15)} / {formatter.format(targetChunkDetails.chunk.z * 16 + 15)})
                 </MenuItem>
                 <MenuDivider />
@@ -4704,7 +4704,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             }}
                         >
                             ({formatter.format(Math.floor(targetChunkDetails.rawPosition.x / (netherScale ?? 8)) * 16)} /{" "}
-                            {formatter.format(Math.floor(targetChunkDetails.rawPosition.y / (netherScale ?? 8)) * 16)}) -&gt; (
+                            {formatter.format(Math.floor(targetChunkDetails.rawPosition.y / (netherScale ?? 8)) * 16)}) &#x2212;&gt; (
                             {formatter.format(Math.floor(targetChunkDetails.rawPosition.x / (netherScale ?? 8)) * 16 + 15)} /{" "}
                             {formatter.format(Math.floor(targetChunkDetails.rawPosition.y / (netherScale ?? 8)) * 16 + 15)})
                         </MenuItem>
@@ -4806,7 +4806,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             }}
                         >
                             ({formatter.format(Math.floor(targetChunkDetails.rawPosition.x * (netherScale ?? 8)) * 16)} /{" "}
-                            {formatter.format(Math.floor(targetChunkDetails.rawPosition.y * (netherScale ?? 8)) * 16)}) -&gt; (
+                            {formatter.format(Math.floor(targetChunkDetails.rawPosition.y * (netherScale ?? 8)) * 16)}) &#x2212;&gt; (
                             {formatter.format(Math.floor(targetChunkDetails.rawPosition.x * (netherScale ?? 8)) * 16 + 15)} /{" "}
                             {formatter.format(Math.floor(targetChunkDetails.rawPosition.y * (netherScale ?? 8)) * 16 + 15)})
                         </MenuItem>
