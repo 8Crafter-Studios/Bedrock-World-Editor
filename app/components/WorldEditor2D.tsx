@@ -631,6 +631,53 @@ async function getHeightRangeForChunk(
 }
 
 /**
+ * An image item for the 2D world editor.
+ */
+export interface WorldEditor2DMapImageItem extends Omit<import("@canvas-tile-engine/react").ImageItem, never> {
+    meta:
+        | {
+              type: "portal";
+              // TEMP: The NonNullable is temporary until the NBT schema is fixed.
+              value: NonNullable<NonNullable<NBTSchemas.NBTSchemaTypes.Portals["value"]["data"]>["value"]["PortalRecords"]>["value"]["value"][number];
+          }
+        | ({
+              type: "player";
+          } & (
+              | {
+                    playerType: "PlayerDat";
+                    serverValue: NBTSchemas.NBTSchemaTypes.PlayerDat;
+                }
+              | {
+                    playerType: "LANPlayerDat";
+                    serverValue: NBTSchemas.NBTSchemaTypes.LANPlayerDat;
+                }
+              | {
+                    playerType: "LegacyConsolePlayer";
+                    serverValue: unknown; // FIXME: Add this once the LegacyConsolePlayer NBT schema is added.
+                }
+              | {
+                    playerType: "LevelDatPlayer";
+                    serverValue: NBTSchemas.NBTSchemaTypes.FileBasedStoragePlayerData;
+                }
+              | {
+                    playerType: "PlayerServer";
+                    serverValue: NBTSchemas.NBTSchemaTypes.Player;
+                    clientValue?: NBTSchemas.NBTSchemaTypes.PlayerClient | null | undefined;
+                }
+          ))
+        | {
+              type: "entity";
+              value: NBTSchemas.NBTSchemaTypes.ActorPrefixOrEntity;
+          }
+        | {
+              /**
+               * A custom type.
+               */
+              type: `${string}:${string}`;
+          };
+}
+
+/**
  * The 2D world editor.
  *
  * @param props The props for the component.
@@ -833,8 +880,9 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     let worldSpawn: DimensionLocation | null | undefined;
     let worldBorder: { from: VectorXZ; to: VectorXZ } | null | undefined;
     let netherScale: number | null | undefined;
-    let legacySeed: number | null | undefined; // DEBUG
-    let randomSeed: bigint | null | undefined; // DEBUG
+    // let legacySeed: number | null | undefined;
+    // IDEA: Maybe add a button to open the current seed in Chunk Base.
+    // let randomSeed: bigint | null | undefined;
     let chunksDat: NBTSchemas.NBTSchemaTypes.ChunksDat | "loading" | "error" | "no_data" | false | undefined;
     function unloadLevelDatData(): void {
         levelDatLoaded = false;
@@ -842,8 +890,8 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         isOldWorld = undefined;
         worldSpawn = undefined;
         worldBorder = undefined;
-        legacySeed = undefined; // DEBUG
-        randomSeed = undefined; // DEBUG
+        // legacySeed = undefined;
+        // randomSeed = undefined;
         netherScale = undefined;
     }
     async function loadNeededDataFromLevelDat(): Promise<void> {
@@ -855,8 +903,8 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 worldSpawn = null;
                 worldBorder = null;
                 netherScale = null;
-                legacySeed = null; // DEBUG
-                randomSeed = null; // DEBUG
+                // legacySeed = null;
+                // randomSeed = null;
                 return;
             }
             if (props.tab.type !== "world") return;
@@ -884,10 +932,10 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             }
             if (levelDat.value.StorageVersion) levelDatStorageVersion = levelDat.value.StorageVersion.value;
             else levelDatStorageVersion = null;
-            if (levelDat.value.LegacySeed) legacySeed = levelDat.value.LegacySeed.value;
-            else legacySeed = null;
-            if (levelDat.value.RandomSeed) randomSeed = toLong(levelDat.value.RandomSeed.value);
-            else randomSeed = null;
+            // if (levelDat.value.LegacySeed) legacySeed = levelDat.value.LegacySeed.value;
+            // else legacySeed = null;
+            // if (levelDat.value.RandomSeed) randomSeed = toLong(levelDat.value.RandomSeed.value);
+            // else randomSeed = null;
             if (levelDat.value.Generator) isOldWorld = levelDat.value.Generator.value === 0;
             else isOldWorld = null;
             if (levelDat.value.SpawnX && levelDat.value.SpawnY && levelDat.value.SpawnZ) {
@@ -3821,7 +3869,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         const portalsInCurrentDimension = portalRecords.value.data.value.PortalRecords.value.value.filter(
             (portalRecord): boolean => portalRecord.DimId?.value === currentDimension
         );
-        const portalImages: import("@canvas-tile-engine/react").ImageItem[] = [];
+        const portalImages: WorldEditor2DMapImageItem[] = [];
         for (const portal of portalsInCurrentDimension) {
             if (portal.DimId === undefined) continue;
             if (portal.TpX === undefined) continue;
@@ -3832,6 +3880,10 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 x: Math.floor((portal.TpX.value / 16) * currentScale) / currentScale,
                 y: Math.floor((portal.TpZ.value / 16) * currentScale) / currentScale,
                 size: 30 / currentScale,
+                meta: {
+                    type: "portal",
+                    value: portal,
+                },
             });
         }
         if (portalImages.length === 0) return true;
@@ -4307,11 +4359,11 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         readonly rawPosition: Vector2;
         readonly block: VectorXZ;
     }
-    interface ChunkSwitchContextMenuInteraction extends BaseContextMenuInteraction {
+    interface ChunkContextMenuInteraction extends BaseContextMenuInteraction {
         targetChunkDetails: ChunkContextMenu_TargetChunkDetails | undefined;
     }
-    const chunkContextMenuInteractionRef: RefObject<ChunkSwitchContextMenuInteraction> = useRef<ChunkSwitchContextMenuInteraction>(null);
-    function ChunkContextMenu({ interactionRef }: { interactionRef: RefObject<ChunkSwitchContextMenuInteraction> }): JSX.Element {
+    const chunkContextMenuInteractionRef: RefObject<ChunkContextMenuInteraction> = useRef<ChunkContextMenuInteraction>(null);
+    function ChunkContextMenu({ interactionRef }: { interactionRef: RefObject<ChunkContextMenuInteraction> }): JSX.Element {
         const [worldEditor2DChunkContextMenu_isOpen, worldEditor2DChunkContextMenu_setOpen] = useState(false);
         const [worldEditor2DChunkContextMenu_anchorPoint, worldEditor2DChunkContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
         const [targetChunkDetails, setTargetChunkDetails] = useState<ChunkContextMenu_TargetChunkDetails | undefined>(undefined);
@@ -4959,6 +5011,217 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             </ControlledMenu>
         );
     }
+    interface MapOverlayImageContextMenu_TargetImageDetails {
+        readonly dimension: Dimension | number;
+        readonly rawPosition: Vector2;
+        readonly hitTestFirstResult: import("@canvas-tile-engine/core").HitResult<HTMLImageElement> & { item: WorldEditor2DMapImageItem };
+        readonly hitTestResults: (import("@canvas-tile-engine/core").HitResult<HTMLImageElement> & { item: WorldEditor2DMapImageItem })[];
+    }
+    interface MapOverlayImageContextMenuInteraction extends BaseContextMenuInteraction {
+        targetImageDetails: MapOverlayImageContextMenu_TargetImageDetails | undefined;
+    }
+    const mapOverlayImageContextMenuInteractionRef: RefObject<MapOverlayImageContextMenuInteraction> = useRef<MapOverlayImageContextMenuInteraction>(null);
+    function MapOverlayImageContextMenu({ interactionRef }: { interactionRef: RefObject<MapOverlayImageContextMenuInteraction> }): JSX.Element {
+        const [worldEditor2DMapOverlayImageContextMenu_isOpen, worldEditor2DMapOverlayImageContextMenu_setOpen] = useState(false);
+        const [worldEditor2DMapOverlayImageContextMenu_anchorPoint, worldEditor2DMapOverlayImageContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
+        const [targetImageDetails, setTargetImageDetails] = useState<MapOverlayImageContextMenu_TargetImageDetails | undefined>(undefined);
+        const [currentMetaItem, setCurrentMetaItem] = useState<{ itemIndex: number; meta: WorldEditor2DMapImageItem["meta"] } | undefined>(undefined);
+
+        interactionRef.current = {
+            openContextMenu(anchorPoint: Vector2): void {
+                worldEditor2DMapOverlayImageContextMenu_setAnchorPoint(anchorPoint);
+                worldEditor2DMapOverlayImageContextMenu_setOpen(true);
+            },
+            setOpen(isOpen: boolean): void {
+                worldEditor2DMapOverlayImageContextMenu_setOpen(isOpen);
+            },
+            get isOpen(): boolean {
+                return worldEditor2DMapOverlayImageContextMenu_isOpen;
+            },
+            setAnchorPoint(anchorPoint: Vector2): void {
+                worldEditor2DMapOverlayImageContextMenu_setAnchorPoint(anchorPoint);
+            },
+            get anchorPoint(): Vector2 {
+                return worldEditor2DMapOverlayImageContextMenu_anchorPoint;
+            },
+            get targetImageDetails(): MapOverlayImageContextMenu_TargetImageDetails | undefined {
+                return targetImageDetails;
+            },
+            set targetImageDetails(value: MapOverlayImageContextMenu_TargetImageDetails | undefined) {
+                setTargetImageDetails(value);
+                if (value) {
+                    setCurrentMetaItem({
+                        itemIndex: value.hitTestResults.findIndex(
+                            (result: import("@canvas-tile-engine/core").HitResult<HTMLImageElement>): boolean =>
+                                result.handle === value.hitTestFirstResult.handle
+                        ),
+                        meta: value.hitTestFirstResult.item.meta,
+                    });
+                } else setCurrentMetaItem(undefined);
+            },
+        };
+
+        if (!targetImageDetails) {
+            return (
+                <ControlledMenu
+                    anchorPoint={worldEditor2DMapOverlayImageContextMenu_anchorPoint}
+                    state={worldEditor2DMapOverlayImageContextMenu_isOpen ? "open" : "closed"}
+                    direction="right"
+                    onClose={(): void => void worldEditor2DMapOverlayImageContextMenu_setOpen(false)}
+                >
+                    <MenuItem disabled>No Item Selected</MenuItem>
+                </ControlledMenu>
+            );
+        }
+
+        if (!currentMetaItem) {
+            return (
+                <ControlledMenu
+                    anchorPoint={worldEditor2DMapOverlayImageContextMenu_anchorPoint}
+                    state={worldEditor2DMapOverlayImageContextMenu_isOpen ? "open" : "closed"}
+                    direction="right"
+                    onClose={(): void => void worldEditor2DMapOverlayImageContextMenu_setOpen(false)}
+                >
+                    <MenuItem disabled>ERROR: currentMetaItem is undefined</MenuItem>
+                </ControlledMenu>
+            );
+        }
+
+        function MenuForItem({ metaItem: { itemIndex, meta } }: { metaItem: { itemIndex: number; meta: WorldEditor2DMapImageItem["meta"] } }): JSX.Element {
+            switch (meta.type) {
+                case "portal":
+                    return (
+                        <ControlledMenu
+                            anchorPoint={worldEditor2DMapOverlayImageContextMenu_anchorPoint}
+                            state={worldEditor2DMapOverlayImageContextMenu_isOpen ? "open" : "closed"}
+                            direction="right"
+                            onClose={(): void => void worldEditor2DMapOverlayImageContextMenu_setOpen(false)}
+                        >
+                            <MenuHeader>Portal</MenuHeader>
+                            <MenuItem
+                                title="Copy block coordinates to clipboard"
+                                onClick={(): void => {
+                                    clipboard.writeText(`${meta.value.TpX?.value ?? NaN} ${meta.value.TpY?.value ?? NaN} ${meta.value.TpX?.value ?? NaN}`);
+                                }}
+                            >
+                                X: {formatter.format(meta.value.TpX?.value ?? NaN)} Y: {formatter.format(meta.value.TpY?.value ?? NaN)} Z:{" "}
+                                {formatter.format(meta.value.TpZ?.value ?? NaN)}
+                                {/* <img
+                        src="resource://images/ui/glyphs/Copy_16x.png"
+                        style={{ width: "16px", imageRendering: "pixelated", marginLeft: 2 }}
+                        aria-hidden="true"
+                    /> */}
+                            </MenuItem>
+                            <MenuItem
+                                title="Copy raw portal data to clipboard"
+                                onClick={(): void => {
+                                    clipboard.writeText(JSON.stringify(meta.value));
+                                }}
+                            >
+                                Span: {formatter.format(meta.value.Span?.value ?? NaN)} Xa: {formatter.format(meta.value.Xa?.value ?? NaN)} Za:{" "}
+                                {formatter.format(meta.value.Za?.value ?? NaN)}
+                                {/* <img
+                        src="resource://images/ui/glyphs/Copy_16x.png"
+                        style={{ width: "16px", imageRendering: "pixelated", marginLeft: 2 }}
+                        aria-hidden="true"
+                    /> */}
+                            </MenuItem>
+                            {/* <MenuDivider /> */}
+
+                            {/* IDEA: Add a thing to use the same algorithms Minecraft uses to resolve what portals are linked to this one. */}
+                            {/* IDEA: Add a delete portal entry button. */}
+
+                            {(targetImageDetails?.hitTestResults.length ?? 0) > 1 && (
+                                <>
+                                    <MenuDivider />
+                                    <MenuItem
+                                        title="Switches to the details of the previous item at the clicked location"
+                                        onClick={(): void => {
+                                            if (!targetImageDetails) return;
+                                            let newItemIndex: number = Math.max(0, itemIndex - 1);
+                                            if (newItemIndex === itemIndex) return;
+                                            while (!targetImageDetails.hitTestResults[newItemIndex]) if (newItemIndex-- < 0) return;
+                                            if (!targetImageDetails.hitTestResults[newItemIndex]) return;
+                                            setCurrentMetaItem({ itemIndex: newItemIndex, meta: targetImageDetails.hitTestResults[newItemIndex]!.item.meta });
+                                            queueMicrotask((): void => void worldEditor2DMapOverlayImageContextMenu_setOpen(true));
+                                        }}
+                                        disabled={itemIndex <= 0}
+                                    >
+                                        Previous Item
+                                    </MenuItem>
+                                    <MenuItem
+                                        title="Switches to the details of the next item at the clicked location"
+                                        onClick={(): void => {
+                                            if (!targetImageDetails) return;
+                                            const resultsLength: number = targetImageDetails.hitTestResults.length;
+                                            let newItemIndex: number = Math.min(resultsLength - 1, itemIndex + 1);
+                                            if (newItemIndex === itemIndex) return;
+                                            while (!targetImageDetails.hitTestResults[newItemIndex]) if (newItemIndex++ >= resultsLength) return;
+                                            setCurrentMetaItem({ itemIndex: newItemIndex, meta: targetImageDetails.hitTestResults[newItemIndex]!.item.meta });
+                                            queueMicrotask((): void => void worldEditor2DMapOverlayImageContextMenu_setOpen(true));
+                                        }}
+                                        disabled={itemIndex >= (targetImageDetails?.hitTestResults.length ?? 0) - 1}
+                                    >
+                                        Next Item
+                                    </MenuItem>
+                                </>
+                            )}
+                        </ControlledMenu>
+                    );
+                case "player":
+                case "entity":
+                default:
+                    return (
+                        <ControlledMenu
+                            anchorPoint={worldEditor2DMapOverlayImageContextMenu_anchorPoint}
+                            state={worldEditor2DMapOverlayImageContextMenu_isOpen ? "open" : "closed"}
+                            direction="right"
+                            onClose={(): void => void worldEditor2DMapOverlayImageContextMenu_setOpen(false)}
+                        >
+                            <MenuItem disabled>ERROR: Missing handler for item type: {meta.type}</MenuItem>
+
+                            {(targetImageDetails?.hitTestResults.length ?? 0) > 1 && (
+                                <>
+                                    <MenuDivider />
+                                    <MenuItem
+                                        title="Switches to the details of the previous item at the clicked location"
+                                        onClick={(): void => {
+                                            if (!targetImageDetails) return;
+                                            let newItemIndex: number = Math.max(0, itemIndex - 1);
+                                            if (newItemIndex === itemIndex) return;
+                                            while (!targetImageDetails.hitTestResults[newItemIndex]) if (newItemIndex-- < 0) return;
+                                            if (!targetImageDetails.hitTestResults[newItemIndex]) return;
+                                            setCurrentMetaItem({ itemIndex: newItemIndex, meta: targetImageDetails.hitTestResults[newItemIndex]!.item.meta });
+                                            queueMicrotask((): void => void worldEditor2DMapOverlayImageContextMenu_setOpen(true));
+                                        }}
+                                        disabled={itemIndex <= 0}
+                                    >
+                                        Previous Item
+                                    </MenuItem>
+                                    <MenuItem
+                                        title="Switches to the details of the next item at the clicked location"
+                                        onClick={(): void => {
+                                            if (!targetImageDetails) return;
+                                            const resultsLength: number = targetImageDetails.hitTestResults.length;
+                                            let newItemIndex: number = Math.min(resultsLength - 1, itemIndex + 1);
+                                            if (newItemIndex === itemIndex) return;
+                                            while (!targetImageDetails.hitTestResults[newItemIndex]) if (newItemIndex++ >= resultsLength) return;
+                                            setCurrentMetaItem({ itemIndex: newItemIndex, meta: targetImageDetails.hitTestResults[newItemIndex]!.item.meta });
+                                            queueMicrotask((): void => void worldEditor2DMapOverlayImageContextMenu_setOpen(true));
+                                        }}
+                                        disabled={itemIndex >= (targetImageDetails?.hitTestResults.length ?? 0) - 1}
+                                    >
+                                        Next Item
+                                    </MenuItem>
+                                </>
+                            )}
+                        </ControlledMenu>
+                    );
+            }
+        }
+
+        return <MenuForItem metaItem={currentMetaItem} />;
+    }
     void cullCachedOutOfBoundsImageBitmaps;
     void drawCachedChunks;
     void drawCachedChunks_v2;
@@ -5024,6 +5287,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 <LayerContextMenu interactionRef={layerContextMenuInteractionRef} />
                 <DimensionSwitcherContextMenu interactionRef={dimensionSwitcherContextMenuInteractionRef} />
                 <ChunkContextMenu interactionRef={chunkContextMenuInteractionRef} />
+                <MapOverlayImageContextMenu interactionRef={mapOverlayImageContextMenuInteractionRef} />
                 {/* <ControlledMenu
                 anchorPoint={worldEditor2DCanvasContextMenu_anchorPoint}
                 state={worldEditor2DCanvasContextMenu_isOpen ? "open" : "closed"}
@@ -5145,11 +5409,41 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             engine.goCoords(centerPosition.x, centerPosition.y, 0);
                         }
                     }}
-                    onClick={(coords) => {
+                    onClick={(coords, _mouse, client) => {
                         // IDEA: Maybe implement selection or something when a modifier key is held down, or a toggle is active on mobile.
                         // IDEA: Maybe when clicking a chunk, it should be selected and have a button group at the top for actions for it, on maybe it should just open the context menu.
-                        // DEBUG
-                        console.debug("Clicked:", coords.snapped, { x: Math.floor(coords.raw.x * 16), y: Math.floor(coords.raw.y * 16) }, coords.raw);
+                        // console.debug("Clicked:", coords.snapped, { x: Math.floor(coords.raw.x * 16), y: Math.floor(coords.raw.y * 16) }, coords.raw);
+                        if (!engineRef.current) return;
+                        if (!mapOverlayImageContextMenuInteractionRef.current) return;
+                        function checkIsSupportedHitTestResult(
+                            result: import("@canvas-tile-engine/core").HitResult<HTMLImageElement>
+                        ): result is import("@canvas-tile-engine/core").HitResult<HTMLImageElement> & { item: WorldEditor2DMapImageItem } {
+                            if (!("meta" in result.item)) return false;
+                            return true;
+                        }
+                        const hitTestFirstResult: import("@canvas-tile-engine/core").HitResult<HTMLImageElement> | undefined = engineRef.current.hitTestFirst(
+                            coords.raw
+                        );
+                        const hitTestResults: (import("@canvas-tile-engine/core").HitResult<HTMLImageElement> & { item: WorldEditor2DMapImageItem })[] =
+                            engineRef.current.hitTest(coords.raw).filter(checkIsSupportedHitTestResult);
+                        if (!hitTestFirstResult) return;
+                        if (!checkIsSupportedHitTestResult(hitTestFirstResult)) return;
+                        reorderHitTestResults: {
+                            const indexInResultsArray: number = hitTestResults.findIndex(
+                                (result: import("@canvas-tile-engine/core").HitResult<HTMLImageElement>): boolean => result.handle === hitTestFirstResult.handle
+                            );
+                            if (indexInResultsArray <= 0) break reorderHitTestResults;
+                            hitTestResults.push(...hitTestResults.splice(0, indexInResultsArray));
+                        }
+                        mapOverlayImageContextMenuInteractionRef.current.targetImageDetails = {
+                            // block: { x: Math.floor(coords.raw.x * 16), z: Math.floor(coords.raw.y * 16) },
+                            // chunk: { x: coords.snapped.x, z: coords.snapped.y },
+                            dimension: props.dataStorageObject.worldEditor2D.dimension,
+                            rawPosition: coords.raw,
+                            hitTestFirstResult,
+                            hitTestResults,
+                        };
+                        mapOverlayImageContextMenuInteractionRef.current.openContextMenu({ x: client.raw.x, y: client.raw.y });
                     }}
                     onRightClick={(coords, _mouse, client) => {
                         // TODO: Make this work on long press too (on mobile and devices with touch screens only). Or maybe add a modifier key button for mobile where it is a toggle and when it is on, tapping/clicking opens this context menu, maybe the button should be overlayed on top of the map.

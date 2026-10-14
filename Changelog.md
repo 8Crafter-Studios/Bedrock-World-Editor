@@ -57,6 +57,7 @@
 -   The 2D world map can now render chunks from `chunks.dat`.
 -   The 2D world map can determine the world border from `chunks.dat` is the world doesn't have a LevelDB (`db` folder).
 -   Added an `Open chunks.dat entry` context menu option to the 2D world map. It is only visible when `chunks.dat` is present.
+-   Portals on the 2D world map can now be clicked on to see details about them.
 -   Added hover and active tints to the refresh world list button on the start screen.
 -   Added focus tints to many buttons throughout the app so it is now possible to see if a button is focused with tab.
 -   The Show Grid Lines option in the 2D world map has been changed from a toggle to having an "Always", "With Threshold", and "Never" option. The "With Threshold" option allows you to specify a threshold at which the grid lines are shown. Ehen the zoom level is at or above that threshold the grid lines are shown.
