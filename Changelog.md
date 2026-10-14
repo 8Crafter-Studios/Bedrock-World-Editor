@@ -137,6 +137,7 @@
 -   Saving a file sub-tab that has unsaved changes no longer maks the parent tab as not having unsaved changes in copy until save mode if that file was the only thing modified.
 -   Discarding the changes of a file sub-tab no longer marks the parent tab as not having unsaved changes in copy until save mode when the file the file has unsaved changes written to disk in the copy of the files and that file was the only thing modified.
 -   Fixed a bug where portals on the 2D world map were offset 7.5 blocks to the right and down from their actual position in the world.
+-   The keys in the `SubChunkPrefix` submenu of the `Open LevelDB entry...` submenu of the context menu of the 2D world map are now sorted in ascending order by their subchunk prefix.
 -   Miscellaneous typo fixes.
 
 ## Performance Improvements
@@ -555,7 +556,7 @@
 
 ## Critical Fixes
 
--   Fixed a bug where the serializer for the `Data3D` content type deleted all empty sub-chunks, resulting in sub-chunks that were supposed to have empty sub-chunks in between them all being moved to the bottom of the world without any empty gaps in between them, and also resulting in chunks with larger sub-chunk counts having their sub-chunk counts culled.
+-   Fixed a bug where the serializer for the `Data3D` content type deleted all empty subchunks, resulting in subchunks that were supposed to have empty subchunks in between them all being moved to the bottom of the world without any empty gaps in between them, and also resulting in chunks with larger subchunk counts having their subchunk counts culled.
 
 ## Additions
 
@@ -594,8 +595,8 @@
 
 ## Fixes
 
--   When applying biomes changes for the WorldEdit Bedrock integration, biomes can now be set for sub-chunks with no biome data.
--   When applying biomes changes for the WorldEdit Bedrock integration, biomes can now be set for missing sub-chunks if they are not out of the bounds defined in the LevelChunkMetaDataDictionary (biomes can still be set for existing sub-chunks that are out of bounds if they are too far up, if they are below the minimum height then they cannot be set, like before) (worlds which do not have a LevelChunkMetaDataDictionary will not be able to apply changes to missing sub-chunks).
+-   When applying biomes changes for the WorldEdit Bedrock integration, biomes can now be set for subchunks with no biome data.
+-   When applying biomes changes for the WorldEdit Bedrock integration, biomes can now be set for missing subchunks if they are not out of the bounds defined in the LevelChunkMetaDataDictionary (biomes can still be set for existing subchunks that are out of bounds if they are too far up, if they are below the minimum height then they cannot be set, like before) (worlds which do not have a LevelChunkMetaDataDictionary will not be able to apply changes to missing subchunks).
 -   Fixed a bug where you could not export the binary data of sub-tabs that threw an error when parsing their data.
 
 # v1.0.0-beta.27
@@ -1063,7 +1064,7 @@
 
 ## Fixes
 
--   Fixed a bug where the display names of `SubChunkPrefix` keys did not include the sub-chunk index if it was 0.
+-   Fixed a bug where the display names of `SubChunkPrefix` keys did not include the subchunk index if it was 0.
 -   Fixed a bug where the "Repair Forced World Corruption" tab did not show up when forced world corruption was detected.
 -   Fixed a bug where editors using Monaco Editor (ex. the Prismarine-NBT and SNBT editors) would be completely blank if the tab's data was not loaded or missing, now they instead display a read-only editor with the text "Data is not loaded.".
 -   Fixed a bug where the map previews in the maps tab had a bunch of extra unnecessary whitespace around them, that made you have to scroll for too long to reach the bottom to access the page navigation buttons.

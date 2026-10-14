@@ -4461,7 +4461,22 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                         const keys: Buffer[] = props.tab.cachedDBKeys[contentType].filter((existingKey: Buffer): boolean =>
                             existingKey.subarray(0, key.length).equals(key)
                         );
-                        if (keys.length) existingKeys.push([keys, contentType]);
+                        const keySubChunkIndices: number[] = keys.map((key: Buffer): number => {
+                            try {
+                                const indices = getChunkKeyIndices(key);
+                                if ("subChunkIndex" in indices) return indices.subChunkIndex;
+                            } catch {}
+                            return NaN;
+                        });
+                        if (keys.length) {
+                            existingKeys.push([
+                                keys
+                                    .map((key: Buffer, index: number): [key: Buffer, subChunkIndex: number] => [key, keySubChunkIndices[index]!])
+                                    .sort((a: [key: Buffer, subChunkIndex: number], b: [key: Buffer, subChunkIndex: number]): number => a[1] - b[1])
+                                    .map(([key, _subChunkIndex]: [key: Buffer, subChunkIndex: number]): Buffer => key),
+                                contentType,
+                            ]);
+                        }
                         break;
                     }
                     case "JigsawStructureBlueprint": {
