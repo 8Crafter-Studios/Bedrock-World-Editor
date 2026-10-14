@@ -136,6 +136,7 @@
 -   Fixed bugs where some loading screens were positioned at the top of the screen rather than the center and needed to be scrolled to have their message visible.
 -   Saving a file sub-tab that has unsaved changes no longer maks the parent tab as not having unsaved changes in copy until save mode if that file was the only thing modified.
 -   Discarding the changes of a file sub-tab no longer marks the parent tab as not having unsaved changes in copy until save mode when the file the file has unsaved changes written to disk in the copy of the files and that file was the only thing modified.
+-   Fixed a bug where portals on the 2D world map were offset 7.5 blocks to the right and down from their actual position in the world.
 -   Miscellaneous typo fixes.
 
 ## Performance Improvements

@@ -3877,8 +3877,9 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             if (portal.TpZ === undefined) continue;
             portalImages.push({
                 img: MAP_ICONS.portalIconImage,
-                x: Math.floor((portal.TpX.value / 16) * currentScale) / currentScale,
-                y: Math.floor((portal.TpZ.value / 16) * currentScale) / currentScale,
+                // The `- 7.5` fixes portals not being positioned correctly on the map.
+                x: Math.floor(((portal.TpX.value - 7.5) / 16) * currentScale) / currentScale,
+                y: Math.floor(((portal.TpZ.value - 7.5) / 16) * currentScale) / currentScale,
                 size: 30 / currentScale,
                 meta: {
                     type: "portal",
