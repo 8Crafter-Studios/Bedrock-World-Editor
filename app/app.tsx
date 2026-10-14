@@ -31,7 +31,7 @@ import NoneTab from "./tabs/none";
 import TickingAreasTab from "./tabs/tickingAreas";
 import StructuresTab from "./tabs/structures";
 import FunTab from "./tabs/fun";
-import { ControlledMenu, MenuDivider, MenuItem } from "@szhsin/react-menu";
+import { ControlledMenu, MenuDivider, MenuItem, SubMenu, type ClickEvent, type MenuDirection } from "@szhsin/react-menu";
 import { APP_DATA_FOLDER_PATH } from "../src/utils/URLs";
 import TicksTab from "./tabs/ticks";
 import { readdir, readFile, stat } from "node:fs/promises";
@@ -45,6 +45,7 @@ import { normalizePath } from "../src/utils/pathUtils";
 import Notice from "./components/Notice";
 import WorldEditorTab from "./tabs/worldEditor";
 import PacksTab from "./tabs/packs";
+import type { OpenDialogReturnValue } from "electron";
 // import { Renderer3D } from "./3DRendererV1/3DRenderer";
 const mime = require("mime-types") as typeof import("mime-types");
 
@@ -1287,6 +1288,215 @@ export function StartScreen(): JSX.SpecificElement<"div"> {
  */
 export function StartScreenContents(): JSX.Element {
     const forceTriggerUpdateRef: RefObject<() => Promise<void>> = useRef<() => Promise<void>>(null);
+    const [openMenu_isOpen, openMenu_setOpen] = useState(false);
+    const [openMenu_anchorPoint, openMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
+    const [openMenu_direction, openMenu_setDirection] = useState<MenuDirection>("top");
+    /**
+     * Represents an option that shows in the list when you click the "+" button on the right of the tab bar.
+     */
+    interface PopupTab {
+        icon: string;
+        name: string;
+        resolution: number;
+        onClick(this: void, event: TargetedMouseEvent<HTMLDivElement> | ClickEvent): Promise<void> | void;
+    }
+    const popupTabs: PopupTab[] = (
+        [
+            {
+                icon: "resource://images/ui/glyphs/Folder-Closed.png",
+                name: "World Folder",
+                resolution: 12,
+                async onClick(_event: TargetedMouseEvent<HTMLDivElement> | ClickEvent): Promise<void> {
+                    $("#add-tab-popup-menu").hide();
+                    // IDEA: If the user holds ALT while clicking the button, have it prompt them to select what mode to open the world folders in.
+                    const openFolderResult: OpenDialogReturnValue = await dialog.showOpenDialog(getCurrentWindow(), {
+                        // IDEA: Implement functionality to remember the folder that the last opened world folder was located in to default to that folder.
+                        buttonLabel: "Open",
+                        message: "Select world folders to open.",
+                        properties: ["openDirectory", "showHiddenFiles", "treatPackageAsDirectory", "multiSelections"],
+                        title: "Open World Folders",
+                    });
+                    if (openFolderResult.canceled) return;
+                    const validFilePaths: string[] = [];
+                    const invalidFilePaths: string[] = [];
+                    openFolderResult.filePaths.forEach((filePath: string): void => {
+                        if (existsSync(path.join(filePath, "level.dat"))) validFilePaths.push(filePath);
+                        else invalidFilePaths.push(filePath);
+                    });
+                    validFilePaths.forEach(async (folderPath: string): Promise<void> => {
+                        tabManager.openTab({
+                            icon:
+                                existsSync(path.join(folderPath, "world_icon.jpeg")) ?
+                                    path.join(folderPath, "world_icon.jpeg")
+                                :   globSync(path.join(folderPath, "world_icon.*"))[0],
+                            name:
+                                (await (async (): Promise<string | undefined> => {
+                                    try {
+                                        return (await entryContentTypeToFormatMap.LevelDat.parse(readFileSync(path.join(folderPath, "level.dat")))).value
+                                            .LevelName?.value;
+                                    } catch (e) {
+                                        console.error("Error while reading level.dat:", e, "folderPath:", folderPath);
+                                        try {
+                                            if (existsSync(path.join(folderPath, "level.dat_old"))) {
+                                                return (await entryContentTypeToFormatMap.LevelDat.parse(readFileSync(path.join(folderPath, "level.dat_old"))))
+                                                    .value.LevelName?.value;
+                                            }
+                                            console.warn("Unable to load details for world; level.dat_old not found. folderPath:", folderPath);
+                                        } catch (e) {
+                                            console.error("Error while reading level.dat_old:", e, "folderPath:", folderPath);
+                                        }
+                                    }
+                                    return undefined;
+                                })()) ??
+                                (existsSync(path.join(folderPath, "levelname.txt")) ?
+                                    readFileSync(path.join(folderPath, "levelname.txt"), { encoding: "utf-8" })
+                                :   "Unknown Name"),
+                            path: folderPath,
+                            type: "world",
+                            // TODO: Add support for detecting if this world folder is actually isolated or not.
+                        });
+                    });
+                    if (invalidFilePaths.length) {
+                        void dialog.showMessageBox(getCurrentWindow(), {
+                            type: "error",
+                            title: `Invalid World Folder${invalidFilePaths.length === 1 ? "" : "s"}`,
+                            message: `The following ${invalidFilePaths.length} world folder${invalidFilePaths.length === 1 ? "" : "s"} could not be opened as ${invalidFilePaths.length === 1 ? "it is" : "they are"} missing a level.dat file:`,
+                            detail: `${invalidFilePaths.join("\n")}`,
+                            buttons: ["OK"],
+                            noLink: true,
+                        });
+                    }
+                },
+            },
+            {
+                icon: "resource://images/ui/glyphs/icon_bookshelf.png",
+                name: "LevelDB Folder",
+                resolution: 16,
+                async onClick(_event: TargetedMouseEvent<HTMLDivElement> | ClickEvent): Promise<void> {
+                    $("#add-tab-popup-menu").hide();
+                    // IDEA: If the user holds ALT while clicking the button, have it prompt them to select what mode to open the LevelDB folders in.
+                    const openFolderResult: OpenDialogReturnValue = await dialog.showOpenDialog(getCurrentWindow(), {
+                        // IDEA: Implement functionality to remember the folder that the last opened LevelDB folder was located in to default to that folder.
+                        buttonLabel: "Open",
+                        message: "Select LevelDB folders to open.",
+                        properties: ["openDirectory", "showHiddenFiles", "treatPackageAsDirectory", "multiSelections"],
+                        title: "Open LevelDB Folders",
+                    });
+                    if (openFolderResult.canceled) return;
+                    const validFilePaths: string[] = [];
+                    // const invalidFilePaths: string[] = [];
+                    // TODO: Implement a way to check if a folder is a valid LevelDB.
+                    openFolderResult.filePaths.forEach((filePath: string): void => {
+                        /* if (existsSync(path.join(filePath, "level.dat"))) */ validFilePaths.push(filePath);
+                        // else invalidFilePaths.push(filePath);
+                    });
+                    validFilePaths.forEach((folderPath: string): void => {
+                        tabManager.openTab({
+                            icon: "resource://images/ui/glyphs/icon_bookshelf.png", // TODO: Add supports for using the custom icon set for the folder if it exists.
+                            name: path.basename(folderPath), // TODO: Implement something to get a better name for the tab (as it will often times just be `db`).
+                            path: folderPath,
+                            type: "leveldb",
+                        });
+                    });
+                    // if (invalidFilePaths.length) {
+                    //     void dialog.showMessageBox(getCurrentWindow(), {
+                    //         type: "error",
+                    //         title: `Invalid World Folder${invalidFilePaths.length === 1 ? "" : "s"}`,
+                    //         message: `The following ${invalidFilePaths.length} world folder${invalidFilePaths.length === 1 ? "" : "s"} could not be opened as ${invalidFilePaths.length === 1 ? "it is" : "they are"} missing a level.dat file:`,
+                    //         detail: `${invalidFilePaths.join("\n")}`,
+                    //         buttons: ["OK"],
+                    //         noLink: true,
+                    //     });
+                    // }
+                },
+            },
+            // IDEA: Add support for editing `.mcworld` and `.mctemplate` files, and maybe even selecting a `.mcaddon` file that contains worlds to open all of those worlds at once.
+            {
+                icon: "resource://images/ui/glyphs/icon_NBT.png",
+                name: "NBT File",
+                resolution: 16,
+                async onClick(_event: TargetedMouseEvent<HTMLDivElement> | ClickEvent): Promise<void> {
+                    $("#add-tab-popup-menu").hide();
+                    // IDEA: If the user holds ALT while clicking the button, have it prompt them to select what mode to open the NBT files in.
+                    const openFileResult: OpenDialogReturnValue = await dialog.showOpenDialog(getCurrentWindow(), {
+                        // IDEA: Implement functionality to remember the folder that the last opened NBT file was located in to default to that folder.
+                        buttonLabel: "Open",
+                        message: "Select NBT files to open.",
+                        filters: [
+                            { name: "NBT", extensions: ["nbt", "mcstructure", "schem", "schematic", "bin", "snbt", "hex", "dat"] },
+                            { name: "All", extensions: ["*"] },
+                        ],
+                        properties: ["openFile", "showHiddenFiles", "treatPackageAsDirectory", "multiSelections"],
+                        title: "Open NBT Files",
+                    });
+                    if (openFileResult.canceled) return;
+                    openFileResult.filePaths.forEach((filePath: string): void => {
+                        tabManager.openTab({
+                            icon: undefined, // TODO: Add an icon for NBT tabs, and add support for using the custom icon set for the file if it exists.
+                            name: path.basename(filePath),
+                            path: filePath,
+                            type: "nbt",
+                        });
+                    });
+                },
+            },
+            {
+                icon: "resource://images/ui/glyphs/Data-Empty.png",
+                name: "JSON File",
+                resolution: 12,
+                async onClick(_event: TargetedMouseEvent<HTMLDivElement> | ClickEvent): Promise<void> {
+                    $("#add-tab-popup-menu").hide();
+                    // IDEA: If the user holds ALT while clicking the button, have it prompt them to select what mode to open the JSON files in.
+                    const openFileResult: OpenDialogReturnValue = await dialog.showOpenDialog(getCurrentWindow(), {
+                        // IDEA: Implement functionality to remember the folder that the last opened JSON file was located in to default to that folder.
+                        buttonLabel: "Open",
+                        message: "Select NBT files to open.",
+                        filters: [
+                            { name: "JSON", extensions: ["json", "jsonc"] }, // TODO: Add JSONL support.
+                            { name: "All", extensions: ["*"] },
+                        ],
+                        properties: ["openFile", "showHiddenFiles", "treatPackageAsDirectory", "multiSelections"],
+                        title: "Open NBT Files",
+                    });
+                    if (openFileResult.canceled) return;
+                    openFileResult.filePaths.forEach((filePath: string): void => {
+                        tabManager.openTab({
+                            icon: undefined, // TODO: Add an icon for JSON tabs, and add support for using the custom icon set for the file if it exists.
+                            name: path.basename(filePath),
+                            path: filePath,
+                            type: "json",
+                        });
+                    });
+                },
+            },
+            {
+                icon: "resource://images/ui/glyphs/Data-Empty.png",
+                name: "Raw File",
+                resolution: 12,
+                async onClick(_event: TargetedMouseEvent<HTMLDivElement> | ClickEvent): Promise<void> {
+                    $("#add-tab-popup-menu").hide();
+                    // IDEA: If the user holds ALT while clicking the button, have it prompt them to select what mode to open the binary files in.
+                    const openFileResult: OpenDialogReturnValue = await dialog.showOpenDialog(getCurrentWindow(), {
+                        // IDEA: Implement functionality to remember the folder that the last opened binary file was located in to default to that folder.
+                        buttonLabel: "Open",
+                        message: "Select NBT files to open.",
+                        filters: [{ name: "All", extensions: ["*"] }],
+                        properties: ["openFile", "showHiddenFiles", "treatPackageAsDirectory", "multiSelections"],
+                        title: "Open NBT Files",
+                    });
+                    if (openFileResult.canceled) return;
+                    openFileResult.filePaths.forEach((filePath: string): void => {
+                        tabManager.openTab({
+                            icon: undefined, // TODO: Add an icon for binary tabs, and add support for using the custom icon set for the file if it exists.
+                            name: path.basename(filePath),
+                            path: filePath,
+                            type: "binary",
+                        });
+                    });
+                },
+            },
+        ] as const satisfies (PopupTab | false | undefined)[]
+    ).filter((tab: PopupTab | false | undefined): tab is PopupTab => !!tab);
     return (
         <>
             <div
@@ -1318,9 +1528,36 @@ export function StartScreenContents(): JSX.Element {
                         );
                     }}
                 />
-                <div style="flex: 1; overflow: auto; line-height: 1.25em;">
-                    Bedrock World Editor v{VERSION_DISP_SHORT}
+                <div style="flex: 1; overflow: auto; line-height: 1.25em; text-wrap: nowrap;">
+                    Bedrock World Editor <wbr />v{VERSION_DISP_SHORT}
                     {process.env.NODE_ENV === "development" ? "*" : ""}
+                </div>
+                <div style="flex: none; overflow: auto; line-height: 1.25em; display: flex; flex-direction: row; height: fit-content; margin: 5px; gap: 5px; height: -webkit-fill-available; float: right;">
+                    {!$("tab-bar").length && !tabManager.openTabs.length && (
+                        <div class="mainMenuAppInfoNavbarRightButton" style="float: right; height: -webkit-fill-available; align-content: center;">
+                            <a
+                                style="padding: 8px; display: flex;"
+                                onClick={(event: TargetedMouseEvent<HTMLAnchorElement>): void => {
+                                    openMenu_setDirection("bottom");
+                                    const boundingClientRect: DOMRect = event.currentTarget.getBoundingClientRect();
+                                    openMenu_setAnchorPoint({ x: boundingClientRect.left, y: boundingClientRect.bottom });
+                                    openMenu_setOpen(true);
+                                }}
+                            >
+                                <img aria-hidden="true" class="piximg" src="resource://images/ui/glyphs/icon-plus.png" />
+                            </a>
+                        </div>
+                    )}
+                    <div class="mainMenuAppInfoNavbarRightButton" style="float: right; height: -webkit-fill-available; align-content: center;">
+                        <a
+                            style="padding: 12px; display: flex;"
+                            onClick={(_event: TargetedMouseEvent<HTMLAnchorElement>): void => {
+                                tabManager.switchTab("settings");
+                            }}
+                        >
+                            <img aria-hidden="true" class="piximg" src="resource://images/ui/glyphs/config.png" />
+                        </a>
+                    </div>
                 </div>
             </div>
             <div
@@ -1357,9 +1594,63 @@ export function StartScreenContents(): JSX.Element {
                     <br />v{VERSION_DISP_SHORT}
                     {process.env.NODE_ENV === "development" ? "*" : ""}
                 </div>
+                <div style="flex: none; overflow: auto; line-height: 1.25em; display: flex; flex-direction: column; height: fit-content; margin: 5px; gap: 5px; width: -webkit-fill-available;">
+                    <button
+                        type="button"
+                        class="mainMenuAppInfoSidebarBottomButton"
+                        style="flex: 1; overflow: auto; line-height: 1.25em; float: end;"
+                        onClick={(event: TargetedMouseEvent<HTMLButtonElement>): void => {
+                            const boundingClientRect: DOMRect = event.currentTarget.getBoundingClientRect();
+                            openMenu_setAnchorPoint({ x: boundingClientRect.x, y: boundingClientRect.y });
+                            openMenu_setOpen(true);
+                        }}
+                    >
+                        Open...
+                    </button>
+                    <button
+                        type="button"
+                        class="mainMenuAppInfoSidebarBottomButton"
+                        style="flex: 1; overflow: auto; line-height: 1.25em; float: end;"
+                        onClick={(_event: TargetedMouseEvent<HTMLButtonElement>): void => {
+                            tabManager.switchTab("settings");
+                        }}
+                    >
+                        Settings
+                    </button>
+                </div>
             </div>
             <div id="world-selector-container" style="flex: 1; overflow: auto; min-width: 300px; min-height: 300px;">
                 <WorldSelector forceTriggerUpdateRef={forceTriggerUpdateRef} />
+            </div>
+            <div title="" style={{ display: "contents", cursor: "auto" }}>
+                <ControlledMenu
+                    anchorPoint={openMenu_anchorPoint}
+                    state={openMenu_isOpen ? "open" : "closed"}
+                    direction={openMenu_direction}
+                    onClose={(): void => void openMenu_setOpen(false)}
+                >
+                    {popupTabs.map(
+                        (tab: PopupTab): JSX.Element => (
+                            <MenuItem onClick={tab.onClick}>
+                                <div style="display: inline-block; vertical-align: middle; width: 16px; height: 16px; position: absolute; left: 5px; top: 5px;">
+                                    <img
+                                        aria-hidden="true"
+                                        src={tab.icon}
+                                        class="nsel ndrg piximg"
+                                        style={`display: inline-block; width: auto; height: ${16 - (16 % tab.resolution)}px; margin: ${
+                                            (16 % tab.resolution) / 2
+                                        }px 0;`}
+                                    />
+                                </div>
+                                {tab.name}
+                            </MenuItem>
+                        )
+                    )}
+                    <MenuDivider />
+                    <SubMenu label="Advanced..." disabled>
+                        {/* TODO */}
+                    </SubMenu>
+                </ControlledMenu>
             </div>
         </>
     );

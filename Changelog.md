@@ -81,6 +81,9 @@
 -   If a world does not have a `lastOpenedWithVersion` field in `level.dat`, the world selection menu will now display the possible version range of the world based on the `StorageVersion` field of `level.dat` instead of `null`, if the `StorageVersion` field is missing it will still display `null`.
 -   The reload world list button now flashes red if a fatal error occurrs while reloading the world list.
 -   Added a better screen for when the "Repair Forced World Corruption" tab does not detect any forced world corruption.
+-   Added an "Open..." button to the start screen (it appears as a "+" on the mobile friendly layout).
+-   Added a "Settings" button to the start screen (it appears as a config icon on the mobile friendly layout).
+-   Added an "Advanced..." option placeholder to the add tab popup menu (it is currently not functional).
 
 ## Changes
 

@@ -251,6 +251,22 @@ export default function TabBar(): JSX.Element {
                     });
                 },
             },
+            {
+                icon: "resource://images/ui/glyphs/debug-icon.png",
+                name: "Advanced...",
+                resolution: 12,
+                // eslint-disable-next-line @typescript-eslint/require-await -- TEMP
+                async onClick(_event: TargetedMouseEvent<HTMLDivElement>): Promise<void> {
+                    void dialog.showMessageBox({
+                        type: "error",
+                        title: "Menu Not Implemented",
+                        message: "This menu is not implemented yet.",
+                        buttons: ["Okay"],
+                        noLink: true,
+                    });
+                    // TODO
+                },
+            },
         ] as const satisfies (PopupTab | false | undefined)[]
     ).filter((tab: PopupTab | false | undefined): tab is PopupTab => !!tab);
     /**

@@ -1665,6 +1665,78 @@ select.search-mode-dropdown:open::picker-icon {
     text-align: right;
 }
 
+.mainMenuAppInfoSidebarBottomButton {
+    padding: 5px;
+    /* background-color: #87ceeb44; */
+    background-color: #87ceeb00;
+    color: var(--text-color);
+    border: none;
+    border-radius: 0;
+    margin: 0;
+    cursor: pointer;
+
+    -webkit-user-select: none;
+    /* Safari */
+    -ms-user-select: none;
+    -moz-user-select: none;
+    /* IE 10 and IE 11 */
+    user-select: none;
+    /* Standard syntax */
+    -webkit-user-drag: none;
+}
+
+.mainMenuAppInfoSidebarBottomButton:not(:disabled):active {
+    /* background-color: #87ceeb88; */
+    background-color: #87ceeb44;
+}
+
+.mainMenuAppInfoSidebarBottomButton:not(:disabled):hover:not(:active),
+.mainMenuAppInfoSidebarBottomButton:not(:disabled):focus-visible:not(:active) {
+    /* background-color: #87ceeb66; */
+    background-color: #87ceeb22;
+}
+
+.mainMenuAppInfoSidebarBottomButton:disabled {
+    filter: contrast(0.5) brightness(0.5);
+    cursor: not-allowed;
+}
+
+.mainMenuAppInfoNavbarRightButton {
+    padding: 0;
+    /* background-color: #87ceeb44; */
+    background-color: #87ceeb00;
+    color: var(--text-color);
+    border: none;
+    border-radius: 0;
+    margin: 0;
+    cursor: pointer;
+
+    -webkit-user-select: none;
+    /* Safari */
+    -ms-user-select: none;
+    -moz-user-select: none;
+    /* IE 10 and IE 11 */
+    user-select: none;
+    /* Standard syntax */
+    -webkit-user-drag: none;
+}
+
+.mainMenuAppInfoNavbarRightButton:not(:disabled):active {
+    /* background-color: #87ceeb88; */
+    background-color: #87ceeb44;
+}
+
+.mainMenuAppInfoNavbarRightButton:not(:disabled):hover:not(:active),
+.mainMenuAppInfoNavbarRightButton:not(:disabled):focus-visible:not(:active) {
+    /* background-color: #87ceeb66; */
+    background-color: #87ceeb22;
+}
+
+.mainMenuAppInfoNavbarRightButton:disabled {
+    filter: contrast(0.5) brightness(0.5);
+    cursor: not-allowed;
+}
+
 .reloadWorldListButton:hover,
 .reloadWorldListButton:focus-visible {
     filter: brightness(1.2);
