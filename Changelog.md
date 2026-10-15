@@ -128,6 +128,7 @@
 -   Fixed a bug where a scroll bar was sometimes visible on the top left hover info overlay in the 2D world map.
 -   Fixed a bug where the "Nether Chunk" and "Nether Coordinates" in the top left hover info overlay in the 2D world map were not shown when the `NetherScale` field was not present in the `level.dat` file.
 -   Fixed a bug where the order of pinned sub-tabs did not automatically save when a pinned sub-tab was moved.
+-   Fixed a bug where the last active pinned sub-tab did not automatically save its active state.
 -   Fixed a bug where the height range on some old worlds was not detected in some old worlds.
 -   Non-LevelDB content types are no longer shown in the "Cached DB Keys" list in the "Tab" debug overlay.
 -   Unset player spawn points are now properly detected as such in Minecraft versions prior to beta 1.16.0.57.

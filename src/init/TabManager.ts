@@ -786,6 +786,7 @@ namespace exports {
             [worldPath: string]: {
                 target: TabManagerSubTab["target"];
                 contentType: MCEntryContentType;
+                formatData?: TabManagerSubTab["formatData"] | undefined;
                 name: string;
                 icon?: string | undefined;
                 specialTabID?: TabManagerTabGenericSubTabID | undefined;
@@ -1461,6 +1462,7 @@ namespace exports {
                 const pinnedTabsData = JSON.parse(
                     readFileSync(path.join(APP_DATA_FOLDER_PATH, "pinned_subtabs.json"), "utf-8"),
                     (_key: string, value: unknown): any => {
+                        // BUG: This doesn't preserve the parse and serialize methods of custom formats.
                         if (typeof value === "object" && value && "type" in value && value.type === "Buffer" && "data" in value && Array.isArray(value.data)) {
                             return Buffer.from(value.data);
                         }
@@ -1477,19 +1479,62 @@ namespace exports {
             if (this.type !== "world" && this.type !== "leveldb") return;
             let pinnedTabsData: PinnedSubTabsJSONData = {};
             if (existsSync(path.join(APP_DATA_FOLDER_PATH, "pinned_subtabs.json"))) {
-                pinnedTabsData = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "pinned_subtabs.json"), "utf-8")) as PinnedSubTabsJSONData;
+                pinnedTabsData = JSON.parse(
+                    readFileSync(path.join(APP_DATA_FOLDER_PATH, "pinned_subtabs.json"), "utf-8"),
+                    (_key: string, value: unknown): any => {
+                        if (typeof value === "object" && value && "type" in value && value.type === "Buffer" && "data" in value && Array.isArray(value.data)) {
+                            return Buffer.from(value.data);
+                        }
+                        return value;
+                    }
+                ) as PinnedSubTabsJSONData;
             }
             pinnedTabsData[this.type] ??= {};
-            pinnedTabsData[this.type]![this.path] = this.openTabs
-                .filter((tab): boolean => tab.isPinned)
-                .map((tab): NonNullable<PinnedSubTabsJSONData[keyof PinnedSubTabsJSONData]>[string][number] => ({
+            const currentPinnedTabs = this.openTabs.filter((tab): boolean => tab.isPinned);
+            const hasCurrentActivePinnedTab: boolean = currentPinnedTabs.includes(this.selectedTab as never);
+            const wasLastPinnedTab = (tab: TabManagerSubTab): boolean => {
+                const lastPinnedTabs = pinnedTabsData[this.type as "world" | "leveldb"]![this.path];
+                if (!lastPinnedTabs) return false;
+                return (
+                    lastPinnedTabs.find((tabData: NonNullable<PinnedSubTabsJSONData[keyof PinnedSubTabsJSONData]>[string][number]): boolean => {
+                        if (tabData.target.type !== tab.target.type) return false;
+                        if (tabData.specialTabID !== tab.specialTabID) return false;
+                        function fakeAssertTargetTypeMatches<T extends TabManagerSubTab["target"]>(a: TabManagerSubTab["target"], b: T): asserts a is T {
+                            void a;
+                            void b;
+                        }
+                        switch (tabData.target.type) {
+                            case "File":
+                                fakeAssertTargetTypeMatches(tab.target, tabData.target);
+                                if (tabData.target.path !== tab.target.path) return false;
+                                break;
+                            case "LevelDBEntry":
+                                fakeAssertTargetTypeMatches(tab.target, tabData.target);
+                                if (!tabData.target.key.equals(tab.target.key)) return false;
+                                break;
+                            case "ChunksDatEntry":
+                                fakeAssertTargetTypeMatches(tab.target, tabData.target);
+                                if (tabData.target.chunk.x !== tab.target.chunk.x || tabData.target.chunk.z !== tab.target.chunk.z) return false;
+                                break;
+                            default:
+                                return false;
+                        }
+                        return true;
+                    })?.active === true
+                );
+            };
+            pinnedTabsData[this.type]![this.path] = currentPinnedTabs.map(
+                (tab): NonNullable<PinnedSubTabsJSONData[keyof PinnedSubTabsJSONData]>[string][number] => ({
                     target: tab.target,
                     contentType: tab.contentType,
+                    // BUG: This doesn't preserve the parse and serialize methods of custom formats.
+                    formatData: tab.formatData,
                     name: tab.name,
                     icon: tab.icon,
                     specialTabID: tab.specialTabID,
-                    active: this.selectedTab === tab || undefined,
-                }));
+                    active: (hasCurrentActivePinnedTab ? this.selectedTab === tab : wasLastPinnedTab(tab)) || undefined,
+                })
+            );
             writeFileSync(path.join(APP_DATA_FOLDER_PATH, "pinned_subtabs.json"), JSON.stringify(pinnedTabsData));
         }
         public isModified(): boolean {
@@ -1843,6 +1888,7 @@ namespace exports {
             const previousTab: TabManagerSubTab | TabManagerTabGenericSubTabID | null = this.selectedTab;
             this.selectedTab = tab;
             this.emit("switchTab", { previousTab, newTab: tab });
+            if (tab instanceof TabManagerSubTab && tab.isPinned) this.savePinnedTabsList();
         }
         // FIXME: If the LevelDB is corrupted and the corruption is detected AFTER opening, for example by refreshCachedDBKeys, this will fail to remove the directory or close the LevelDB, maybe add a way to schedule the deletion for after the process ends.
         public async close(): Promise<void> {
