@@ -668,7 +668,7 @@ export default function TabBar(): JSX.Element {
                         )}
                 </ControlledMenu>
                 <a
-                    title={props.tab.name}
+                    title={`${props.tab.name}\n${props.tab.path}`}
                     onMouseDown={(event): void => {
                         if (!containerRef.current || event.currentTarget.querySelector(".closebtn")?.contains(event.target as Node)) return;
                         dragging = true;

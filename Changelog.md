@@ -90,6 +90,7 @@
 -   The show/hide left sidebar button on the tab bar can now show/hide the left sidebar of settings. The regular tab and settings left sidebars use independent visibility states.
 -   Added a new polished error screen for when the LevelDB is corrupted.
 -   Added hover text to the "+" button on the tab bar.
+-   The paths of tabs are now included in their hover text.
 
 ## Changes
 
