@@ -327,27 +327,32 @@ namespace exports {
          * Checks using the `level.dat` file whether the world was last used on a version that is affected by the bug where if the LevelDB is touched, the game will freak out whenever it opens the world.
          *
          * - `true` - The version is affected.
-         * - `"possible"` - It is unknown if this version is affected (versions before 1.0.0).
+         * - `"possible"` - It is unknown if this version is affected (currently only the 0.9.0 builds, as it still needs to be determined what build added the bug).
          * - `"unknown"` - The version is unknown.
          * - `false` - The version is not affected.
          *
          * @param levelDat The parsed `level.dat` file.
          * @returns Whether the world was last used on a version that is affected by the bug.
-         *
-         * @todo Add a way to determine if a world is from one of the versions before lastOpenedWithVersion was added.
          */
         public checkWorldFragilityFromLevelDat(levelDat: NBTSchemas.NBTSchemaTypes.LevelDat): boolean | "possible" | "unknown" {
             let fragileLevelDB: boolean | "possible" | "unknown" = false;
-            if (levelDat.value.lastOpenedWithVersion?.value.type === "int" && levelDat.value.lastOpenedWithVersion.value.value.length >= 4) {
+            if (levelDat.value.StorageVersion?.type === "int" && levelDat.value.StorageVersion.value > 5) fragileLevelDB = false;
+            else if (
+                levelDat.value.lastOpenedWithVersion?.value.type === "int" &&
+                levelDat.value.lastOpenedWithVersion.value.value.length >= 4 &&
+                !(
+                    levelDat.value.lastOpenedWithVersion.value.value.length === 4 &&
+                    levelDat.value.lastOpenedWithVersion.value.value.every((v: number): v is 4 => v === 4)
+                )
+            ) {
                 const [major, minor, patch, build] = levelDat.value.lastOpenedWithVersion.value.value;
-                // REVIEW: See if it actually does affect 0.9.0 and the other pre-1.0.0 versions.
-                if (major < 1) fragileLevelDB = "possible";
-                else if (major === 1 && minor === 0 && patch === 0 && build < 16) fragileLevelDB = "possible";
-                // TEST: Make sure 1.0.0 actually is affected.
+                // TODO: Figure out what build added the bug.
+                if (major === 0 && minor === 9 && patch === 0 /* && build < 16 */) fragileLevelDB = "possible";
+                else if (major === 0 && minor > 9) fragileLevelDB = true;
                 else if (major === 1 && minor < 2) fragileLevelDB = true;
                 else if (major === 1 && minor === 2 && patch === 0 && build < 11) fragileLevelDB = true;
-                // REVIEW: See if it actually does affect the 0.9.0 up through the last version with StorageVersion 4 that didn't have lastOpenedWithVersion.
-            } else if (levelDat.value.StorageVersion?.type === "int" && levelDat.value.StorageVersion.value === 4) fragileLevelDB = "possible";
+            } else if (levelDat.value.StorageVersion?.type === "int" && levelDat.value.StorageVersion.value === 5) fragileLevelDB = true;
+            else if (levelDat.value.StorageVersion?.type === "int" && levelDat.value.StorageVersion.value === 4) fragileLevelDB = true;
             else if (levelDat.value.StorageVersion?.type === "int" && levelDat.value.StorageVersion.value < 4) fragileLevelDB = false;
             else fragileLevelDB = "unknown";
             return fragileLevelDB;
