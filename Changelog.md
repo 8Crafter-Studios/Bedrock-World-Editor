@@ -152,6 +152,7 @@
 -   The arrow in the chunk block coordinate ranges in the context menu of the 2D world map now uses a different unicode character for the dash in order for it to be properly aligned with the greater than sign.
 -   Fixed a bug where the "Tab" debug overlay would always say `closed (encrypted)` when the LevelDB was closed, even if it wasn't encrypted and there wasn't an error.
 -   Fixed a bug where the out of storage popup did not appear when opening a world via the context menu.
+-   Fixed a bug where closing the last tab while on the world selection menu did not hide the tab bar.
 -   Miscellaneous typo fixes.
 
 ## Performance Improvements
