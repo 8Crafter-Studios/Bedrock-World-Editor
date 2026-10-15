@@ -1194,6 +1194,7 @@ div:has(> .text-box-popup-help-info-label:focus-visible) > div.popup-container {
     align-items: center;
     padding: 5px;
     gap: 5px;
+    overflow: auto;
     /* background-color: var(--widget-overlay-bar-bg-color); */ /* TO-DO */
 }
 

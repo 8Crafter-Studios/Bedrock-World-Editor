@@ -112,6 +112,7 @@
 -   The `minecraft:` prefix is no longer required for vanilla entities for the `typeid` search query in the "Entities" left sidebar tab.
 -   The "+" button is now hidden from the tab bar when the active tab is a special screen (such as the loading screen, settings, or the start screen).
 -   The show/hide left sidebar button is now hidden from the tab bar when the active tab does not have a left sidebar.
+-   The widget overlay bars are now scrollable.
 
 ## Removals
 
