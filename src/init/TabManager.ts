@@ -150,6 +150,10 @@ namespace exports {
          * The opened tab.
          */
         tab: TabManagerTab;
+        /**
+         * Whether the tab will be switched to after opening.
+         */
+        switchToTab: boolean;
     }
     /**
      * Emitted when tabs are reordered.
@@ -360,7 +364,7 @@ namespace exports {
         public openTab(props: Omit<ConstructorParameters<typeof TabManagerTab>[0], "tabManager">, switchToTab: boolean = true): TabManagerTab {
             const tab = new TabManagerTab({ tabManager: this, ...props });
             this.openTabs.push(tab);
-            this.emit("openTab", { tab });
+            this.emit("openTab", { tab, switchToTab });
             if (switchToTab) this.switchTab(tab);
             this.addRecentItem({ ...props, icon: tab.icon }, tab);
             return tab;
@@ -1086,6 +1090,14 @@ namespace exports {
          * @readonly
          */
         public get hasTabBar(): boolean {
+            return this.type === "world" || this.type === "leveldb";
+        }
+        /**
+         * Whether the tab has a left sidebar.
+         *
+         * @readonly
+         */
+        public get hasLeftSidebar(): boolean {
             return this.type === "world" || this.type === "leveldb";
         }
         /**
@@ -4301,8 +4313,13 @@ declare global {
     export import TabManagerEventMap = exports.TabManagerEventMap;
     export import TabManagerTabEventMap = exports.TabManagerTabEventMap;
     export import TabManagerSwitchTabEvent = exports.TabManagerSwitchTabEvent;
+    export import TabManagerClosedTabEvent = exports.TabManagerClosedTabEvent;
+    export import TabManagerOpenTabEvent = exports.TabManagerOpenTabEvent;
+    export import TabManagerReorderTabsEvent = exports.TabManagerReorderTabsEvent;
     export import TabManagerTabSwitchTabEvent = exports.TabManagerTabSwitchTabEvent;
     export import TabManagerTabClosedTabEvent = exports.TabManagerTabClosedTabEvent;
+    export import TabManagerTabOpenTabEvent = exports.TabManagerTabOpenTabEvent;
+    export import TabManagerTabReorderTabsEvent = exports.TabManagerTabReorderTabsEvent;
     export import TabManagerTabModificationStatusChangedEvent = exports.TabManagerTabModificationStatusChangedEvent;
     export import TabManagerTabOtherStatusChangedEvent = exports.TabManagerTabOtherStatusChangedEvent;
     export import TabManagerTabStartedSavingEvent = exports.TabManagerTabStartedSavingEvent;

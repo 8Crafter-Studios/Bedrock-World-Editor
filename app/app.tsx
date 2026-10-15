@@ -238,11 +238,16 @@ export function setActivePage(activePage: string): void {
  * @returns The JSX element for the app.
  */
 export default function App(): JSX.Element {
+    useLayoutEffect((): void => {
+        const tabContentsElement: HTMLDivElement | null = document.getElementById("tab-contents-container") as HTMLDivElement | null;
+        if (!tabContentsElement) return;
+        renderTabContents({ newTab: tabManager.selectedTab, tabContentsElement });
+    });
     return (
         <>
             {/* TODO (Important): This element needs to have the "inert" attribute added to it whenever an overlay page is open. */}
             <div id="app-contents">
-                <StartScreen />
+                <MainEditor />
             </div>
             <div id="page-overlay-container" style="display: contents;" />
             <DebugOverlay />
@@ -842,7 +847,7 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
             .map((world: MinecraftWorldDisplayDetails, index: number): JSX.SpecificElement<"div"> => {
                 const [worldContextMenu_isOpen, worldContextMenu_setOpen] = useState(false);
                 const [worldContextMenu_anchorPoint, worldContextMenu_setAnchorPoint] = useState({ x: 0, y: 0 });
-                function onWorldRightClick(event: JSX.TargetedMouseEvent<HTMLDivElement>): void {
+                function onWorldRightClick(event: TargetedMouseEvent<HTMLDivElement>): void {
                     event.preventDefault();
                     event.stopPropagation();
                     // const clickPosition: { x: number; y: number } = {
@@ -891,7 +896,7 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                         }}
                         data-hover-bg-color="var(--alternating-bg-hover-color)"
                         data-bg-color={`var(--alternating-bg-color-${(index % 2) + 1})`}
-                        onClick={(event: JSX.TargetedMouseEvent<HTMLDivElement>): void => {
+                        onClick={(event: TargetedMouseEvent<HTMLDivElement>): void => {
                             if (
                                 event.target instanceof Node &&
                                 $(event.currentTarget)
@@ -901,17 +906,22 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                             ) {
                                 return;
                             }
-                            tabManager.switchTab("loading");
+                            // Treat Alt+Click as a middle click.
+                            const switchToTab = !event.altKey;
+                            if (switchToTab) tabManager.switchTab("loading");
                             setTimeout((): void => {
                                 try {
-                                    tabManager.openTab({
-                                        path: world.path,
-                                        name: world.name,
-                                        type: "world",
-                                        icon: world.thumbnailPath,
-                                        isNonIsolatedWorld: !world.isolated,
-                                        hasFragileLevelDB: world.fragileLevelDB,
-                                    });
+                                    tabManager.openTab(
+                                        {
+                                            path: world.path,
+                                            name: world.name,
+                                            type: "world",
+                                            icon: world.thumbnailPath,
+                                            isNonIsolatedWorld: !world.isolated,
+                                            hasFragileLevelDB: world.fragileLevelDB,
+                                        },
+                                        switchToTab
+                                    );
                                 } catch (e) {
                                     if (e instanceof Error && e.message.startsWith("ENOSPC, No space left on device")) {
                                         void dialog.showMessageBox({
@@ -928,7 +938,41 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                                 }
                             }, 10);
                         }}
-                        onContextMenu={(event: JSX.TargetedMouseEvent<HTMLDivElement>): void => void onWorldRightClick(event)}
+                        onMouseDown={(event: TargetedMouseEvent<HTMLDivElement>): void => {
+                            if (event.button === 1) event.preventDefault();
+                        }}
+                        onAuxClick={(event: TargetedMouseEvent<HTMLDivElement>): void => {
+                            if (event.button !== 1) return;
+                            setTimeout((): void => {
+                                try {
+                                    tabManager.openTab(
+                                        {
+                                            path: world.path,
+                                            name: world.name,
+                                            type: "world",
+                                            icon: world.thumbnailPath,
+                                            isNonIsolatedWorld: !world.isolated,
+                                            hasFragileLevelDB: world.fragileLevelDB,
+                                        },
+                                        false
+                                    );
+                                } catch (e) {
+                                    if (e instanceof Error && e.message.startsWith("ENOSPC, No space left on device")) {
+                                        void dialog.showMessageBox({
+                                            type: "error",
+                                            title: "Out of Space",
+                                            message: "You have run out of storage space on this device. Please free up some space and try again.",
+                                            buttons: ["OK"],
+                                            noLink: true,
+                                        });
+                                        tabManager.switchTab(null);
+                                        return;
+                                    }
+                                    throw e;
+                                }
+                            }, 10);
+                        }}
+                        onContextMenu={(event: TargetedMouseEvent<HTMLDivElement>): void => void onWorldRightClick(event)}
                         key={JSON.stringify({ path: world.path })}
                     >
                         <img
@@ -1049,8 +1093,8 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                                 <MenuItem
                                     onClick={(): void => {
                                         tabManager.switchTab("loading");
-                                        setTimeout(
-                                            (): void =>
+                                        setTimeout((): void => {
+                                            try {
                                                 void tabManager.openTab({
                                                     path: world.path,
                                                     name: world.name,
@@ -1058,9 +1102,22 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                                                     icon: world.thumbnailPath,
                                                     isNonIsolatedWorld: !world.isolated,
                                                     hasFragileLevelDB: world.fragileLevelDB,
-                                                }),
-                                            10
-                                        );
+                                                });
+                                            } catch (e) {
+                                                if (e instanceof Error && e.message.startsWith("ENOSPC, No space left on device")) {
+                                                    void dialog.showMessageBox({
+                                                        type: "error",
+                                                        title: "Out of Space",
+                                                        message: "You have run out of storage space on this device. Please free up some space and try again.",
+                                                        buttons: ["OK"],
+                                                        noLink: true,
+                                                    });
+                                                    tabManager.switchTab(null);
+                                                    return;
+                                                }
+                                                throw e;
+                                            }
+                                        }, 10);
                                     }}
                                 >
                                     Open World
@@ -1068,8 +1125,8 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                                 <MenuItem
                                     onClick={(): void => {
                                         tabManager.switchTab("loading");
-                                        setTimeout(
-                                            (): void =>
+                                        setTimeout((): void => {
+                                            try {
                                                 void tabManager.openTab({
                                                     path: world.path,
                                                     name: world.name,
@@ -1078,9 +1135,22 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                                                     mode: TabManagerTabMode.Readonly,
                                                     isNonIsolatedWorld: !world.isolated,
                                                     hasFragileLevelDB: world.fragileLevelDB,
-                                                }),
-                                            10
-                                        );
+                                                });
+                                            } catch (e) {
+                                                if (e instanceof Error && e.message.startsWith("ENOSPC, No space left on device")) {
+                                                    void dialog.showMessageBox({
+                                                        type: "error",
+                                                        title: "Out of Space",
+                                                        message: "You have run out of storage space on this device. Please free up some space and try again.",
+                                                        buttons: ["OK"],
+                                                        noLink: true,
+                                                    });
+                                                    tabManager.switchTab(null);
+                                                    return;
+                                                }
+                                                throw e;
+                                            }
+                                        }, 10);
                                     }}
                                 >
                                     Open in Read-Only Mode
@@ -1126,8 +1196,8 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                                             return;
                                         }
                                         tabManager.switchTab("loading");
-                                        setTimeout(
-                                            (): void =>
+                                        setTimeout((): void => {
+                                            try {
                                                 void tabManager.openTab({
                                                     path: world.path,
                                                     name: world.name,
@@ -1136,12 +1206,59 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                                                     mode: TabManagerTabMode.Direct,
                                                     isNonIsolatedWorld: !world.isolated,
                                                     hasFragileLevelDB: world.fragileLevelDB,
-                                                }),
-                                            10
-                                        );
+                                                });
+                                            } catch (e) {
+                                                if (e instanceof Error && e.message.startsWith("ENOSPC, No space left on device")) {
+                                                    void dialog.showMessageBox({
+                                                        type: "error",
+                                                        title: "Out of Space",
+                                                        message: "You have run out of storage space on this device. Please free up some space and try again.",
+                                                        buttons: ["OK"],
+                                                        noLink: true,
+                                                    });
+                                                    tabManager.switchTab(null);
+                                                    return;
+                                                }
+                                                throw e;
+                                            }
+                                        }, 10);
                                     }}
                                 >
                                     Open in Direct Mode (Unsafe)
+                                </MenuItem>
+                                <MenuItem
+                                    onClick={(): void => {
+                                        setTimeout((): void => {
+                                            try {
+                                                void tabManager.openTab(
+                                                    {
+                                                        path: world.path,
+                                                        name: world.name,
+                                                        type: "world",
+                                                        icon: world.thumbnailPath,
+                                                        isNonIsolatedWorld: !world.isolated,
+                                                        hasFragileLevelDB: world.fragileLevelDB,
+                                                    },
+                                                    false
+                                                );
+                                            } catch (e) {
+                                                if (e instanceof Error && e.message.startsWith("ENOSPC, No space left on device")) {
+                                                    void dialog.showMessageBox({
+                                                        type: "error",
+                                                        title: "Out of Space",
+                                                        message: "You have run out of storage space on this device. Please free up some space and try again.",
+                                                        buttons: ["OK"],
+                                                        noLink: true,
+                                                    });
+                                                    tabManager.switchTab(null);
+                                                    return;
+                                                }
+                                                throw e;
+                                            }
+                                        }, 10);
+                                    }}
+                                >
+                                    Open in Background
                                 </MenuItem>
                                 <MenuDivider />
                                 <MenuItem
@@ -1533,21 +1650,19 @@ export function StartScreenContents(): JSX.Element {
                     {process.env.NODE_ENV === "development" ? "*" : ""}
                 </div>
                 <div style="flex: none; overflow: auto; line-height: 1.25em; display: flex; flex-direction: row; height: fit-content; margin: 5px; gap: 5px; height: -webkit-fill-available; float: right;">
-                    {!$("tab-bar").length && !tabManager.openTabs.length && (
-                        <div class="mainMenuAppInfoNavbarRightButton" style="float: right; height: -webkit-fill-available; align-content: center;">
-                            <a
-                                style="padding: 8px; display: flex;"
-                                onClick={(event: TargetedMouseEvent<HTMLAnchorElement>): void => {
-                                    openMenu_setDirection("bottom");
-                                    const boundingClientRect: DOMRect = event.currentTarget.getBoundingClientRect();
-                                    openMenu_setAnchorPoint({ x: boundingClientRect.left, y: boundingClientRect.bottom });
-                                    openMenu_setOpen(true);
-                                }}
-                            >
-                                <img aria-hidden="true" class="piximg" src="resource://images/ui/glyphs/icon-plus.png" />
-                            </a>
-                        </div>
-                    )}
+                    <div class="mainMenuAppInfoNavbarRightButton" style="float: right; height: -webkit-fill-available; align-content: center;">
+                        <a
+                            style="padding: 8px; display: flex;"
+                            onClick={(event: TargetedMouseEvent<HTMLAnchorElement>): void => {
+                                openMenu_setDirection("bottom");
+                                const boundingClientRect: DOMRect = event.currentTarget.getBoundingClientRect();
+                                openMenu_setAnchorPoint({ x: boundingClientRect.left, y: boundingClientRect.bottom });
+                                openMenu_setOpen(true);
+                            }}
+                        >
+                            <img aria-hidden="true" class="piximg" src="resource://images/ui/glyphs/icon-plus.png" />
+                        </a>
+                    </div>
                     <div class="mainMenuAppInfoNavbarRightButton" style="float: right; height: -webkit-fill-available; align-content: center;">
                         <a
                             style="padding: 12px; display: flex;"
@@ -2192,35 +2307,13 @@ export function NBTFileEditorTabRenderer(props: {
     }
 }
 
-let lastTabContainerType: "app" | "tab" = "app";
-
-tabManager.on("switchTab", ({ previousTab, newTab }: TabManagerSwitchTabEvent): void => {
-    const appContentsElement: HTMLDivElement | null = document.getElementById("app-contents") as HTMLDivElement | null;
-    if (!appContentsElement) return;
-    if (newTab === null && tabManager.openTabs.length === 0) {
-        lastTabContainerType = "app";
-        render(null, appContentsElement);
-        render(<StartScreen />, appContentsElement);
-        return;
-    }
-    if (newTab === "loading" && tabManager.openTabs.length === 0) {
-        lastTabContainerType = "app";
-        render(null, appContentsElement);
-        render(
-            <div style="width: 100vw; height: 100vh; position: fixed; bottom: 0; left: 0; display: flex; flex-direction: row; overflow: auto;">
-                <LoadingScreenContents />
-            </div>,
-            appContentsElement
-        );
-        return;
-    }
-    if (previousTab === null || lastTabContainerType !== "tab") {
-        lastTabContainerType = "tab";
-        render(null, appContentsElement);
-        render(<MainEditor />, appContentsElement);
-    }
-    const tabContentsElement: HTMLDivElement | null = document.getElementById("tab-contents-container") as HTMLDivElement | null;
-    if (!tabContentsElement) return;
+function renderTabContents({
+    tabContentsElement,
+    newTab,
+}: {
+    tabContentsElement: HTMLDivElement;
+    newTab: TabManagerTab | TabManagerGenericTabID | null;
+}): void {
     render(null, tabContentsElement);
     if (newTab === null) {
         render(
@@ -2345,7 +2438,53 @@ tabManager.on("switchTab", ({ previousTab, newTab }: TabManagerSwitchTabEvent): 
                 break;
         }
     }
+}
+
+// let lastTabContainerType: "app" | "tab" = "app";
+
+tabManager.on("switchTab", ({ /* previousTab, */ newTab }: TabManagerSwitchTabEvent): void => {
+    // const appContentsElement: HTMLDivElement | null = document.getElementById("app-contents") as HTMLDivElement | null;
+    // if (!appContentsElement) return;
+    // if (newTab === null && tabManager.openTabs.length === 0) {
+    //     lastTabContainerType = "app";
+    //     render(null, appContentsElement);
+    //     render(<StartScreen />, appContentsElement);
+    //     return;
+    // }
+    // if (newTab === "loading" && tabManager.openTabs.length === 0) {
+    //     lastTabContainerType = "app";
+    //     render(null, appContentsElement);
+    //     render(
+    //         <div style="width: 100vw; height: 100vh; position: fixed; bottom: 0; left: 0; display: flex; flex-direction: row; overflow: auto;">
+    //             <LoadingScreenContents />
+    //         </div>,
+    //         appContentsElement
+    //     );
+    //     return;
+    // }
+    // if (previousTab === null || lastTabContainerType !== "tab") {
+    //     lastTabContainerType = "tab";
+    //     render(null, appContentsElement);
+    //     render(<MainEditor />, appContentsElement);
+    // }
+    const tabContentsElement: HTMLDivElement | null = document.getElementById("tab-contents-container") as HTMLDivElement | null;
+    if (!tabContentsElement) return;
+    renderTabContents({ newTab, tabContentsElement });
 });
+
+// tabManager.on("openTab", ({ switchToTab }: TabManagerOpenTabEvent): void => {
+//     if (switchToTab || $("#tab-bar")[0]?.checkVisibility()) return;
+//     const appContentsElement: HTMLDivElement | null = document.getElementById("app-contents") as HTMLDivElement | null;
+//     if (!appContentsElement) return;
+//     if (tabManager.selectedTab === null || lastTabContainerType !== "tab") {
+//         lastTabContainerType = "tab";
+//         render(null, appContentsElement);
+//         render(<MainEditor />, appContentsElement);
+//     }
+//     const tabContentsElement: HTMLDivElement | null = document.getElementById("tab-contents-container") as HTMLDivElement | null;
+//     if (!tabContentsElement) return;
+//     renderTabContents({ newTab: tabManager.selectedTab, tabContentsElement });
+// });
 
 window.addEventListener("keydown", (event: KeyboardEvent): void => {
     // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check

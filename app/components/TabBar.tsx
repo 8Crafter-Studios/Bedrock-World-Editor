@@ -10,6 +10,7 @@ import { ControlledMenu, MenuDivider, MenuItem, type ClickEvent } from "@szhsin/
 import path from "node:path";
 import { setMobileLeftSidebarVisibility } from "./LeftSidebar";
 import { worldFolderLocationsCache } from "../app";
+import { setMobileSettingsLeftSidebarVisibility } from "../pages/settings";
 
 export default function TabBar(): JSX.Element {
     const tabContainerRef: RefObject<HTMLUListElement> = useRef(null);
@@ -802,31 +803,48 @@ export default function TabBar(): JSX.Element {
     function RenderTabs(): JSX.Element {
         return (
             <>
-                <li id="app-show-left-sidebar-button" style="float: left;" data-immovable>
-                    <a
-                        style="padding: 8px;"
-                        onClick={(): void => {
-                            setMobileLeftSidebarVisibility();
-                        }}
-                    >
-                        <img aria-hidden="true" class="piximg" style="width: 28px;" src="resource://images/ui/glyphs/menu_threebars.png" />
-                    </a>
-                </li>
+                {(tabManager.selectedTab instanceof TabManagerTab ? tabManager.selectedTab.hasLeftSidebar : tabManager.selectedTab === "settings") && (
+                    <li id="app-show-left-sidebar-button" title="Show/Hide left sidebar" style="float: left;" data-immovable>
+                        <a
+                            style="padding: 8px;"
+                            onClick={(): void => {
+                                if (tabManager.selectedTab === "settings") setMobileSettingsLeftSidebarVisibility();
+                                else setMobileLeftSidebarVisibility();
+                            }}
+                        >
+                            <img aria-hidden="true" class="piximg" style="width: 28px;" src="resource://images/ui/glyphs/menu_threebars.png" />
+                        </a>
+                    </li>
+                )}
                 {/* TODO: On smaller screen sizes there should instead be a "Show Tabs" button that will open a full screen list of tabs. */}
                 {...tabManager.openTabs.map((tab: TabManagerTab): JSX.SpecificElement<"li"> => <Tab tab={tab} />)}
-                <li style="float: right;" data-immovable>
-                    <a
-                        style="padding: 10px;"
-                        onClick={(event: TargetedMouseEvent<HTMLAnchorElement>): void => {
-                            $("#add-tab-popup-menu").css("left", window.innerWidth - 200);
-                            const boundingClientRect: DOMRect = event.currentTarget.getBoundingClientRect();
-                            $("#add-tab-popup-menu").css("top", boundingClientRect.top + boundingClientRect.height);
-                            $("#add-tab-popup-menu").toggle();
-                        }}
-                    >
-                        <img aria-hidden="true" class="piximg" src="resource://images/ui/glyphs/icon-plus.png" />
-                    </a>
-                </li>
+                {tabManager.selectedTab instanceof TabManagerTab && (
+                    <li title="Open..." style="float: right;" data-immovable>
+                        <a
+                            style="padding: 10px;"
+                            onClick={(event: TargetedMouseEvent<HTMLAnchorElement>): void => {
+                                $("#add-tab-popup-menu").css("left", window.innerWidth - 200);
+                                const boundingClientRect: DOMRect = event.currentTarget.getBoundingClientRect();
+                                $("#add-tab-popup-menu").css("top", boundingClientRect.top + boundingClientRect.height);
+                                $("#add-tab-popup-menu").toggle();
+                            }}
+                        >
+                            <img aria-hidden="true" class="piximg" src="resource://images/ui/glyphs/icon-plus.png" />
+                        </a>
+                    </li>
+                )}
+                {tabManager.selectedTab === "settings" && (
+                    <li title="Close settings" style="float: right;" data-immovable>
+                        <a
+                            style="padding: 12px;"
+                            onClick={(_event: TargetedMouseEvent<HTMLAnchorElement>): void => {
+                                tabManager.switchTab(null);
+                            }}
+                        >
+                            <img width="20px" height="20px" aria-hidden="true" class="piximg" src="resource://images/ui/glyphs/Close.png" />
+                        </a>
+                    </li>
+                )}
             </>
         );
     }

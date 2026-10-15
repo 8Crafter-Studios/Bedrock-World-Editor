@@ -1800,7 +1800,8 @@ select.search-mode-dropdown:open::picker-icon {
 
 /* TODO: Use this for hiding the main left sidebar nav of the app, when I go to implement that. */
 @media (max-width: 762px) {
-    #left_sidebar:not(.active-nav) {
+    #left_sidebar:not(.active-nav),
+    #settings_left_sidebar:not(.active-nav) {
         display: none !important;
     }
     #main-menu-app-info-sidebar {

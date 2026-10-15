@@ -62,6 +62,8 @@
 -   The Show Grid Lines option in the 2D world map has been changed from a toggle to having an "Always", "With Threshold", and "Never" option. The "With Threshold" option allows you to specify a threshold at which the grid lines are shown. Ehen the zoom level is at or above that threshold the grid lines are shown.
 -   Added a `Delete Pack From World Files` context menu option to the "Packs" tab to allow deleting packs stored in the world files.
 -   Added ALT text for world icons on the world selection menu so that if a world has an invalid image, it won't display the entire hover info where the icon should be.
+-   You can now middle click or alt+click on a world in the world selection menu to open the world in the background without switching to the tab.
+-   Added an `Open in Background` context menu option to the worlds on the world selection menu that opens the world without switching to the tab.
 -   Added a custom icon for the "NBT File" option in the add tab popup menu.
 -   NBT File tabs now have icons.
 -   The world hover info in the world selection menu can now read the play time for worlds from versions before Pocket Edition v0.11.0 Alpha.
@@ -81,10 +83,13 @@
 -   If a world does not have a `lastOpenedWithVersion` field in `level.dat`, the world selection menu will now display the possible version range of the world based on the `StorageVersion` field of `level.dat` instead of `null`, if the `StorageVersion` field is missing it will still display `null`.
 -   The reload world list button now flashes red if a fatal error occurrs while reloading the world list.
 -   Added a better screen for when the "Repair Forced World Corruption" tab does not detect any forced world corruption.
+-   Added an "x" button to the tab bar (it is only visible while in settings). It goes to the start screen.
 -   Added an "Open..." button to the start screen (it appears as a "+" on the mobile friendly layout).
 -   Added a "Settings" button to the start screen (it appears as a config icon on the mobile friendly layout).
 -   Added an "Advanced..." option placeholder to the add tab popup menu (it is currently not functional).
+-   The show/hide left sidebar button on the tab bar can now show/hide the left sidebar of settings. The regular tab and settings left sidebars use independent visibility states.
 -   Added a new polished error screen for when the LevelDB is corrupted.
+-   Added hover text to the "+" button on the tab bar.
 
 ## Changes
 
@@ -105,6 +110,8 @@
 -   Major overhaul of how the unsaved tabs system works, it should now be much less buggy. It now differentiates between unsaved changes in a sub-tab that have not been written to the copy of the world files, and unsaved changes that have.
 -   Added an error message when the `Delete LevelDB Entry` context menu option of the "Maps", "Ticks", and "View Files" left sidebar tabs fails to delete the LevelDB entry.
 -   The `minecraft:` prefix is no longer required for vanilla entities for the `typeid` search query in the "Entities" left sidebar tab.
+-   The "+" button is now hidden from the tab bar when the active tab is a special screen (such as the loading screen, settings, or the start screen).
+-   The show/hide left sidebar button is now hidden from the tab bar when the active tab does not have a left sidebar.
 
 ## Removals
 
@@ -141,6 +148,7 @@
 -   The keys in the `SubChunkPrefix` submenu of the `Open LevelDB entry...` submenu of the context menu of the 2D world map are now sorted in ascending order by their subchunk prefix.
 -   The arrow in the chunk block coordinate ranges in the context menu of the 2D world map now uses a different unicode character for the dash in order for it to be properly aligned with the greater than sign.
 -   Fixed a bug where the "Tab" debug overlay would always say `closed (encrypted)` when the LevelDB was closed, even if it wasn't encrypted and there wasn't an error.
+-   Fixed a bug where the out of storage popup did not appear when opening a world via the context menu.
 -   Miscellaneous typo fixes.
 
 ## Performance Improvements

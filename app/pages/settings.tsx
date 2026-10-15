@@ -14,6 +14,19 @@ import path from "node:path";
  */
 type SettingsTab = "general" | "video" | "audio" | "integrations" | "advanced" | "debug";
 
+let settingsLeftSidebarVisible: boolean = true;
+
+/**
+ * Set the visibility of the left sidebar.
+ *
+ * @param value The new visibility of the left sidebar. If not specified, it will be toggled.
+ */
+export function setMobileSettingsLeftSidebarVisibility(value?: boolean): void {
+    settingsLeftSidebarVisible = value ?? !settingsLeftSidebarVisible;
+    if (settingsLeftSidebarVisible) $("#settings_left_sidebar").addClass("active-nav");
+    else $("#settings_left_sidebar").removeClass("active-nav");
+}
+
 /**
  * The settings page.
  *
@@ -104,7 +117,7 @@ function SettingsTabRenderer(props: SettingsTabRendererProps): JSX.Element {
                     </label>
                     <br class="nsel ndrg" />
                     <label
-                        for="settings_general_showWorldSizesOnWorldList"
+                        for="settings_general_showWorldStorageVersionsOnWorldList"
                         class="nsel ndrg"
                         title="Whether or not to show the level.dat StorageVersion of worlds on the world selector list on the main menu."
                     >
@@ -1246,7 +1259,11 @@ function SettingsLeftSidebar(props: SettingsLeftSidebarProps): JSX.SpecificEleme
         ] as const satisfies (Tab | false | undefined)[]
     ).filter((tab: Tab | false | undefined): tab is Tab => !!tab);
     return (
-        <div style="display: flex; flex-direction: column; height: 100%; width: 200px; overflow: hidden auto;" id="settings_left_sidebar">
+        <div
+            class={settingsLeftSidebarVisible ? "active-nav" : ""}
+            style="display: flex; flex-direction: column; height: 100%; width: 200px; overflow: hidden auto;"
+            id="settings_left_sidebar"
+        >
             {tabs.map((tab: Tab): JSX.SpecificElement<"div"> => {
                 const maxHeightFromWidth: number = Math.floor(36 * (tab.resolution[1] / tab.resolution[0]));
                 const maxHeightFromRes: number = 36 - (36 % tab.resolution[1]);
