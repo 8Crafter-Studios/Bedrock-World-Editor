@@ -130,6 +130,7 @@
 -   The app no longer creates a LevelDB if the world doesn't have one.
 -   If a world does not have the `MultiplayerGameIntent` in `level.dat`, the hover info for that world in the world selction menu will now display it as "Multiplayer" instead of "Singleplayer".
 -   Closing a tab that is not the active tab no longer switches your active tab.
+-   When reloading a tab, it no longer becomes the active tab after reloading if it was not the active tab prior to reloading.
 -   Fixed a bug where the "Show more" button could sometimes get stuck indefinitely on "Loading...".
 -   The `Favorite` context menu option of tabs in the tab bar is now also visible for worlds in isolated, extra, and extra isolated world folder locations, instead of only the main world folder locations list.
 -   Fixed a bug where negated `type` queries caused the content type check to be skipped entirely.
@@ -139,6 +140,7 @@
 -   Fixed a bug where portals on the 2D world map were offset 7.5 blocks to the right and down from their actual position in the world.
 -   The keys in the `SubChunkPrefix` submenu of the `Open LevelDB entry...` submenu of the context menu of the 2D world map are now sorted in ascending order by their subchunk prefix.
 -   The arrow in the chunk block coordinate ranges in the context menu of the 2D world map now uses a different unicode character for the dash in order for it to be properly aligned with the greater than sign.
+-   Fixed a bug where the "Tab" debug overlay would always say `closed (encrypted)` when the LevelDB was closed, even if it wasn't encrypted and there wasn't an error.
 -   Miscellaneous typo fixes.
 
 ## Performance Improvements

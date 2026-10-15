@@ -27,7 +27,6 @@ import {
     type Vector3,
     type VectorXZ,
     offsetToChunkBlock128Index,
-    toLong,
 } from "mcbe-leveldb";
 import mergeRefs from "merge-refs";
 import { existsSync } from "node:fs";

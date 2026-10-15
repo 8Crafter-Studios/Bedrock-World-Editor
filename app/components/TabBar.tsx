@@ -518,6 +518,7 @@ export default function TabBar(): JSX.Element {
                                 });
                                 if (result.response === 1) return;
                             }
+                            const tabWasActive: boolean = props.tab === tabManager.selectedTab;
                             const data: Parameters<typeof tabManager.openTab>[0] = {
                                 icon: props.tab.icon,
                                 name: props.tab.name,
@@ -546,7 +547,7 @@ export default function TabBar(): JSX.Element {
                             };
                             const tabIndex: number = props.tab.index;
                             await props.tab.close();
-                            const newTab: TabManagerTab = tabManager.openTab(data);
+                            const newTab: TabManagerTab = tabManager.openTab(data, tabWasActive);
                             if (tabIndex !== -1) tabManager.moveTab(newTab, tabIndex);
                         }}
                     >

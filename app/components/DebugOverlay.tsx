@@ -1664,7 +1664,7 @@ function DebugOverlay_Tab(): JSX.Element {
                                 :   <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#FF5555FF">
                                         closed
                                         {"errorOnDBOpen" in tab ?
-                                            "errorDueToEncryptedLevelDB" in tab ?
+                                            "errorDueToEncryptedLevelDB" in tab && tab.errorDueToEncryptedLevelDB ?
                                                 " (encrypted)"
                                             :   " (ERROR)"
                                         :   ""}

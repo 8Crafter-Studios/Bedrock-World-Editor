@@ -352,11 +352,11 @@ namespace exports {
             else fragileLevelDB = "unknown";
             return fragileLevelDB;
         }
-        public openTab(props: Omit<ConstructorParameters<typeof TabManagerTab>[0], "tabManager">): TabManagerTab {
+        public openTab(props: Omit<ConstructorParameters<typeof TabManagerTab>[0], "tabManager">, switchToTab: boolean = true): TabManagerTab {
             const tab = new TabManagerTab({ tabManager: this, ...props });
             this.openTabs.push(tab);
             this.emit("openTab", { tab });
-            this.switchTab(tab);
+            if (switchToTab) this.switchTab(tab);
             this.addRecentItem({ ...props, icon: tab.icon }, tab);
             return tab;
         }
@@ -1012,6 +1012,10 @@ namespace exports {
         }) {
             super();
             this.setMaxListeners(1000000);
+            delete this.errorOnDBOpen;
+            delete this.errorDueToEncryptedLevelDB;
+            delete this.loadedCachedDBKeysProgress;
+            delete this.awaitFragilityCheck;
             this.tabManager = props.tabManager;
             this.path = props.path;
             this.name = props.name;
@@ -1074,19 +1078,16 @@ namespace exports {
          * Whether the tab is favorited.
          */
         public get isFavorited(): boolean {
-            return existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json")) ?
-                    ((): boolean => {
-                        try {
-                            const favoritedWorldsData = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8")) as string[];
-                            if (favoritedWorldsData.includes(this.path)) {
-                                return true;
-                            }
-                        } catch (e) {
-                            console.error(e);
-                        }
-                        return false;
-                    })()
-                :   false;
+            if (!existsSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"))) return false;
+            try {
+                const favoritedWorldsData = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "favorited_worlds.json"), "utf-8")) as string[];
+                if (favoritedWorldsData.includes(this.path)) {
+                    return true;
+                }
+            } catch (e) {
+                console.error(e);
+            }
+            return false;
         }
         public set isFavorited(value: boolean) {
             if (value) {
@@ -3505,12 +3506,14 @@ namespace exports {
         readonly key: Buffer;
         /**
          * The quality of the result.
+         *
+         * @todo
          */
         readonly quality?: number | undefined;
         /**
          * The orginal object.
          *
-         * Only present if {@link TabManagerTab_LevelDBSearchQuery.searchTargets} was provided in the search query.
+         * If {@link TabManagerTab_LevelDBSearchQuery.searchTargets} was not provided in the search query, this will be `undefined`.
          */
         readonly originalObject: OriginalObject;
     }
