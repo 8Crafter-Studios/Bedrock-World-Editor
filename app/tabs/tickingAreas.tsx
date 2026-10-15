@@ -255,6 +255,18 @@ async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSigna
                 />
             );
         }
+        if (
+            tab.errorOnDBOpen instanceof Error &&
+            tab.errorOnDBOpen.name === "Error" &&
+            (tab.errorOnDBOpen.message.startsWith("Corruption: ") || tab.errorOnDBOpen.message.startsWith("Error: Corruption: "))
+        ) {
+            return (
+                <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
+                    <Notice title="Corrupted LevelDB" subtitle="The LevelDB is corrupted." detail={null} image="connection_error" style={{ height: "auto" }} />
+                    <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(tab.errorOnDBOpen)}</div>
+                </div>
+            );
+        }
         return (
             <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
                 <Notice
@@ -270,6 +282,14 @@ async function getTickingAreasTabContents(tab: TabManagerTab, signal: AbortSigna
     }
     if (!tab.cachedDBKeys) await tab.awaitCachedDBKeys!;
     signal.throwIfAborted();
+    if (tab.corruptedDBError) {
+        return (
+            <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
+                <Notice title="Corrupted LevelDB" subtitle="The LevelDB is corrupted." detail={null} image="connection_error" style={{ height: "auto" }} />
+                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(tab.corruptedDBError)}</div>
+            </div>
+        );
+    }
     const rawKeys: Buffer[] = tab.cachedDBKeys!.TickingArea;
     const asyncMode: boolean =
         "__FORCE_ASYNC_KEY_MODE__" in window ? !!window.__FORCE_ASYNC_KEY_MODE__

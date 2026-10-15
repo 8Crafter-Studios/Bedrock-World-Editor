@@ -85,6 +85,7 @@
 -   Added an "Open..." button to the start screen (it appears as a "+" on the mobile friendly layout).
 -   Added a "Settings" button to the start screen (it appears as a config icon on the mobile friendly layout).
 -   Added an "Advanced..." option placeholder to the add tab popup menu (it is currently not functional).
+-   Added a new polished error screen for when the LevelDB is corrupted.
 
 ## Changes
 

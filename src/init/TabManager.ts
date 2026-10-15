@@ -875,6 +875,14 @@ namespace exports {
          */
         public errorDueToEncryptedLevelDB?: true;
         /**
+         * The corruption error that occurred.
+         *
+         * This can appear after the LevelDB is loaded. For example the {@link refreshCachedDBKeys} method will set this if a corruption error occurs while reading the LevelDB.
+         *
+         * Only present if a corruption error has occurred.
+         */
+        public corruptedDBError?: Error;
+        /**
          * A promise that resolves when the database keys cache is loaded.
          *
          * It resolves with `true` if it was loaded successfully and `false` if an error occurred.
@@ -1014,6 +1022,7 @@ namespace exports {
             this.setMaxListeners(1000000);
             delete this.errorOnDBOpen;
             delete this.errorDueToEncryptedLevelDB;
+            delete this.corruptedDBError;
             delete this.loadedCachedDBKeysProgress;
             delete this.awaitFragilityCheck;
             this.tabManager = props.tabManager;
@@ -1405,13 +1414,21 @@ namespace exports {
         public async refreshCachedDBKeys(): Promise<boolean | undefined> {
             if (!this.db) return;
             this.cachedDBKeys = undefined;
+            this.loadedCachedDBKeysProgress = 0;
             return await (this.awaitCachedDBKeys = this.getCachedDBKeys().then(
                 (keys: Record<MCDBEntryContentType, Buffer[]>): true => {
                     this.cachedDBKeys = keys;
                     return true;
                 },
                 (err: unknown): false => {
-                    if (!(err instanceof Error && err.name === "Error" && err.message === "iterator has ended")) {
+                    if (
+                        err instanceof Error &&
+                        err.name === "Error" &&
+                        (err.message.startsWith("Corruption: ") || err.message.startsWith("Error: Corruption: "))
+                    ) {
+                        console.error(err);
+                        this.corruptedDBError = err;
+                    } else if (!(err instanceof Error && err.name === "Error" && err.message === "iterator has ended")) {
                         console.error(err);
                     }
                     return false;
@@ -1810,6 +1827,7 @@ namespace exports {
             this.selectedTab = tab;
             this.emit("switchTab", { previousTab, newTab: tab });
         }
+        // FIXME: If the LevelDB is corrupted and the corruption is detected AFTER opening, for example by refreshCachedDBKeys, this will fail to remove the directory or close the LevelDB, maybe add a way to schedule the deletion for after the process ends.
         public async close(): Promise<void> {
             // this.db?.close();
             this.isValid = false;

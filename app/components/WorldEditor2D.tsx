@@ -889,9 +889,9 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         isOldWorld = undefined;
         worldSpawn = undefined;
         worldBorder = undefined;
+        netherScale = undefined;
         // legacySeed = undefined;
         // randomSeed = undefined;
-        netherScale = undefined;
     }
     async function loadNeededDataFromLevelDat(): Promise<void> {
         levelDatLoaded = "loading";
@@ -904,6 +904,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 netherScale = null;
                 // legacySeed = null;
                 // randomSeed = null;
+                chunksDat = false;
                 return;
             }
             if (props.tab.type !== "world") return;

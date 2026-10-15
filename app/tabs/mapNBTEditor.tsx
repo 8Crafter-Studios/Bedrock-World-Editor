@@ -42,6 +42,7 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
     let dataLoadFailureNoticeReasonExists: boolean = false;
     let dataLoadFailureNoticeReason: unknown = null;
     let levelDBOpenFailure: boolean = false;
+    let levelDBCorrupted: boolean = false;
     let missingLevelDBKey: boolean = false;
     function LevelDBOpenFailureNotice(): JSX.Element {
         if (props.tab.parentTab.errorDueToEncryptedLevelDB) {
@@ -54,6 +55,19 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
                 />
             );
         }
+        if (
+            props.tab.parentTab.errorOnDBOpen instanceof Error &&
+            props.tab.parentTab.errorOnDBOpen.name === "Error" &&
+            (props.tab.parentTab.errorOnDBOpen.message.startsWith("Corruption: ") ||
+                props.tab.parentTab.errorOnDBOpen.message.startsWith("Error: Corruption: "))
+        ) {
+            return (
+                <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
+                    <Notice title="Corrupted LevelDB" subtitle="The LevelDB is corrupted." detail={null} image="connection_error" style={{ height: "auto" }} />
+                    <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(props.tab.parentTab.errorOnDBOpen)}</div>
+                </div>
+            );
+        }
         return (
             <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
                 <Notice
@@ -64,6 +78,14 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
                     style={{ height: "auto" }}
                 />
                 <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(props.tab.parentTab.errorOnDBOpen)}</div>
+            </div>
+        );
+    }
+    function LevelDBCorruptionNotice(): JSX.Element {
+        return (
+            <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
+                <Notice title="Corrupted LevelDB" subtitle="The LevelDB is corrupted." detail={null} image="connection_error" style={{ height: "auto" }} />
+                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(props.tab.parentTab.corruptedDBError)}</div>
             </div>
         );
     }
@@ -153,6 +175,9 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
         if (props.tab.target.type === "LevelDBEntry" && !props.tab.parentTab.db?.isOpen() && !((await props.tab.parentTab.awaitDBOpen) ?? true)) {
             throw new Error("LevelDB open failure.");
         }
+        if (props.tab.target.type === "LevelDBEntry" && props.tab.parentTab.db?.isOpen() && props.tab.parentTab.corruptedDBError) {
+            throw new Error("LevelDB corrupted.");
+        }
         // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
         formatTypeSwitch: switch (format.type) {
             case "NBT": {
@@ -197,6 +222,12 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
                         render(null, containerRef.current);
                         render(<LevelDBOpenFailureNotice />, containerRef.current);
                         levelDBOpenFailure = true;
+                        return;
+                    }
+                    if (reason instanceof Error && reason.message === "LevelDB corrupted.") {
+                        render(null, containerRef.current);
+                        render(<LevelDBCorruptionNotice />, containerRef.current);
+                        levelDBCorrupted = true;
                         return;
                     }
                     if (reason instanceof Error && reason.message === "The LevelDB key associated with this sub-tab does not exist.") {
@@ -249,6 +280,11 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
         if (levelDBOpenFailure && !props.tab.currentState.options.dataStorageObject) {
             render(null, containerRef.current);
             render(<LevelDBOpenFailureNotice />, containerRef.current);
+            return;
+        }
+        if (levelDBCorrupted && !props.tab.currentState.options.dataStorageObject) {
+            render(null, containerRef.current);
+            render(<LevelDBCorruptionNotice />, containerRef.current);
             return;
         }
         if (dataLoadFailureNoticeReasonExists && !props.tab.currentState.options.dataStorageObject) {

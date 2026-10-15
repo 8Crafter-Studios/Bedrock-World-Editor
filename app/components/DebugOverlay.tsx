@@ -1658,15 +1658,29 @@ function DebugOverlay_Tab(): JSX.Element {
                             </CrispyDropShadowSpan>
                             {tab.db ?
                                 tab.db.isOpen() ?
-                                    <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#55FF55FF">
-                                        open
-                                    </CrispyDropShadowSpan>
+                                    <>
+                                        <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#55FF55FF">
+                                            open
+                                        </CrispyDropShadowSpan>
+                                        <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#FF5555FF">
+                                            {"corruptedDBError" in tab ? " (corrupted)" : ""}
+                                        </CrispyDropShadowSpan>
+                                    </>
                                 :   <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#FF5555FF">
                                         closed
                                         {"errorOnDBOpen" in tab ?
                                             "errorDueToEncryptedLevelDB" in tab && tab.errorDueToEncryptedLevelDB ?
                                                 " (encrypted)"
+                                            : (
+                                                tab.errorOnDBOpen instanceof Error &&
+                                                tab.errorOnDBOpen.name === "Error" &&
+                                                (tab.errorOnDBOpen.message.startsWith("Corruption: ") ||
+                                                    tab.errorOnDBOpen.message.startsWith("Error: Corruption: "))
+                                            ) ?
+                                                " (corrupted)"
                                             :   " (ERROR)"
+                                        : "corruptedDBError" in tab ?
+                                            " (corrupted)"
                                         :   ""}
                                     </CrispyDropShadowSpan>
 
@@ -1765,7 +1779,7 @@ function DebugOverlay_Tab(): JSX.Element {
                                     </span>
                                 )
                             )
-                        : tab.awaitCachedDBKeys ?
+                        : tab.loadedCachedDBKeysProgress !== undefined ?
                             <CrispyDropShadowSpan class="debug-overlay-config-mode-item-value" data-color="#FFFF55FF">
                                 loading
                             </CrispyDropShadowSpan>

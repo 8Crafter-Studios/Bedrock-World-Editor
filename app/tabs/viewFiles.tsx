@@ -437,35 +437,67 @@ interface FileKeyData {
 }
 
 async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal): Promise<JSX.Element> {
-    if (tab.db && !tab.db.isOpen() && !((await tab.awaitDBOpen) ?? true)) {
-        if (tab.errorDueToEncryptedLevelDB) {
+    const hasLevelDBOpenFailure: boolean = !!(tab.db && !tab.db.isOpen() && !((await tab.awaitDBOpen) ?? true));
+    function LevelDBFailureNotice(): JSX.Element {
+        if (hasLevelDBOpenFailure) {
+            if (tab.errorDueToEncryptedLevelDB) {
+                return (
+                    <Notice
+                        title="Encrypted LevelDB"
+                        subtitle="The LevelDB is encrypted. The app cannot open encrypted LevelDBs."
+                        detail="If this world is from a marketplace template, that would cause the LevelDB to be encrypted."
+                        image="access_denied"
+                    />
+                );
+            }
+            if (
+                tab.errorOnDBOpen instanceof Error &&
+                tab.errorOnDBOpen.name === "Error" &&
+                (tab.errorOnDBOpen.message.startsWith("Corruption: ") || tab.errorOnDBOpen.message.startsWith("Error: Corruption: "))
+            ) {
+                return (
+                    <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
+                        <Notice
+                            title="Corrupted LevelDB"
+                            subtitle="The LevelDB is corrupted."
+                            detail={null}
+                            image="connection_error"
+                            style={{ height: "auto" }}
+                        />
+                        <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(tab.errorOnDBOpen)}</div>
+                    </div>
+                );
+            }
             return (
-                <Notice
-                    title="Encrypted LevelDB"
-                    subtitle="The LevelDB is encrypted. The app cannot open encrypted LevelDBs."
-                    detail="If this world is from a marketplace template, that would cause the LevelDB to be encrypted."
-                    image="access_denied"
-                />
+                <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
+                    <Notice
+                        title="LevelDB Error"
+                        subtitle="An error has occurred while opening the LevelDB."
+                        detail={null}
+                        image="generic_error"
+                        style={{ height: "auto" }}
+                    />
+                    <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(tab.errorOnDBOpen)}</div>
+                </div>
             );
         }
-        return (
-            <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
-                <Notice
-                    title="LevelDB Error"
-                    subtitle="An error has occurred while opening the LevelDB."
-                    detail={null}
-                    image="generic_error"
-                    style={{ height: "auto" }}
-                />
-                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(tab.errorOnDBOpen)}</div>
-            </div>
-        );
+        if (tab.corruptedDBError) {
+            return (
+                <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
+                    <Notice title="Corrupted LevelDB" subtitle="The LevelDB is corrupted." detail={null} image="connection_error" style={{ height: "auto" }} />
+                    <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(tab.corruptedDBError)}</div>
+                </div>
+            );
+        }
+        return <></>;
     }
     if (tab.db && !tab.cachedDBKeys) await tab.awaitCachedDBKeys!;
     signal.throwIfAborted();
+    if (tab.type === "leveldb" && (hasLevelDBOpenFailure || tab.corruptedDBError)) return <LevelDBFailureNotice />;
     const leveldbKeys: LevelDBKeyData[] =
-        tab.db ?
-            (Object.keys(tab.cachedDBKeys!) as (keyof typeof tab.cachedDBKeys)[])
+        // TODO: Add an error screen for when cachedDBKeys fails to load due to a non-corruption related error.
+        tab.db && !(hasLevelDBOpenFailure || tab.corruptedDBError) && tab.cachedDBKeys ?
+            (Object.keys(tab.cachedDBKeys) as (keyof typeof tab.cachedDBKeys)[])
                 .flatMap((contentType: keyof NonNullable<typeof tab.cachedDBKeys>): { contentType: MCDBEntryContentType; key: Buffer }[] =>
                     tab.cachedDBKeys![contentType].map((key: Buffer): { contentType: MCDBEntryContentType; key: Buffer } => ({
                         contentType,
@@ -515,7 +547,17 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                 //     contentType = "WorldPacksHistoryJSON";
                 // } else if (/^pack_icon\.(?:png|jpg|jpeg|webp)$/i.test(relativePath) && relativePath.startsWith("pack_icon")) contentType = "PackIcon";
                 else {
-                    const extension: string = path.extname(relativePath).toLowerCase();
+                    const fileName: string = path.basename(relativePath);
+                    switch (fileName.toLowerCase()) {
+                        case "license":
+                            formatData = {
+                                type: "UTF-8",
+                            };
+                            break;
+                        default:
+                            break;
+                    }
+                    const extension: string = path.extname(fileName).toLowerCase();
                     switch (extension) {
                         case ".json":
                             formatData = {
@@ -529,6 +571,8 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                             };
                             break;
                         case ".txt":
+                        case ".lang":
+                        case ".md":
                             formatData = {
                                 type: "UTF-8",
                             };
@@ -1374,7 +1418,11 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                 );
             }
             render(null, tablesContainerRef.current);
-            render(<TablesContents />, tablesContainerRef.current);
+            tablesContainerRef.current.style.display = mode === "leveldb" && (hasLevelDBOpenFailure || tab.corruptedDBError) ? "contents" : "flex";
+            render(
+                mode === "leveldb" && (hasLevelDBOpenFailure || tab.corruptedDBError) ? <LevelDBFailureNotice /> : <TablesContents />,
+                tablesContainerRef.current
+            );
         }
         currentUpdateTablesContentsFunction = updateTablesContents;
         useEffect((): (() => void) => {
@@ -2226,8 +2274,13 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                     </button>
                     <div class="search-text-box-error-popup" ref={searchRefs.searchTextBoxErrorPopup}></div>
                 </div>
-                <div style="display: flex; flex-direction: column;" ref={tablesContainerRef}>
-                    <TablesContents />
+                <div
+                    style={{ display: mode === "leveldb" && (hasLevelDBOpenFailure || tab.corruptedDBError) ? "contents" : "flex", flexDirection: "column" }}
+                    ref={tablesContainerRef}
+                >
+                    {mode === "leveldb" && (hasLevelDBOpenFailure || tab.corruptedDBError) ?
+                        <LevelDBFailureNotice />
+                    :   <TablesContents />}
                 </div>
             </>
         );

@@ -52,11 +52,18 @@ export default function WorldEditorTab(props: WorldEditorTabProps): JSX.Specific
     };
     const widgetRegistryRef: RefObject<EditorWidgetOverlayBarWidgetRegistry> = useRef<EditorWidgetOverlayBarWidgetRegistry>(null);
     let levelDBOpenFailure: boolean = false;
+    let levelDBCorrupted: boolean = false;
     async function checkForLevelDBOpenFailure(): Promise<void> {
         levelDBOpenFailure = !props.tab.db?.isOpen() && !((await props.tab.awaitDBOpen) ?? true);
-        reloadContents();
+        if (levelDBOpenFailure) reloadContents();
     }
-    void checkForLevelDBOpenFailure();
+    async function checkForLevelDBCorruption(): Promise<void> {
+        if (levelDBOpenFailure) return;
+        if (!props.tab.cachedDBKeys) await props.tab.awaitCachedDBKeys;
+        levelDBCorrupted = !!props.tab.corruptedDBError;
+        if (levelDBCorrupted) reloadContents();
+    }
+    void checkForLevelDBOpenFailure().then(checkForLevelDBCorruption);
     function LevelDBOpenFailureNotice(): JSX.Element {
         if (props.tab.errorDueToEncryptedLevelDB) {
             return (
@@ -66,6 +73,18 @@ export default function WorldEditorTab(props: WorldEditorTabProps): JSX.Specific
                     detail="If this world is from a marketplace template, that would cause the LevelDB to be encrypted."
                     image="access_denied"
                 />
+            );
+        }
+        if (
+            props.tab.errorOnDBOpen instanceof Error &&
+            props.tab.errorOnDBOpen.name === "Error" &&
+            (props.tab.errorOnDBOpen.message.startsWith("Corruption: ") || props.tab.errorOnDBOpen.message.startsWith("Error: Corruption: "))
+        ) {
+            return (
+                <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
+                    <Notice title="Corrupted LevelDB" subtitle="The LevelDB is corrupted." detail={null} image="connection_error" style={{ height: "auto" }} />
+                    <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(props.tab.errorOnDBOpen)}</div>
+                </div>
             );
         }
         return (
@@ -81,6 +100,14 @@ export default function WorldEditorTab(props: WorldEditorTabProps): JSX.Specific
             </div>
         );
     }
+    function LevelDBCorruptionNotice(): JSX.Element {
+        return (
+            <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: start;">
+                <Notice title="Corrupted LevelDB" subtitle="The LevelDB is corrupted." detail={null} image="connection_error" style={{ height: "auto" }} />
+                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(props.tab.corruptedDBError)}</div>
+            </div>
+        );
+    }
     useEffect((): (() => void) => {
         return (): void => {
             if (containerRef.current) render(null, containerRef.current);
@@ -93,6 +120,11 @@ export default function WorldEditorTab(props: WorldEditorTabProps): JSX.Specific
         if (levelDBOpenFailure) {
             render(null, containerRef.current);
             render(<LevelDBOpenFailureNotice />, containerRef.current);
+            return;
+        }
+        if (levelDBCorrupted) {
+            render(null, containerRef.current);
+            render(<LevelDBCorruptionNotice />, containerRef.current);
             return;
         }
         // if (dataLoadFailureNoticeReasonExists && !props.tab.currentState.worldTab) {
