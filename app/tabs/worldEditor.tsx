@@ -53,9 +53,10 @@ export default function WorldEditorTab(props: WorldEditorTabProps): JSX.Specific
     const widgetRegistryRef: RefObject<EditorWidgetOverlayBarWidgetRegistry> = useRef<EditorWidgetOverlayBarWidgetRegistry>(null);
     let levelDBOpenFailure: boolean = false;
     let levelDBCorrupted: boolean = false;
+    const useLoadingScreen = asyncMode || !props.tab.currentState.worldTab;
     async function checkForLevelDBOpenFailure(): Promise<void> {
         levelDBOpenFailure = !props.tab.db?.isOpen() && !((await props.tab.awaitDBOpen) ?? true);
-        if (levelDBOpenFailure) reloadContents();
+        if (levelDBOpenFailure || useLoadingScreen) reloadContents();
     }
     async function checkForLevelDBCorruption(): Promise<void> {
         if (levelDBOpenFailure) return;
