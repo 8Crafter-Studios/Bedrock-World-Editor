@@ -495,7 +495,7 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
                     else if (event.key === "Delete") hexEditorDeleteKeyDown = false;
                 }
             }
-            hexEditorBodyElement.addEventListener("scroll", scrollHandler);
+            hexEditorBodyElement.addEventListener("scroll", scrollHandler, { passive: true });
             window.addEventListener("keydown", keyHandler, { capture: true });
             window.addEventListener("keyup", keyHandler, { capture: true });
             return (): void => {

@@ -1726,7 +1726,7 @@ export default class TreeEditor extends React.Component<
                     }
                 }
             };
-            outerContainerElementRef.current?.parentElement?.addEventListener("scroll", onScroll);
+            outerContainerElementRef.current?.parentElement?.addEventListener("scroll", onScroll, { passive: true });
             if (!editorIsReadonly) {
                 window.addEventListener("keydown", onKeyDown);
             }
