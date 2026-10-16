@@ -69,6 +69,7 @@
 -   The world hover info in the world selection menu can now read the play time for worlds from versions before Pocket Edition v0.11.0 Alpha.
 -   Added the minimum compatible client version to the world hover info in the world selection menu.
 -   Added the storage version to the world hover info in the world selection menu.
+-   Added the generator type to the world hover info in the world selection menu.
 -   Added wildcard syntax support to the `type` query in the "View Files" left sidebar tab.
 -   Added a `typesgroup` query to the "View Files" left sidebar tab.
 -   Made the display value getters for the "Spawn" and "Spawn (Compact)" columns in the "Players" left sidebar tab a lot more robust.

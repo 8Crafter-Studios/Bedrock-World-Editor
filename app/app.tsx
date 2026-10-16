@@ -6,6 +6,7 @@ import TabBar from "./components/TabBar";
 import {
     entryContentTypeToFormatMap,
     gameModes,
+    generatorTypes,
     levelDatStorageVersionToMCVersionRangeMap,
     toLong,
     type EntryContentTypeFormatData,
@@ -291,6 +292,7 @@ export interface MinecraftWorldDisplayDetails {
     startCount: bigint;
     playTime: bigint | null;
     gameMode: number;
+    generator: number;
     hardcore: boolean;
     multiplayer: boolean;
     fromLockedTemplate: boolean;
@@ -660,6 +662,7 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
                                     null
                                 :   toLong((levelDat.value.currentTick?.value ?? levelDat.value.Time?.value)!),
                             gameMode: levelDat.value.GameType?.value ?? ((levelDat.value.StorageVersion?.value ?? NaN) <= 1 ? 1 : -1),
+                            generator: (levelDat.value.StorageVersion?.value ?? NaN) < 4 ? 0 : (levelDat.value.Generator?.value ?? NaN),
                             hardcore: levelDat.value.IsHardcore?.value === 1,
                             multiplayer:
                                 (levelDat.value.MultiplayerGameIntent?.value ?? 1) ===
@@ -877,7 +880,9 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                             .padStart(2, "0")}:${((world.playTime / 20n / 60n) % 60n).toString().padStart(2, "0")}:${((world.playTime / 20n) % 60n)
                             .toString()
                             .padStart(2, "0")}.${(world.playTime % 20n) * 5n}`
-                }\nStorage Version: ${world.storageVersion}\nGame Mode: ${world.gameMode === -1 ? "Unknown" : (gameModes[world.gameMode] ?? world.gameMode)}${world.hardcore ? "\nHardcore" : ""}\n${
+                }\nStorage Version: ${world.storageVersion}\nGame Mode: ${
+                    world.gameMode === -1 ? "Unknown" : (gameModes[world.gameMode] ?? world.gameMode)
+                }\nGenerator: ${generatorTypes[world.generator] ?? world.generator}${world.hardcore ? "\nHardcore" : ""}\n${
                     world.multiplayer ? "Multiplayer" : "Singleplayer"
                 }${world.fromLockedTemplate ? "\nFrom Locked Template" : ""}${world.fromWorldTemplate ? "\nFrom World Template" : ""}${
                     world.singleUseWorld ? "\nSingle Use World" : ""
