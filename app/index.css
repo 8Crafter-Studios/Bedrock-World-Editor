@@ -478,6 +478,26 @@ page_background[theme_color_bg] {
     backdrop-filter: blur(5px);
 }
 
+.fullscreen-drop-overlay {
+    z-index: 9999999;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 100vw;
+    background-color: rgba(0, 0, 0, 0.5);
+    align-content: center;
+    text-align: center;
+}
+
+.fullscreen-drop-overlay:not(.has-multiple) .drop-overlay-message-plural {
+    display: none;
+}
+
+.fullscreen-drop-overlay > * {
+    pointer-events: none;
+}
+
 .collapsible-section:not(.open) > .collapsible-section-button > button {
     & .collapsible-section-closed-icon {
         display: inline-block;
@@ -1092,7 +1112,11 @@ body.overlay_page_visible .possible_scroll_y {
 }
 
 #page-overlay-container:not(:has(*)) {
-    display: none;
+    display: none !important;
+}
+
+#drop-overlays:not(:has(*)) {
+    display: none !important;
 }
 
 #world-selector-container {

@@ -251,6 +251,46 @@ export default function App(): JSX.Element {
                 <MainEditor />
             </div>
             <div id="page-overlay-container" style="display: contents;" />
+            <div id="drop-overlays" style="display: contents;">
+                <div id="file-drop-open-overlay" class="fullscreen-drop-overlay" style="display: none;">
+                    <img
+                        aria-hidden="true"
+                        src="resource://images/ui/glyphs/upload_glyph.png"
+                        class="nsel ndrg piximg drop-overlay-icon"
+                        style={{
+                            width: `max(16px, min(50% - mod(50%, 16px), 128px))`,
+                        }}
+                    />
+                    <p
+                        class="nsel ndrg drop-overlay-message"
+                        style={{
+                            fontSize: "calc(max(16px, min(50vw - mod(50vw, 16px), 128px)) / 5)",
+                            margin: "0.5em 0",
+                        }}
+                    >
+                        Open file<span class="drop-overlay-message-plural">s</span>
+                    </p>
+                </div>
+                <div id="file-drop-import-overlay" class="fullscreen-drop-overlay" style="display: none;">
+                    <img
+                        aria-hidden="true"
+                        src="resource://images/ui/glyphs/upload_glyph.png"
+                        class="nsel ndrg piximg drop-overlay-icon"
+                        style={{
+                            width: `max(16px, min(50% - mod(50%, 16px), 128px))`,
+                        }}
+                    />
+                    <p
+                        class="nsel ndrg drop-overlay-message"
+                        style={{
+                            fontSize: "calc(max(16px, min(50vw - mod(50vw, 16px), 128px)) / 5)",
+                            margin: "0.5em 0",
+                        }}
+                    >
+                        Import file<span class="drop-overlay-message-plural">s</span>
+                    </p>
+                </div>
+            </div>
             <DebugOverlay />
             {/* This svg is used to completely disable anti-aliasing on fonts, please ignore it. */}
             <svg class="offscreen" width="0" height="0" xmlns="http://www.w3.org/2000/svg">

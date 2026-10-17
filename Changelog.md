@@ -12,6 +12,7 @@
 
 ## Additions
 
+-   Added the ability to drag and drop files and folders into the app window to open them.
 -   Added a "Files" mode to the "View Files" left sidebar tab, which allows you to see the files in the world folder (certain files/folders are excluded: anything starting with `.`, the `db` folder, the `resource_packs` folder, and the `behavior_packs` folder). The list of LevelDB entries (which is what was in the tab prior to this update) is accessible through the default "LevelDB" mode.
 -   The app now supports worlds from versions before Pocket Edition v0.2.0 Alpha. Meaning all versions are now fully supported.
 -   Added full support for Minecraft China Edition.

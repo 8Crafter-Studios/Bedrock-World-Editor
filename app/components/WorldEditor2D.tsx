@@ -2084,7 +2084,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 portalRecords = "no_data";
                 return;
             }
-            const parsedPortalRecords: NBTSchemas.NBTSchemaTypes.Portals & NBT.NBT = (await NBT.parse(rawPortalRecords, "little")).parsed;
+            const parsedPortalRecords = (await NBT.parse(rawPortalRecords, "little")).parsed as NBTSchemas.NBTSchemaTypes.Portals & Pick<NBT.NBT, "name">;
             if (portalRecords !== "loading") return;
             portalRecords = parsedPortalRecords;
         } catch (e) {
