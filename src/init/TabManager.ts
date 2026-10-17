@@ -1737,6 +1737,7 @@ namespace exports {
                     progressBar._window?.setClosable(true);
                     progressBar.close();
                 }, 1);
+                this.#lastModificationState = false;
                 this.emit("modificationStatusChanged", { tab: this, isModified: false });
             } catch (e) {
                 successful = false;

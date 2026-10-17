@@ -133,10 +133,13 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                 //     // containerRef.current.style.opacity = "";
                 // }, 200);
             }
-            $(containerRef.current.parentElement!)
-                .find<HTMLLIElement>(".left-highlight, .right-highlight")
-                .removeClass("left-highlight")
-                .removeClass("right-highlight");
+            // The tab.moveTab(...) call can cause containerRef.current to become null, so we need to check for it.
+            if (containerRef.current?.parentElement) {
+                $(containerRef.current.parentElement)
+                    .find<HTMLLIElement>(".left-highlight, .right-highlight")
+                    .removeClass("left-highlight")
+                    .removeClass("right-highlight");
+            }
             return;
         }
         function onMouseMove(event: MouseEvent): void {

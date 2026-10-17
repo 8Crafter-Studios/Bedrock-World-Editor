@@ -155,6 +155,7 @@
 -   Fixed a bug where the "Tab" debug overlay would always say `closed (encrypted)` when the LevelDB was closed, even if it wasn't encrypted and there wasn't an error.
 -   Fixed a bug where the out of storage popup did not appear when opening a world via the context menu.
 -   Fixed a bug where closing the last tab while on the world selection menu did not hide the tab bar.
+-   Fixed an error that could appear in the console when moving tabs or sub-tabs.
 -   Miscellaneous typo fixes.
 
 ## Performance Improvements
