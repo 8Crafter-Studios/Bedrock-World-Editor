@@ -160,7 +160,9 @@
 
 -   Major world list loading time improvements.
 -   The world folder location detection is now asynchronous, allowing for faster world list loading and preventing the app from freezing while the world list is loading.
+-   World thumbnails in the world list are now fetched asynchronously, allowing for faster world list loading and preventing the app from freezing while the world list is loading.
 -   The tab bar no longer causes a small stutter upon rendering.
+-   Fixed severe lag spikes while scrolling the world list in some cases.
 
 # v1.0.0-beta.37
 

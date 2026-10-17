@@ -1095,6 +1095,10 @@ body.overlay_page_visible .possible_scroll_y {
     display: none;
 }
 
+#world-selector-container {
+    touch-action: pan-y;
+}
+
 .offscreen {
     position: absolute;
     left: -100000px;

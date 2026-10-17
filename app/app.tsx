@@ -275,6 +275,7 @@ export interface MinecraftWorldDisplayDetails {
     name: string;
     path: string;
     thumbnailPath?: string | undefined;
+    thumbnailObjectURL?: string | undefined;
     lastOpenedWithVerison: `v${string}` | null;
     createdInVersion: `v${string}` | null;
     minimumCompatibleClientVersion: `v${string}` | null;
@@ -635,13 +636,19 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
                                             .catch((e: unknown): number => (console.error(`Error while reading size of world folder ${folderPath}:`, e), NaN))
                                 )
                             :   undefined;
+                        const thumbnailPath: string | undefined =
+                            existsSync(path.join(folderPath, "world_icon.jpeg")) ?
+                                path.join(folderPath, "world_icon.jpeg")
+                            :   globSync(path.join(folderPath, "world_icon.*"))[0];
                         return {
                             name,
                             path: folderPath,
-                            thumbnailPath:
-                                existsSync(path.join(folderPath, "world_icon.jpeg")) ?
-                                    path.join(folderPath, "world_icon.jpeg")
-                                :   globSync(path.join(folderPath, "world_icon.*"))[0],
+                            thumbnailPath,
+                            thumbnailObjectURL:
+                                thumbnailPath &&
+                                URL.createObjectURL(
+                                    new Blob([await readFile(thumbnailPath)], { type: mime.lookup(path.extname(thumbnailPath)) || undefined! })
+                                ),
                             lastOpenedWithVerison:
                                 levelDat.value.lastOpenedWithVersion ? `v${levelDat.value.lastOpenedWithVersion.value.value.join(".")}` : null,
                             minimumCompatibleClientVersion:
@@ -891,7 +898,7 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                     // TODO: When you press and hold on a world, it should show the world details, like when you hover with a mouse. This is so that mobile players can also see it.
                     <div
                         title={`${hoverInfo} `}
-                        class="nsel ndrg"
+                        class="nsel ndrg world-list-world-item"
                         style={{
                             display: "flex",
                             flexDirection: "row",
@@ -984,13 +991,7 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                             title={hoverInfo + " ".repeat(2)}
                             alt="Icon"
                             aria-hidden="true"
-                            src={
-                                world.thumbnailPath ?
-                                    `data:${mime.lookup(path.extname(world.thumbnailPath))};base64,${readFileSync(world.thumbnailPath, {
-                                        encoding: "base64",
-                                    })}`
-                                :   (defaultWorldIconDataURI ?? "resource://images/ui/misc/CreateNewWorld.png")
-                            }
+                            src={world.thumbnailObjectURL ?? defaultWorldIconDataURI ?? "resource://images/ui/misc/CreateNewWorld.png"}
                             style={`margin: 4px; width: ${
                                 viewMode === "compact" ? 32
                                 : viewMode === "detailed" ? 64
