@@ -246,3 +246,15 @@ export function stringifyError(error: unknown, options: StringifyErrorOptions = 
             return String(error);
     }
 }
+
+/**
+ * Awaits all promises in the array to either resolve or reject, and does not handle the promise rejections (so if they are not handled elsewhere, they will show as unhandled promise rejections in the console and trigger the unhandledrejection event).
+ *
+ * @param promises The array of promises to await.
+ * @returns A promise that resolves when all promises in the array have either resolved or rejected.
+ */
+export async function allPromisesSettledUnhandled(promises: Promise<unknown>[] | SetIterator<Promise<unknown>>): Promise<void> {
+    await Promise.all(
+        promises.map(async (p: Promise<unknown>): Promise<void> => void (await new Promise<void>((resolve: () => void): void => void p.finally(resolve))))
+    );
+}

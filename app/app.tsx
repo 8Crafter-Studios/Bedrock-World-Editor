@@ -2369,6 +2369,11 @@ function renderTabContents({
             tabContentsElement
         );
     } else if (typeof newTab !== "string") {
+        if (!newTab.isInitialized) {
+            // TODO: Maybe add a better loading screen message here.
+            render(<LoadingScreenContents />, tabContentsElement);
+            return;
+        }
         switch (newTab.type) {
             case "world":
                 render(<WorldEditor tab={newTab} />, tabContentsElement);
@@ -2516,6 +2521,13 @@ tabManager.on("switchTab", ({ /* previousTab, */ newTab }: TabManagerSwitchTabEv
     const tabContentsElement: HTMLDivElement | null = document.getElementById("tab-contents-container") as HTMLDivElement | null;
     if (!tabContentsElement) return;
     renderTabContents({ newTab, tabContentsElement });
+});
+
+tabManager.on("tabInitialized", ({ tab }: TabManagerInitializedTabEvent): void => {
+    if (tabManager.selectedTab !== tab) return;
+    const tabContentsElement: HTMLDivElement | null = document.getElementById("tab-contents-container") as HTMLDivElement | null;
+    if (!tabContentsElement) return;
+    renderTabContents({ newTab: tab, tabContentsElement });
 });
 
 // tabManager.on("openTab", ({ switchToTab }: TabManagerOpenTabEvent): void => {

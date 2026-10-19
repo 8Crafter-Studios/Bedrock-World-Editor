@@ -23,8 +23,8 @@ import NBT from "prismarine-nbt";
 import type { TreeEditorDataStorageObjectInput } from "../../app/components/TreeEditor";
 import { LevelDB } from "@8crafter/leveldb-zlib";
 import path from "node:path";
-import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { copyFile, cp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFile, cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { APP_DATA_FOLDER_PATH } from "../utils/URLs";
 import type { MapEditorDataStorageObject } from "../../app/components/MapEditor";
 import { app, dialog, Menu, nativeImage } from "@electron/remote";
@@ -34,7 +34,7 @@ import { defaultWorldIconDataURI } from "../utils/preloadImages";
 import { checkIsURIOrPath, normalizePathSlashes } from "../utils/pathUtils";
 import type { HexEditorDataStorageObject } from "../../app/components/BinaryHexEditor";
 import type { WorldEditorDataStorageObject } from "../../app/tabs/worldEditor";
-import { stringifyError } from "../utils/miscUtils";
+import { allPromisesSettledUnhandled, stringifyError } from "../utils/miscUtils";
 import type { CommentJSONValue } from "comment-json";
 import commentJSON from "comment-json";
 
@@ -70,6 +70,10 @@ namespace exports {
          * Emitted when tabs are reordered.
          */
         reorderTabs: [TabManagerReorderTabsEvent];
+        /**
+         * Emitted when a tab done initializing.
+         */
+        tabInitialized: [TabManagerInitializedTabEvent];
     }
     /**
      * Events emitted by the {@link TabManagerTab} class.
@@ -116,9 +120,17 @@ namespace exports {
          */
         subTabModificationStatusChanged: [TabManagerSubTabModificationStatusChangedEvent];
         /**
+         * Emitted when the tab is done initializing (meaning the files have finished copying into the temp directory and other required initialization has finished).
+         */
+        initialized: [];
+        /**
          * Emmitted to trigger a reload of the current sub-tab.
          */
         reloadCurrentSubTab: [];
+        /**
+         * Emitted after the tab's post-close cleanup is done (meaning the LevelDB is closed and the temp directory is deleted), this is the point at which it is safe to end the process (assuming all other tabs have finished cleanup as well).
+         */
+        cleanupComplete: [];
     }
     /**
      * Emitted when the selected world or nbt tab changes (the top tab bar).
@@ -163,6 +175,15 @@ namespace exports {
          * The new order of tabs.
          */
         tabs: TabManagerTab[];
+    }
+    /**
+     * Emitted when a tab is done initializing.
+     */
+    export interface TabManagerInitializedTabEvent {
+        /**
+         * The initialized tab.
+         */
+        tab: TabManagerTab;
     }
     /**
      * Emitted when the selected LevelDB entry changes (the bottom tab bar).
@@ -314,6 +335,8 @@ namespace exports {
     }
 
     // IDEA: Add a way to open a LevelDB as a generic LevelDB, where it doesn't have any of the world-specific stuff.
+
+    // IDEA: Maybe cache recents data.
 
     /**
      * Represents a tab manager.
@@ -573,6 +596,7 @@ namespace exports {
             let recentsData: RecentsData = { worlds: [], folders: [], files: [] };
             if (existsSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"))) {
                 try {
+                    // TODO: Make this operation async.
                     const data = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), "utf-8")) as RecentsData;
                     // IDEA: Add something to validate the recents data.
                     recentsData = data;
@@ -630,6 +654,7 @@ namespace exports {
                                 click: (): void => {
                                     if (existsSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"))) {
                                         try {
+                                            // TODO: Make these operations async.
                                             const data = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), "utf-8")) as RecentsData;
                                             data.worlds.length = 0;
                                             writeFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), JSON.stringify(data));
@@ -824,6 +849,22 @@ namespace exports {
          * The last recorded modification state of this tab.
          */
         #lastModificationState: boolean = false;
+        /**
+         * Whether this tab has finished initializing.
+         */
+        #isInitialized: boolean = false;
+        /**
+         * An abort controller that will be aborted just before cleanup.
+         */
+        private readonly _abortController: AbortController = new AbortController();
+        /**
+         * An abort signal that will be aborted just before cleanup.
+         */
+        private readonly _abortSignal: AbortSignal = this._abortController.signal;
+        /**
+         * Promises that must be resolved prior to cleanup.
+         */
+        private readonly _requiredPreCleanupPromises: Set<Promise<unknown>> = new Set<Promise<unknown>>();
         /**
          * The last ID used for a tab.
          */
@@ -1070,20 +1111,32 @@ namespace exports {
                 this.#lastModificationState = event.isModified;
                 this.emit("modificationStatusChanged", { tab: this, isModified: event.isModified });
             });
-            this.initAccess(props.mode ?? TabManagerTabMode.CopyUntilSave);
-            if (props.hasFragileLevelDB === undefined) this.awaitFragilityCheck = this.checkFragility();
-            else this.initFragilityState();
-            if (props.subTabs) {
-                props.subTabs.forEach((tab) => this.openTab(tab[0], tab[1]));
-            } else {
-                this.getPinnedTabs().forEach((tab, i, a) =>
-                    this.openTab(
-                        { ...tab, isPinned: true },
-                        tab.active || (!a.some((tab) => tab.active) && i === a.length - 1 && props.switchToTab === undefined)
-                    )
-                );
+            void this.initAccess(props.mode ?? TabManagerTabMode.CopyUntilSave).then((): void => {
+                if (props.hasFragileLevelDB === undefined) this.awaitFragilityCheck = this.checkFragility();
+                else this.initFragilityState();
+                if (props.subTabs) {
+                    props.subTabs.forEach((tab) => this.openTab(tab[0], tab[1]));
+                } else {
+                    this.getPinnedTabs().forEach((tab, i, a) =>
+                        this.openTab(
+                            { ...tab, isPinned: true },
+                            tab.active || (!a.some((tab) => tab.active) && i === a.length - 1 && props.switchToTab === undefined)
+                        )
+                    );
+                }
+                if (props.switchToTab !== undefined) this.switchTab(props.switchToTab);
+            });
+        }
+        public get isInitialized(): boolean {
+            return this.#isInitialized;
+        }
+        private set isInitialized(value: boolean) {
+            const wasInitialized: boolean = this.#isInitialized;
+            this.#isInitialized = value;
+            if (value && wasInitialized !== this.#isInitialized) {
+                this.tabManager.emit("tabInitialized", { tab: this });
+                this.emit("initialized");
             }
-            if (props.switchToTab !== undefined) this.switchTab(props.switchToTab);
         }
         /**
          * Whether the tab has a sub-tab bar.
@@ -1145,23 +1198,58 @@ namespace exports {
         public get index(): number {
             return this.tabManager.openTabs.indexOf(this);
         }
-        private initAccess(mode: TabManagerTabMode): void {
+        /**
+         * Wraps a promise that is required to be completed prior to cleanup.
+         *
+         * @param promise The promise to wrap.
+         * @returns The wrapped promise.
+         *
+         * @throws {unknown} If the promise throws an error.
+         */
+        // REVIEW: Make sure this doesnt't hide the error or mess up the stack.
+        private async _rqP<T extends unknown = unknown>(promise: T | Promise<T>): Promise<T> {
+            if (!(promise instanceof Promise)) return promise;
+            this._requiredPreCleanupPromises.add(promise);
+            try {
+                return await promise;
+            } finally {
+                this._requiredPreCleanupPromises.delete(promise);
+            }
+        }
+        /**
+         * Wraps a callback so that it's returned promise is automatically wrapped such that it is required to be completed prior to cleanup.
+         *
+         * @param callback The callback to wrap.
+         * @returns The wrapped callback.
+         */
+        // REVIEW: Make sure this doesnt't hide the error or mess up the stack.
+        private _rqC<TR extends unknown, TA extends unknown[]>(callback: (...args: TA) => TR | Promise<TR>): (...args: TA) => Promise<TR> {
+            return async (...args: TA): Promise<TR> => {
+                return await this._rqP(callback(...args));
+            };
+        }
+        private async initAccess(mode: TabManagerTabMode): Promise<void> {
             switch (mode) {
                 case TabManagerTabMode.Readonly:
                 case TabManagerTabMode.Copy:
                 case TabManagerTabMode.CopyUntilSave: {
-                    if (!existsSync(path.join(APP_DATA_FOLDER_PATH, "temp"))) mkdirSync(path.join(APP_DATA_FOLDER_PATH, "temp"), { recursive: true });
+                    if (!existsSync(path.join(APP_DATA_FOLDER_PATH, "temp"))) {
+                        // REVIEW: This may cause a race condition if multiple tabs try to create this simultaneously, make sure if that happens it won't cause any issues.
+                        await this._rqP(mkdir(path.join(APP_DATA_FOLDER_PATH, "temp"), { recursive: true }));
+                        this._abortSignal.throwIfAborted();
+                    }
                     if (this.type === "world" || this.type === "leveldb") {
-                        this.tempPath = mkdtempSync(path.join(APP_DATA_FOLDER_PATH, "temp/"));
+                        this.tempPath = await this._rqP(mkdtemp(path.join(APP_DATA_FOLDER_PATH, "temp/")));
                         this.tempFilePath = this.tempPath;
                         if (this.type === "world" && WORLD_FOLDER_SUBPATHS_TO_NEVER_COPY_APPLICABLE_MODES.includes(this.mode)) {
-                            cpSync(this.path, this.tempPath, {
+                            await this._rqC(cp)(this.path, this.tempPath, {
                                 recursive: true,
                                 force: true,
                                 preserveTimestamps: true,
                                 dereference: true,
                                 // WARNING: If this filter is ever removed, it must stay as `() => true` in order to make non-latin characters in file names work.
                                 filter: (source: string, _destination: string): boolean => {
+                                    this._abortSignal.throwIfAborted();
                                     if (
                                         WORLD_FOLDER_SUBPATHS_TO_NEVER_COPY.includes(
                                             normalizePathSlashes(path.relative(normalizePathSlashes(this.path), normalizePathSlashes(source)))
@@ -1172,20 +1260,27 @@ namespace exports {
                                     return true;
                                 },
                             });
+                            this._abortSignal.throwIfAborted();
                         } else {
-                            cpSync(this.path, this.tempPath, {
+                            await this._rqC(cp)(this.path, this.tempPath, {
                                 recursive: true,
                                 force: true,
                                 preserveTimestamps: true,
                                 dereference: true,
-                                // NOTE: This is a workaround make non-latin characters in file names work.
-                                filter: (): true => true,
+                                // NOTE: This is a workaround make non-latin characters in file names work (the AbortSignal is not part of the workaround).
+                                filter: (): true => {
+                                    this._abortSignal.throwIfAborted();
+                                    return true;
+                                },
                             });
+                            this._abortSignal.throwIfAborted();
                         }
                     } else {
-                        this.tempPath = mkdtempSync(path.join(APP_DATA_FOLDER_PATH, "temp/"));
+                        this.tempPath = await this._rqP(mkdtemp(path.join(APP_DATA_FOLDER_PATH, "temp/")));
                         this.tempFilePath = path.join(this.tempPath, path.basename(this.path));
-                        copyFileSync(this.path, this.tempFilePath);
+                        this._abortSignal.throwIfAborted();
+                        await this._rqP(copyFile(this.path, this.tempFilePath));
+                        this._abortSignal.throwIfAborted();
                     }
                     break;
                 }
@@ -1194,6 +1289,7 @@ namespace exports {
                 default:
                     break;
             }
+            this._abortSignal.throwIfAborted();
             if (this.type === "world") {
                 if (!existsSync(path.join(this.tempPath ?? this.path, "db"))) {
                     this.db = null;
@@ -1201,18 +1297,20 @@ namespace exports {
                 } else {
                     this.db = new LevelDB(path.join(this.tempPath ?? this.path, "db"));
                     this.dbSearch = new TabManagerTab_LevelDBSearch(this);
-                    this.awaitDBOpen = this.db.open().then(
+                    this.awaitDBOpen = this._rqP(this.db.open()).then(
                         (): true => {
+                            this._abortSignal.throwIfAborted();
                             void this.refreshCachedDBKeys();
                             return true;
                         },
-                        (err: unknown): false => {
+                        async (err: unknown): Promise<false> => {
                             console.error(err);
+                            this._abortSignal.throwIfAborted();
                             this.errorOnDBOpen = err;
                             if (err instanceof Error && err.message === "Error: Corruption: CURRENT file does not end with newline") {
                                 if (
                                     existsSync(path.join(this.tempPath ?? this.path, "db", "CURRENT")) &&
-                                    readFileSync(path.join(this.tempPath ?? this.path, "db", "CURRENT"))
+                                    (await this._rqP(readFile(path.join(this.tempPath ?? this.path, "db", "CURRENT"), { signal: this._abortSignal })))
                                         .subarray(0, 17)
                                         .equals(Buffer.from("00000000fcb9cf9b000000000000000024", "hex"))
                                 ) {
@@ -1231,13 +1329,13 @@ namespace exports {
                         void this.refreshCachedDBKeys();
                         return true;
                     },
-                    (err: unknown): false => {
+                    async (err: unknown): Promise<false> => {
                         console.error(err);
                         this.errorOnDBOpen = err;
                         if (err instanceof Error && err.message === "Error: Corruption: CURRENT file does not end with newline") {
                             if (
                                 existsSync(path.join(this.tempPath ?? this.path, "db", "CURRENT")) &&
-                                readFileSync(path.join(this.tempPath ?? this.path, "db", "CURRENT"))
+                                (await this._rqP(readFile(path.join(this.tempPath ?? this.path, "db", "CURRENT"), { signal: this._abortSignal })))
                                     .subarray(0, 17)
                                     .equals(Buffer.from("00000000fcb9cf9b000000000000000024", "hex"))
                             ) {
@@ -1292,7 +1390,8 @@ namespace exports {
                 if (contentType === "Unknown" && !formatData) {
                     void (async (): Promise<void> => {
                         try {
-                            const data: Buffer = await readFile(this.path);
+                            const data: Buffer = await this._rqP(readFile(this.path, { signal: this._abortSignal }));
+                            this._abortSignal.throwIfAborted();
                             // TODO: Maybe make the player.dat detection more strict.
                             if (path.basename(this.path) === "player.dat" && data.readUInt32LE(0) === 1) {
                                 contentType = "PlayerDat";
@@ -1308,7 +1407,7 @@ namespace exports {
                                 return;
                             }
                             // TODO: Add importedchunks.dat detection.
-                            // TODO: Figure out how the players folder is used and add support for files from it.
+                            // TODO: Add players/<PlayerID>.dat detection.
                             const format: NBT.NBTFormat = (await NBT.parse(data)).type;
                             formatData = {
                                 type: "NBT",
@@ -1347,6 +1446,7 @@ namespace exports {
                     });
                 }
             }
+            this.isInitialized = true;
         }
         private initFragilityState(): void {
             switch (this.type) {
@@ -1400,7 +1500,7 @@ namespace exports {
             const levelDatPath: string = path.join(this.tempPath ?? this.path, "level.dat");
             if (!existsSync(levelDatPath)) return;
             try {
-                const levelDat = await entryContentTypeToFormatMap.LevelDat.parse(readFileSync(levelDatPath));
+                const levelDat = await entryContentTypeToFormatMap.LevelDat.parse(await this._rqP(readFile(levelDatPath, { signal: this._abortSignal })));
                 this.hasFragileLevelDB = this.tabManager.checkWorldFragilityFromLevelDat(levelDat);
                 this.initFragilityState();
                 this.emit("otherStatusChanged", { tab: this, status: "hasFragileLevelDB" });
@@ -1589,6 +1689,7 @@ namespace exports {
          * @returns A promise that resolves when the tab has been saved.
          */
         // TODO: Maybe this shouldn't copy folders and files that are not necessary to copy, so that is there is a 60 GB development-related folder that isn't explicitly marked as never copy in WORLD_FOLDER_SUBPATHS_TO_NEVER_COPY, then it won't try to copy 60 GB of data.
+        // TODO: Add a way to abort saving.
         public async save(ignoreFailedTabSaves: boolean = false, unsafeMode: boolean = false): Promise<void> {
             if (this.isSaving || this.readonly || !this.saveEnabled || !this.tempPath || !this.tempFilePath) return;
             if (!this.fragileLevelDBAlreadyShattered) {
@@ -1709,6 +1810,7 @@ namespace exports {
                         force: true,
                         preserveTimestamps: true,
                         filter: (source: string, _destination: string): true => {
+                            // this._abortSignal.throwIfAborted(); // TODO: This should be a separate abortSignal for aborting the save.
                             progressBar.detail = `Copying modified files to ${
                                 this.type === "world" ? "world"
                                 : this.type === "leveldb" ? "LevelDB"
@@ -1785,6 +1887,7 @@ namespace exports {
         ): TabManagerSubTab {
             const alreadyOpenEquivalentTab: TabManagerSubTab | undefined = this.openTabs.find(
                 (tab: TabManagerSubTab): boolean =>
+                    // BUG: This results in two copies of sub-tabs that are directly accessible via the left sidebar being able to be opened (one via the left sidebar, and one via the "View Files" tab).
                     (tab.specialTabID && tab.specialTabID === props.specialTabID) ||
                     (!tab.specialTabID &&
                         !props.specialTabID &&
@@ -1911,9 +2014,25 @@ namespace exports {
             this.tabManager.emit("closeTab", { tab: this });
             this.emit("closed");
             if (this.tempPath) {
+                {
+                    const abortError = new Error("[TabManagerTab preCleanup] Aborted due to tab close.");
+                    abortError.name = "AbortError";
+                    this._abortController.abort(abortError);
+                }
+                // TEST: Test closing a world while it is copying to the temp folder for a massive world.
+                await allPromisesSettledUnhandled(this._requiredPreCleanupPromises.values());
+                // TODO: Maybe add a timeout to this.db.close(), since if LevelDB corruption was detected after opening was completed, this will hang indefinitely.
                 if (this.db?.isOpen()) await this.db.close();
                 await rm(this.tempPath, { recursive: true, force: true });
+                this.emit("cleanupComplete");
             }
+        }
+        static {
+            addEventListener("unhandledrejection", (event: PromiseRejectionEvent): void => {
+                if (!(event.reason instanceof Error)) return;
+                if (event.reason.name !== "AbortError" || event.reason.message !== "[TabManagerTab preCleanup] Aborted due to tab close.") return;
+                event.preventDefault();
+            });
         }
         /**
          * Move a sub-tab to a specific index.
@@ -4363,6 +4482,7 @@ declare global {
     export import TabManagerClosedTabEvent = exports.TabManagerClosedTabEvent;
     export import TabManagerOpenTabEvent = exports.TabManagerOpenTabEvent;
     export import TabManagerReorderTabsEvent = exports.TabManagerReorderTabsEvent;
+    export import TabManagerInitializedTabEvent = exports.TabManagerInitializedTabEvent;
     export import TabManagerTabSwitchTabEvent = exports.TabManagerTabSwitchTabEvent;
     export import TabManagerTabClosedTabEvent = exports.TabManagerTabClosedTabEvent;
     export import TabManagerTabOpenTabEvent = exports.TabManagerTabOpenTabEvent;
