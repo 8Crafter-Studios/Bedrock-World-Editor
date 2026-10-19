@@ -130,7 +130,7 @@ render(<App />, document.getElementById("app")!);
 
 document.addEventListener("dragenter", (event: DragEvent): void => {
     if (!event.dataTransfer) return;
-    console.log(Array.from(event.dataTransfer.items).map((v: DataTransferItem): { kind: string; type: string } => ({ kind: v.kind, type: v.type })));
+    // console.log(Array.from(event.dataTransfer.items).map((v: DataTransferItem): { kind: string; type: string } => ({ kind: v.kind, type: v.type })));
     if (!event.dataTransfer.types.includes("Files")) {
         if (event.dataTransfer.types.includes("text/uri-list")) {
             $(".fullscreen-drop-overlay").hide();
