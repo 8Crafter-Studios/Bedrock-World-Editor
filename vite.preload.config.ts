@@ -27,12 +27,14 @@ export default defineConfig((env: ConfigEnv) => ({
                 path.resolve(__dirname, "build/node-leveldb.node"), // native binary
             ],
         },
+        target: "es2022",
     },
     esbuild: {
         minifyIdentifiers: false,
         minifySyntax: false,
         minifyWhitespace: false,
         treeShaking: false,
+        target: "es2022",
     },
     optimizeDeps: {
         esbuildOptions: {

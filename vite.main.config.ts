@@ -23,6 +23,7 @@ export default defineConfig((env: ConfigEnv) => ({
             external: ["about-window"],
             treeshake: false,
         },
+        target: "es2022", 
     } /* 
     plugins: [
         commonjsExternals({
@@ -34,6 +35,7 @@ export default defineConfig((env: ConfigEnv) => ({
         minifySyntax: false,
         minifyWhitespace: false,
         treeShaking: false,
+        target: "es2022", 
     },
 }));
 

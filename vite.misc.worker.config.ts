@@ -30,6 +30,7 @@ export default defineConfig((env: ConfigEnv) => ({
             formats: ["es"] satisfies LibraryOptions["formats"],
             fileName: (_format, entryName: string): string => `${entryName}.js`,
         },
+        target: "es2022",
     },
     esbuild: {
         jsxFactory: "h",
@@ -38,6 +39,7 @@ export default defineConfig((env: ConfigEnv) => ({
         minifySyntax: false,
         minifyWhitespace: false,
         treeShaking: false,
+        target: "es2022",
     },
     resolve: {
         alias: {

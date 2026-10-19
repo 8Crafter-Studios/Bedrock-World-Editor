@@ -2,6 +2,7 @@
     "compilerOptions": {
         "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
         "target": "esnext",
+        "useDefineForClassFields": true,
         "lib": ["ESNext"],
         "module": "ESNext",
         "skipLibCheck": true,

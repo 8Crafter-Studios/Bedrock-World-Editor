@@ -27,6 +27,7 @@ export default defineConfig((env: ConfigEnv) => ({
                 path.resolve(__dirname, "build/node-leveldb.node"), // native binary
             ],
         },
+        target: "es2022",
     },
     esbuild: {
         jsxFactory: "h",
@@ -35,6 +36,7 @@ export default defineConfig((env: ConfigEnv) => ({
         minifySyntax: false,
         minifyWhitespace: false,
         treeShaking: false,
+        target: "es2022",
     },
     // optimizeDeps: { exclude: ["monaco-editor/esm/vs/editor/contrib/clipboard/browser/clipboard.js"] },
     optimizeDeps: {
