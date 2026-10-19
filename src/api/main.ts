@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/unified-signatures */
-import { BrowserWindow, ipcMain, type IpcMainEvent, type IpcMainInvokeEvent } from "electron";
+import { app, BrowserWindow, ipcMain, type IpcMainEvent, type IpcMainInvokeEvent } from "electron";
 import { createWindow } from "../main";
 
 ipcMain.on("new-window", (_event: IpcMainEvent): void => {
@@ -10,6 +10,14 @@ ipcMain.on("new-window", (_event: IpcMainEvent): void => {
         console.error(error);
         return void false;
     }
+});
+
+ipcMain.on("set-jumplist", (event: IpcMainEvent, categories: Electron.JumpListCategory[] | null): void => {
+    event.returnValue = app.setJumpList(categories);
+});
+
+ipcMain.handle("set-jumplist", (_event: IpcMainInvokeEvent, categories: Electron.JumpListCategory[] | null): ReturnType<typeof app.setJumpList> => {
+    return app.setJumpList(categories);
 });
 
 ipcMain.on("window-eval", (event: IpcMainEvent, script: string): void => {
@@ -780,7 +788,9 @@ declare global {
     namespace Electron {
         interface IpcRenderer {
             send<_T extends 1>(channel: "new-window"): void;
+            send<_T extends 1>(channel: "set-jumplist", categories: JumpListCategory[] | null): void;
             sendSync<_T extends 1>(channel: "new-window"): boolean;
+            sendSync<_T extends 1>(channel: "set-jumplist", categories: JumpListCategory[] | null): ReturnType<typeof app.setJumpList>;
             sendSync<_T extends 1>(channel: "window-eval", script: string): any;
             sendSync<_T extends 1>(channel: "set-progress-bar", progress: number, options?: ProgressBarOptions): void;
             sendSync<_T extends 1>(channel: "center-window"): void;
@@ -861,6 +871,7 @@ declare global {
             sendSync<_T extends 1>(channel: "get-window-id"): number;
             sendSync<_T extends 1>(channel: "get-is-404-response", uri: string): boolean;
             invoke<_T extends 1>(channel: "get-is-404-response", uri: string): Promise<boolean>;
+            invoke<_T extends 1>(channel: "set-jumplist", categories: JumpListCategory[] | null): Promise<ReturnType<typeof app.setJumpList>>;
         }
     }
 }

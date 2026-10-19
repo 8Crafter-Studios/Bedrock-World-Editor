@@ -23,14 +23,14 @@ import NBT from "prismarine-nbt";
 import type { TreeEditorDataStorageObjectInput } from "../../app/components/TreeEditor";
 import { LevelDB } from "@8crafter/leveldb-zlib";
 import path from "node:path";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { copyFile, cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { APP_DATA_FOLDER_PATH } from "../utils/URLs";
 import type { MapEditorDataStorageObject } from "../../app/components/MapEditor";
-import { app, dialog, Menu, nativeImage } from "@electron/remote";
+import { app, dialog, Menu } from "@electron/remote";
 import type { MenuItemConstructorOptions, NativeImage } from "electron";
-import { padNativeImageToSquare, pngToIco } from "../utils/imageUtils";
-import { defaultWorldIconDataURI } from "../utils/preloadImages";
+import { convertNativeImageToPngZlibAsync, padNativeImageToSquare, pngToIco } from "../utils/imageUtils";
+import { awaitDefaultWorldIconDataURI, defaultWorldIconDataURI } from "../utils/preloadImages";
 import { checkIsURIOrPath, normalizePathSlashes } from "../utils/pathUtils";
 import type { HexEditorDataStorageObject } from "../../app/components/BinaryHexEditor";
 import type { WorldEditorDataStorageObject } from "../../app/tabs/worldEditor";
@@ -342,13 +342,50 @@ namespace exports {
      * Represents a tab manager.
      */
     export class TabManager extends EventEmitter<TabManagerEventMap> {
+        #abortSetJumpListController: AbortController = new AbortController();
+        /**
+         * Promises that must be resolved before running the associated operation.
+         */
+        private readonly _requiredOperationPromises: Record<"addRecentItem" | "setJumpListData", Set<Promise<unknown>>> = {
+            addRecentItem: new Set<Promise<unknown>>(),
+            setJumpListData: new Set<Promise<unknown>>(),
+        };
         public openTabs: TabManagerTab[] = [];
         public selectedTab: TabManagerTab | TabManagerGenericTabID | null = null;
         public constructor() {
             super();
             this.setMaxListeners(1000000);
-            this.setJumpListData();
+            void this.setJumpListData();
             this.setDockMenuData();
+        }
+        /**
+         * Creates a function that can be used to wrap a promise that is required to be completed before running the associated operation or the aborted operations can be treated as fully aborted.
+         *
+         * @param abortTarget The identifier of the target that is being aborted.
+         * @returns The wrapper function.
+         */
+        // REVIEW: Make sure this doesnt't hide the error or mess up the stack.
+        private _getRequiredOperationPromiseWrapperFunc(abortTarget: keyof typeof this._requiredOperationPromises): {
+            /**
+             * Wraps a promise that is required to be completed before running the associated operation or the aborted operations can be treated as fully aborted.
+             *
+             * @param promise The promise to wrap.
+             * @returns The wrapped promise.
+             *
+             * @throws {unknown} If the promise throws an error.
+             */
+            // eslint-disable-next-line @typescript-eslint/prefer-function-type -- This allows for the returned function to have JSDoc.
+            <T extends unknown = unknown>(promise: T | Promise<T>): Promise<T>;
+        } {
+            return async <T extends unknown = unknown>(promise: T | Promise<T>): Promise<T> => {
+                if (!(promise instanceof Promise)) return promise;
+                this._requiredOperationPromises[abortTarget].add(promise);
+                try {
+                    return await promise;
+                } finally {
+                    this._requiredOperationPromises[abortTarget].delete(promise);
+                }
+            };
         }
         /**
          * Checks using the `level.dat` file whether the world was last used on a version that is affected by the bug where if the LevelDB is touched, the game will freak out whenever it opens the world.
@@ -389,10 +426,12 @@ namespace exports {
             this.openTabs.push(tab);
             this.emit("openTab", { tab, switchToTab });
             if (switchToTab) this.switchTab(tab);
-            this.addRecentItem({ ...props, icon: tab.icon }, tab);
+            void this.addRecentItem({ ...props, icon: tab.icon }, tab);
             return tab;
         }
+        // TODO: Maybe move this to the main process (and have a copy inside of here that will be used for mobile in the future, as async file system operations are fine to have there without worrying about other windows, since mobile can only have 1 window (unless I add multi-window support in the future for some devices)).
         private addRecentItem(props: Parameters<this["openTab"]>[0], tab: TabManagerTab): void {
+            // await allPromisesSettledUnhandled(this._requiredOperationPromises.setJumpListData.values());
             try {
                 if (tab.path) app.addRecentDocument(tab.path);
             } catch {}
@@ -430,18 +469,44 @@ namespace exports {
                 recentsData.worlds.splice(5);
             }
             writeFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), JSON.stringify(recentsData));
-            this.setJumpListData();
+            void this.setJumpListData();
             this.setDockMenuData();
         }
-        private setJumpListData(): void {
+        static {
+            addEventListener("unhandledrejection", (event: PromiseRejectionEvent): void => {
+                if (!(event.reason instanceof Error)) return;
+                if (
+                    (event.reason.name !== "AbortError" || event.reason.message !== "[TabManager::setJumpListData] Aborted due to new setJumpListData call.") &&
+                    (!event.reason.cause ||
+                        !(event.reason.cause instanceof Error) ||
+                        event.reason.cause.name !== "AbortError" ||
+                        event.reason.cause.message !== "[TabManager::setJumpListData] Aborted due to new setJumpListData call.")
+                ) {
+                    return;
+                }
+                event.preventDefault();
+            });
+        }
+        // FIXME: This does not have handling for when multiple windows have setJumpListData calls simultaneously.
+        private async setJumpListData(): Promise<void> {
             if (process.platform !== "win32") return;
+            {
+                const abortError = new Error("[TabManager::setJumpListData] Aborted due to new setJumpListData call.");
+                abortError.name = "AbortError";
+                this.#abortSetJumpListController.abort(abortError);
+            }
+            const signal: AbortSignal = (this.#abortSetJumpListController = new AbortController()).signal;
+            await allPromisesSettledUnhandled(this._requiredOperationPromises.setJumpListData.values());
+            signal.throwIfAborted();
+            const _p = this._getRequiredOperationPromiseWrapperFunc("setJumpListData");
             let recentsData: RecentsData = { worlds: [], folders: [], files: [] };
             if (existsSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"))) {
                 try {
-                    const data = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), "utf-8")) as RecentsData;
+                    const data = JSON.parse(await _p(readFile(path.join(APP_DATA_FOLDER_PATH, "recents.json"), { encoding: "utf-8", signal }))) as RecentsData;
                     // IDEA: Add something to validate the recents data.
                     recentsData = data;
                 } catch (e) {
+                    if (signal.aborted && (e === signal.reason || (e instanceof Error && e.cause === signal.reason))) return;
                     console.error("Error reading recents.json:", e);
                     return;
                 }
@@ -488,11 +553,15 @@ namespace exports {
                     else console.warn("Unable to find file in removedItems:", item);
                 } else console.warn("Unknown item in removedItems:", item);
             });
-            if (removedItems.length) writeFileSync(path.join(APP_DATA_FOLDER_PATH, "recents.json"), JSON.stringify(recentsData));
+            if (removedItems.length) await _p(writeFile(path.join(APP_DATA_FOLDER_PATH, "recents.json"), JSON.stringify(recentsData)));
+            signal.throwIfAborted();
             if (!existsSync(path.join(APP_DATA_FOLDER_PATH, "taskbar_user_tasks.json"))) return;
             try {
-                var userTasksData = JSON.parse(readFileSync(path.join(APP_DATA_FOLDER_PATH, "taskbar_user_tasks.json"), "utf-8")) as Electron.Task[];
+                var userTasksData: Electron.Task[] = JSON.parse(
+                    await _p(readFile(path.join(APP_DATA_FOLDER_PATH, "taskbar_user_tasks.json"), { encoding: "utf-8", signal }))
+                ) as Electron.Task[];
             } catch (e) {
+                if (signal.aborted && e === signal.reason) return;
                 console.error("Error reading taskbar_user_tasks.json:", e);
                 return;
             }
@@ -501,34 +570,66 @@ namespace exports {
                     (userTasksData.find((task: Electron.Task): boolean => task.title === "New Window")?.program ?? null)
                 :   process.execPath;
             if (!execPath) return;
-            rmSync(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons"), { recursive: true, force: true });
-            mkdirSync(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons"), { recursive: true });
-            recentsData.worlds.forEach(async (world: RecentsItem, index: number): Promise<void> => {
-                if (world.iconPath && ["ico", "exe", "dll"].includes(path.extname(world.iconPath).slice(1).toLowerCase())) return;
-                if (!world.iconPath && !defaultWorldIconDataURI) return;
-                const img: NativeImage = await padNativeImageToSquare(
-                    world.iconPath ? nativeImage.createFromPath(world.iconPath) : nativeImage.createFromDataURL(defaultWorldIconDataURI!)
-                );
-                writeFileSync(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons", `w${index}.ico`), pngToIco(img.resize({ width: 256, height: 256 }).toPNG()));
-            });
-            recentsData.folders.forEach(async (folder: RecentsItem, index: number): Promise<void> => {
-                if (!folder.iconPath || ["ico", "exe", "dll"].includes(path.extname(folder.iconPath).slice(1).toLowerCase())) return;
-                const img: NativeImage = await padNativeImageToSquare(
-                    checkIsURIOrPath(folder.iconPath) === "Path" ?
-                        nativeImage.createFromPath(folder.iconPath)
-                    :   nativeImage.createFromBuffer(Buffer.from(await (await fetch(folder.iconPath)).arrayBuffer()))
-                );
-                writeFileSync(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons", `d${index}.ico`), pngToIco(img.resize({ width: 256, height: 256 }).toPNG()));
-            });
-            recentsData.files.forEach(async (file: RecentsItem, index: number): Promise<void> => {
-                if (!file.iconPath || ["ico", "exe", "dll"].includes(path.extname(file.iconPath).slice(1).toLowerCase())) return;
-                const img: NativeImage = await padNativeImageToSquare(
-                    checkIsURIOrPath(file.iconPath) === "Path" ?
-                        nativeImage.createFromPath(file.iconPath)
-                    :   nativeImage.createFromBuffer(Buffer.from(await (await fetch(file.iconPath)).arrayBuffer()))
-                );
-                writeFileSync(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons", `f${index}.ico`), pngToIco(img.resize({ width: 256, height: 256 }).toPNG()));
-            });
+            await _p(rm(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons"), { recursive: true, force: true }));
+            signal.throwIfAborted();
+            await _p(mkdir(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons"), { recursive: true }));
+            signal.throwIfAborted();
+            void (async function writeJumpListItemIcons(): Promise<void> {
+                for (let i = 0; i < recentsData.worlds.length; i++) {
+                    const world: RecentsItem | undefined = recentsData.worlds[i];
+                    if (!world) continue;
+                    signal.throwIfAborted();
+                    if (world.iconPath && ["ico", "exe", "dll"].includes(path.extname(world.iconPath).slice(1).toLowerCase())) return;
+                    if (!world.iconPath && !defaultWorldIconDataURI) return;
+                    // TODO: Maybe move this to the main process or a worker.
+                    const img: NativeImage = padNativeImageToSquare(
+                        world.iconPath ?
+                            checkIsURIOrPath(world.iconPath) === "Path" ?
+                                electron.nativeImage.createFromPath(world.iconPath)
+                            :   electron.nativeImage.createFromBuffer(Buffer.from(await (await fetch(world.iconPath, { signal })).arrayBuffer()))
+                        : (defaultWorldIconDataURI ?? (await awaitDefaultWorldIconDataURI, signal.throwIfAborted(), defaultWorldIconDataURI!)) ?
+                            electron.nativeImage.createFromDataURL(defaultWorldIconDataURI)
+                        :   electron.nativeImage.createFromBuffer(
+                                Buffer.from(await (await fetch("resource://images/ui/misc/CreateNewWorld.png", { signal })).arrayBuffer())
+                            ),
+                        256
+                    );
+                    signal.throwIfAborted();
+                    const pngData: Buffer<ArrayBuffer> = await convertNativeImageToPngZlibAsync(img.resize({ width: 256, height: 256 }));
+                    signal.throwIfAborted();
+                    await _p(writeFile(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons", `w${i}.ico`), pngToIco(pngData)));
+                }
+                for (let i = 0; i < recentsData.folders.length; i++) {
+                    const folder: RecentsItem | undefined = recentsData.folders[i];
+                    if (!folder) continue;
+                    if (!folder.iconPath || ["ico", "exe", "dll"].includes(path.extname(folder.iconPath).slice(1).toLowerCase())) return;
+                    const img: NativeImage = padNativeImageToSquare(
+                        checkIsURIOrPath(folder.iconPath) === "Path" ?
+                            electron.nativeImage.createFromPath(folder.iconPath)
+                        :   electron.nativeImage.createFromBuffer(Buffer.from(await (await fetch(folder.iconPath, { signal })).arrayBuffer())),
+                        256
+                    );
+                    signal.throwIfAborted();
+                    const pngData: Buffer<ArrayBuffer> = await convertNativeImageToPngZlibAsync(img.resize({ width: 256, height: 256 }));
+                    signal.throwIfAborted();
+                    await _p(writeFile(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons", `d${i}.ico`), pngToIco(pngData)));
+                }
+                for (let i = 0; i < recentsData.files.length; i++) {
+                    const file: RecentsItem_File | undefined = recentsData.files[i];
+                    if (!file) continue;
+                    if (!file.iconPath || ["ico", "exe", "dll"].includes(path.extname(file.iconPath).slice(1).toLowerCase())) return;
+                    const img: NativeImage = padNativeImageToSquare(
+                        checkIsURIOrPath(file.iconPath) === "Path" ?
+                            electron.nativeImage.createFromPath(file.iconPath)
+                        :   electron.nativeImage.createFromBuffer(Buffer.from(await (await fetch(file.iconPath, { signal })).arrayBuffer())),
+                        256
+                    );
+                    signal.throwIfAborted();
+                    const pngData: Buffer<ArrayBuffer> = await convertNativeImageToPngZlibAsync(img.resize({ width: 256, height: 256 }));
+                    signal.throwIfAborted();
+                    await _p(writeFile(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons", `f${i}.ico`), pngToIco(pngData)));
+                }
+            })();
             try {
                 const jumpListData: Electron.JumpListCategory[] = [
                     {
@@ -586,7 +687,8 @@ namespace exports {
                         ),
                     },
                 ];
-                app.setJumpList(jumpListData);
+                const result: ReturnType<typeof app.setJumpList> = await _p(ipcRenderer.invoke<1>("set-jumplist", jumpListData));
+                if (result !== "ok") console.error("Error setting jump list, jump list gave non-ok result:", result);
             } catch (e) {
                 console.error("Error setting jump list:", e);
             }
@@ -616,7 +718,8 @@ namespace exports {
                         },
                     };
                 }
-                const img: NativeImage = world.iconPath ? nativeImage.createFromPath(world.iconPath) : nativeImage.createFromDataURL(defaultWorldIconDataURI!);
+                const img: NativeImage =
+                    world.iconPath ? electron.nativeImage.createFromPath(world.iconPath) : electron.nativeImage.createFromDataURL(defaultWorldIconDataURI!);
                 return {
                     label: world.title!,
                     sublabel: world.path!,
@@ -631,14 +734,14 @@ namespace exports {
             //     if (!world.iconPath || ["ico", "exe", "dll"].includes(path.extname(world.iconPath).slice(1).toLowerCase())) return;
             //     const img: NativeImage = await padNativeImageToSquare(
             //         checkIsURIOrPath(world.iconPath) === "Path" ?
-            //             nativeImage.createFromPath(world.iconPath)
-            //         :   nativeImage.createFromBuffer(Buffer.from(await (await fetch(world.iconPath)).arrayBuffer()))
+            //             electron.nativeImage.createFromPath(world.iconPath)
+            //         :   electron.nativeImage.createFromBuffer(Buffer.from(await (await fetch(world.iconPath)).arrayBuffer()))
             //     );
             //     writeFileSync(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons", `d${index}.ico`), pngToIco(img.resize({ width: 256, height: 256 }).toPNG()));
             // });
             // recentsData.files.forEach(async (world: RecentsItem, index: number): Promise<void> => {
             //     if (!world.iconPath || ["ico", "exe", "dll"].includes(path.extname(world.iconPath).slice(1).toLowerCase())) return;
-            //     const img: NativeImage = await padNativeImageToSquare(nativeImage.createFromPath(world.iconPath));
+            //     const img: NativeImage = await padNativeImageToSquare(electron.nativeImage.createFromPath(world.iconPath));
             //     writeFileSync(path.join(APP_DATA_FOLDER_PATH, "jumplist_icons", `f${index}.ico`), pngToIco(img.resize({ width: 256, height: 256 }).toPNG()));
             // });
             try {
@@ -714,7 +817,7 @@ namespace exports {
                     },
                 ]);
                 app.dock!.setMenu(dockMenu);
-                // nativeImage.createFromBuffer(Buffer.from(await (await fetch("resource://icon.png")).arrayBuffer()))
+                // electron.nativeImage.createFromBuffer(Buffer.from(await (await fetch("resource://icon.png")).arrayBuffer()))
             } catch (e) {
                 console.error("Error setting dock menu:", e);
             }
@@ -2030,7 +2133,15 @@ namespace exports {
         static {
             addEventListener("unhandledrejection", (event: PromiseRejectionEvent): void => {
                 if (!(event.reason instanceof Error)) return;
-                if (event.reason.name !== "AbortError" || event.reason.message !== "[TabManagerTab preCleanup] Aborted due to tab close.") return;
+                if (
+                    (event.reason.name !== "AbortError" || event.reason.message !== "[TabManagerTab preCleanup] Aborted due to tab close.") &&
+                    (!event.reason.cause ||
+                        !(event.reason.cause instanceof Error) ||
+                        event.reason.cause.name !== "AbortError" ||
+                        event.reason.cause.message !== "[TabManagerTab preCleanup] Aborted due to tab close.")
+                ) {
+                    return;
+                }
                 event.preventDefault();
             });
         }

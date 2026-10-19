@@ -117,6 +117,7 @@
 -   The "+" button is now hidden from the tab bar when the active tab is a special screen (such as the loading screen, settings, or the start screen).
 -   The show/hide left sidebar button is now hidden from the tab bar when the active tab does not have a left sidebar.
 -   The widget overlay bars are now scrollable.
+-   Windows jump list icons that have a source image smaller than 256x256 are now scaled up with nearest neighbor scaling.
 
 ## Removals
 
@@ -157,6 +158,7 @@
 -   Fixed a bug where the out of storage popup did not appear when opening a world via the context menu.
 -   Fixed a bug where closing the last tab while on the world selection menu did not hide the tab bar.
 -   Fixed an error that could appear in the console when moving tabs or sub-tabs.
+-   Fixed a bug where worlds that don't have a thumbnail would fallback to the app icon instead of the default world thumbnail in the Windows jump list upon opening the app, and would be like that until a tab was opened.
 -   Miscellaneous typo fixes.
 
 ## Performance Improvements
@@ -167,6 +169,7 @@
 -   The initial loading of tabs now uses asynchronous file system operations rather than synchronous ones, allowing for faster tab loading and preventing the app from freezing while tabs are loading.
 -   The tab bar no longer causes a small stutter upon rendering.
 -   Fixed severe lag spikes while scrolling the world list in some cases.
+-   Fixed a major lag spike when opening tabs on Windows by making the jump list item icons be written to disk asynchronously and massively optimizing the creation of those icons.
 
 # v1.0.0-beta.37
 
