@@ -54,7 +54,7 @@ monaco.languages.register({ id: "snbt", extensions: [".snbt"] });
 
 let isClosing: boolean = false;
 let closeCanceled: boolean = false;
-getCurrentWindow().on("close", async (_event: Electron.Event): Promise<void> => {
+async function onWindowClose(_event: Electron.Event): Promise<void> {
     isClosing = true;
     if (tabManager.openTabs.length > 0) {
         closeCanceled = true;
@@ -134,7 +134,8 @@ Your changes will be lost if you don't save them.
             getCurrentWindow().close();
         }
     }
-});
+}
+getCurrentWindow().on("close", onWindowClose);
 window.addEventListener("beforeunload", async (event: BeforeUnloadEvent): Promise<void> => {
     if (isClosing) {
         isClosing = false;
@@ -218,6 +219,13 @@ Your changes will be lost if you don't save them.
             }
             location.reload();
         }
+    }
+});
+window.addEventListener("unload", (): void => {
+    try {
+        getCurrentWindow().off("close", onWindowClose);
+    } catch (e) {
+        console.error(e);
     }
 });
 

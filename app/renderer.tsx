@@ -20,14 +20,16 @@ globalThis.mcbeLeveldbUri = (async (): Promise<typeof import("mcbe-leveldb")> =>
     const currentWindow: Electron.BrowserWindow = getCurrentWindow();
     let lastFocusCheck: number = Date.now();
     let lastFocusValue: boolean = currentWindow.isFocused();
-    currentWindow.on("focus", (): void => {
+    const onFocus: () => void = (): void => {
         lastFocusCheck = Date.now();
         if (!lastFocusValue && nextIdleCallback !== undefined) {
             clearTimeout(nextIdleCallback);
             preventIdle();
         }
         lastFocusValue = true;
-    });
+    };
+    currentWindow.on("focus", onFocus);
+    window.addEventListener("unload", (): void => void currentWindow.removeListener("focus", onFocus));
     let nextIdleCallback: number | undefined;
     const preventIdle: () => void = (): void => {
         if (lastFocusValue) {
