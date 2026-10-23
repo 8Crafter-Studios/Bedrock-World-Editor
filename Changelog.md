@@ -80,6 +80,8 @@
 -   Added the Window ID line to the "Tab" debug overlay, it is only visible when no tab is active.
 -   The Tab ID line of the "Tab" debug overlay now includes the window ID in the format `<WindowID>-<TabID>` instead of just the tab ID.
 -   Added support for `format_version` `2` to the `StructureTemplate` NBT schema.
+-   The following content types now have JSON schemas in the Prismarine-NBT editor:
+    -   `Villages`
 -   The "Packs" left sidebar tab can now detect resource and behavior packs that are stored outside of the world files for Minecraft China Edition.
 -   Added a warning about increased world selector loading times and increased disk usage while loading the world list to the hover info of the "Show World Sizes on World List" setting.
 -   The sub-tabs and active sub-tab of a tab are now preserved when using the `Reload Tab` context menu option.
@@ -97,7 +99,9 @@
 
 ## Changes
 
--   Many major NBT schema fixes and improvements, see the [`mcbe-leveldb` changelog](https://github.com/8Crafter-Studios/mcbe-leveldb/blob/main/Changelog.md) for more details (v1.0.0-beta.37 used v1.23.0 of `mcbe-leveldb`, this version uses v1.25.1).
+-   Many major NBT schema fixes and improvements, see the [`mcbe-leveldb` changelog](https://github.com/8Crafter-Studios/mcbe-leveldb/blob/main/Changelog.md) for more details (v1.0.0-beta.37 used v1.23.0 of `mcbe-leveldb`, this version uses v1.26.0).
+-   The `LegacyOverworld`, `LegacyNether`, and `LegacyTheEnd` content types have been renamed to `LegacyOverworldStructures`, `LegacyNetherStructures`, and `LegacyTheEndStructures` respectively.
+-   The `LegacyDimension` content type group has been renamed to `LegacyDimensionStructures`.
 -   The app no longer copies the `resource_packs`, `behavior_packs`, or `.git` folders of worlds when they are opened, and when saving it does not delete them (before it would delete them to replace them with the copied version from the temp folder). This will fix an issue where world with large resource packs, behavior packs, or git repositories would take a very long time to open or save ([#63](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/63)).
 -   Made the display value getters for the "Spawn" and "Spawn (Compact)" columns in the "Players" left sidebar tab a lot more robust.
 -   The scroll position of the debug overlays is now preserved when switching debug overlay modes.
