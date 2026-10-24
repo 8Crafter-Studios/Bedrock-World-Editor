@@ -12,6 +12,7 @@
 
 ## Additions
 
+-   Added a splash screen.
 -   Added the ability to drag and drop files and folders into the app window to open them.
 -   Added the ability to close tabs while they are making the temporary copy of the files during the initial loading, closing a tab while it is loading cancels the copy operation, meaning if you accidentally open a massive folder that is taking a long time to load, you can just close the tab to stop it instead of using end task/process to kill the process.
 -   Added a "Files" mode to the "View Files" left sidebar tab, which allows you to see the files in the world folder (certain files/folders are excluded: anything starting with `.`, the `db` folder, the `resource_packs` folder, and the `behavior_packs` folder). The list of LevelDB entries (which is what was in the tab prior to this update) is accessible through the default "LevelDB" mode.
