@@ -1062,48 +1062,48 @@ async function main(_language: LanguageId): Promise<void> {
                     ),
                 },
                 {
-                    uri: "inmemory://schemas/json/LegacyOverworld",
+                    uri: "inmemory://schemas/json/LegacyOverworldStructures",
                     fileMatch: [
-                        "**?contentType=LegacyOverworld",
-                        "**?contentType=LegacyOverworld&*",
-                        "**/JSONSchema/LegacyOverworld",
-                        "**/ContentType:LegacyOverworld",
-                        "**/ContentType:LegacyOverworld/**",
+                        "**?contentType=LegacyOverworldStructures",
+                        "**?contentType=LegacyOverworldStructures&*",
+                        "**/JSONSchema/LegacyOverworldStructures",
+                        "**/ContentType:LegacyOverworldStructures",
+                        "**/ContentType:LegacyOverworldStructures/**",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
-                        NBTSchemas.nbtSchemas.LegacyOverworld,
+                        NBTSchemas.nbtSchemas.LegacyOverworldStructures,
                         undefined,
                         { makeValueSchema: true },
                         true
                     ),
                 },
                 {
-                    uri: "inmemory://schemas/json/LegacyNether",
+                    uri: "inmemory://schemas/json/LegacyNetherStructures",
                     fileMatch: [
-                        "**?contentType=LegacyNether",
-                        "**?contentType=LegacyNether&*",
-                        "**/JSONSchema/LegacyNether",
-                        "**/ContentType:LegacyNether",
-                        "**/ContentType:LegacyNether/**",
+                        "**?contentType=LegacyNetherStructures",
+                        "**?contentType=LegacyNetherStructures&*",
+                        "**/JSONSchema/LegacyNetherStructures",
+                        "**/ContentType:LegacyNetherStructures",
+                        "**/ContentType:LegacyNetherStructures/**",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
-                        NBTSchemas.nbtSchemas.LegacyNether,
+                        NBTSchemas.nbtSchemas.LegacyNetherStructures,
                         undefined,
                         { makeValueSchema: true },
                         true
                     ),
                 },
                 {
-                    uri: "inmemory://schemas/json/LegacyTheEnd",
+                    uri: "inmemory://schemas/json/LegacyTheEndStructures",
                     fileMatch: [
-                        "**?contentType=LegacyTheEnd",
-                        "**?contentType=LegacyTheEnd&*",
-                        "**/JSONSchema/LegacyTheEnd",
-                        "**/ContentType:LegacyTheEnd",
-                        "**/ContentType:LegacyTheEnd/**",
+                        "**?contentType=LegacyTheEndStructures",
+                        "**?contentType=LegacyTheEndStructures&*",
+                        "**/JSONSchema/LegacyTheEndStructures",
+                        "**/ContentType:LegacyTheEndStructures",
+                        "**/ContentType:LegacyTheEndStructures/**",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
-                        NBTSchemas.nbtSchemas.LegacyTheEnd,
+                        NBTSchemas.nbtSchemas.LegacyTheEndStructures,
                         undefined,
                         { makeValueSchema: true },
                         true
@@ -1504,6 +1504,22 @@ async function main(_language: LanguageId): Promise<void> {
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.NeteaseScriptGid,
+                        undefined,
+                        { makeValueSchema: true },
+                        true
+                    ),
+                },
+                {
+                    uri: "inmemory://schemas/json/Villages",
+                    fileMatch: [
+                        "**?contentType=Villages",
+                        "**?contentType=Villages&*",
+                        "**/JSONSchema/Villages",
+                        "**/ContentType:Villages",
+                        "**/ContentType:Villages/**",
+                    ],
+                    schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
+                        NBTSchemas.nbtSchemas.Villages,
                         undefined,
                         { makeValueSchema: true },
                         true
