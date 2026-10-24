@@ -99,7 +99,7 @@
 
 ## Changes
 
--   Many major NBT schema fixes and improvements, see the [`mcbe-leveldb` changelog](https://github.com/8Crafter-Studios/mcbe-leveldb/blob/main/Changelog.md) for more details (v1.0.0-beta.37 used v1.23.0 of `mcbe-leveldb`, this version uses v1.26.0).
+-   Many major NBT schema fixes and improvements, see the [`mcbe-leveldb` changelog](https://github.com/8Crafter-Studios/mcbe-leveldb/blob/main/Changelog.md) for more details (v1.0.0-beta.37 used v1.23.0 of `mcbe-leveldb`, this version uses v1.26.1).
 -   The `LegacyOverworld`, `LegacyNether`, and `LegacyTheEnd` content types have been renamed to `LegacyOverworldStructures`, `LegacyNetherStructures`, and `LegacyTheEndStructures` respectively.
 -   The `LegacyDimension` content type group has been renamed to `LegacyDimensionStructures`.
 -   The app no longer copies the `resource_packs`, `behavior_packs`, or `.git` folders of worlds when they are opened, and when saving it does not delete them (before it would delete them to replace them with the copied version from the temp folder). This will fix an issue where world with large resource packs, behavior packs, or git repositories would take a very long time to open or save ([#63](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/63)).
