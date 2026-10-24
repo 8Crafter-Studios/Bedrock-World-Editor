@@ -32,7 +32,7 @@
     <body>
         <div id="app">
             <div id="splash-screen">
-                <div style="flex: 1; overflow: auto; min-width: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center">
+                <div style="flex: 1; overflow: auto; width: 100vw; display: flex; flex-direction: column; align-items: center; justify-content: center">
                     <!-- <img
                         aria-hidden="true"
                         src="resource://images/ui/misc/loading_bar.gif"
@@ -45,7 +45,7 @@
                         "
                     /> -->
                     <!-- style={`${props.preserveTextOffset ? "" : "margin-bottom: -1.5em; "}line-height: 1.5em; font-family: Consolas; font-size: round(down, calc(max(100vw, 300px) / 50), 5.12px);`} -->
-                    <div
+                    <!-- <div
                         style="
                             line-height: 1.5em;
                             font-family: Consolas;
@@ -60,17 +60,28 @@
                             /* Standard syntax */
                         "
                     >
-                        Bedrock World Editor<!-- TEMP: This will be replaced with a title image. -->
-                    </div>
+                        Bedrock World Editor
+                    </div> -->
+                    <img
+                        aria-hidden="true"
+                        src="resource://images/title_image.png"
+                        loading="eager"
+                        style="
+                            vertical-align: middle;
+                            width: round(down, calc(max(100vw, min(max(175vw, 256px), 1536px)) / 2), 32px);
+                            padding: calc(round(down, calc(max(100vw, min(max(175vw, 256px), 1536px)) / 2), 28px) / 16);
+                            image-rendering: pixelated;
+                        "
+                    />
                     <img
                         aria-hidden="true"
                         src="resource://images/ui/misc/loading_spinner.gif"
                         loading="eager"
                         style="
                             vertical-align: middle;
-                            width: round(down, calc(max(100vw, 112px) / 32), 28px);
+                            width: round(down, calc(max(100vw, 896px) / 32), 28px);
                             /* background-color: #0008; */
-                            padding: calc(round(down, calc(max(100vw, 112px) / 4), 28px) / 16);
+                            padding: calc(round(down, calc(max(100vw, 896px) / 32), 28px) / 16);
                             image-rendering: pixelated;
                         "
                     />
