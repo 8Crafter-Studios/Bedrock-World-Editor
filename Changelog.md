@@ -77,6 +77,7 @@
 -   Added a `typesgroup` query to the "View Files" left sidebar tab.
 -   Made the display value getters for the "Spawn" and "Spawn (Compact)" columns in the "Players" left sidebar tab a lot more robust.
 -   The "Location" and "Spawn" columns in the "Players" left sidebar tab can now show China Edition dev dimension names (dm3-dm20) instead of their numeric IDs (if at least one China Edition dev dimension is present on the world).
+-   Added a "Locked" column to the "Maps" left sidebar tab.
 -   Added the Temp Folder line to the "Tab" debug overlay.
 -   Added the Window ID line to the "Tab" debug overlay, it is only visible when no tab is active.
 -   The Tab ID line of the "Tab" debug overlay now includes the window ID in the format `<WindowID>-<TabID>` instead of just the tab ID.
@@ -164,6 +165,7 @@
 -   Fixed a bug where closing the last tab while on the world selection menu did not hide the tab bar.
 -   Fixed an error that could appear in the console when moving tabs or sub-tabs.
 -   Fixed a bug where worlds that don't have a thumbnail would fallback to the app icon instead of the default world thumbnail in the Windows jump list upon opening the app, and would be like that until a tab was opened.
+-   Fixed the `locked` query of the "Maps" left sidebar tab.
 -   Miscellaneous typo fixes.
 
 ## Performance Improvements

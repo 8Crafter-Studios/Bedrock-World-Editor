@@ -367,7 +367,7 @@ namespace exports {
                     mode: "simple",
                     modeSettings: {
                         simple: {
-                            columns: ["Preview", "DBKey", "ID", "Scale", "FullyExplored", "Location", "Height", "ParentMapID"],
+                            columns: ["Preview", "DBKey", "ID", "Locked", "Scale", "FullyExplored", "Location", "Height", "ParentMapID"],
                         },
                     },
                 },
@@ -715,6 +715,15 @@ namespace exports {
                         if (!currentExtraMinecraftDataFolders.includes(path)) currentExtraMinecraftDataFolders.push(path);
                     }
                     if (currentExtraMinecraftDataFolders.length !== originalLength) this.extraMinecraftDataFolders = currentExtraMinecraftDataFolders;
+                }
+            }
+            if (semver.compareBuild(currentConfigVersion, "1.0.0-beta.38+BUILD.9") < 0) {
+                const currentMapsSimpleModeColumns = this.views.maps.modeSettings.simple.columns;
+                if (!currentMapsSimpleModeColumns.includes("Locked")) {
+                    if (currentMapsSimpleModeColumns.includes("ID")) {
+                        currentMapsSimpleModeColumns.splice(currentMapsSimpleModeColumns.indexOf("ID") + 1, 0, "Locked");
+                    } else currentMapsSimpleModeColumns.push("Locked");
+                    this.views.maps.modeSettings.simple.columns = currentMapsSimpleModeColumns;
                 }
             }
             // TODO: Uncomment this at add the correct version number when grouped search mode for the raw players tab mode is implemented.
@@ -3581,6 +3590,7 @@ namespace exports {
                     LocationCompact: { optionLabel: "Location (Compact)", headerLabel: "Location" },
                     Preview: "Preview",
                     ID: "ID",
+                    Locked: "Locked",
                     Scale: "Scale",
                     DecorationCount: "Decoration Count",
                     FullyExplored: "Fully Explored",
@@ -3597,7 +3607,19 @@ namespace exports {
                 } as const satisfies { [key in MapsTabMode]: (string | null)[] };
 
                 export const mapsTabModeToColumnIDs = {
-                    simple: ["Preview", "DBKey", "ID", "Scale", "FullyExplored", "Location", "LocationCompact", "DecorationCount", "Height", "ParentMapID"],
+                    simple: [
+                        "Preview",
+                        "DBKey",
+                        "ID",
+                        "Locked",
+                        "Scale",
+                        "FullyExplored",
+                        "Location",
+                        "LocationCompact",
+                        "DecorationCount",
+                        "Height",
+                        "ParentMapID",
+                    ],
                 } as const;
 
                 export type MapsTabMode = "simple";

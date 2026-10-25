@@ -105,9 +105,9 @@ export default function LeftSidebar(props: LeftSidebarProps): JSX.Element {
             case "AutonomousEntities":
             case "FlatWorldLayers":
             case "ForcedWorldCorruption":
-            case "LegacyOverworld":
-            case "LegacyNether":
-            case "LegacyTheEnd":
+            case "LegacyOverworldStructures":
+            case "LegacyNetherStructures":
+            case "LegacyTheEndStructures":
             case "LevelSpawnWasFixed":
             case "Overworld":
             case "Nether":

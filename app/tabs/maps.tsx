@@ -187,10 +187,10 @@ const mapsTabSearchSyntax: SearchSyntaxHelpInfo = {
                     <code>|locked:0</code> - Searches for maps that are not locked.
                 </p>,
                 <p>
-                    <code>locked:0 locked:true</code> - Searches for maps that do not have an invalid value in the <code>locked</code> NBT tag.
+                    <code>locked:0 locked:true</code> - Searches for maps that do not have an invalid value in the <code>mapLocked</code> NBT tag.
                 </p>,
                 <p>
-                    <code>-locked:false -locked:true</code> - Searches for maps that have an invalid value in the <code>locked</code> NBT tag.
+                    <code>-locked:false -locked:true</code> - Searches for maps that have an invalid value in the <code>mapLocked</code> NBT tag.
                 </p>,
             ],
         },
@@ -895,7 +895,7 @@ async function getMapsTabContents(tab: TabManagerTab, signal: AbortSignal): Prom
                                     function parseLockedQueries(queries: string[]): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery[] {
                                         return queries.map((v: string): TabManagerTab_LevelDBSearchQuery_NBTTags_TagQuery => {
                                             return {
-                                                path: ["locked"],
+                                                path: ["mapLocked"],
                                                 value:
                                                     /^\d+$/i.test(v) ? Number(v)
                                                     : v === "true" ? 1
@@ -1367,6 +1367,45 @@ async function getMapsTabContentsRows(data: {
                                                     </td>
                                                 );
                                             }
+                                            case "Locked":
+                                                if (key.data === undefined) {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: yellow;">Loading...</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                if (key.data === null) {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: red;">N/A</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                if (key.data.parsed.value.mapLocked?.type !== "byte") {
+                                                    return (
+                                                        <td>
+                                                            <span style="color: red;">null</span>
+                                                        </td>
+                                                    );
+                                                }
+                                                return (
+                                                    <td
+                                                        data-copy-data={JSON.stringify({
+                                                            value: String(
+                                                                key.data.parsed.value.mapLocked.value === 1 ? true
+                                                                : key.data.parsed.value.mapLocked.value === 0 ? false
+                                                                : key.data.parsed.value.mapLocked.value
+                                                            ),
+                                                        } satisfies CopyContextMenuItemValue)}
+                                                    >
+                                                        {key.data.parsed.value.mapLocked.value === 1 ?
+                                                            <span style="color: #5F5;">True</span>
+                                                        : key.data.parsed.value.mapLocked.value === 0 ?
+                                                            <span style="color: #F55;">False</span>
+                                                        :   <span style="color: #FA5;">{key.data.parsed.value.mapLocked.value}</span>}
+                                                    </td>
+                                                );
                                             case "DecorationCount":
                                                 if (key.data === undefined) {
                                                     return (

@@ -2345,10 +2345,10 @@ namespace exports {
         LANPlayerDat: "resource://images/ui/glyphs/icon_steve_lan.png",
         LegacyBlockExtraData: "resource://images/ui/glyphs/BlockSprite_snowlogged-dandelion.png",
         LegacyConsolePlayer: "resource://images/ui/glyphs/icon_steve_console.png",
-        LegacyNether: undefined, // Maybe the same icon as the Nether content type, but with something to indicate it is the legacy format, such as a cobweb?
-        LegacyOverworld: undefined, // Maybe the same icon as the Overworld content type, but with something to indicate it is the legacy format, such as a cobweb?
+        LegacyNetherStructures: undefined, // Something to indicate it is old, and that it stores the structures in a dimension.
+        LegacyOverworldStructures: undefined, // Something to indicate it is old, and that it stores the structures in a dimension.
         LegacyTerrain: "resource://images/ui/glyphs/grass_block_side_JE3_BE1.png",
-        LegacyTheEnd: undefined, // Maybe the same icon as the TheEnd content type, but with something to indicate it is the legacy format, such as a cobweb?
+        LegacyTheEndStructures: undefined, // Something to indicate it is old, and that it stores the structures in a dimension.
         LegacyVersion: undefined, // Maybe a history icon, with something to indicate it is the legacy format, such as a cobweb?
         LevelChunkMetaDataDictionary: "resource://images/ui/glyphs/update_world_chunks_16x.png",
         LevelDat: "resource://images/ui/glyphs/settings_glyph_color_2x.png",
