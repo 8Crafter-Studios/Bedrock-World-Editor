@@ -179,6 +179,7 @@
 -   The tab bar no longer causes a small stutter upon rendering.
 -   Fixed severe lag spikes while scrolling the world list in some cases.
 -   Fixed a major lag spike when opening tabs on Windows by making the jump list item icons be written to disk asynchronously and massively optimizing the creation of those icons.
+-   Miscellaneous minor performance improvements.
 
 # v1.0.0-beta.37
 
