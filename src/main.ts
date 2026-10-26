@@ -432,6 +432,7 @@ export function createWindow(previousWindowData?: {
         },
         resizable: true,
         darkTheme: nativeTheme.shouldUseDarkColorsForSystemIntegratedUI,
+        backgroundColor: "hsl(0, 0%, 7%)",
         ...previousWindowData,
     });
     if (previousWindowData?.wasMaximized) {
@@ -1043,6 +1044,7 @@ if (!startup && !started) {
         }
     });
 
+    // TODO: Add an openInBackground flag.
     function handleURL(url: string): void {
         if (/^bedrock-world-editor:\/{0,2}$/.test(url)) {
             lastFocusedMainWindows.at(-1)?.focus();
@@ -1196,8 +1198,12 @@ if (!startup && !started) {
         }
         const nonAllowFileAccessFromFilesParams: string[] = argv.filter((arg: string): boolean => arg !== "--allow-file-access-from-files");
         if (
+            // TEST: Make sure this works on all platforms, and both in dev and prod mode.
             nonAllowFileAccessFromFilesParams.length === 0 ||
-            (nonAllowFileAccessFromFilesParams.length === 1 && nonAllowFileAccessFromFilesParams[0] === "--new-window")
+            (nonAllowFileAccessFromFilesParams.length === 1 && nonAllowFileAccessFromFilesParams[0] === "--new-window") ||
+            (nonAllowFileAccessFromFilesParams.length === 2 &&
+                nonAllowFileAccessFromFilesParams[0] === "--new-window" &&
+                nonAllowFileAccessFromFilesParams[1]?.startsWith("--source-app-id"))
         ) {
             // (lastFocusedMainWindows.at(-1) ?? app)?.focus();
             if (secondInstance) createWindow();

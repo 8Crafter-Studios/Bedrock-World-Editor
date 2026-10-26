@@ -124,6 +124,7 @@
 -   The show/hide left sidebar button is now hidden from the tab bar when the active tab does not have a left sidebar.
 -   The widget overlay bars are now scrollable.
 -   Windows jump list icons that have a source image smaller than 256x256 are now scaled up with nearest neighbor scaling.
+-   The window base background color is now `hsl(0, 0%, 7%)` instead of `#fff`.
 
 ## Removals
 
@@ -166,6 +167,7 @@
 -   Fixed an error that could appear in the console when moving tabs or sub-tabs.
 -   Fixed a bug where worlds that don't have a thumbnail would fallback to the app icon instead of the default world thumbnail in the Windows jump list upon opening the app, and would be like that until a tab was opened.
 -   Fixed the `locked` query of the "Maps" left sidebar tab.
+-   Fixed the "New Window" task option in the Windows task bar.
 -   Miscellaneous typo fixes.
 
 ## Performance Improvements
