@@ -1,4 +1,4 @@
-import { /* BrowserWindow, */ getCurrentWindow } from "@electron/remote";
+import { /* BrowserWindow, */ getCurrentWindow as getCurrentWindow_remote } from "@electron/remote";
 
 globalThis.electron = require("electron") as typeof import("electron");
 globalThis.ipcRenderer = globalThis.electron.ipcRenderer;
@@ -6,7 +6,7 @@ globalThis.ipcRenderer = globalThis.electron.ipcRenderer;
 //     return BrowserWindow.fromId(ipcRenderer.sendSync("get-window-id"))!;
 // };
 // This is faster than the custom getCurrentWindow function above (it takes about 26 ms for 50 runs as opposed to about 36 ms).
-globalThis.getCurrentWindow = getCurrentWindow;
+globalThis.getCurrentWindow = getCurrentWindow_remote;
 
 declare global {
     namespace globalThis {
