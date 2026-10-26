@@ -1912,7 +1912,8 @@ export function WorldEditor(props: WorldEditorProps): JSX.SpecificElement<"div">
             render(<WorldEditorTabRenderer tab={props.tab.selectedTab} parentTab={props.tab} />, containerRef.current);
         }
     });
-    useEffect((): (() => void) => {
+    // This uses useLayoutEffect instead of useEffect so that it can add the listeners before certain events are triggered during the initialization of the tab.
+    useLayoutEffect((): (() => void) => {
         function update(): void {
             if (containerRef.current === null) return;
             render(null, containerRef.current);
@@ -1960,7 +1961,8 @@ export function LevelDBEditor(props: LevelDBEditorProps): JSX.SpecificElement<"d
             render(<LevelDBEditorTabRenderer tab={props.tab.selectedTab} parentTab={props.tab} />, containerRef.current);
         }
     });
-    useEffect((): (() => void) => {
+    // This uses useLayoutEffect instead of useEffect so that it can add the listeners before certain events are triggered during the initialization of the tab.
+    useLayoutEffect((): (() => void) => {
         function update(): void {
             if (containerRef.current === null) return;
             render(null, containerRef.current);
@@ -2008,7 +2010,8 @@ export function NBTFileEditor(props: NBTFileEditorProps): JSX.SpecificElement<"d
             render(<NBTFileEditorTabRenderer tab={props.tab.selectedTab} parentTab={props.tab} />, containerRef.current);
         }
     });
-    useEffect((): (() => void) => {
+    // This uses useLayoutEffect instead of useEffect so that it can add the listeners before certain events are triggered during the initialization of the tab.
+    useLayoutEffect((): (() => void) => {
         function update(): void {
             if (containerRef.current === null) return;
             render(null, containerRef.current);

@@ -1,5 +1,5 @@
 import type { JSX, RefObject, TargetedMouseEvent } from "preact";
-import _React, { render, useEffect, useRef, useState } from "preact/compat";
+import _React, { render, useEffect, useLayoutEffect, useRef, useState } from "preact/compat";
 import { checkIsURIOrPath } from "../../src/utils/pathUtils";
 const mime = require("mime-types") as typeof import("mime-types");
 import { readFileSync, writeFileSync } from "node:fs";
@@ -22,7 +22,8 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
     const tabContainerRef: RefObject<HTMLUListElement> = useRef(null);
     const popupRef: RefObject<HTMLDivElement> = useRef(null);
     let triggerUpdate: (() => void) | null = null;
-    useEffect((): (() => void) => {
+    // This uses useLayoutEffect instead of useEffect so that it can add the listeners before certain events are triggered during the initialization of the tab.
+    useLayoutEffect((): (() => void) => {
         function update(): void {
             if (!tab.isValid) return;
             if (tabContainerRef.current === null) return;
