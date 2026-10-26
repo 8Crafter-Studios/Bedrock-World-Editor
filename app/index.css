@@ -1119,8 +1119,9 @@ body.overlay_page_visible .possible_scroll_y {
     display: none !important;
 }
 
-#world-selector-container {
-    touch-action: pan-y;
+#world-selector-container,
+.fix-scroll-lag {
+    touch-action: pan-x pan-y;
 }
 
 .offscreen {

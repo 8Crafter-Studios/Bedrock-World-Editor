@@ -132,13 +132,14 @@ export const treeEditorIcons = {
     generic: {
         arrowCollapsed: "resource://images/ui/glyphs/Chevron-Right.png",
         arrowExpanded: "resource://images/ui/glyphs/Chevron-Down.png",
+        delete: "resource://images/ui/glyphs/delete.png",
     },
 } as const satisfies {
     [key in (typeof treeEditorDataTypeToIconTypeMapping)[TreeEditorSupportedDataType]]: Record<PropertyKey, string>;
 } & {
     NBT: Record<`${NBT.TagType}`, string>;
     JSON: Record<"list" | "object" | "number" | "string" | "boolean", string>;
-    generic: Record<"arrowCollapsed" | "arrowExpanded", string>;
+    generic: Record<"arrowCollapsed" | "arrowExpanded" | "delete", string>;
 };
 
 Object.entries(treeEditorIcons).forEach(([key, value]) => {
@@ -210,11 +211,15 @@ export default class TreeEditor extends React.Component<
                 object: useRef<HTMLButtonElement>(null),
                 string: useRef<HTMLButtonElement>(null),
             },
+            misc: {
+                delete: useRef<HTMLButtonElement>(null),
+            },
         } as const satisfies {
             [key in (typeof treeEditorDataTypeToIconTypeMapping)[TreeEditorSupportedDataType]]: Record<PropertyKey, RefObject<HTMLButtonElement>>;
         } & {
             NBT: Record<`${NBT.TagType}`, RefObject<HTMLButtonElement>>;
             JSON: Record<"list" | "object" | "number" | "string" | "boolean", RefObject<HTMLButtonElement>>;
+            misc: Record<PropertyKey, RefObject<HTMLButtonElement>>;
         };
         useEffect((): (() => void) => {
             const targetsToUnrenderOnCleanup = new Set<HTMLElement>();
@@ -222,6 +227,86 @@ export default class TreeEditor extends React.Component<
             if (this.props.overlayBarRegistry) {
                 this.props.overlayBarRegistry.registerWidget(
                     <div class="widget-overlay tabbed-selector float-right" style={{ float: "right" }}>
+                        <button
+                            type="button"
+                            title="Delete"
+                            class="image-only-button"
+                            onClick={(event: JSX.TargetedMouseEvent<HTMLButtonElement>): void => {
+                                if (!outerContainerElementRef.current) {
+                                    event.currentTarget.disabled = true;
+                                    return;
+                                }
+                                const selectedHeaders: HTMLDivElement[] = $(outerContainerElementRef.current)
+                                    .find<HTMLDivElement>(".treeEditorTreeNodeHeader.selected:not([data-depth='0'])")
+                                    .not(
+                                        ".treeEditorTreeNode:has(> .treeEditorTreeNodeHeader.selected:not([data-depth='0'])) > .treeEditorTreeNodeChildren .treeEditorTreeNodeHeader.selected"
+                                    )
+                                    .toArray();
+                                const removedPropertyPaths: string[][] = [];
+                                for (const headerElement of selectedHeaders) {
+                                    const propertyPath: string[] = JSON.parse(headerElement.dataset.path!) as string[];
+                                    const parentObject: unknown = propertyPath
+                                        .slice(0, -1)
+                                        .reduce((value: unknown, property: string): unknown => value?.[property as never], this.props.dataStorageObject.data);
+                                    if (typeof parentObject !== "object" || !parentObject) return;
+                                    if (!(propertyPath.at(-1)! in parentObject)) {
+                                        if (propertyPath.at(-1) === "") {
+                                            // This is a node that is in creation mode, so the element can be safely deleted.
+                                            headerElement.parentElement?.remove();
+                                            continue;
+                                        }
+                                        return;
+                                    }
+                                    if (Array.isArray(parentObject)) parentObject.splice(Number(propertyPath.at(-1)!), 1);
+                                    else delete parentObject[propertyPath.at(-1)! as never];
+                                    const parentExpansionDataObject = propertyPath
+                                        .slice(0, -1)
+                                        .reduce(
+                                            (
+                                                value: TreeEditorDataStorageObjectExpansionData | undefined,
+                                                property: string
+                                            ): TreeEditorDataStorageObjectExpansionData | undefined => (!value ? undefined : value.data?.[property]),
+                                            this.props.dataStorageObject.treeEditor.expansionData ?? {}
+                                        );
+                                    if (parentExpansionDataObject?.data?.[propertyPath.at(-1)!] !== undefined) {
+                                        if (Array.isArray(parentObject)) {
+                                            const expData: Record<string, TreeEditorDataStorageObjectExpansionData> = parentExpansionDataObject.data;
+                                            const deletedIndex: number = Number(propertyPath.at(-1)!);
+
+                                            if (expData[deletedIndex] !== undefined) {
+                                                delete expData[deletedIndex];
+                                            }
+
+                                            let i: number = deletedIndex + 1;
+                                            while (expData[i] !== undefined) {
+                                                expData[i - 1] = expData[i]!;
+                                                delete expData[i];
+                                                i++;
+                                            }
+                                        } else {
+                                            delete parentExpansionDataObject.data[propertyPath.at(-1)!];
+                                        }
+                                    }
+                                    headerElement.parentElement?.remove();
+                                    removedPropertyPaths.push(propertyPath);
+                                }
+                                if (removedPropertyPaths.length > 0) {
+                                    onValueChange?.(this.props.dataStorageObject, {
+                                        propertyPaths: removedPropertyPaths,
+                                        type: "removeProperties",
+                                    });
+                                }
+                                event.currentTarget.disabled = true;
+                            }}
+                            disabled
+                            ref={widgetButtons.misc.delete}
+                        >
+                            <img
+                                src={treeEditorIcons.generic.delete}
+                                style={{ width: "12px", margin: "2px", imageRendering: "pixelated" }}
+                                aria-hidden="true"
+                            />
+                        </button>
                         {this.props.dataStorageObject.dataType === "JSON" ?
                             <></>
                         :   <>
@@ -1671,9 +1756,9 @@ export default class TreeEditor extends React.Component<
                     if (event.target === document.body) {
                         event.preventDefault();
                         const selectedHeaders: HTMLDivElement[] = $(outerContainerElementRef.current)
-                            .find<HTMLDivElement>(".treeEditorTreeNodeHeader.selected")
+                            .find<HTMLDivElement>(".treeEditorTreeNodeHeader.selected:not([data-depth='0'])")
                             .not(
-                                ".treeEditorTreeNode:has(> .treeEditorTreeNodeHeader.selected) > .treeEditorTreeNodeChildren .treeEditorTreeNodeHeader.selected"
+                                ".treeEditorTreeNode:has(> .treeEditorTreeNodeHeader.selected:not([data-depth='0'])) > .treeEditorTreeNodeChildren .treeEditorTreeNodeHeader.selected"
                             )
                             .toArray();
                         const removedPropertyPaths: string[][] = [];
@@ -1683,7 +1768,14 @@ export default class TreeEditor extends React.Component<
                                 .slice(0, -1)
                                 .reduce((value: unknown, property: string): unknown => value?.[property as never], this.props.dataStorageObject.data);
                             if (typeof parentObject !== "object" || !parentObject) return;
-                            if (!(propertyPath.at(-1)! in parentObject)) return;
+                            if (!(propertyPath.at(-1)! in parentObject)) {
+                                if (propertyPath.at(-1) === "") {
+                                    // This is a node that is in creation mode, so the element can be safely deleted.
+                                    headerElement.parentElement?.remove();
+                                    continue;
+                                }
+                                return;
+                            }
                             if (Array.isArray(parentObject)) parentObject.splice(Number(propertyPath.at(-1)!), 1);
                             else delete parentObject[propertyPath.at(-1)! as never];
                             const parentExpansionDataObject = propertyPath
@@ -2660,7 +2752,16 @@ export default class TreeEditor extends React.Component<
                                         const elements: HTMLDivElement[] = $(outerContainerElementRef.current)
                                             .find<HTMLDivElement>(".treeEditorTreeNodeHeader")
                                             .toArray();
-                                        $(elements.slice(elements.indexOf(firstSelection), elements.indexOf(lastSelection) + 1)).addClass("selected");
+                                        const selectedElements: HTMLDivElement[] = elements.slice(
+                                            elements.indexOf(firstSelection),
+                                            elements.indexOf(lastSelection) + 1
+                                        );
+                                        $(selectedElements).addClass("selected");
+                                        if (widgetButtons.misc.delete.current) {
+                                            if (selectedElements.length === 1) {
+                                                widgetButtons.misc.delete.current.disabled = selectedElements[0]!.dataset.path === "[]";
+                                            } else widgetButtons.misc.delete.current.disabled = !selectedElements.length;
+                                        }
                                         // .map // TODO: Implement this to save the selection.
                                     } else {
                                         // TODO: Implement this to save the selection.
@@ -2680,9 +2781,11 @@ export default class TreeEditor extends React.Component<
                                         for (const button of [...Object.values(widgetButtons.NBT), ...Object.values(widgetButtons.JSON)]) {
                                             if (!button.current) continue;
                                             button.current.disabled = true;
+                                            if (widgetButtons.misc.delete.current) widgetButtons.misc.delete.current.disabled = true;
                                         }
                                         return;
                                     }
+                                    if (widgetButtons.misc.delete.current) widgetButtons.misc.delete.current.disabled = headerElement.dataset.path === "[]";
                                     const childrenContainerElement: HTMLDivElement | null | undefined = childrenRef.current;
                                     if (!childrenContainerElement) {
                                         for (const button of [...Object.values(widgetButtons.NBT), ...Object.values(widgetButtons.JSON)]) {
@@ -2917,7 +3020,10 @@ export default class TreeEditor extends React.Component<
                                                     .find<HTMLDivElement>(".treeEditorTreeNodeHeaderNameTextBoxSizeGetter")[0];
                                                 if (!displayElement) return;
                                                 displayElement.textContent = event.currentTarget.value;
-                                                event.currentTarget.style.width = `${Math.max(Math.min($(displayElement).width()!, 300), 10)}px`;
+                                                const currentTarget: HTMLInputElement = event.currentTarget;
+                                                requestAnimationFrame((): void => {
+                                                    currentTarget.style.width = `${Math.max(Math.min(displayElement.getBoundingClientRect().width, 300), 10)}px`;
+                                                });
                                             }}
                                             ref={nameTextBoxRef}
                                         />
@@ -2963,7 +3069,10 @@ export default class TreeEditor extends React.Component<
                                                     .find<HTMLDivElement>(".treeEditorTreeNodeHeaderValueTextBoxSizeGetter")[0];
                                                 if (!displayElement) return;
                                                 displayElement.textContent = event.currentTarget.value;
-                                                event.currentTarget.style.width = `${Math.max(Math.min($(displayElement).width()!, 600), 10)}px`;
+                                                const currentTarget: HTMLInputElement = event.currentTarget;
+                                                requestAnimationFrame((): void => {
+                                                    currentTarget.style.width = `${Math.max(Math.min(displayElement.getBoundingClientRect().width, 600), 10)}px`;
+                                                });
                                             }}
                                             ref={valueTextBoxRef}
                                         />

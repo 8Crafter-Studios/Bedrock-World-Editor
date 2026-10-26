@@ -14,6 +14,7 @@
 
 -   Added a splash screen.
 -   Added the ability to drag and drop files and folders into the app window to open them.
+-   Added a delete button to the Node editor, which deletes the selected nodes.
 -   Added the ability to close tabs while they are making the temporary copy of the files during the initial loading, closing a tab while it is loading cancels the copy operation, meaning if you accidentally open a massive folder that is taking a long time to load, you can just close the tab to stop it instead of using end task/process to kill the process.
 -   Added a "Files" mode to the "View Files" left sidebar tab, which allows you to see the files in the world folder (certain files/folders are excluded: anything starting with `.`, the `db` folder, the `resource_packs` folder, and the `behavior_packs` folder). The list of LevelDB entries (which is what was in the tab prior to this update) is accessible through the default "LevelDB" mode.
 -   The app now supports worlds from versions before Pocket Edition v0.2.0 Alpha. Meaning all versions are now fully supported.
@@ -178,7 +179,9 @@
 -   The initial loading of tabs now uses asynchronous file system operations rather than synchronous ones, allowing for faster tab loading and preventing the app from freezing while tabs are loading.
 -   The tab bar no longer causes a small stutter upon rendering.
 -   Fixed severe lag spikes while scrolling the world list in some cases.
+-   Fixed severe lag spikes while scrolling the Node editor in some cases.
 -   Fixed a major lag spike when opening tabs on Windows by making the jump list item icons be written to disk asynchronously and massively optimizing the creation of those icons.
+-   Major performance improvements to the initial rendering of nodes in the Node editor.
 -   Miscellaneous minor performance improvements.
 
 # v1.0.0-beta.37

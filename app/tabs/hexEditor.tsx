@@ -285,7 +285,7 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
                     </button>
                 </div>
             </EditorWidgetOverlayBar>
-            <div style="flex: 1; overflow: auto; display: flex; flex-direction: column;" ref={containerRef}>
+            <div class="fix-scroll-lag" style="flex: 1; overflow: auto; display: flex; flex-direction: column;" ref={containerRef}>
                 {asyncMode || !props.tab.currentState.options.dataStorageObject ?
                     <LoadingScreenContents />
                 :   <Contents props={props} options={props.tab.currentState.options} />}
