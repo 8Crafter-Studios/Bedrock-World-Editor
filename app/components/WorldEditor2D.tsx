@@ -1579,7 +1579,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                             // chunkPromises.push(Promise.all(promises));
                                         }
                                         await Promise.all(activeChunkDeletions);
-                                        const t2: number = performance.now(); // DEBUG
+                                        const t2: number = performance.now();
                                         console.debug(
                                             `Deleting chunks in range ${locationRangeDialogResult.data.from.chunkX} ${locationRangeDialogResult.data.from.chunkZ} to ${locationRangeDialogResult.data.to.chunkX} ${locationRangeDialogResult.data.to.chunkZ} took ${t2 - t1}ms.`
                                         ); // DEBUG
