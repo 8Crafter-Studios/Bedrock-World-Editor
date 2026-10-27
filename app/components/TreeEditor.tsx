@@ -2375,7 +2375,15 @@ export default class TreeEditor extends React.Component<
                     case "NBTCompound":
                     case "NBT": {
                         fakeAssertIsNBTNodeTreeNodeValue(value);
-                        if (Array.isArray(value)) {
+                        if (
+                            Array.isArray(value) &&
+                            // This makes sure that it isn't an array nested directly inside of a list, as that is handled by the final outer else statement.
+                            !Array.isArray(
+                                props.propertyPath
+                                    .slice(0, -1)
+                                    .reduce((value: unknown, property: string): unknown => value?.[property as never], this.props.dataStorageObject.data)
+                            )
+                        ) {
                             // console.log(3);
                             // XXX: This code is designed to crash the editor if the data structure is invalid or when something is wrong with the code below.
                             const parentParentValue: NBT.List<NBT.TagType> = props.propertyPath
@@ -2394,7 +2402,7 @@ export default class TreeEditor extends React.Component<
                                     ) as NBT.List<NBT.TagType>["value"];
                                 type = parentValue.type;
                             } else {
-                                // console.log(4.1);
+                                // console.log(4.1 /* , parentParentValue */);
                                 const parentValue: NBT.ByteArray | NBT.ShortArray | NBT.IntArray | NBT.LongArray | NBT.Long = props.propertyPath
                                     .slice(0, -1)
                                     .reduce((value: unknown, property: string): unknown => value?.[property as never], this.props.dataStorageObject.data) as
@@ -2422,6 +2430,7 @@ export default class TreeEditor extends React.Component<
                         } else if (
                             typeof value === "object" &&
                             value !== null &&
+                            !Array.isArray(value) &&
                             !Array.isArray(
                                 props.propertyPath
                                     .slice(0, -1)
@@ -2528,8 +2537,9 @@ export default class TreeEditor extends React.Component<
                     case "shortArray":
                     case "intArray":
                     case "longArray": {
-                        const value2 = value as NBT.ByteArray | NBT.ShortArray | NBT.IntArray | NBT.LongArray;
-                        childrenCount = value2.value.length;
+                        type NBTArrayType = NBT.ByteArray | NBT.ShortArray | NBT.IntArray | NBT.LongArray;
+                        const value2 = value as NBTArrayType | NBTArrayType["value"];
+                        childrenCount = isDirectType ? (value2 as NBTArrayType["value"]).length : (value2 as NBTArrayType).value.length;
                         break;
                     }
                     case "list": {
@@ -2575,14 +2585,20 @@ export default class TreeEditor extends React.Component<
                         case "shortArray":
                         case "intArray":
                         case "longArray": {
-                            const value2 = value as NBT.ByteArray | NBT.ShortArray | NBT.IntArray | NBT.LongArray;
-                            children = value2.value.map((_value: number | [number, number], index: number): JSX.SpecificElement<"div"> => {
-                                return (
-                                    <div class="treeEditorTreeNodeChild">
-                                        <TreeNode propertyPath={props.propertyPath.concat(["value", index.toString()])} depth={props.depth + 1} />
-                                    </div>
-                                );
-                            });
+                            type NBTArrayType = NBT.ByteArray | NBT.ShortArray | NBT.IntArray | NBT.LongArray;
+                            const value2 = value as NBTArrayType | NBTArrayType["value"];
+                            children = (isDirectType ? (value2 as NBTArrayType["value"]) : (value2 as NBTArrayType).value).map(
+                                (_value: number | [number, number], index: number): JSX.SpecificElement<"div"> => {
+                                    return (
+                                        <div class="treeEditorTreeNodeChild">
+                                            <TreeNode
+                                                propertyPath={props.propertyPath.concat([...(isDirectType ? [] : ["value"]), index.toString()])}
+                                                depth={props.depth + 1}
+                                            />
+                                        </div>
+                                    );
+                                }
+                            );
                             break;
                         }
                         case "list": {
@@ -2660,7 +2676,7 @@ export default class TreeEditor extends React.Component<
             };
             let expanded: boolean =
                 hasChildren &&
-                (props.propertyPath.length === 0 ?
+                (props.propertyPath.length === +(this.props.dataStorageObject.dataType === "NBT") ?
                     this.props.dataStorageObject.treeEditor.expansionData?.value === true
                 :   props.propertyPath.reduce(
                         (
@@ -2722,9 +2738,7 @@ export default class TreeEditor extends React.Component<
                     break;
                 }
                 default:
-                    throw new TypeError(
-                        `Missing handling for type of ${JSON.stringify((this.props.dataStorageObject as GenericDataStorageObject).dataType)} for getting display value.`
-                    );
+                    throw new TypeError(`Missing handling for type of ${JSON.stringify(type)} for getting display value.`);
             }
             // console.log(displayValue, value, type, expanded, props);
             const children = expanded ? getChildren() : undefined;
@@ -2759,7 +2773,9 @@ export default class TreeEditor extends React.Component<
                                         $(selectedElements).addClass("selected");
                                         if (widgetButtons.misc.delete.current) {
                                             if (selectedElements.length === 1) {
-                                                widgetButtons.misc.delete.current.disabled = selectedElements[0]!.dataset.path === "[]";
+                                                widgetButtons.misc.delete.current.disabled =
+                                                    selectedElements[0]!.dataset.path ===
+                                                    (this.props.dataStorageObject.dataType === "NBT" ? '["parsed"]' : "[]");
                                             } else widgetButtons.misc.delete.current.disabled = !selectedElements.length;
                                         }
                                         // .map // TODO: Implement this to save the selection.
@@ -2785,7 +2801,10 @@ export default class TreeEditor extends React.Component<
                                         }
                                         return;
                                     }
-                                    if (widgetButtons.misc.delete.current) widgetButtons.misc.delete.current.disabled = headerElement.dataset.path === "[]";
+                                    if (widgetButtons.misc.delete.current) {
+                                        widgetButtons.misc.delete.current.disabled =
+                                            headerElement.dataset.path === (this.props.dataStorageObject.dataType === "NBT" ? '["parsed"]' : "[]");
+                                    }
                                     const childrenContainerElement: HTMLDivElement | null | undefined = childrenRef.current;
                                     if (!childrenContainerElement) {
                                         for (const button of [...Object.values(widgetButtons.NBT), ...Object.values(widgetButtons.JSON)]) {

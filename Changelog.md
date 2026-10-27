@@ -6,6 +6,10 @@
 
 # v1.0.0-beta.39
 
+## Critical Fixes
+
+-   Fixed a bug where arrays nested directly inside of lists could crash the Node editor.
+
 ## Additions
 
 -   When a structure in the "Structures" left sidebar tab contains an array larger than `0xffffff` (16,777,215), it will now show an orange warning icon instead of a red "N/A".
@@ -270,7 +274,7 @@
 
 -   Fixed an issue where pasting in editors that used Monaco Editor did not work ([#1](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues/1)).
 -   Fixed many issues where the parser and serializer for the `SubChunkPrefix` content type did not work properly in certain situations.
--   Fixed a bug where nested arrays could crash the Node editor.
+-   Fixed a bug where nested lists could crash the Node editor.
 
 ## Additions
 
