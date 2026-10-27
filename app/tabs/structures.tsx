@@ -18,6 +18,7 @@ import type { ShowSelectOpenTabDialogResult } from "../components/SelectOpenTabD
 import showSelectOpenTabDialog from "../components/SelectOpenTabDialog";
 import Notice from "../components/Notice";
 import { createObservable, stringifyError, type Observable } from "../../src/utils/miscUtils";
+import { TabContentsCell_NBTArraySizeLimitExceeded } from "../components/tabContentsCellPresets";
 
 /**
  * Props for the {@link StructuresTab} component.
@@ -322,6 +323,7 @@ interface KeyData {
           }
         | null
         | undefined;
+    dataMissingReason?: "too_large" | undefined;
 }
 
 async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal): Promise<JSX.Element> {
@@ -380,13 +382,43 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
             Object.values(tab.cachedDBKeys!).reduce((a: number, b: Buffer[]): number => a + b.length, 0) >= config.asyncModeTotalKeyCountThreshold
         :   config.useAsyncModeInEntryViews;
     let keys: KeyData[] = await Promise.all(
-        rawKeys.map(
-            async (key: Buffer): Promise<KeyData> => ({
+        rawKeys.map(async (key: Buffer): Promise<KeyData> => {
+            const rawData: Buffer | null = await tab.db!.get(key);
+            if (!rawData) return { rawKey: key, displayKey: getKeyDisplayName(key), data: null };
+            let data: NonNullable<KeyData["data"]>;
+            try {
+                data = {
+                    parsed: NBT.parseUncompressed(rawData, "little", { noArraySizeCheck: false /* true */ /* TODO: Maybe add an option for this. */ }) as Pick<
+                        NBT.NBT,
+                        "name"
+                    > &
+                        NBTSchemas.NBTSchemaTypes.StructureTemplate,
+                    type: "little",
+                    metadata: { buffer: rawData, size: rawData.length },
+                };
+            } catch (e) {
+                if (e instanceof Error && e.message.includes("array size is abnormally large, not reading: ")) {
+                    const value: number = Number(
+                        e.message.slice(
+                            e.message.indexOf("array size is abnormally large, not reading: ") + "array size is abnormally large, not reading: ".length
+                        )
+                    );
+                    if (!Number.isNaN(value) && rawData.length > value) {
+                        return { rawKey: key, displayKey: getKeyDisplayName(key), data: null, dataMissingReason: "too_large" };
+                    }
+                }
+                try {
+                    data = (await NBT.parse(rawData)) as NonNullable<KeyData["data"]>;
+                } catch {
+                    return { rawKey: key, displayKey: getKeyDisplayName(key), data: null };
+                }
+            }
+            return {
                 rawKey: key,
                 displayKey: getKeyDisplayName(key),
-                data: (await NBT.parse((await tab.db!.get(key))!).catch((): null => null)) as KeyData["data"],
-            })
-        )
+                data,
+            };
+        })
     );
     let targetKeys: KeyData[] = keys;
     // globalThis.a = keys;
@@ -1574,6 +1606,9 @@ async function getStructuresTabContentsRows(data: {
                                             );
                                         }
                                         if (key.data === null) {
+                                            if (key.dataMissingReason === "too_large") {
+                                                return <TabContentsCell_NBTArraySizeLimitExceeded />;
+                                            }
                                             return (
                                                 <td>
                                                     <span style="color: red;">N/A</span>
@@ -1596,6 +1631,9 @@ async function getStructuresTabContentsRows(data: {
                                             );
                                         }
                                         if (key.data === null) {
+                                            if (key.dataMissingReason === "too_large") {
+                                                return <TabContentsCell_NBTArraySizeLimitExceeded />;
+                                            }
                                             return (
                                                 <td>
                                                     <span style="color: red;">N/A</span>
@@ -1618,6 +1656,9 @@ async function getStructuresTabContentsRows(data: {
                                             );
                                         }
                                         if (key.data === null) {
+                                            if (key.dataMissingReason === "too_large") {
+                                                return <TabContentsCell_NBTArraySizeLimitExceeded />;
+                                            }
                                             return (
                                                 <td>
                                                     <span style="color: red;">N/A</span>
@@ -1643,6 +1684,9 @@ async function getStructuresTabContentsRows(data: {
                                             );
                                         }
                                         if (key.data === null) {
+                                            if (key.dataMissingReason === "too_large") {
+                                                return <TabContentsCell_NBTArraySizeLimitExceeded />;
+                                            }
                                             return (
                                                 <td>
                                                     <span style="color: red;">N/A</span>
