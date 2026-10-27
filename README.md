@@ -18,7 +18,7 @@ Even though iOS is not supported yet, you can still edit worlds from your iPhone
 
 <!-- TODO: Test Pocket Edition v0.1.0 Demo. -->
 
-The app fully supports every version of Bedrock Edition, Pocket Edition, Education Edition, and China Edition all the way back to the very first Pocket Edition version (Pocked Edition v0.1.0 Alpha).
+The app fully supports every version of Bedrock Edition, Pocket Edition, Education Edition, and China Edition all the way back to the very first Pocket Edition version (Pocket Edition v0.1.0 Alpha).
 
 More information on the app can be found on the [wiki](https://wiki.8crafter.com/bwe/).
 
