@@ -1,5 +1,5 @@
 import type { JSX, RefObject, TargetedMouseEvent } from "preact";
-import _React, { render, useEffect, useRef } from "preact/compat";
+import _React, { render, useEffect, useLayoutEffect, useRef } from "preact/compat";
 import TreeEditor from "../components/TreeEditor";
 import { entryContentTypeToFormatMap, getContentTypeFromDBKey, type EntryContentTypeFormatData } from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
@@ -10,6 +10,7 @@ import EditorWidgetOverlayBar, { type EditorWidgetOverlayBarWidgetRegistry } fro
 import BinaryHexEditor, { initHexEditorDataStorageObjectProps, type HexEditorDataStorageObject } from "../components/BinaryHexEditor";
 import Notice from "../components/Notice";
 import { stringifyError } from "../../src/utils/miscUtils";
+import { EditorRenderFailureNotice } from "../components/failureNotices";
 
 /**
  * Props for the {@link GenericNBTEditorTab} component.
@@ -313,6 +314,18 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
         );
     }
     if (!props.tab.currentState.options.dataStorageObject) triggerLoadData();
+    if (!asyncMode && props.tab.currentState.options.dataStorageObject) {
+        useLayoutEffect((): void => {
+            if (!containerRef.current) return;
+            fakeAssertIsValidOptionsType(props.tab.currentState.options);
+            try {
+                render(<Contents props={props} options={props.tab.currentState.options} />, containerRef.current);
+            } catch (e) {
+                reportError(e);
+                render(<EditorRenderFailureNotice reason={e} viewMode={props.tab.currentState.options.viewMode} />, containerRef.current);
+            }
+        });
+    }
     useEffect((): (() => void) => {
         return (): void => {
             if (containerRef.current) render(null, containerRef.current);
@@ -342,7 +355,12 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
             return;
         }
         render(null, containerRef.current);
-        render(<Contents props={props} options={props.tab.currentState.options} />, containerRef.current);
+        try {
+            render(<Contents props={props} options={props.tab.currentState.options} />, containerRef.current);
+        } catch (e) {
+            reportError(e);
+            render(<EditorRenderFailureNotice reason={e} viewMode={props.tab.currentState.options.viewMode} />, containerRef.current);
+        }
     }
     function Contents(props: {
         props: GenericNBTEditorTabProps;
@@ -481,9 +499,7 @@ export default function GenericNBTEditorTab(props: GenericNBTEditorTabProps): JS
                 </div>
             </EditorWidgetOverlayBar>
             <div class="fix-scroll-lag" style="flex: 1; overflow: auto; display: flex; flex-direction: column;" ref={containerRef}>
-                {asyncMode || !props.tab.currentState.options.dataStorageObject ?
-                    <LoadingScreenContents />
-                :   <Contents props={props} options={props.tab.currentState.options} />}
+                {(asyncMode || !props.tab.currentState.options.dataStorageObject) && <LoadingScreenContents />}
             </div>
         </div>
     );

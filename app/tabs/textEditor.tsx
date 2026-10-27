@@ -1,10 +1,11 @@
 import type { JSX, RefObject } from "preact";
-import _React, { render, useEffect, useRef } from "preact/compat";
+import _React, { render, useEffect, useLayoutEffect, useRef } from "preact/compat";
 import { entryContentTypeToFormatMap, type EntryContentTypeFormatData } from "mcbe-leveldb";
 import { LoadingScreenContents } from "../app";
 import TextEditor from "../components/TextEditor";
 import EditorWidgetOverlayBar, { type EditorWidgetOverlayBarWidgetRegistry } from "../components/EditorWidgetOverlayBar";
 import { stringifyError } from "../../src/utils/miscUtils";
+import { EditorRenderFailureNotice } from "../components/failureNotices";
 
 /**
  * Props for the {@link TextEditorTab} component.
@@ -96,6 +97,18 @@ export default function TextEditorTab(props: TextEditorTabProps): JSX.SpecificEl
             }
         );
     }
+    if (!asyncMode && props.tab.currentState.options.dataStorageObject) {
+        useLayoutEffect((): void => {
+            if (!containerRef.current) return;
+            fakeAssertIsValidOptionsType(props.tab.currentState.options);
+            try {
+                render(<Contents props={props} options={props.tab.currentState.options} />, containerRef.current);
+            } catch (e) {
+                reportError(e);
+                render(<EditorRenderFailureNotice reason={e} viewMode={props.tab.currentState.options.viewMode} />, containerRef.current);
+            }
+        });
+    }
     useEffect((): (() => void) => {
         return (): void => {
             if (containerRef.current) render(null, containerRef.current);
@@ -105,7 +118,12 @@ export default function TextEditorTab(props: TextEditorTabProps): JSX.SpecificEl
         if (!containerRef.current) return;
         fakeAssertIsValidOptionsType(props.tab.currentState.options);
         render(null, containerRef.current);
-        render(<Contents props={props} options={props.tab.currentState.options} />, containerRef.current);
+        try {
+            render(<Contents props={props} options={props.tab.currentState.options} />, containerRef.current);
+        } catch (e) {
+            reportError(e);
+            render(<EditorRenderFailureNotice reason={e} viewMode={props.tab.currentState.options.viewMode} />, containerRef.current);
+        }
     }
     function Contents(props: {
         props: TextEditorTabProps;
@@ -129,9 +147,7 @@ export default function TextEditorTab(props: TextEditorTabProps): JSX.SpecificEl
     return (
         <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
             <div style="flex: 1; overflow: auto; display: flex; flex-direction: column;" ref={containerRef}>
-                {asyncMode || !props.tab.currentState.options.dataStorageObject ?
-                    <LoadingScreenContents />
-                :   <Contents props={props} options={props.tab.currentState.options} />}
+                {(asyncMode || !props.tab.currentState.options.dataStorageObject) && <LoadingScreenContents />}
             </div>
         </div>
     );

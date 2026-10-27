@@ -4,6 +4,7 @@ import React, { render, useEffect, useRef } from "preact/compat";
 import NBT from "prismarine-nbt";
 import "./treeEditor.css";
 import type { EditorWidgetOverlayBarWidgetRegistry } from "./EditorWidgetOverlayBar";
+import { EditorRenderFailureNotice } from "./failureNotices";
 const mime = require("mime-types") as typeof import("mime-types");
 
 /**
@@ -181,9 +182,16 @@ export default class TreeEditor extends React.Component<
         const containerRef: RefObject<HTMLDivElement> = useRef(null);
         const onValueChange: typeof this.props.onValueChange = (...args: Parameters<NonNullable<typeof this.props.onValueChange>>): boolean => {
             const result: boolean | undefined = this.props.onValueChange?.(...args);
-            if (!result && outerContainerElementRef.current) {
-                render(null, outerContainerElementRef.current);
-                render(<TreeEditor {...this.props} />, outerContainerElementRef.current.parentElement!);
+            rerenderTreeEditor: if (!result && outerContainerElementRef.current) {
+                const treeEditorParentElement: HTMLElement | null = outerContainerElementRef.current.parentElement;
+                if (!treeEditorParentElement) break rerenderTreeEditor;
+                render(null, outerContainerElementRef.current); // REVIEW: Maybe this should be targeting the parent element.
+                try {
+                    render(<TreeEditor {...this.props} />, treeEditorParentElement);
+                } catch (e) {
+                    reportError(e);
+                    render(<EditorRenderFailureNotice reason={e} viewMode="node" />, treeEditorParentElement);
+                }
             }
             return result ?? false;
         };
@@ -2962,7 +2970,7 @@ export default class TreeEditor extends React.Component<
                                         event.stopPropagation();
                                         expanded = !expanded;
                                         this.props.dataStorageObject.treeEditor.expansionData ??= { data: {} };
-                                        if (props.propertyPath.length === 0) {
+                                        if (props.propertyPath.length === +(this.props.dataStorageObject.dataType === "NBT")) {
                                             this.props.dataStorageObject.treeEditor.expansionData.value = expanded;
                                         } else {
                                             props.propertyPath.reduce(

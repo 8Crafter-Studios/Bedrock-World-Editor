@@ -1,5 +1,5 @@
 import type { JSX, RefObject, TargetedMouseEvent } from "preact";
-import _React, { render, useEffect, useRef } from "preact/compat";
+import _React, { render, useEffect, useLayoutEffect, useRef } from "preact/compat";
 import { LoadingScreenContents } from "../app";
 import EditorWidgetOverlayBar, { type EditorWidgetOverlayBarWidgetRegistry } from "../components/EditorWidgetOverlayBar";
 import BinaryHexEditor, { initHexEditorDataStorageObjectProps, type HexEditorDataStorageObject } from "../components/BinaryHexEditor";
@@ -7,6 +7,7 @@ import Notice from "../components/Notice";
 import { entryContentTypeToFormatMap, type EntryContentTypeFormatData } from "mcbe-leveldb";
 import { shell } from "@electron/remote";
 import { stringifyError } from "../../src/utils/miscUtils";
+import { EditorRenderFailureNotice } from "../components/failureNotices";
 
 /**
  * Props for the {@link HexEditorTab} component.
@@ -211,6 +212,18 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
     else if (!props.tab.currentState.options.dataStorageObject.hexEditor) {
         initHexEditorDataStorageObjectProps(props.tab.currentState.options.dataStorageObject);
     }
+    if (!asyncMode && props.tab.currentState.options.dataStorageObject) {
+        useLayoutEffect((): void => {
+            if (!containerRef.current) return;
+            fakeAssertIsValidOptionsType(props.tab.currentState.options);
+            try {
+                render(<Contents props={props} options={props.tab.currentState.options} />, containerRef.current);
+            } catch (e) {
+                reportError(e);
+                render(<EditorRenderFailureNotice reason={e} viewMode={props.tab.currentState.options.viewMode} />, containerRef.current);
+            }
+        });
+    }
     useEffect((): (() => void) => {
         return (): void => {
             if (containerRef.current) render(null, containerRef.current);
@@ -240,7 +253,12 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
             return;
         }
         render(null, containerRef.current);
-        render(<Contents props={props} options={props.tab.currentState.options} />, containerRef.current);
+        try {
+            render(<Contents props={props} options={props.tab.currentState.options} />, containerRef.current);
+        } catch (e) {
+            reportError(e);
+            render(<EditorRenderFailureNotice reason={e} viewMode={props.tab.currentState.options.viewMode} />, containerRef.current);
+        }
     }
     function Contents(props: {
         props: HexEditorTabProps;
@@ -286,9 +304,7 @@ export default function HexEditorTab(props: HexEditorTabProps): JSX.SpecificElem
                 </div>
             </EditorWidgetOverlayBar>
             <div class="fix-scroll-lag" style="flex: 1; overflow: auto; display: flex; flex-direction: column;" ref={containerRef}>
-                {asyncMode || !props.tab.currentState.options.dataStorageObject ?
-                    <LoadingScreenContents />
-                :   <Contents props={props} options={props.tab.currentState.options} />}
+                {(asyncMode || !props.tab.currentState.options.dataStorageObject) && <LoadingScreenContents />}
             </div>
         </div>
     );

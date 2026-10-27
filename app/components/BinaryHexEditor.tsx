@@ -10,6 +10,8 @@ import type { EditorWidgetOverlayBarWidgetRegistry } from "./EditorWidgetOverlay
 import { dialog } from "@electron/remote";
 import type { MessageBoxReturnValue } from "electron";
 import { LoadingScreenContents } from "../app";
+import { EditorRenderFailureNotice } from "./failureNotices";
+import { stringifyError } from "../../src/utils/miscUtils";
 
 /**
  * The data storage object for the {@link BinaryHexEditor}.
@@ -466,11 +468,34 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
     }
     const editorParams = new URLSearchParams({ contentType: props.contentType ?? "Unknown" });
     void editorParams; // TEMP
-    const data: [...number[], null] | ([] & (number | null)[]) = _React.useMemo(
-        (): [...number[], null] | [] =>
-            isSupportedSyncEditorValueDataType(props.dataStorageObject.dataType) ? [...convertDataToEditorValueSync()!, null] : [],
-        []
-    );
+    let initialDataConversionFailed: boolean = false;
+    let initialDataConversionFailure: unknown;
+    const data: [...number[], null] | ([] & (number | null)[]) = _React.useMemo((): [...number[], null] | [] => {
+        try {
+            return isSupportedSyncEditorValueDataType(props.dataStorageObject.dataType) ? [...convertDataToEditorValueSync()!, null] : [];
+        } catch (e) {
+            reportError(e);
+            initialDataConversionFailed = true;
+            initialDataConversionFailure = e;
+            return [];
+        }
+    }, []);
+    if (initialDataConversionFailed) {
+        return (
+            <div class="hexEditorContainer" ref={editorConainterRef}>
+                <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: center;">
+                    <Notice
+                        title="Hex Editor Data Conversion Error"
+                        subtitle={null}
+                        detail="An error occurred while converting the data to binary."
+                        image="generic_error"
+                        style={{ height: "auto" }}
+                    />
+                    <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(initialDataConversionFailure)}</div>
+                </div>
+            </div>
+        );
+    }
     const rerenderEditorRef: RefObject<() => void> = useRef((): void => {});
     // If `data` is large, you probably want it to be mutable rather than cloning it over and over.
     // `nonce` can be used to update the editor when `data` is reference that does not change.
@@ -531,6 +556,7 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
                 columns={0x10}
                 data={
                     // HACK: The data has a null value at the end as a workaround to allow the user to add more bytes, otherwise the editor clamps the index that the value was added at, causing the value to replace the last value instead of adding a new value.
+                    // TODO: Fix the above issue by forking the module, and then switch this to use a Uint8Array so very large data is still supported.
                     data as number[]
                 }
                 nonce={nonce}
@@ -547,20 +573,48 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
     if (!isSupportedSyncEditorValueDataType(props.dataStorageObject.dataType) && !data.length) {
         useEffect((): (() => void) | undefined => {
             if (editorConainterRef.current && !data.length) {
-                void convertDataToEditorValue().then((editorValue: number[]): void => {
-                    if (data.length) return;
-                    data.push(...editorValue, null);
-                    if (!editorConainterRef.current) return;
-                    // setNonce((v: number): number => v + 1);
-                    render(null, editorConainterRef.current);
-                    render(
-                        <>
-                            <HexEditorInternal rerenderRef={rerenderEditorRef} />
-                            <div class="hexEditorErrorMessageDisplayBox" ref={editorErrorMessageDisplayBoxRef}></div>
-                        </>,
-                        editorConainterRef.current
-                    );
-                });
+                void convertDataToEditorValue()
+                    .then((editorValue: number[]): void => {
+                        if (data.length) return;
+                        // data.push(...editorValue, null);
+                        // eslint-disable-next-line @typescript-eslint/prefer-for-of -- This is for performance reasons, since this is like this in order to be able to handle extremely large arrays.
+                        for (let i = 0; i < editorValue.length; i++) {
+                            data.push(editorValue[i]!);
+                        }
+                        data.push(null);
+                        if (!editorConainterRef.current) return;
+                        // setNonce((v: number): number => v + 1);
+                        render(null, editorConainterRef.current);
+                        try {
+                            render(
+                                <>
+                                    <HexEditorInternal rerenderRef={rerenderEditorRef} />
+                                    <div class="hexEditorErrorMessageDisplayBox" ref={editorErrorMessageDisplayBoxRef}></div>
+                                </>,
+                                editorConainterRef.current
+                            );
+                        } catch (e) {
+                            reportError(e);
+                            render(<EditorRenderFailureNotice reason={e} viewMode="raw" />, editorConainterRef.current);
+                        }
+                    })
+                    .catch((e: unknown): void => {
+                        reportError(e);
+                        if (!editorConainterRef.current) return;
+                        render(
+                            <div style="display: flex; width: -webkit-fill-available; height: -webkit-fill-available; overflow: auto; flex: 1; flex-direction: column; align-items: center; justify-content: center;">
+                                <Notice
+                                    title="Hex Editor Data Conversion Error"
+                                    subtitle={null}
+                                    detail="An error occurred while converting the data to binary."
+                                    image="generic_error"
+                                    style={{ height: "auto" }}
+                                />
+                                <div style={{ color: "red", fontFamily: "monospace", whiteSpace: "pre" }}>{stringifyError(e)}</div>
+                            </div>,
+                            editorConainterRef.current
+                        );
+                    });
             }
             return (): void => {
                 if (editorConainterRef.current) render(null, editorConainterRef.current);

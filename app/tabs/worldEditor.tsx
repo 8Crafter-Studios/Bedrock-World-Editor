@@ -1,11 +1,12 @@
 import type { JSX, RefObject, TargetedMouseEvent } from "preact";
-import _React, { render, useEffect, useRef } from "preact/compat";
+import _React, { render, useEffect, useLayoutEffect, useRef } from "preact/compat";
 import { LoadingScreenContents } from "../app";
 import EditorWidgetOverlayBar, { type EditorWidgetOverlayBarWidgetRegistry } from "../components/EditorWidgetOverlayBar";
 import { initWorldEditor2DDataStorageObjectProps, WorldEditor2D, type WorldEditor2DDataStorageObject } from "../components/WorldEditor2D";
 import Notice from "../components/Notice";
 import UnderConstruction from "../components/UnderConstruction";
 import { stringifyError } from "../../src/utils/miscUtils";
+import { EditorRenderFailureNotice } from "../components/failureNotices";
 
 /**
  * Props for the {@link WorldEditorTab} component.
@@ -109,6 +110,17 @@ export default function WorldEditorTab(props: WorldEditorTabProps): JSX.Specific
             </div>
         );
     }
+    if (!asyncMode && props.tab.currentState.worldTab) {
+        useLayoutEffect((): void => {
+            if (!containerRef.current) return;
+            try {
+                render(<Contents props={props} options={props.tab.currentState.worldTab!} />, containerRef.current);
+            } catch (e) {
+                reportError(e);
+                render(<EditorRenderFailureNotice reason={e} viewMode={props.tab.currentState.worldTab!.viewMode} />, containerRef.current);
+            }
+        });
+    }
     useEffect((): (() => void) => {
         return (): void => {
             if (containerRef.current) render(null, containerRef.current);
@@ -134,7 +146,12 @@ export default function WorldEditorTab(props: WorldEditorTabProps): JSX.Specific
         //     return;
         // }
         render(null, containerRef.current);
-        render(<Contents props={props} options={props.tab.currentState.worldTab} />, containerRef.current);
+        try {
+            render(<Contents props={props} options={props.tab.currentState.worldTab} />, containerRef.current);
+        } catch (e) {
+            reportError(e);
+            render(<EditorRenderFailureNotice reason={e} viewMode={props.tab.currentState.worldTab.viewMode} />, containerRef.current);
+        }
     }
     function Contents(props: { props: WorldEditorTabProps; options: WorldEditorDataStorageObject }): JSX.Element {
         switch (props.options.viewMode) {
@@ -219,9 +236,7 @@ export default function WorldEditorTab(props: WorldEditorTabProps): JSX.Specific
                 </div>
             </EditorWidgetOverlayBar>
             <div class="fix-scroll-lag" style="flex: 1; overflow: auto; display: flex; flex-direction: column;" ref={containerRef}>
-                {asyncMode || !props.tab.currentState.worldTab ?
-                    <LoadingScreenContents />
-                :   <Contents props={props} options={props.tab.currentState.worldTab} />}
+                {(asyncMode || !props.tab.currentState.worldTab) && <LoadingScreenContents />}
             </div>
         </div>
     );

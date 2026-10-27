@@ -13,10 +13,14 @@
 ## Additions
 
 -   When a structure in the "Structures" left sidebar tab contains an array larger than `0xffffff` (16,777,215), it will now show an orange warning icon instead of a red "N/A".
+-   Added error screens for when an editor fails to render.
+-   Added an error screen for when the data conversion to binary for the hex editor fails.
+-   The hex editor can now handle much larger data (it no longer has a stack size error with very large data, though data that is larger than the maximum array length will still throw an error).
 
 ## Fixes
 
 -   NBT data with an array larger than `0xffffff` (16,777,215) is now able to be edited and will no longer show an unrelated error message.
+-   Fixed a bug where in some cases the root object of the Node editor would not preserve its expansion state when switching tabs or modes.
 
 # v1.0.0-beta.38
 
