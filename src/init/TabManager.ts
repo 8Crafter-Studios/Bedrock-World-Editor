@@ -2554,11 +2554,55 @@ namespace exports {
             format ??= this.formatData ?? (entryContentTypeToFormatMap[this.currentState.options.type] as EntryContentTypeFormatData);
             switch (format.type) {
                 case "NBT": {
-                    return {
-                        sourceType: format,
-                        dataType: "NBT",
-                        data: await NBT.parse(rawData),
-                    } as const satisfies Pick<GenericDataStorageObjectNBT & DataStorageObject, "sourceType" | "dataType" | "data">;
+                    try {
+                        return {
+                            sourceType: format,
+                            dataType: "NBT",
+                            data: await NBT.parse(
+                                rawData,
+                                format.format === "BE" ? "big"
+                                : format.format === "LEV" ? "littleVarint"
+                                : "little"
+                            ),
+                        } as const satisfies Pick<GenericDataStorageObjectNBT & DataStorageObject, "sourceType" | "dataType" | "data">;
+                    } catch (e) {
+                        if (e instanceof Error && e.message.includes("array size is abnormally large, not reading: ")) {
+                            const value: number = Number(
+                                e.message.slice(
+                                    e.message.indexOf("array size is abnormally large, not reading: ") + "array size is abnormally large, not reading: ".length
+                                )
+                            );
+                            if (!Number.isNaN(value) && rawData.length > value) {
+                                try {
+                                    const parsedData = await NBT.parseAs(
+                                        rawData,
+                                        format.format === "BE" ? "big"
+                                        : format.format === "LEV" ? "littleVarint"
+                                        : "little",
+                                        { noArraySizeCheck: true }
+                                    );
+                                    return {
+                                        sourceType: format,
+                                        dataType: "NBT",
+                                        data: {
+                                            parsed: parsedData.data,
+                                            type: parsedData.type,
+                                            metadata: parsedData.metadata,
+                                        },
+                                    } as const satisfies Pick<GenericDataStorageObjectNBT & DataStorageObject, "sourceType" | "dataType" | "data">;
+                                } catch {}
+                            }
+                        }
+                        try {
+                            return {
+                                sourceType: format,
+                                dataType: "NBT",
+                                data: await NBT.parse(rawData),
+                            } as const satisfies Pick<GenericDataStorageObjectNBT & DataStorageObject, "sourceType" | "dataType" | "data">;
+                        } catch {
+                            throw e;
+                        }
+                    }
                 }
                 case "SNBT": {
                     return {

@@ -4,6 +4,16 @@
 
 -   Windows builds are now code signed. -->
 
+# v1.0.0-beta.39
+
+## Additions
+
+-   When a structure in the "Structures" left sidebar tab contains an array larger than `0xffffff` (16,777,215), it will now show an orange warning icon instead of a red "N/A".
+
+## Fixes
+
+-   NBT data with an array larger than `0xffffff` (16,777,215) is now able to be edited and will no longer show an unrelated error message.
+
 # v1.0.0-beta.38
 
 ## Critical Fixes

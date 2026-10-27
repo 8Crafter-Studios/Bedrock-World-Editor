@@ -387,14 +387,11 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
             if (!rawData) return { rawKey: key, displayKey: getKeyDisplayName(key), data: null };
             let data: NonNullable<KeyData["data"]>;
             try {
+                const parsedData = await NBT.parseAs(rawData, "little", { noArraySizeCheck: false /* true */ /* TODO: Maybe add an option for this. */ });
                 data = {
-                    parsed: NBT.parseUncompressed(rawData, "little", { noArraySizeCheck: false /* true */ /* TODO: Maybe add an option for this. */ }) as Pick<
-                        NBT.NBT,
-                        "name"
-                    > &
-                        NBTSchemas.NBTSchemaTypes.StructureTemplate,
-                    type: "little",
-                    metadata: { buffer: rawData, size: rawData.length },
+                    parsed: parsedData.data as Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.StructureTemplate,
+                    type: parsedData.type,
+                    metadata: parsedData.metadata,
                 };
             } catch (e) {
                 if (e instanceof Error && e.message.includes("array size is abnormally large, not reading: ")) {
