@@ -5,7 +5,7 @@
  * @module
  * @description This file contains the `JSONB` class.
  * @author 8Crafter
- * @version v1.1.0 (11/11/2024 7:29 PM)
+ * @version v1.2.0 (10/27/2026 6:37 PM PDT)
  */
 /**
  * An intrinsic object that provides functions to convert JavaScript values to and from the JavaScript Object Notation (JSON) format.
@@ -301,7 +301,7 @@ declare global {
                 // JSONB numbers must be finite. Encode non-finite numbers as null.
 
                 return isFinite(value)
-                    ? String(value)
+                    ? Object.is(value, -0) ? "-0" : String(value)
                     : value == Infinity
                     ? options?.Infinity ?? true
                         ? "Infinity"
