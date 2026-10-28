@@ -186,12 +186,24 @@ export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JS
     });
     let startingEditorValue: string | undefined =
         dataLoaded ?
-            JSON.stringify(
+            // This is using JSONB.stringify instead of JSON.stringify in order to serialize -0 as -0 instead of 0.
+            JSONB.stringify(
                 props.dataStorageObject.dataType === "NBTCompound" ? props.dataStorageObject.data.value
                 : props.dataStorageObject.dataType === "NBT" ? props.dataStorageObject.data.parsed.value
                 : props.dataStorageObject.data,
                 null,
-                4
+                4,
+                {
+                    bigint: false,
+                    undefined: false,
+                    Infinity: false,
+                    NegativeInfinity: false,
+                    NaN: false,
+                    get: false,
+                    set: false,
+                    function: false,
+                    class: false,
+                }
             )
         :   "Data is not loaded.";
     return (

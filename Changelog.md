@@ -9,6 +9,7 @@
 ## Critical Fixes
 
 -   Fixed a bug where arrays nested directly inside of lists could crash the Node editor.
+-   The Prismarine-NBT and SNBT editors now display `-0` float and double values as `-0` instead of `0`, which means `-0` is now preserved.
 
 ## Additions
 
