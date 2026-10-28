@@ -463,7 +463,7 @@ export default function BinaryHexEditor(props: HexEditorProps): JSX.SpecificElem
             editorErrorMessageDisplayBoxRef.current.textContent = String(error);
         } else {
             if (editorErrorMessageDisplayBoxRef.current) editorErrorMessageDisplayBoxRef.current.textContent = "";
-            editorConainterRef.current.style.setProperty("--hex-editor-error-message", JSON.stringify(error));
+            editorConainterRef.current.style.setProperty("--hex-editor-error-message", stringifyError(error));
         }
     }
     const editorParams = new URLSearchParams({ contentType: props.contentType ?? "Unknown" });
