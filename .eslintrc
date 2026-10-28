@@ -249,7 +249,7 @@
     "parserOptions": {
         "ecmaVersion": "latest",
         "sourceType": "module",
-        "project": ["tsconfig.app.json", "tsconfig.node.json", "tsconfig.root.json", "tsconfig.json"]
+        "project": ["tsconfig.app.json", /* "tsconfig.node.json", */ /* TEMP */ "tsconfig.root.json", "tsconfig.json"]
     },
     "overrides": [
         {

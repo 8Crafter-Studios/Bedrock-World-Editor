@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck: This is a library file.
 /* eslint-disable*/
 
 /**

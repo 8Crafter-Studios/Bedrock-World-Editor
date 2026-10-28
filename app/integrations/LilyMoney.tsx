@@ -12,7 +12,7 @@ const LilyMoney = {
     description: "LilyMoney economy database integration.",
 
     async checkIfDetected(tab: TabManagerTab): Promise<boolean> {
-        return detectLilyMoneyData(tab);
+        return await detectLilyMoneyData(tab);
     },
 
     integrationMenu(props: IntegrationMenuProps): JSX.Element {
@@ -63,7 +63,7 @@ const LilyMoney = {
                         padding: "20px",
                     }}
                 >
-                    <button type="button" class="genericRoundButton" onClick={(): void => props.closeIntegrationMenu()}>
+                    <button type="button" class="genericRoundButton" onClick={(): void => void props.closeIntegrationMenu()}>
                         ← Back
                     </button>
 
@@ -71,7 +71,7 @@ const LilyMoney = {
                     <h3>Database scan failed</h3>
                     <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{fatalError}</pre>
 
-                    <button type="button" class="genericRoundButton" onClick={(): void => setScanNumber((current: number): number => current + 1)}>
+                    <button type="button" class="genericRoundButton" onClick={(): void => void setScanNumber((current: number): number => current + 1)}>
                         Try Again
                     </button>
                 </div>
@@ -102,8 +102,8 @@ const LilyMoney = {
             <LilyMoneyWorkspace
                 result={result}
                 progress={progress}
-                onBack={(): void => props.closeIntegrationMenu()}
-                onRescan={(): void => setScanNumber((current: number): number => current + 1)}
+                onBack={(): void => void props.closeIntegrationMenu()}
+                onRescan={(): void => void setScanNumber((current: number): number => current + 1)}
             />
         );
     },

@@ -353,7 +353,7 @@ function summarizeStorage(
 
         checksumValid: decoded.checksumValid,
 
-        pendingJobBatchStateRaw: typeof namespace["lilymoney:job_batch_state_v1"] === "string" ? (namespace["lilymoney:job_batch_state_v1"] as string) : null,
+        pendingJobBatchStateRaw: typeof namespace["lilymoney:job_batch_state_v1"] === "string" ? namespace["lilymoney:job_batch_state_v1"] : null,
     };
 }
 

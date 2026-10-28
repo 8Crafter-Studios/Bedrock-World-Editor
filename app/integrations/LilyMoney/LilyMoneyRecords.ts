@@ -78,7 +78,7 @@ export function lilyMoneyFNV1a32(strings: string[]): string {
 }
 
 function pageIndexFromKey(key: string): number {
-    const match: RegExpMatchArray | null = key.match(/^lilymoney:page_(\d+)$/);
+    const match: RegExpMatchArray | null = /^lilymoney:page_(\d+)$/.exec(key);
 
     return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
 }
@@ -152,8 +152,7 @@ export function decodeLilyMoneyRecords(
         }
     }
 
-    const checksumExpected: string | null =
-        typeof namespace["lilymoney:checksum_fnv1a32"] === "string" ? (namespace["lilymoney:checksum_fnv1a32"] as string) : null;
+    const checksumExpected: string | null = typeof namespace["lilymoney:checksum_fnv1a32"] === "string" ? namespace["lilymoney:checksum_fnv1a32"] : null;
 
     let checksumActual: string | null = null;
     let checksumValid: boolean | null = null;

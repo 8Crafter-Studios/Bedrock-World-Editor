@@ -17,10 +17,10 @@ export interface LilyMoneyDatabase {
     shardIndexesContinuous: boolean | null;
 
     duplicateRecordIds: number[];
-    missingRecordRanges: Array<{
+    missingRecordRanges: {
         after: number;
         before: number;
-    }>;
+    }[];
 
     errors: string[];
     warnings: string[];
@@ -34,7 +34,7 @@ export function assembleLilyMoneyDatabase(discovery: LilyMoneyDiscoveryResult): 
     // Select sealed shards
     // ---------------------------------------------------------------------
 
-    const sealedByShard: Map<number, LilyMoneyStorageSummary> = new Map();
+    const sealedByShard = new Map<number, LilyMoneyStorageSummary>();
 
     for (const storage of discovery.sealedStorages) {
         if (storage.shardIndex === null) {
@@ -160,12 +160,12 @@ export function assembleLilyMoneyDatabase(discovery: LilyMoneyDiscoveryResult): 
 
     const duplicateRecordIds: number[] = [];
 
-    const missingRecordRanges: Array<{
+    const missingRecordRanges: {
         after: number;
         before: number;
-    }> = [];
+    }[] = [];
 
-    const seenIds: Set<number> = new Set();
+    const seenIds = new Set<number>();
 
     for (const record of records) {
         if (seenIds.has(record.id)) {

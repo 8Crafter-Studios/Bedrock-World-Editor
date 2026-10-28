@@ -1,3 +1,5 @@
+/* DEPRECATED: This was an early test for a 3D renderer, please ignore this file. */
+/* #vignore */
 .renderer_3d .block {
     position: absolute;
     left: 0;
@@ -67,9 +69,10 @@
 }
 
 .renderer_3d .subtraction .block:hover .side {
-  outline: 1px solid rgba(255, 0, 0, 0.5);
+    outline: 1px solid rgba(255, 0, 0, 0.5);
 }
 
 .renderer_3d .subtraction .ghost {
-  display: none;
+    display: none;
 }
+/* #endvignore */

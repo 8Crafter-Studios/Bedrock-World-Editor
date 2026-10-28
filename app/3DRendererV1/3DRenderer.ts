@@ -1,13 +1,17 @@
+// DEPRECATED: This was an early test for a 3D renderer, please ignore this file.
+//#vignore
+// @ts-nocheck: This file should be ignored.
+/* eslint-disable -- This file should be ignored. */
 import "./3DRenderer.css";
 import type { Vector3 } from "mcbe-leveldb";
 import json5 from "json5";
-import { readFileSync } from "node:fs";
-import path from "node:path";
+// import { readFileSync } from "node:fs";
+// import path from "node:path";
 import { fetchTextSync } from "../../src/utils/connectionUtils";
-const terrainTextureJSON = json5.parse(
+const terrainTextureJSON = json5.parse<typeof import("../../resources/mc/textures/terrain_texture.json")>(
     fetchTextSync("resource://mc/textures/terrain_texture.json", "utf-8")!
-) as typeof import("../../resources/mc/textures/terrain_texture.json");
-const blocksJSON = json5.parse(fetchTextSync("resource://mc/blocks.json", "utf-8")!) as typeof import("../../resources/mc/blocks.json");
+);
+const blocksJSON = json5.parse<typeof import("../../resources/mc/blocks.json")>(fetchTextSync("resource://mc/blocks.json", "utf-8")!);
 
 console.log(terrainTextureJSON, blocksJSON);
 
@@ -79,7 +83,7 @@ export class Block {
         this.createFace("bottom", 0, 0, size / -2, 0, 180, 0).appendTo(block);
     }
 
-    public createFace(type: BlockFace, x: number, y: number, z: number, rx: number, ry: number, rz: number) {
+    public createFace(type: BlockFace, x: number, y: number, z: number, rx: number, ry: number, rz: number): JQuery<HTMLElement> {
         return $(`<div class="side side-${type}" />`)
             .css({
                 transform: `
@@ -102,17 +106,14 @@ export class Block {
             blocksJSON[this.typeID.replace(/^minecraft:/, "") as Exclude<keyof typeof blocksJSON, "format_version">];
         if (!blockTextureData || !("textures" in blockTextureData)) return "#0000";
         const terrainTextureForFace: keyof typeof terrainTextureJSON.texture_data | undefined =
-            typeof blockTextureData.textures === "string"
-                ? (blockTextureData.textures as keyof typeof terrainTextureJSON.texture_data)
-                : type in blockTextureData.textures
-                ? (blockTextureData.textures[type as keyof typeof blockTextureData.textures] as keyof typeof terrainTextureJSON.texture_data)
-                : !(["top", "bottom"] as BlockFace[]).includes(type) && "side" in blockTextureData.textures
-                ? (blockTextureData.textures.side as keyof typeof terrainTextureJSON.texture_data)
-                : type === "top" && "top" in blockTextureData.textures
-                ? (blockTextureData.textures.top as keyof typeof terrainTextureJSON.texture_data)
-                : type === "bottom" && "bottom" in blockTextureData.textures
-                ? (blockTextureData.textures.bottom as keyof typeof terrainTextureJSON.texture_data)
-                : undefined;
+            typeof blockTextureData.textures === "string" ? (blockTextureData.textures as keyof typeof terrainTextureJSON.texture_data)
+            : type in blockTextureData.textures ?
+                (blockTextureData.textures[type as keyof typeof blockTextureData.textures] as keyof typeof terrainTextureJSON.texture_data)
+            : !(["top", "bottom"] as BlockFace[]).includes(type) && "side" in blockTextureData.textures ?
+                (blockTextureData.textures.side as keyof typeof terrainTextureJSON.texture_data)
+            : type === "top" && "top" in blockTextureData.textures ? (blockTextureData.textures.top as keyof typeof terrainTextureJSON.texture_data)
+            : type === "bottom" && "bottom" in blockTextureData.textures ? (blockTextureData.textures.bottom as keyof typeof terrainTextureJSON.texture_data)
+            : undefined;
         if (!terrainTextureForFace) return "#0000";
         const texture = terrainTextureJSON.texture_data[terrainTextureForFace];
         if (typeof texture.textures === "string") return `url("resource://mc/${texture.textures}.png")`;
@@ -127,28 +128,28 @@ export class Block {
 }
 
 function createCoordinatesFrom(side: BlockFace, x: number, y: number, z: number): Vector3 {
-    if (side == "top") {
-        z += 1;
+    if (side === "top") {
+        z++;
     }
 
-    if (side == "north") {
-        y += 1;
+    if (side === "north") {
+        y++;
     }
 
-    if (side == "east") {
-        x += 1;
+    if (side === "east") {
+        x++;
     }
 
-    if (side == "south") {
-        y -= 1;
+    if (side === "south") {
+        y--;
     }
 
-    if (side == "west") {
-        x -= 1;
+    if (side === "west") {
+        x--;
     }
 
-    if (side == "bottom") {
-        z -= 1;
+    if (side === "bottom") {
+        z--;
     }
 
     return { x, y, z };
@@ -174,7 +175,7 @@ export function Renderer3D(): HTMLDivElement {
 
     $(scene).on("click", ".side", function (this: HTMLDivElement, e) {
         const $this = $(this);
-        const previous: Block = $this.data("block");
+        const previous: Block = $this.data("block") as Block;
 
         if ($(scene).hasClass("subtraction")) {
             previous.block.remove();
@@ -294,3 +295,4 @@ export function Renderer3D(): HTMLDivElement {
 }
 
 globalThis.Renderer3D = Renderer3D;
+//#endvignore

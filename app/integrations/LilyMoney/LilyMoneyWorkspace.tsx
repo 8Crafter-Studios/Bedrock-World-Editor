@@ -17,8 +17,8 @@ export type LilyMoneyWorkspacePage = "overview" | "transactions" | "jobs" | "gra
 interface LilyMoneyWorkspaceProps {
     result: LilyMoneyDiscoveryResult;
     progress: string;
-    onBack(): void;
-    onRescan(): void;
+    onBack(this: void): void;
+    onRescan(this: void): void;
 }
 
 interface WorkspaceTheme {
@@ -221,7 +221,7 @@ function buttonStyle(theme: WorkspaceTheme, selected: boolean = false): Record<s
     };
 }
 
-function sumNullable(values: Array<number | null>): number | null {
+function sumNullable(values: (number | null)[]): number | null {
     const available: number[] = values.filter((value: number | null): value is number => value !== null);
 
     if (available.length === 0) return null;
@@ -488,8 +488,8 @@ function playerBalanceTimeline(analysis: LilyMoneyAnalysis, selectedIdentityId: 
             balanceCents,
         };
 
-        const previous = current[current.length - 1];
-        if (!previous || previous.timestamp !== point.timestamp || previous.balanceCents !== point.balanceCents) {
+        const previous: BalancePoint | undefined = current[current.length - 1];
+        if (previous?.timestamp !== point.timestamp || previous.balanceCents !== point.balanceCents) {
             current.push(point);
             pointCount++;
         }
@@ -1419,22 +1419,22 @@ function latestServerCheckpoint(analysis: LilyMoneyAnalysis): ParsedLilyMoneyEve
     return null;
 }
 
-function serverCheckpointHistory(analysis: LilyMoneyAnalysis): Array<{
+function serverCheckpointHistory(analysis: LilyMoneyAnalysis): {
     recordId: number;
     timestamp: number;
     reason: string;
     playerCount: number;
     totalCents: number;
     changeCents: number | null;
-}> {
-    const rows: Array<{
+}[] {
+    const rows: {
         recordId: number;
         timestamp: number;
         reason: string;
         playerCount: number;
         totalCents: number;
         changeCents: number | null;
-    }> = [];
+    }[] = [];
     let previous: number | null = null;
 
     for (const event of analysis.events) {
@@ -1699,7 +1699,7 @@ function buildPlayerProfileMetrics(analysis: LilyMoneyAnalysis, identityId: stri
         exactObservationCount,
         firstExactBalanceCents,
         exactBalanceChangeCents:
-            firstExactBalanceCents === null || currentPlayerBalance(player) === null ? null : (currentPlayerBalance(player) as number) - firstExactBalanceCents,
+            firstExactBalanceCents === null || currentPlayerBalance(player) === null ? null : currentPlayerBalance(player)! - firstExactBalanceCents,
         breakdown,
         topJob: topByAmount(jobs.values()),
         topBought: topByAmount(boughtItems.values()),
@@ -1799,7 +1799,7 @@ function RankingPanel(props: { theme: WorkspaceTheme; analysis: LilyMoneyAnalysi
                 <select
                     class="search-mode-dropdown lilymoney-select"
                     value={metric}
-                    onChange={(event: Event): void => setMetric((event.currentTarget as HTMLSelectElement).value as typeof metric)}
+                    onChange={(event: Event): void => void setMetric((event.currentTarget as HTMLSelectElement).value as typeof metric)}
                     style={{ ...controlStyle(props.theme), minWidth: "160px" }}
                 >
                     <option value="balance">Balance</option>
@@ -1899,7 +1899,7 @@ function PlayerMoneyBreakdown(props: { theme: WorkspaceTheme; metrics: PlayerPro
 }
 
 function PlayerHighlights(props: { theme: WorkspaceTheme; metrics: PlayerProfileMetrics }): JSX.Element {
-    const rows: Array<{ label: string; value: string; tone?: "warning" | undefined }> = [
+    const rows: { label: string; value: string; tone?: "warning" | undefined }[] = [
         {
             label: "Top job",
             value:
@@ -2468,13 +2468,13 @@ function TransactionsPage(props: { theme: WorkspaceTheme; analysis: LilyMoneyAna
                     type="search"
                     value={search}
                     placeholder="Search player, item, event, record ID…"
-                    onInput={(event: Event): void => setSearch((event.currentTarget as HTMLInputElement).value)}
+                    onInput={(event: Event): void => void setSearch((event.currentTarget as HTMLInputElement).value)}
                     style={{ ...controlStyle(theme), flex: "1 1 300px", minWidth: "220px" }}
                 />
                 <select
                     class="search-mode-dropdown lilymoney-select"
                     value={category}
-                    onChange={(event: Event): void => setCategory((event.currentTarget as HTMLSelectElement).value)}
+                    onChange={(event: Event): void => void setCategory((event.currentTarget as HTMLSelectElement).value)}
                     style={{ ...controlStyle(theme), minWidth: "180px" }}
                 >
                     <option value="all">All transactions</option>
@@ -2749,7 +2749,7 @@ function JobsPage(props: { theme: WorkspaceTheme; analysis: LilyMoneyAnalysis; s
         setPageIndex(0);
     }, [props.selectedIdentityId]);
 
-    useEffect((): void => setPageIndex(0), [jobFilter, search]);
+    useEffect((): void => void setPageIndex(0), [jobFilter, search]);
 
     const totalRewards = data.jobs.reduce((sum, job): number => sum + job.amountCents, 0);
     const totalQuantity = data.jobs.reduce((sum, job): number => sum + job.quantity, 0);
@@ -2847,7 +2847,7 @@ function JobsPage(props: { theme: WorkspaceTheme; analysis: LilyMoneyAnalysis; s
                         <select
                             class="search-mode-dropdown lilymoney-select"
                             value={jobFilter}
-                            onChange={(event: Event): void => setJobFilter((event.currentTarget as HTMLSelectElement).value)}
+                            onChange={(event: Event): void => void setJobFilter((event.currentTarget as HTMLSelectElement).value)}
                             style={{ ...controlStyle(theme), minWidth: "170px" }}
                             aria-label="Select job for source details"
                         >
@@ -2879,7 +2879,7 @@ function JobsPage(props: { theme: WorkspaceTheme; analysis: LilyMoneyAnalysis; s
                     type="search"
                     value={search}
                     placeholder="Search block, source, player…"
-                    onInput={(event: Event): void => setSearch((event.currentTarget as HTMLInputElement).value)}
+                    onInput={(event: Event): void => void setSearch((event.currentTarget as HTMLInputElement).value)}
                     style={{ ...controlStyle(theme), flex: "1 1 280px", minWidth: "220px" }}
                 />
                 {search || jobFilter !== "all" ?
@@ -3184,7 +3184,7 @@ function RawRecordsPage(props: { theme: WorkspaceTheme; analysis: LilyMoneyAnaly
     const [shard, setShard] = useState<string>("all");
     const [pageIndex, setPageIndex] = useState<number>(0);
 
-    useEffect((): void => setPageIndex(0), [props.selectedIdentityId, search, eventType, shard]);
+    useEffect((): void => void setPageIndex(0), [props.selectedIdentityId, search, eventType, shard]);
 
     const eventById = useMemo(() => {
         const map = new Map<number, ParsedLilyMoneyEvent>();
@@ -3254,13 +3254,13 @@ function RawRecordsPage(props: { theme: WorkspaceTheme; analysis: LilyMoneyAnaly
                     type="search"
                     value={search}
                     placeholder="Search payload, ID, type, source…"
-                    onInput={(event: Event): void => setSearch((event.currentTarget as HTMLInputElement).value)}
+                    onInput={(event: Event): void => void setSearch((event.currentTarget as HTMLInputElement).value)}
                     style={{ ...controlStyle(theme), flex: "1 1 300px", minWidth: "220px" }}
                 />
                 <select
                     class="search-mode-dropdown lilymoney-select"
                     value={eventType}
-                    onChange={(event: Event): void => setEventType((event.currentTarget as HTMLSelectElement).value)}
+                    onChange={(event: Event): void => void setEventType((event.currentTarget as HTMLSelectElement).value)}
                     style={{ ...controlStyle(theme), minWidth: "180px" }}
                 >
                     <option value="all">All event types</option>
@@ -3275,7 +3275,7 @@ function RawRecordsPage(props: { theme: WorkspaceTheme; analysis: LilyMoneyAnaly
                 <select
                     class="search-mode-dropdown lilymoney-select"
                     value={shard}
-                    onChange={(event: Event): void => setShard((event.currentTarget as HTMLSelectElement).value)}
+                    onChange={(event: Event): void => void setShard((event.currentTarget as HTMLSelectElement).value)}
                     style={{ ...controlStyle(theme), minWidth: "130px" }}
                 >
                     <option value="all">All shards</option>
@@ -3290,7 +3290,7 @@ function RawRecordsPage(props: { theme: WorkspaceTheme; analysis: LilyMoneyAnaly
                 <button
                     type="button"
                     class="lilymoney-mc-button"
-                    onClick={(): void => exportRawRecords(filtered)}
+                    onClick={(): void => void exportRawRecords(filtered)}
                     style={buttonStyle(theme)}
                     disabled={filtered.length === 0}
                 >
@@ -3568,7 +3568,7 @@ function BalanceAuditPanel(props: { theme: WorkspaceTheme; analysis: LilyMoneyAn
                     <select
                         class="search-mode-dropdown lilymoney-select"
                         value={identityId}
-                        onChange={(event: Event): void => setIdentityId((event.currentTarget as HTMLSelectElement).value)}
+                        onChange={(event: Event): void => void setIdentityId((event.currentTarget as HTMLSelectElement).value)}
                         style={{ ...controlStyle(props.theme), minWidth: "220px" }}
                         aria-label="Player for balance audit"
                     >
@@ -3584,7 +3584,7 @@ function BalanceAuditPanel(props: { theme: WorkspaceTheme; analysis: LilyMoneyAn
                         <input
                             type="checkbox"
                             checked={differencesOnly}
-                            onChange={(event: Event): void => setDifferencesOnly((event.currentTarget as HTMLInputElement).checked)}
+                            onChange={(event: Event): void => void setDifferencesOnly((event.currentTarget as HTMLInputElement).checked)}
                         />
                         Differences only
                     </label>
@@ -4228,7 +4228,7 @@ function Pagination(props: { theme: WorkspaceTheme; page: number; pageCount: num
                 class="lilymoney-mc-button"
                 style={buttonStyle(props.theme)}
                 disabled={props.page <= 0}
-                onClick={(): void => props.onPage(Math.max(0, props.page - 1))}
+                onClick={(): void => void props.onPage(Math.max(0, props.page - 1))}
             >
                 Previous
             </button>
@@ -4240,7 +4240,7 @@ function Pagination(props: { theme: WorkspaceTheme; page: number; pageCount: num
                 class="lilymoney-mc-button"
                 style={buttonStyle(props.theme)}
                 disabled={props.page >= props.pageCount - 1}
-                onClick={(): void => props.onPage(Math.min(props.pageCount - 1, props.page + 1))}
+                onClick={(): void => void props.onPage(Math.min(props.pageCount - 1, props.page + 1))}
             >
                 Next
             </button>
@@ -4285,10 +4285,10 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
     const effectiveIdentityId: string = selectedPlayerExists ? selectedIdentityId : "all";
     const health: DatabaseHealth = useMemo(() => databaseHealth(props.result, database, analysis), [props.result, database, analysis]);
 
-    const navItems: Array<{
+    const navItems: {
         id: LilyMoneyWorkspacePage;
         label: string;
-    }> = [
+    }[] = [
         { id: "overview", label: "Overview" },
         { id: "transactions", label: "Transactions" },
         { id: "jobs", label: "Jobs" },
@@ -4400,13 +4400,13 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
                         type="search"
                         value={playerSearch}
                         placeholder="Search players…"
-                        onInput={(event: Event): void => setPlayerSearch((event.currentTarget as HTMLInputElement).value)}
+                        onInput={(event: Event): void => void setPlayerSearch((event.currentTarget as HTMLInputElement).value)}
                         style={{ ...controlStyle(theme), width: "190px" }}
                     />
                     <select
                         class="search-mode-dropdown lilymoney-select"
                         value={playerSort}
-                        onChange={(event: Event): void => setPlayerSort((event.currentTarget as HTMLSelectElement).value as PlayerSortMode)}
+                        onChange={(event: Event): void => void setPlayerSort((event.currentTarget as HTMLSelectElement).value as PlayerSortMode)}
                         style={{ ...controlStyle(theme), minWidth: "150px" }}
                         aria-label="Sort players"
                     >
@@ -4437,7 +4437,7 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
                             effectiveIdentityId !== "all" &&
                             !filteredPlayerOptions.some((player: LilyMoneyPlayerAnalysis): boolean => player.identityId === effectiveIdentityId)
                         ) ?
-                            (() => {
+                            ((): JSX.Element | null => {
                                 const current = getPlayer(analysis, effectiveIdentityId);
                                 return current ?
                                         <option key={`selected-${current.identityId}`} value={current.identityId}>
@@ -4490,7 +4490,7 @@ export default function LilyMoneyWorkspace(props: LilyMoneyWorkspaceProps): JSX.
                                     key={item.id}
                                     type="button"
                                     class={`sidebar_button lilymoney-nav-button${selected ? " active" : ""}`}
-                                    onClick={(): void => setPage(item.id)}
+                                    onClick={(): void => void setPage(item.id)}
                                     style={{
                                         width: "100%",
                                         border: "none",

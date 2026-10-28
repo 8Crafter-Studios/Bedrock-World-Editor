@@ -173,6 +173,6 @@ export function readLilyMoneyNameDatabase(namespace: UnknownRecord): LilyMoneyNa
     };
 }
 
-export function resolveLilyMoneyName(names: LilyMoneyNameDatabase, identityId: string, fallbackName: string = ""): string {
-    return names.byIdentity[identityId] || fallbackName || (identityId ? `Identity ${identityId}` : "Unknown");
+export function resolveLilyMoneyName(names: LilyMoneyNameDatabase, identityId: string, fallbackName?: string): string {
+    return names.byIdentity[identityId] ?? fallbackName ?? (identityId ? `Identity ${identityId}` : "Unknown");
 }

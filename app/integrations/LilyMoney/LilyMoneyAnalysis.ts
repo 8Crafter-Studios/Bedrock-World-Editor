@@ -138,7 +138,7 @@ function playerKey(identityId: string, displayName: string): string {
     }
 
     if (displayName) {
-        return `name:` + displayName.toLocaleLowerCase();
+        return `name:${displayName.toLocaleLowerCase()}`;
     }
 
     return "";
@@ -672,5 +672,5 @@ export function formatLilyMoneyCents(cents: number | null): string {
 
     const value: number = Math.abs(cents);
 
-    return `${sign}$` + `${Math.floor(value / 100).toLocaleString()}.` + `${String(value % 100).padStart(2, "0")}`;
+    return `${sign}$${Math.floor(value / 100).toLocaleString()}.${String(value % 100).padStart(2, "0")}`;
 }

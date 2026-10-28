@@ -17,7 +17,7 @@ interface ExternalLink {
     url: string;
 }
 
-const QUICK_START: Array<{ title: string; lines: string[] }> = [
+const QUICK_START: { title: string; lines: string[] }[] = [
     { title: "1. Check your money", lines: ["Use /balance to see how much money you have."] },
     { title: "2. Pick a job", lines: ["Use /job to choose a job.", "Jobs can pay you for breaking blocks, placing blocks, or killing mobs."] },
     { title: "3. Use the shop", lines: ["Use /shop to buy and sell server shop items.", "Admins can also edit the shop from the shop UI."] },

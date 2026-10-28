@@ -79,7 +79,7 @@ function safeInt(value: unknown): number | null {
 }
 
 function canonicalJobBatchIds(records: LilyMoneyRecord[]): Set<string> {
-    const result: Set<string> = new Set();
+    const result = new Set<string>();
 
     for (const record of records) {
         if (record.type !== "JOB_REWARD" || !Array.isArray(record.payload)) {
