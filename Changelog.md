@@ -10,6 +10,7 @@
 
 -   Fixed a bug where arrays nested directly inside of lists could crash the Node editor.
 -   The Prismarine-NBT and SNBT editors now display `-0` float and double values as `-0` instead of `0`, which means `-0` is now preserved.
+-   The text editor now display `-0` values from JSON data as `-0` instead of `0`, which means `-0` is now preserved (this is not supported for JSONC data yet though).
 
 ## Additions
 

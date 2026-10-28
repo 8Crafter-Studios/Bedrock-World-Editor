@@ -137,10 +137,23 @@ export default function TextEditor(props: TextEditorProps): JSX.Element {
                 dataLoaded ?
                     String(
                         // TEMP: Remove this object check once the JSON editor is implemented
+                        // FIXME: This doesn't support serializing -0 as -0 instead of 0. Maybe fork comment-json.
                         props.dataStorageObject.dataType === "JSONC" ? commentJSON.stringify(props.dataStorageObject.data)
                             // TEMP: Remove this object check once the JSON editor is implemented
-                        : props.dataStorageObject.dataType === "JSON" ? JSON.stringify(props.dataStorageObject.data)
-                        : props.dataStorageObject.data
+                            // This is using JSONB.stringify instead of JSON.stringify in order to serialize -0 as -0 instead of 0.
+                        : props.dataStorageObject.dataType === "JSON" ?
+                            JSONB.stringify(props.dataStorageObject.data, undefined, undefined, {
+                                bigint: false,
+                                undefined: false,
+                                Infinity: false,
+                                NegativeInfinity: false,
+                                NaN: false,
+                                get: false,
+                                set: false,
+                                function: false,
+                                class: false,
+                            })
+                        :   props.dataStorageObject.data
                     )
                 :   "Data is not loaded."
             }
