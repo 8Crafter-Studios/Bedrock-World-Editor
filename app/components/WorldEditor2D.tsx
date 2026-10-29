@@ -5279,6 +5279,8 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         let maxScale: number = calculateMaxScale();
         let lastDevicePixelRatio: number = devicePixelRatio;
 
+        let lastCtx: CanvasRenderingContext2D | undefined;
+
         return (
             <div
                 style={{ display: "flex", height: "-webkit-fill-available", justifyContent: "center", flexDirection: "column" }}
@@ -5582,6 +5584,11 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             config: Required<import("@canvas-tile-engine/core").CanvasTileEngineConfig>
                         ): void => {
                             if (!(ctx instanceof CanvasRenderingContext2D)) return;
+                            if (ctx !== lastCtx) {
+                                lastCtx = ctx;
+                                // For some reason this needs to be put inside of a queueMicrotask in order to work.
+                                queueMicrotask((): void => void (ctx.imageSmoothingEnabled = false));
+                            }
                             if (mapReset) onMapContentsReset();
                             if (!portalsRendered && props.dataStorageObject.worldEditor2D.dataOverlays.portals) {
                                 portalsRendered = renderPortalsOnMap(config.scale);

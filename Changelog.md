@@ -23,6 +23,7 @@
 
 -   NBT data with an array larger than `0xffffff` (16,777,215) is now able to be edited and will no longer show an unrelated error message.
 -   Fixed a bug where in some cases the root object of the Node editor would not preserve its expansion state when switching tabs or modes.
+-   Fixed portal icons on the 2D world map sometimes being slightly blurry.
 
 # v1.0.0-beta.38
 
