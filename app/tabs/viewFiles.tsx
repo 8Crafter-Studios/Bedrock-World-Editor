@@ -2128,9 +2128,7 @@ async function getViewFilesTabContents(tab: TabManagerTab, signal: AbortSignal):
                                         ...queryData.type.flatMap((v: string): MCEntryContentType | MCEntryContentType[] => {
                                             if (v.includes("*")) {
                                                 const regex = new RegExp(`^${v.split("*").map(RegExp.escape).join(".*")}$`, "i");
-                                                console.log(regex);
                                                 const vals = MCEntryContentTypes.filter((v2: string): boolean => regex.test(v2));
-                                                console.log(MCEntryContentTypes, vals);
                                                 if (vals.length) return vals;
                                                 showInvalidContentTypeErrorWithMostSimilarContentTypes(v);
                                                 throw new Error("Error to return but already handled.");
