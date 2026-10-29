@@ -19,6 +19,10 @@
 -   Added an error screen for when the data conversion to binary for the hex editor fails.
 -   The hex editor can now handle much larger data (it no longer has a stack size error with very large data, though data that is larger than the maximum array length will still throw an error).
 
+## Changes
+
+-   The "Players" left sidebar tab now displays `Unknown Dimension` in red instead of the base text color when the player's dimension or spawn dimension is not available.
+
 ## Fixes
 
 -   NBT data with an array larger than `0xffffff` (16,777,215) is now able to be edited and will no longer show an unrelated error message.

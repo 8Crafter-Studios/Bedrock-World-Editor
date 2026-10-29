@@ -2915,17 +2915,20 @@ async function getPlayersTabContentsRows(data: {
                                         return (
                                             <td>
                                                 {serverKey.data.value.Pos?.type === "list" && serverKey.data.value.Pos.value.type === "float" ?
-                                                    `${(serverKey.data.value.Pos.value.value as number[])
-                                                        .map((v: number): string => v.toFixed(3))
-                                                        .join(", ")} ${
-                                                        serverKey.data.value.Dimension?.type === "int" ?
-                                                            ((data.tab.cachedDBKeys?.MCChinaDevDimension.length ?
-                                                                dimensionsMCCE[serverKey.data.value.Dimension.value]
-                                                            :   undefined) ??
-                                                            dimensions[serverKey.data.value.Dimension.value] ??
-                                                            serverKey.data.value.Dimension.value)
-                                                        :   "Unknown Dimension"
-                                                    }`
+                                                    <>
+                                                        {`${(serverKey.data.value.Pos.value.value as number[])
+                                                            .map((v: number): string => v.toFixed(3))
+                                                            .join(", ")} `}
+                                                        {serverKey.data.value.Dimension?.type === "int" ?
+                                                            String(
+                                                                (data.tab.cachedDBKeys?.MCChinaDevDimension.length ?
+                                                                    dimensionsMCCE[serverKey.data.value.Dimension.value]
+                                                                :   undefined) ??
+                                                                    dimensions[serverKey.data.value.Dimension.value] ??
+                                                                    serverKey.data.value.Dimension.value
+                                                            )
+                                                        :   <span style="color: red;">Unknown Dimension</span>}
+                                                    </>
                                                 :   <span style="color: red;">null</span>}
                                             </td>
                                         );
@@ -2933,17 +2936,20 @@ async function getPlayersTabContentsRows(data: {
                                     return (
                                         <td>
                                             {serverKey.data.parsed.value.Pos?.type === "list" && serverKey.data.parsed.value.Pos.value.type === "float" ?
-                                                `${(serverKey.data.parsed.value.Pos.value.value as number[])
-                                                    .map((v: number): string => v.toFixed(3))
-                                                    .join(", ")} ${
-                                                    serverKey.data.parsed.value.DimensionId?.type === "int" ?
-                                                        ((data.tab.cachedDBKeys?.MCChinaDevDimension.length ?
-                                                            dimensionsMCCE[serverKey.data.parsed.value.DimensionId.value]
-                                                        :   undefined) ??
-                                                        dimensions[serverKey.data.parsed.value.DimensionId.value] ??
-                                                        serverKey.data.parsed.value.DimensionId.value)
-                                                    :   "Unknown Dimension"
-                                                }`
+                                                <>
+                                                    {`${(serverKey.data.parsed.value.Pos.value.value as number[])
+                                                        .map((v: number): string => v.toFixed(3))
+                                                        .join(", ")} `}
+                                                    {serverKey.data.parsed.value.DimensionId?.type === "int" ?
+                                                        String(
+                                                            (data.tab.cachedDBKeys?.MCChinaDevDimension.length ?
+                                                                dimensionsMCCE[serverKey.data.parsed.value.DimensionId.value]
+                                                            :   undefined) ??
+                                                                dimensions[serverKey.data.parsed.value.DimensionId.value] ??
+                                                                serverKey.data.parsed.value.DimensionId.value
+                                                        )
+                                                    :   <span style="color: red;">Unknown Dimension</span>}
+                                                </>
                                             :   <span style="color: red;">null</span>}
                                         </td>
                                     );
@@ -3104,18 +3110,22 @@ async function getPlayersTabContentsRows(data: {
                                                         serverKey.data.parsed.value.SpawnZ.value === 0)
                                                 ) ?
                                                     "Not Set"
-                                                :   `${serverKey.data.parsed.value.SpawnX?.type === "int" ? serverKey.data.parsed.value.SpawnX?.value : "!!"}, ${serverKey.data.parsed.value.SpawnY?.type === "int" ? serverKey.data.parsed.value.SpawnY?.value : "!!"}, ${
-                                                        serverKey.data.parsed.value.SpawnZ?.type === "int" ? serverKey.data.parsed.value.SpawnZ?.value : "!!"
-                                                    } ${
-                                                        serverKey.data.parsed.value.SpawnDimension?.type === "int" ?
+                                                :   <>
+                                                        {`${serverKey.data.parsed.value.SpawnX?.type === "int" ? serverKey.data.parsed.value.SpawnX?.value : "!!"}, ${serverKey.data.parsed.value.SpawnY?.type === "int" ? serverKey.data.parsed.value.SpawnY?.value : "!!"}, ${
+                                                            serverKey.data.parsed.value.SpawnZ?.type === "int" ?
+                                                                serverKey.data.parsed.value.SpawnZ?.value
+                                                            :   "!!"
+                                                        } `}
+                                                        {serverKey.data.parsed.value.SpawnDimension?.type === "int" ?
                                                             ((data.tab.cachedDBKeys?.MCChinaDevDimension.length ?
                                                                 dimensionsMCCE[serverKey.data.parsed.value.SpawnDimension.value]
                                                             :   undefined) ??
                                                             dimensions[serverKey.data.parsed.value.SpawnDimension.value] ??
                                                             serverKey.data.parsed.value.SpawnDimension.value)
-                                                        : serverKey.data.parsed.value.SpawnDimension ? "Unknown Dimension"
-                                                        : "overworld"
-                                                    }`
+                                                        : serverKey.data.parsed.value.SpawnDimension ?
+                                                            <span style="color: red;">Unknown Dimension</span>
+                                                        :   "overworld"}
+                                                    </>
 
                                             :   <span style="color: red;">null</span>}
                                         </td>
