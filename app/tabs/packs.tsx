@@ -1500,6 +1500,9 @@ async function getPacksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
             if (!tablesContainerRef.current) return;
             if (reloadData) {
                 mode = config.views.packs.mode;
+                // OPTIMIZE: The packs data should only be reloaded when necessary, not from just switching modes, and maybe it should cache certain data even then.
+                render(null, tablesContainerRef.current);
+                render(<LoadingScreenContents /* messageContainerRef={loadingScreenMessageContainerRef} */ />, tablesContainerRef.current);
                 worldResourcePacks = undefined;
                 worldBehaviorPacks = undefined;
                 worldResourcePackHistory = undefined;
@@ -1631,7 +1634,7 @@ async function getPacksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                         </button>
                     </div>
                 </div>
-                <div style="display: flex; flex-direction: column;" ref={tablesContainerRef}>
+                <div class="fill-available-when-contains-loading-screen" style="display: flex; flex-direction: column;" ref={tablesContainerRef}>
                     <TablesContents />
                 </div>
             </>

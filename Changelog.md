@@ -18,6 +18,7 @@
 -   Added error screens for when an editor fails to render.
 -   Added an error screen for when the data conversion to binary for the hex editor fails.
 -   The hex editor can now handle much larger data (it no longer has a stack size error with very large data, though data that is larger than the maximum array length will still throw an error).
+-   Added a loading screen when switching modes in the "Packs" left sidebar tab.
 
 ## Changes
 

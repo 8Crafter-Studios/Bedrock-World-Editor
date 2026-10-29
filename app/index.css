@@ -1158,6 +1158,10 @@ body.overlay_page_visible .possible_scroll_y {
     color: hsl(152, 100%, 37.5%);
 }
 
+.fill-available-when-contains-loading-screen:has(> :nth-child(1).loading-screen-contents):not(:has(> :nth-child(2))) {
+    height: -webkit-fill-available;
+}
+
 .text-box-popup-help-info-label:hover,
 .text-box-popup-help-info-label:focus-visible {
     cursor: help;
