@@ -22,13 +22,16 @@
 
 ## Changes
 
--   The "Players" left sidebar tab now displays `Unknown Dimension` in red instead of the base text color when the player's dimension or spawn dimension is not available.
+-   The "Players" left sidebar tab now displays `Unknown Dimension` in red instead of the base text color.
+-   The "Entities" left sidebar tab now displays `Unknown Dimension` in red instead of the base text color.
+-   The "Entities" left sidebar tab now displays `Dimension Unavailable` in gray instead of the base text color.
 
 ## Fixes
 
 -   NBT data with an array larger than `0xffffff` (16,777,215) is now able to be edited and will no longer show an unrelated error message.
 -   Fixed a bug where in some cases the root object of the Node editor would not preserve its expansion state when switching tabs or modes.
 -   Fixed portal icons on the 2D world map sometimes being slightly blurry.
+-   Fixed a bug where the "Entities" left sidebar tab would show `Unknown Dimension` instead of `Dimension Unavailable` when the dimension cannot be displayed because the world is too large so it isn't checking it to improve performance.
 
 # v1.0.0-beta.38
 

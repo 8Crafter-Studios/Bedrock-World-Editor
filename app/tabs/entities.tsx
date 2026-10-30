@@ -342,10 +342,9 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
             })
         )
     );
-    const entityDimensionMappings: Record<Dimension, bigint[]> =
-        (tab.cachedDBKeys?.Digest.length ?? 0) >= config.noLookupEntityDimensionDigestKeyThreshold ?
-            (Object.fromEntries(dimensions.map((dimension: Dimension): [Dimension, bigint[]] => [dimension, []])) as Record<Dimension, bigint[]>)
-        :   await getEntityDimensionMappings(tab);
+    // FIXME: Add support for MC China dev dimensions.
+    const entityDimensionMappings: Record<Dimension, bigint[]> | undefined =
+        (tab.cachedDBKeys?.Digest.length ?? 0) >= config.noLookupEntityDimensionDigestKeyThreshold ? undefined : await getEntityDimensionMappings(tab);
     let targetKeys: KeyData[] = keys;
     // globalThis.a = keys;
     let mode: ConfigConstants.views.Entities.EntitiesTabMode = config.views.entities.mode;
@@ -1035,6 +1034,7 @@ async function getEntityDimensionMappings(
     tab: TabManagerTab,
     dimensionNameIdTable?: NBTSchemas.NBTSchemaTypes.DimensionNameIdTable
 ): Promise<Record<LooseAutocomplete<Dimension>, bigint[]>> {
+    // FIXME: Add support for MC China dev dimensions.
     if (!tab.db) throw new ReferenceError("tab.db is not defined.");
     if (!tab.cachedDBKeys) throw new ReferenceError("tab.cachedDBKeys is not defined.");
     const entityDimensionMappings: Record<LooseAutocomplete<Dimension> | number, bigint[]> = {
@@ -1274,8 +1274,9 @@ async function getEntitiesTabContentsRows(data: {
                                     return (
                                         <td>
                                             {key.data.parsed.value.Pos?.type === "list" && key.data.parsed.value.Pos.value.type === "float" ?
-                                                `${(key.data.parsed.value.Pos.value.value as number[]).map((v: number): string => v.toFixed(3)).join(", ")} ${
-                                                    key.data.parsed.value.DimensionId?.type === "int" ?
+                                                <>
+                                                    {`${(key.data.parsed.value.Pos.value.value as number[]).map((v: number): string => v.toFixed(3)).join(", ")} `}
+                                                    {key.data.parsed.value.DimensionId?.type === "int" ?
                                                         (dimensions[key.data.parsed.value.DimensionId.value] ??
                                                         (data.dimensionNameIdTable ?
                                                             ((): LooseAutocomplete<Dimension> | number => {
@@ -1290,9 +1291,11 @@ async function getEntitiesTabContentsRows(data: {
                                                             })()
                                                         :   key.data.parsed.value.DimensionId.value))
                                                     : data.entityDimensionMappings ?
-                                                        (getEntityDimensionFromMappings(key.rawKey, data.entityDimensionMappings) ?? "Unknown Dimension")
-                                                    :   "Dimension Unavailable"
-                                                }`
+                                                        (getEntityDimensionFromMappings(key.rawKey, data.entityDimensionMappings) ?? (
+                                                            <span style="color: red;">Unknown Dimension</span>
+                                                        ))
+                                                    :   <span style="color: gray;">Dimension Unavailable</span>}
+                                                </>
                                             :   <span style="color: red;">null</span>}
                                         </td>
                                     );
