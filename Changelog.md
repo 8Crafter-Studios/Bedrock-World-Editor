@@ -25,6 +25,7 @@
 -   The "Players" left sidebar tab now displays `Unknown Dimension` in red instead of the base text color.
 -   The "Entities" left sidebar tab now displays `Unknown Dimension` in red instead of the base text color.
 -   The "Entities" left sidebar tab now displays `Dimension Unavailable` in gray instead of the base text color.
+-   When a node in the Node editor has exactly one child, it now says "entry" instead of "entries".
 
 ## Fixes
 

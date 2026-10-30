@@ -3111,7 +3111,7 @@ export default class TreeEditor extends React.Component<
                         {hasChildren && (
                             <div class="treeEditorTreeNodeHeaderEntryCount">
                                 {props.name !== undefined && ": "}
-                                {childrenCount} entries
+                                {childrenCount} entr{childrenCount === 1 ? "y" : "ies"}
                             </div>
                         )}
                     </div>
