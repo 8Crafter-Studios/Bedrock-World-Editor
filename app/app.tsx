@@ -1853,7 +1853,7 @@ export interface LoadingScreenContentsProps {
 export function LoadingScreenContents(props: LoadingScreenContentsProps): JSX.Element {
     return (
         <>
-            <div style="flex: 1; overflow: auto; min-width: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <div class="loading-screen-contents" style="flex: 1; overflow: auto; min-width: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
                 <img
                     aria-hidden="true"
                     src="resource://images/ui/misc/loading_bar.gif"
