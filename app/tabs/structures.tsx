@@ -1,6 +1,14 @@
 import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import _React, { render, useEffect, useRef } from "preact/compat";
-import { entryContentTypeToFormatMap, getKeyDisplayName, NBTSchemas, prettyPrintSNBT, prismarineToSNBT, type EntryContentTypeFormatData } from "mcbe-leveldb";
+import {
+    decompressStructureTemplate,
+    entryContentTypeToFormatMap,
+    getKeyDisplayName,
+    NBTSchemas,
+    prettyPrintSNBT,
+    prismarineToSNBT,
+    type EntryContentTypeFormatData,
+} from "mcbe-leveldb";
 import NBT from "prismarine-nbt";
 import { existsSync, type Dirent } from "node:fs";
 import path from "node:path";
@@ -317,7 +325,7 @@ interface KeyData {
     displayKey: string;
     data?:
         | {
-              parsed: Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.StructureTemplate;
+              parsed: NBTSchemas.NBTSchemaTypes.StructureTemplate & Pick<NBT.NBT, "name">;
               type: NBT.NBTFormat;
               metadata: NBT.Metadata;
           }
@@ -389,7 +397,9 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
             try {
                 const parsedData = await NBT.parseAs(rawData, "little", { noArraySizeCheck: false /* true */ /* TODO: Maybe add an option for this. */ });
                 data = {
-                    parsed: parsedData.data as Pick<NBT.NBT, "name"> & NBTSchemas.NBTSchemaTypes.StructureTemplate,
+                    parsed: (await decompressStructureTemplate(
+                        parsedData.data as NBTSchemas.NBTSchemaTypes.StructureTemplate & Pick<NBT.NBT, "name">
+                    )) as NBTSchemas.NBTSchemaTypes.StructureTemplate & Pick<NBT.NBT, "name">,
                     type: parsedData.type,
                     metadata: parsedData.metadata,
                 };
@@ -405,7 +415,13 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                     }
                 }
                 try {
-                    data = (await NBT.parse(rawData)) as NonNullable<KeyData["data"]>;
+                    const parsedData = (await NBT.parse(rawData)) as Omit<NonNullable<KeyData["data"]>, "parsed"> & {
+                        parsed: NBTSchemas.NBTSchemaTypes.StructureTemplateRaw & Pick<NBT.NBT, "name">;
+                    };
+                    data = {
+                        ...parsedData,
+                        parsed: (await decompressStructureTemplate(parsedData.parsed)) as NBTSchemas.NBTSchemaTypes.StructureTemplate & Pick<NBT.NBT, "name">,
+                    };
                 } catch {
                     return { rawKey: key, displayKey: getKeyDisplayName(key), data: null };
                 }
@@ -462,7 +478,20 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                     targetKeys.slice(start, end).map(
                         async (key: KeyData): Promise<KeyData> => ({
                             ...key,
-                            data: (await NBT.parse((await tab.db!.get(key.rawKey))!).catch((): null => null)) as KeyData["data"],
+                            data: (await NBT.parse((await tab.db!.get(key.rawKey))!)
+                                .then(async (parsedData) => {
+                                    return {
+                                        ...parsedData,
+                                        parsed: await decompressStructureTemplate(
+                                            (
+                                                parsedData as Omit<NonNullable<KeyData["data"]>, "parsed"> & {
+                                                    parsed: NBTSchemas.NBTSchemaTypes.StructureTemplateRaw & Pick<NBT.NBT, "name">;
+                                                }
+                                            ).parsed
+                                        ),
+                                    };
+                                })
+                                .catch((): null => null)) as KeyData["data"],
                         })
                     )
                 ),
@@ -650,7 +679,18 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                         value:
                             asyncMode ?
                                 async (): Promise<NonNullable<KeyData["data"]>> =>
-                                    (await NBT.parse((await tab.db!.get(key.rawKey))!)) as NonNullable<KeyData["data"]>
+                                    (await NBT.parse((await tab.db!.get(key.rawKey))!).then(async (parsedData) => {
+                                        return {
+                                            ...parsedData,
+                                            parsed: await decompressStructureTemplate(
+                                                (
+                                                    parsedData as Omit<NonNullable<KeyData["data"]>, "parsed"> & {
+                                                        parsed: NBTSchemas.NBTSchemaTypes.StructureTemplateRaw & Pick<NBT.NBT, "name">;
+                                                    }
+                                                ).parsed
+                                            ),
+                                        };
+                                    })) as NonNullable<KeyData["data"]>
                             :   key.data!,
                         valueType: entryContentTypeToFormatMap.StructureTemplate,
                         contentType: "StructureTemplate",
@@ -675,7 +715,25 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                 asyncMode ?
                                     async (): Promise<string> => {
                                         try {
-                                            return prettyPrintSNBT(prismarineToSNBT((await NBT.parse((await tab.db!.get(key.rawKey))!)).parsed), { indent: 0 });
+                                            return prettyPrintSNBT(
+                                                prismarineToSNBT(
+                                                    (
+                                                        await NBT.parse((await tab.db!.get(key.rawKey))!).then(async (parsedData) => {
+                                                            return {
+                                                                ...parsedData,
+                                                                parsed: await decompressStructureTemplate(
+                                                                    (
+                                                                        parsedData as Omit<NonNullable<KeyData["data"]>, "parsed"> & {
+                                                                            parsed: NBTSchemas.NBTSchemaTypes.StructureTemplateRaw & Pick<NBT.NBT, "name">;
+                                                                        }
+                                                                    ).parsed
+                                                                ),
+                                                            };
+                                                        })
+                                                    ).parsed
+                                                ),
+                                                { indent: 0 }
+                                            );
                                         } catch {
                                             return "";
                                         }
@@ -815,7 +873,20 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                 for (const filePath of result.filePaths) {
                                     try {
                                         const fileData: Buffer = await readFile(filePath);
-                                        const structureData = await NBT.parse(fileData);
+                                        let structureData: { type: NBT.NBTFormat; parsed: NBT.NBT };
+                                        try {
+                                            const parsedData = await NBT.parseAs(fileData, "little", { noArraySizeCheck: true });
+                                            structureData = { type: parsedData.type, parsed: parsedData.data };
+                                        } catch {
+                                            try {
+                                                const parsedData = await NBT.parseAs(fileData, "big", { noArraySizeCheck: true });
+                                                structureData = { type: parsedData.type, parsed: parsedData.data };
+                                            } catch {
+                                                // REVIEW: Maybe there should be handling for littleVarint here too.
+                                                const parsedData = await NBT.parse(fileData);
+                                                structureData = { type: parsedData.type, parsed: parsedData.parsed };
+                                            }
+                                        }
                                         if (structureData.type === "little") {
                                             function checkIsBedrock_mcstructure(): boolean {
                                                 const structure = structureData.parsed as NBTSchemas.NBTSchemaTypes.StructureTemplate & NBT.NBT;
@@ -896,7 +967,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                 const result: Electron.OpenDialogReturnValue = await dialog.showOpenDialog(getCurrentWindow(), {
                                     title: "Import Structure Folders",
                                     buttonLabel: "Import",
-                                    message: "Select the structure files to import.",
+                                    message: "Select the structure folders to import.",
                                     properties: ["openDirectory", "multiSelections", "showHiddenFiles", "treatPackageAsDirectory"],
                                 });
                                 if (result.canceled) return;
@@ -928,7 +999,20 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                                 );
                                                 try {
                                                     const fileData: Buffer = await readFile(filePath);
-                                                    const structureData = await NBT.parse(fileData);
+                                                    let structureData: { type: NBT.NBTFormat; parsed: NBT.NBT };
+                                                    try {
+                                                        const parsedData = await NBT.parseAs(fileData, "little", { noArraySizeCheck: true });
+                                                        structureData = { type: parsedData.type, parsed: parsedData.data };
+                                                    } catch {
+                                                        try {
+                                                            const parsedData = await NBT.parseAs(fileData, "big", { noArraySizeCheck: true });
+                                                            structureData = { type: parsedData.type, parsed: parsedData.data };
+                                                        } catch {
+                                                            // REVIEW: Maybe there should be handling for littleVarint here too.
+                                                            const parsedData = await NBT.parse(fileData);
+                                                            structureData = { type: parsedData.type, parsed: parsedData.parsed };
+                                                        }
+                                                    }
                                                     if (structureData.type === "little") {
                                                         function checkIsBedrock_mcstructure(): boolean {
                                                             const structure = structureData.parsed as NBTSchemas.NBTSchemaTypes.StructureTemplate & NBT.NBT;
@@ -1008,6 +1092,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                             type="button"
                             title="Export Structures"
                             onClick={async (): Promise<void> => {
+                                // IDEA: Add a way to specify the output format (as in v1, v2, v2.1 (uncompressed), or v2.1 (zlib-compressed)).
                                 const result: Electron.OpenDialogReturnValue = await dialog.showOpenDialog(getCurrentWindow(), {
                                     title: "Export Structures",
                                     buttonLabel: "Export",
@@ -1109,6 +1194,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                             type="button"
                             title="Transfer Structures to Open Tab"
                             onClick={async (): Promise<void> => {
+                                // IDEA: Add a way to specify the output format (as in v1, v2, v2.1 (uncompressed), or v2.1 (zlib-compressed)).
                                 const result: ShowSelectOpenTabDialogResult = await showSelectOpenTabDialog({
                                     excludedTabs: [{ windowID: getCurrentWindow().id, tabID: tab.id }],
                                     message: "Select a tab to transfer structures to.",
