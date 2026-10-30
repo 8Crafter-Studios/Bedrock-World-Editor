@@ -14,6 +14,7 @@
 
 ## Additions
 
+-   Added a players overlay to the 2D world map.
 -   When a structure in the "Structures" left sidebar tab contains an array larger than `0xffffff` (16,777,215), it will now show an orange warning icon instead of a red "N/A".
 -   Added error screens for when an editor fails to render.
 -   Added an error screen for when the data conversion to binary for the hex editor fails.

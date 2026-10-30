@@ -27,10 +27,12 @@ import {
     type Vector3,
     type VectorXZ,
     offsetToChunkBlock128Index,
+    toLong,
+    getPlayerNameFromUUIDSync,
 } from "mcbe-leveldb";
 import mergeRefs from "merge-refs";
 import { existsSync } from "node:fs";
-import { readFile, writeFile } from "node:fs/promises";
+import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { JSX, RefObject, TargetedMouseEvent } from "preact";
 import { useEffect, useRef, useState } from "preact/compat";
@@ -111,7 +113,7 @@ export interface WorldEditor2DDataStorageObject {
         /**
          * Whether to show the chunk grid overlay on the map.
          *
-         * If `auto`, it will be shown if the zoom level is at least 8.
+         * If the value is a number, then grid lines will be shown when the zoom level is at least this value.
          */
         showGrid: boolean | number;
         /**
@@ -124,8 +126,6 @@ export interface WorldEditor2DDataStorageObject {
         dataOverlays: {
             /**
              * Renders players on the map.
-             *
-             * @todo
              */
             players: boolean;
             /**
@@ -144,6 +144,11 @@ export interface WorldEditor2DDataStorageObject {
              * Renders portals on the map.
              */
             portals: boolean;
+            // IDEA: Add villages here and any other structures that can have either their bouding box or center point be detected.
+            // IDEA: Add legacy structures here (LegacyOverworldStructures, LegacyNetherStructures, and LegacyTheEndStructures).
+            // IDEA: Add POI data here.
+            // IDEA: Add maps here.
+            // IDEA: Add block entities here.
         };
     };
 }
@@ -167,10 +172,10 @@ export function initWorldEditor2DDataStorageObjectProps<T extends object>(dataSt
             zoom: config.views.world.modeSettings["2D"].defaultMapScale,
             dimension: "overworld",
             position: { x: 0, y: 0 },
-            showGrid: config.views.world.modeSettings["2D"].showGridDefault /* "auto" */ /* TEMP */,
+            showGrid: config.views.world.modeSettings["2D"].showGridDefault,
             showCorrespondingNetherOrOverworldCoordinates: true,
             dataOverlays: {
-                players: false,
+                players: true,
                 entities: false,
                 structureSpawningBoundingBoxes: false,
                 portals: true,
@@ -244,8 +249,20 @@ const MAP_ICONS: {
      * The image to be used for the portal icon.
      */
     portalIconImage: HTMLImageElement | "loading" | "error" | undefined;
+    playerDatIconImage: HTMLImageElement | "loading" | "error" | undefined;
+    lanPlayerDatIconImage: HTMLImageElement | "loading" | "error" | undefined;
+    levelDatPlayerIconImage: HTMLImageElement | "loading" | "error" | undefined;
+    legacyConsolePlayerIconImage: HTMLImageElement | "loading" | "error" | undefined;
+    legacyPlayerIconImage: HTMLImageElement | "loading" | "error" | undefined;
+    playerServerIconImage: HTMLImageElement | "loading" | "error" | undefined;
 } = {
     portalIconImage: undefined,
+    playerDatIconImage: undefined,
+    lanPlayerDatIconImage: undefined,
+    levelDatPlayerIconImage: undefined,
+    legacyConsolePlayerIconImage: undefined,
+    legacyPlayerIconImage: undefined,
+    playerServerIconImage: undefined,
 };
 
 /**
@@ -256,6 +273,7 @@ const MAP_LAYERS = {
     grid: 1,
     worldBorder: 51,
     portalsOverlay: 52,
+    playersOverlay: 53,
 } as const satisfies Record<string, number>;
 
 // const HEIGHT_MAP_MODE: "normalized" | "difference" = "difference";
@@ -641,27 +659,45 @@ export interface WorldEditor2DMapImageItem extends Omit<import("@canvas-tile-eng
           }
         | ({
               type: "player";
+              newerDataAvailableForPlayer?: boolean | undefined;
           } & (
               | {
                     playerType: "PlayerDat";
                     serverValue: NBTSchemas.NBTSchemaTypes.PlayerDat;
+                    name?: string | null | undefined;
                 }
               | {
                     playerType: "LANPlayerDat";
                     serverValue: NBTSchemas.NBTSchemaTypes.LANPlayerDat;
-                }
-              | {
-                    playerType: "LegacyConsolePlayer";
-                    serverValue: unknown; // FIXME: Add this once the LegacyConsolePlayer NBT schema is added.
+                    name?: string | null | undefined;
+                    rakNetId: bigint;
                 }
               | {
                     playerType: "LevelDatPlayer";
                     serverValue: NBTSchemas.NBTSchemaTypes.FileBasedStoragePlayerData;
+                    name?: string | null | undefined;
+                }
+              | {
+                    playerType: "LegacyConsolePlayer";
+                    serverValue: NBT.Compound /* TEMP: Replace this once the LegacyConsolePlayer NBT schema is added. */;
+                    serverKey: Buffer;
+                    name?: string | null | undefined;
+                }
+              | {
+                    // This is for the Player keys that used the same format as the PlayerClient keys.
+                    playerType: "LegacyPlayer";
+                    serverValue: NBT.Compound /* TEMP: Replace this once the LegacyPlayer NBT schema is added. */;
+                    serverKey: Buffer;
+                    name?: string | null | undefined;
                 }
               | {
                     playerType: "PlayerServer";
                     serverValue: NBTSchemas.NBTSchemaTypes.Player;
-                    clientValue?: NBTSchemas.NBTSchemaTypes.PlayerClient | null | undefined;
+                    serverKey: Buffer;
+                    clientValues?: NBTSchemas.NBTSchemaTypes.PlayerClient[] | null | undefined;
+                    clientKeys?: Buffer[] | null | undefined;
+                    name?: string | null | undefined;
+                    specialPlayerKeyType?: "~local_player" | "~local_player.Editor" | null | undefined;
                 }
           ))
         | {
@@ -836,6 +872,67 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             MAP_ICONS.portalIconImage = "error";
         };
     }
+    if (MAP_ICONS.playerDatIconImage === undefined) {
+        MAP_ICONS.playerDatIconImage = "loading";
+        const imageElement = new Image();
+        imageElement.src = "resource://images/ui/glyphs/icon_steve.png"; // REVIEW: Maybe this should use icon_steve_dat.png instead, or maybe only when newer data is present.
+        imageElement.onload = (): void => void (MAP_ICONS.playerDatIconImage = imageElement);
+        imageElement.onerror = (error: unknown): void => {
+            console.error("Error while loading the player.dat icon image:", error);
+            MAP_ICONS.playerDatIconImage = "error";
+        };
+    }
+    if (MAP_ICONS.lanPlayerDatIconImage === undefined) {
+        MAP_ICONS.lanPlayerDatIconImage = "loading";
+        const imageElement = new Image();
+        imageElement.src = "resource://images/ui/glyphs/icon_steve.png"; // REVIEW: Maybe this should use icon_steve_lan.png instead, or maybe only when newer data is present.
+        imageElement.onload = (): void => void (MAP_ICONS.lanPlayerDatIconImage = imageElement);
+        imageElement.onerror = (error: unknown): void => {
+            console.error("Error while loading the players/<PlayerID>.dat icon image:", error);
+            MAP_ICONS.lanPlayerDatIconImage = "error";
+        };
+    }
+    if (MAP_ICONS.levelDatPlayerIconImage === undefined) {
+        MAP_ICONS.levelDatPlayerIconImage = "loading";
+        const imageElement = new Image();
+        imageElement.src = "resource://images/ui/glyphs/icon_steve.png"; // REVIEW: Maybe this should use icon_steve_dat.png instead, or maybe only when newer data is present.
+        imageElement.onload = (): void => void (MAP_ICONS.levelDatPlayerIconImage = imageElement);
+        imageElement.onerror = (error: unknown): void => {
+            console.error("Error while loading the level.dat player icon image:", error);
+            MAP_ICONS.levelDatPlayerIconImage = "error";
+        };
+    }
+    if (MAP_ICONS.legacyConsolePlayerIconImage === undefined) {
+        MAP_ICONS.legacyConsolePlayerIconImage = "loading";
+        const imageElement = new Image();
+        imageElement.src = "resource://images/ui/glyphs/icon_steve_console.png"; // REVIEW: Maybe this should use icon_steve.png instead, or maybe only when newer data is not present.
+        imageElement.onload = (): void => void (MAP_ICONS.legacyConsolePlayerIconImage = imageElement);
+        imageElement.onerror = (error: unknown): void => {
+            console.error("Error while loading the legacy console player icon image:", error);
+            MAP_ICONS.legacyConsolePlayerIconImage = "error";
+        };
+    }
+    if (MAP_ICONS.legacyPlayerIconImage === undefined) {
+        MAP_ICONS.legacyPlayerIconImage = "loading";
+        const imageElement = new Image();
+        imageElement.src = "resource://images/ui/glyphs/icon_steve.png"; // REVIEW: Maybe this should use a custom icon like icon_steve_legacy instead, or maybe only when newer data is present.
+        imageElement.onload = (): void => void (MAP_ICONS.legacyPlayerIconImage = imageElement);
+        imageElement.onerror = (error: unknown): void => {
+            console.error("Error while loading the legacy player icon image:", error);
+            MAP_ICONS.legacyPlayerIconImage = "error";
+        };
+    }
+    // IDEA: Maybe make ~local_player and ~local_player.Editor have unique icons.
+    if (MAP_ICONS.playerServerIconImage === undefined) {
+        MAP_ICONS.playerServerIconImage = "loading";
+        const imageElement = new Image();
+        imageElement.src = "resource://images/ui/glyphs/icon_steve.png"; // REVIEW: Maybe this should use icon_steve_server.png instead.
+        imageElement.onload = (): void => void (MAP_ICONS.playerServerIconImage = imageElement);
+        imageElement.onerror = (error: unknown): void => {
+            console.error("Error while loading the player icon image:", error);
+            MAP_ICONS.playerServerIconImage = "error";
+        };
+    }
 
     let stopCurrentInteraction: (() => void) | undefined;
     // function updateMap(): void {
@@ -882,6 +979,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     // let legacySeed: number | null | undefined;
     // IDEA: Maybe add a button to open the current seed in Chunk Base.
     // let randomSeed: bigint | null | undefined;
+    let levelDatPlayer: NBTSchemas.NBTSchemaTypes.FileBasedStoragePlayerData | null | undefined;
     let chunksDat: NBTSchemas.NBTSchemaTypes.ChunksDat | "loading" | "error" | "no_data" | false | undefined;
     function unloadLevelDatData(): void {
         levelDatLoaded = false;
@@ -892,6 +990,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         netherScale = undefined;
         // legacySeed = undefined;
         // randomSeed = undefined;
+        levelDatPlayer = undefined;
     }
     async function loadNeededDataFromLevelDat(): Promise<void> {
         levelDatLoaded = "loading";
@@ -947,6 +1046,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                     dimension: "overworld",
                 };
             } else worldSpawn = null;
+            // FIXME: In Pocket Edition v0.9.0 Alpha, this did not have limitedWorldDepth or limitedWorldWidth, only LimitedWorldOriginX, LimitedWorldOriginY, and LimitedWorldOriginZ.
             // REVIEW: This may be incorrect for other old world sizes, try changing the associated LevelDat properties and comparing the real world border to the one calculated here.
             if (
                 levelDat.value.Generator?.value === 0 &&
@@ -989,11 +1089,14 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             } else worldBorder = null;
             if (levelDat.value.NetherScale) netherScale = levelDat.value.NetherScale.value;
             else netherScale = null;
+            if (levelDat.value.Player) levelDatPlayer = levelDat.value.Player;
+            else levelDatPlayer = null;
             levelDatLoaded = true;
-            onLevelDatDataChanged();
         } catch (e) {
             console.error("Error while loading needed data from level.dat:", e);
             if (levelDatLoaded === "loading") levelDatLoaded = "error";
+        } finally {
+            onLevelDatDataChanged();
         }
     }
     function drawWorldBorder(): void {
@@ -1014,14 +1117,19 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     }
     function onLevelDatDataChanged(): void {
         if (!engineRef.current?.isReady) return;
-        drawWorldBorder();
-        // For versions prior to Pocket Edition v0.9.0 Alpha.
-        if ((levelDatStorageVersion ?? NaN) <= 3 || existsSync(path.join(props.tab.tempPath ?? props.tab.path, "importedchunks.dat"))) {
-            if (chunksDat !== "loading") {
-                chunksDat = "loading";
-                void loadChunksDat();
-            }
-        } else chunksDat = false;
+        if (levelDatLoaded === true) {
+            drawWorldBorder();
+            // For versions prior to Pocket Edition v0.9.0 Alpha.
+            if ((levelDatStorageVersion ?? NaN) <= 3 || existsSync(path.join(props.tab.tempPath ?? props.tab.path, "importedchunks.dat"))) {
+                if (chunksDat !== "loading") {
+                    chunksDat = "loading";
+                    void loadChunksDat();
+                }
+            } else chunksDat = false;
+        }
+        if (levelDatLoaded !== false && levelDatLoaded !== "loading") {
+            if (playerDataEntries === undefined || playerDataEntries === "error") void loadPlayerDataEntries();
+        }
     }
     async function loadChunksDat(): Promise<void> {
         chunksDat = "loading";
@@ -1066,7 +1174,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     useEffect((): (() => void) => {
         const widgetID: string = `WorldEditor2D_${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
         if (engineRef.current?.isReady) {
-            if (levelDatLoaded === true) onLevelDatDataChanged();
+            // if (levelDatLoaded === true) onLevelDatDataChanged(); // REVIEW: Maybe this shouldn't have been commented out?
             // updateMap();
             // stopCurrentInteraction = void function a(): void {};
             stopCurrentInteraction = void function stopCurrentInteractionCallback(): void {
@@ -1653,7 +1761,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                         });
                                         return;
                                     }
-                                    const t1: number = performance.now(); // DEBUG
+                                    const t1: number = performance.now();
                                     const chunksInDimension = new Set<`${number},${number}`>();
                                     const currentDimension =
                                         typeof props.dataStorageObject.worldEditor2D.dimension === "number" ?
@@ -1719,7 +1827,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                         chunk.z + 0.5,
                                         config.views.world.modeSettings["2D"].mapGoToPositionAnimationDuration
                                     );
-                                    const t2: number = performance.now(); // DEBUG
+                                    const t2: number = performance.now();
                                     console.debug(`Go to Random Chunk With Biome Data took ${t2 - t1}ms.`); // DEBUG
                                 }}
                             >
@@ -1947,6 +2055,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     let dimensionNameIdTable: NBTSchemas.NBTSchemaTypes.DimensionNameIdTable | "loading" | "no_data" | "error" | undefined;
     let biomeIdsTable: NBTSchemas.NBTSchemaTypes.BiomeIdsTable | "loading" | "no_data" | "error" | undefined;
     let portalRecords: NBTSchemas.NBTSchemaTypes.Portals | "loading" | "no_data" | "error" | undefined;
+    let playerDataEntries: Extract<WorldEditor2DMapImageItem["meta"], { type: "player" }>[] | "loading" | "no_data" | "error" | undefined;
     interface ComparisonMapPositionDetails {
         coords: import("@canvas-tile-engine/core").Coords;
         scale: number;
@@ -2091,6 +2200,319 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             portalRecords = "error";
             console.error("Error loading portal records:", e);
         }
+    }
+    // IDEA: Maybe make this render players as they are loaded, since it can take a while to display the players. Or maybe make it display player key types as they are loaded.
+    // OPTIMIZE: Maybe cache these in a way where they persist across tab switches. Maybe portal records too.
+    // OPTIMIZE: Add handling to do this in a way like how async mode works on many left sidebar tabs, where it only loads the needed data and then discards the rest, so that if there are A LOT of players, it won't use up much memory.
+    async function loadPlayerDataEntries(): Promise<void> {
+        if (playerDataEntries === "loading") return;
+        playerDataEntries = "loading";
+        if (props.tab.db && !props.tab.db.isOpen()) {
+            await props.tab.awaitDBOpen;
+        }
+        if (playerDataEntries !== "loading") return;
+
+        const entries: Extract<WorldEditor2DMapImageItem["meta"], { type: "player" }>[] = [];
+        const errors: { message: string; error: unknown }[] = [];
+
+        try {
+            if (!props.tab.cachedDBKeys) await props.tab.awaitCachedDBKeys;
+        } catch (e) {
+            if (playerDataEntries !== "loading") return;
+            playerDataEntries = "error";
+            console.error("Error loading player data:", e);
+        }
+        if (playerDataEntries !== "loading") return;
+
+        try {
+            if (existsSync(path.join(props.tab.tempPath ?? props.tab.path, "player.dat"))) {
+                try {
+                    entries.push({
+                        type: "player",
+                        playerType: "PlayerDat",
+                        serverValue: entryContentTypeToFormatMap.PlayerDat.parse(await readFile(path.join(props.tab.tempPath ?? props.tab.path, "player.dat"))),
+                        // name: , // TODO
+                    });
+                    if (playerDataEntries !== "loading") return;
+                } catch (e) {
+                    if (playerDataEntries !== "loading") return;
+                    errors.push({ message: `Error loading player.dat data for player: player.dat`, error: e });
+                }
+            }
+        } catch (e) {
+            if (playerDataEntries !== "loading") return;
+            console.error("Error checking for player.dat file:", e);
+        }
+
+        try {
+            if (
+                existsSync(path.join(props.tab.tempPath ?? props.tab.path, "players")) &&
+                (await stat(path.join(props.tab.tempPath ?? props.tab.path, "players"))).isDirectory()
+            ) {
+                if (playerDataEntries !== "loading") return;
+                for (const file of await readdir(path.join(props.tab.tempPath ?? props.tab.path, "players"), { withFileTypes: true })) {
+                    if (playerDataEntries !== "loading") return;
+                    if (!file.isFile()) continue;
+                    if (!/^-?[0-9]+\.dat$/.test(file.name)) continue;
+                    try {
+                        entries.push({
+                            type: "player",
+                            playerType: "LANPlayerDat",
+                            rakNetId: BigInt(file.name.slice(0, -4)),
+                            serverValue: entryContentTypeToFormatMap.LANPlayerDat.parse(
+                                await readFile(path.join(props.tab.tempPath ?? props.tab.path, "players", file.name))
+                            ),
+                            // name: , // TODO
+                        });
+                        if (playerDataEntries !== "loading") return;
+                    } catch (e) {
+                        if (playerDataEntries !== "loading") return;
+                        errors.push({ message: `Error loading players/<PlayerID>.dat data for player: players/${file.name}`, error: e });
+                    }
+                }
+            }
+            if (playerDataEntries !== "loading") return;
+        } catch (e) {
+            if (playerDataEntries !== "loading") return;
+            errors.push({ message: "Error loading players/<PlayerID>.dat player data", error: e });
+        }
+
+        if (levelDatLoaded === true && levelDatPlayer) {
+            try {
+                entries.push({
+                    type: "player",
+                    playerType: "LevelDatPlayer",
+                    serverValue: levelDatPlayer,
+                    // name: , // TODO
+                });
+            } catch (e) {
+                errors.push({ message: "Error loading level.dat player data", error: e });
+            }
+        }
+
+        // TODO: Implement LegacyConsolePlayer.
+
+        if (props.tab.db && props.tab.cachedDBKeys && props.tab.db.isOpen() && !("corruptedDBError" in props.tab)) {
+            for (const player of props.tab.cachedDBKeys.LegacyConsolePlayer) {
+                // BUG: This currently does not work for non-host players from certain older versions due to the keys using the same format as PlayerClient and because a thing to differentiate them from PlayerClient entries has not been implemented yet.
+                try {
+                    const rawPlayerData: Buffer | null = await props.tab.db.get(player);
+                    if (playerDataEntries !== "loading") return;
+                    if (!rawPlayerData) continue;
+                    const parsedPlayerData = (await NBT.parse(rawPlayerData, "little"))
+                        .parsed; /* as NBTSchemas.NBTSchemaTypes.LegacyConsolePlayer & Pick<NBT.NBT, "name"> */ /* TEMP: Uncomment this as statement once the LegacyConsolePlayer NBT schema is added. */
+                    if (playerDataEntries !== "loading") return;
+                    // const stringKey: string = player.toString("utf-8");
+                    entries.push({
+                        type: "player",
+                        playerType: "LegacyConsolePlayer",
+                        serverValue: parsedPlayerData,
+                        serverKey: player,
+                        // name: , // TODO
+                    });
+                } catch (e) {
+                    if (playerDataEntries !== "loading") return;
+                    errors.push({ message: `Error loading player server data for player: ${getKeyDisplayName(player)}`, error: e });
+                }
+            }
+
+            const dynamicProperties: NBT.NBT | undefined = await props.tab.db
+                ?.get("DynamicProperties")
+                .then((data: Buffer | null): Promise<NBT.NBT> | undefined =>
+                    data ? NBT.parse(data).then((data: { parsed: NBT.NBT; type: NBT.NBTFormat; metadata: NBT.Metadata }): NBT.NBT => data.parsed) : undefined
+                )
+                .catch((e: unknown): undefined => (console.error(e), undefined));
+            if (playerDataEntries !== "loading") return;
+            interface ClientEntry {
+                clientValue: NBTSchemas.NBTSchemaTypes.PlayerClient;
+                clientKey: Buffer;
+            }
+            // OPTIMIZE: Make this use a server to client key map instead.
+            const clientEntries: ClientEntry[] = [];
+            for (const playerClient of props.tab.cachedDBKeys.PlayerClient) {
+                try {
+                    const rawPlayerClientData: Buffer | null = await props.tab.db.get(playerClient);
+                    if (playerDataEntries !== "loading") return;
+                    if (!rawPlayerClientData) continue;
+                    const parsedPlayerClientData = (await NBT.parse(rawPlayerClientData, "little")).parsed as
+                        | (NBTSchemas.NBTSchemaTypes.PlayerClient & Pick<NBT.NBT, "name">)
+                        | ({
+                              // TEMP: This is a placeholder for the non-yet-added LegacyPlayer NBT schema and content type.
+                              type: "compound";
+                              value: { ServerId?: never; [key: string]: NBT.Tags[NBT.TagType] };
+                          } & Pick<NBT.NBT, "name">); // TEMP: This second type is only here because currently the key categorizer cannot differentiate between LegacyPlayer and PlayerClient keys.
+                    if (playerDataEntries !== "loading") return;
+                    if (parsedPlayerClientData.value.ServerId /* TEMP */) {
+                        clientEntries.push({
+                            clientValue: parsedPlayerClientData as NBTSchemas.NBTSchemaTypes.PlayerClient & Pick<NBT.NBT, "name"> /* TEMP */,
+                            clientKey: playerClient,
+                        });
+                    } else /* TEMP */ {
+                        entries.push({
+                            type: "player",
+                            playerType: "LegacyPlayer",
+                            serverValue: parsedPlayerClientData,
+                            serverKey: playerClient,
+                            // name:
+                            //     dynamicProperties && parsedPlayerClientData.value.UniqueID?.type === "long" ?
+                            //         getPlayerNameFromUUIDSync(dynamicProperties, toLong(parsedPlayerClientData.value.UniqueID.value))
+                            //     :   null, // TODO
+                        });
+                    }
+                } catch (e) {
+                    if (playerDataEntries !== "loading") return;
+                    errors.push({ message: `Error loading player client data for player: ${getKeyDisplayName(playerClient)}`, error: e });
+                }
+            }
+            for (const player of props.tab.cachedDBKeys.Player) {
+                // BUG: This currently does not work for non-host players from certain older versions due to the keys using the same format as PlayerClient and because a thing to differentiate them from PlayerClient entries has not been implemented yet.
+                try {
+                    const rawPlayerData: Buffer | null = await props.tab.db.get(player);
+                    if (playerDataEntries !== "loading") return;
+                    if (!rawPlayerData) continue;
+                    const parsedPlayerData = (await NBT.parse(rawPlayerData, "little")).parsed as NBTSchemas.NBTSchemaTypes.Player & Pick<NBT.NBT, "name">;
+                    if (playerDataEntries !== "loading") return;
+                    const stringKey: string = player.toString("utf-8");
+                    const correspondingClientEntries: ClientEntry[] | null =
+                        stringKey !== "~local_player" && stringKey !== "~local_player.Editor" ?
+                            clientEntries.filter((clientEntry: ClientEntry): boolean => clientEntry.clientValue.value.ServerId?.value === stringKey)
+                        :   null;
+                    entries.push({
+                        type: "player",
+                        playerType: "PlayerServer",
+                        serverValue: parsedPlayerData,
+                        serverKey: player,
+                        clientValues:
+                            correspondingClientEntries?.map((clientEntry: ClientEntry): NBTSchemas.NBTSchemaTypes.PlayerClient => clientEntry.clientValue) ??
+                            null,
+                        clientKeys: correspondingClientEntries?.map((clientEntry: ClientEntry): Buffer => clientEntry.clientKey) ?? null,
+                        name:
+                            dynamicProperties && parsedPlayerData.value.UniqueID?.type === "long" ?
+                                getPlayerNameFromUUIDSync(dynamicProperties, toLong(parsedPlayerData.value.UniqueID.value))
+                            :   null,
+                        specialPlayerKeyType: stringKey === "~local_player" || stringKey === "~local_player.Editor" ? stringKey : null,
+                    });
+                } catch (e) {
+                    if (playerDataEntries !== "loading") return;
+                    errors.push({ message: `Error loading player server data for player: ${getKeyDisplayName(player)}`, error: e });
+                }
+            }
+        }
+
+        const LOCAL_PLAYER_KEY_BUFFER: Buffer<ArrayBuffer> = Buffer.from("~local_player", "utf-8");
+
+        // Check for older entries that have newer entry types for the same player.
+        // OPTIMIZE
+        entryLoop: for (const entry of entries) {
+            switch (entry.playerType) {
+                case "PlayerDat":
+                    for (const entry2 of entries) {
+                        switch (entry2.playerType) {
+                            case "PlayerDat":
+                            case "LANPlayerDat":
+                                continue;
+                            case "LevelDatPlayer":
+                                entry.newerDataAvailableForPlayer = true;
+                                continue entryLoop;
+                            case "LegacyConsolePlayer":
+                                continue;
+                            case "LegacyPlayer":
+                            case "PlayerServer":
+                                if (entry2.serverKey.equals(LOCAL_PLAYER_KEY_BUFFER)) {
+                                    entry.newerDataAvailableForPlayer = true;
+                                    continue entryLoop;
+                                }
+                                continue;
+                            default:
+                                continue;
+                        }
+                    }
+                    continue;
+                case "LANPlayerDat":
+                    // TEST: See if this is not upgraded when the world is upgraded or when the same player joins on the newer version the IDs do not match.
+                    // REVIEW: If this is not upgraded when the world is upgraded or when the same player joins on the newer version the IDs do not match, maybe this should show as newer data available if any newer data is available, or maybe it should use the icon_steve_lan.png icon.
+                    // TODO
+                    continue;
+                case "LevelDatPlayer":
+                    for (const entry2 of entries) {
+                        switch (entry2.playerType) {
+                            case "PlayerDat":
+                            case "LANPlayerDat":
+                            case "LevelDatPlayer":
+                            case "LegacyConsolePlayer":
+                                continue;
+                            case "LegacyPlayer":
+                            case "PlayerServer":
+                                if (entry2.serverKey.equals(LOCAL_PLAYER_KEY_BUFFER)) {
+                                    entry.newerDataAvailableForPlayer = true;
+                                    continue entryLoop;
+                                }
+                                continue;
+                            default:
+                                continue;
+                        }
+                    }
+                    continue;
+                case "LegacyConsolePlayer": {
+                    const UUID: bigint | null = entry.serverValue.value.UniqueID?.type === "long" ? toLong(entry.serverValue.value.UniqueID.value) : null;
+                    if (UUID === null) continue;
+                    for (const entry2 of entries) {
+                        switch (entry2.playerType) {
+                            case "PlayerDat":
+                            case "LANPlayerDat":
+                            case "LevelDatPlayer":
+                            case "LegacyConsolePlayer":
+                                continue;
+                            case "LegacyPlayer":
+                            case "PlayerServer":
+                                if (entry2.serverValue.value.UniqueID?.type !== "long") continue;
+                                if (toLong(entry2.serverValue.value.UniqueID.value) === UUID) {
+                                    entry.newerDataAvailableForPlayer = true;
+                                    continue entryLoop;
+                                }
+                                continue;
+                            default:
+                                continue;
+                        }
+                    }
+                    continue;
+                }
+                case "LegacyPlayer": {
+                    const UUID: bigint | null = entry.serverValue.value.UniqueID?.type === "long" ? toLong(entry.serverValue.value.UniqueID.value) : null;
+                    if (UUID === null) continue;
+                    for (const entry2 of entries) {
+                        switch (entry2.playerType) {
+                            case "PlayerDat":
+                            case "LANPlayerDat":
+                            case "LevelDatPlayer":
+                            case "LegacyConsolePlayer":
+                            case "LegacyPlayer":
+                                continue;
+                            case "PlayerServer":
+                                if (entry2.serverValue.value.UniqueID?.type !== "long") continue;
+                                if (toLong(entry2.serverValue.value.UniqueID.value) === UUID) {
+                                    entry.newerDataAvailableForPlayer = true;
+                                    continue entryLoop;
+                                }
+                                continue;
+                            default:
+                                continue;
+                        }
+                    }
+                    continue;
+                }
+                case "PlayerServer":
+                default:
+                    continue;
+            }
+        }
+
+        if (errors.length > 0) {
+            console.error("Some errors occurred while loading player data:", errors);
+        }
+
+        // console.debug(entries); // DEBUG: Add a config option for this for debugging, or maybe a second kind of config.
+        playerDataEntries = entries;
     }
     void loadLevelChunkMetaDataDictionary();
     void loadDimensionNameIdTable();
@@ -3842,6 +4264,10 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
             void loadDimensionNameIdTable();
             biomeIdsTable = undefined;
             void loadBiomeIdsTable();
+            portalRecords = undefined;
+            void loadPortalRecords();
+            playerDataEntries = undefined;
+            // It is not necessary to run loadPlayerDataEntries() here as that is done automatically when level.dat finishes attempting to load.
             unloadLevelDatData();
             void loadNeededDataFromLevelDat();
         }
@@ -3889,6 +4315,160 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         }
         if (portalImages.length === 0) return true;
         engineRef.current.drawImage(portalImages, MAP_LAYERS.portalsOverlay);
+        return true;
+    }
+    function renderPlayersOnMap(currentScale: number, unrender = false): boolean {
+        if (!engineRef.current) return false;
+        if (!engineRef.current.images) return false;
+        if (!engineRef.current.isReady) return false;
+        engineRef.current.clearLayer(MAP_LAYERS.playersOverlay);
+        if (unrender) return true;
+        if (!MAP_ICONS.playerDatIconImage) return false;
+        if (MAP_ICONS.playerDatIconImage === "loading") return false;
+        if (MAP_ICONS.playerDatIconImage === "error") return false;
+        if (!MAP_ICONS.lanPlayerDatIconImage) return false;
+        if (MAP_ICONS.lanPlayerDatIconImage === "loading") return false;
+        if (MAP_ICONS.lanPlayerDatIconImage === "error") return false;
+        if (!MAP_ICONS.levelDatPlayerIconImage) return false;
+        if (MAP_ICONS.levelDatPlayerIconImage === "loading") return false;
+        if (MAP_ICONS.levelDatPlayerIconImage === "error") return false;
+        if (!MAP_ICONS.legacyConsolePlayerIconImage) return false;
+        if (MAP_ICONS.legacyConsolePlayerIconImage === "loading") return false;
+        if (MAP_ICONS.legacyConsolePlayerIconImage === "error") return false;
+        if (!MAP_ICONS.legacyPlayerIconImage) return false;
+        if (MAP_ICONS.legacyPlayerIconImage === "loading") return false;
+        if (MAP_ICONS.legacyPlayerIconImage === "error") return false;
+        if (!MAP_ICONS.playerServerIconImage) return false;
+        if (MAP_ICONS.playerServerIconImage === "loading") return false;
+        if (MAP_ICONS.playerServerIconImage === "error") return false;
+        if (playerDataEntries === "no_data") return true;
+        if (typeof playerDataEntries !== "object") return false;
+        const currentDimension: number = dimensionVectorDimensionToInt(props.dataStorageObject.worldEditor2D.dimension);
+        const playersInCurrentDimension = playerDataEntries.filter((player): boolean => {
+            switch (player.playerType) {
+                case "PlayerDat":
+                    return currentDimension === 0;
+                case "LANPlayerDat":
+                case "LevelDatPlayer":
+                    return [0, 1, 2].includes(player.serverValue.value.Dimension?.value) ?
+                            player.serverValue.value.Dimension.value === currentDimension
+                        :   currentDimension === 0;
+                case "LegacyConsolePlayer":
+                    // TEST: See if maybe if you have a VERY old legacy console version that if you upgrade the world maybe the dimension won't be present. The `?? 0` below is temporary until this is tested.
+                    return (player.serverValue.value.DimensionId?.value ?? 0) /* TEMP */ === currentDimension; // FIXME: Fix this once a schema is added for LegacyConsolePlayer.
+                case "LegacyPlayer":
+                    return player.serverValue.value.DimensionId?.value === currentDimension; // TODO: Merge this with the PlayerServer case below once a schema is added for LegacyPlayer.
+                case "PlayerServer":
+                    return player.serverValue.value.DimensionId?.value === currentDimension;
+                default:
+                    return false;
+            }
+        });
+        const playerImages: WorldEditor2DMapImageItem[] = [];
+        for (const player of playersInCurrentDimension) {
+            switch (player.playerType) {
+                case "PlayerDat":
+                    // IDEA: Maybe add a way to display the player's skin's head texture.
+                    if (player.serverValue.value.Pos?.type !== "list") continue;
+                    if (player.serverValue.value.Pos.value.type !== "float") continue;
+                    if (player.serverValue.value.Pos.value.value.length < 3) continue;
+                    playerImages.push({
+                        img: MAP_ICONS.playerDatIconImage,
+                        // The `- 8` fixes it not being positioned correctly on the map.
+                        x: Math.floor(((player.serverValue.value.Pos.value.value[0] - 8) / 16) * currentScale) / currentScale,
+                        y: Math.floor(((player.serverValue.value.Pos.value.value[2] - 8) / 16) * currentScale) / currentScale,
+                        size: 24 / currentScale,
+                        opacity: player.newerDataAvailableForPlayer ? 0.6 : 1,
+                        meta: player,
+                    });
+                    break;
+                case "LANPlayerDat":
+                    // IDEA: Maybe add a way to display the player's skin's head texture.
+                    if (player.serverValue.value.Pos?.type !== "list") continue;
+                    if (player.serverValue.value.Pos.value.type !== "float") continue;
+                    if (player.serverValue.value.Pos.value.value.length < 3) continue;
+                    playerImages.push({
+                        img: MAP_ICONS.lanPlayerDatIconImage,
+                        // The `- 8` fixes it not being positioned correctly on the map.
+                        x: Math.floor(((player.serverValue.value.Pos.value.value[0] - 8) / 16) * currentScale) / currentScale,
+                        y: Math.floor(((player.serverValue.value.Pos.value.value[2] - 8) / 16) * currentScale) / currentScale,
+                        size: 24 / currentScale,
+                        opacity: player.newerDataAvailableForPlayer ? 0.6 : 1,
+                        meta: player,
+                    });
+                    break;
+                case "LevelDatPlayer":
+                    // IDEA: Maybe add a way to display the player's skin's head texture.
+                    if (player.serverValue.value.Pos?.type !== "list") continue;
+                    if (player.serverValue.value.Pos.value.type !== "float") continue;
+                    if (player.serverValue.value.Pos.value.value.length < 3) continue;
+                    playerImages.push({
+                        img: MAP_ICONS.levelDatPlayerIconImage,
+                        // The `- 8` fixes it not being positioned correctly on the map.
+                        x: Math.floor(((player.serverValue.value.Pos.value.value[0] - 8) / 16) * currentScale) / currentScale,
+                        y: Math.floor(((player.serverValue.value.Pos.value.value[2] - 8) / 16) * currentScale) / currentScale,
+                        size: 24 / currentScale,
+                        opacity: player.newerDataAvailableForPlayer ? 0.6 : 1,
+                        meta: player,
+                    });
+                    break;
+                case "LegacyConsolePlayer":
+                    {
+                        function fakeAssertIsCompound(value: unknown): asserts value is NBT.Compound {
+                            void value;
+                        }
+                        fakeAssertIsCompound(player.serverValue);
+                        // IDEA: Maybe add a way to display the player's skin's head texture.
+                        if (player.serverValue.value.Pos?.type !== "list") continue;
+                        if (player.serverValue.value.Pos.value.type !== "float") continue;
+                        if (player.serverValue.value.Pos.value.value.length < 3) continue;
+                        playerImages.push({
+                            img: MAP_ICONS.legacyConsolePlayerIconImage,
+                            // The `- 8` fixes it not being positioned correctly on the map.
+                            x: Math.floor((((player.serverValue.value.Pos.value.value[0] as number) /* TEMP */ - 8) / 16) * currentScale) / currentScale,
+                            y: Math.floor((((player.serverValue.value.Pos.value.value[2] as number) /* TEMP */ - 8) / 16) * currentScale) / currentScale,
+                            size: 24 / currentScale,
+                            opacity: player.newerDataAvailableForPlayer ? 0.6 : 1,
+                            meta: player,
+                        });
+                    }
+                    break;
+                case "LegacyPlayer":
+                    // IDEA: Maybe add a way to display the player's skin's head texture.
+                    if (player.serverValue.value.Pos?.type !== "list") continue;
+                    if (player.serverValue.value.Pos.value.type !== "float") continue;
+                    if (player.serverValue.value.Pos.value.value.length < 3) continue;
+                    playerImages.push({
+                        img: MAP_ICONS.legacyPlayerIconImage,
+                        // The `- 8` fixes it not being positioned correctly on the map.
+                        x: Math.floor((((player.serverValue.value.Pos.value.value[0] as number) /* TEMP */ - 8) / 16) * currentScale) / currentScale,
+                        y: Math.floor((((player.serverValue.value.Pos.value.value[2] as number) /* TEMP */ - 8) / 16) * currentScale) / currentScale,
+                        size: 24 / currentScale,
+                        opacity: player.newerDataAvailableForPlayer ? 0.6 : 1,
+                        meta: player,
+                    });
+                    break;
+                case "PlayerServer":
+                    // IDEA: Maybe add a way to display the player's skin's head texture.
+                    if (player.serverValue.value.Pos?.type !== "list") continue;
+                    if (player.serverValue.value.Pos.value.type !== "float") continue;
+                    if (player.serverValue.value.Pos.value.value.length < 3) continue;
+                    playerImages.push({
+                        img: MAP_ICONS.playerServerIconImage,
+                        // The `- 8` fixes it not being positioned correctly on the map.
+                        x: Math.floor(((player.serverValue.value.Pos.value.value[0] - 8) / 16) * currentScale) / currentScale,
+                        y: Math.floor(((player.serverValue.value.Pos.value.value[2] - 8) / 16) * currentScale) / currentScale,
+                        size: 24 / currentScale,
+                        opacity: player.newerDataAvailableForPlayer ? 0.6 : 1,
+                        meta: player,
+                    });
+                    break;
+                default:
+                    continue;
+            }
+        }
+        if (playerImages.length === 0) return true;
+        engineRef.current.drawImage(playerImages, MAP_LAYERS.playersOverlay);
         return true;
     }
     interface BaseContextMenuInteraction {
@@ -4342,6 +4922,27 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 <MenuHeader>Overlays</MenuHeader>
                 <MenuItem
                     type="checkbox"
+                    checked={props.dataStorageObject.worldEditor2D.dataOverlays.players}
+                    onClick={(): void => {
+                        props.dataStorageObject.worldEditor2D.dataOverlays.players = !props.dataStorageObject.worldEditor2D.dataOverlays.players;
+                        engineRef.current?.render();
+                    }}
+                >
+                    Players
+                </MenuItem>
+                <MenuItem
+                    type="checkbox"
+                    checked={props.dataStorageObject.worldEditor2D.dataOverlays.entities}
+                    onClick={(): void => {
+                        props.dataStorageObject.worldEditor2D.dataOverlays.entities = !props.dataStorageObject.worldEditor2D.dataOverlays.entities;
+                        engineRef.current?.render();
+                    }}
+                    hidden
+                >
+                    Entities
+                </MenuItem>
+                <MenuItem
+                    type="checkbox"
                     checked={props.dataStorageObject.worldEditor2D.dataOverlays.portals}
                     onClick={(): void => {
                         props.dataStorageObject.worldEditor2D.dataOverlays.portals = !props.dataStorageObject.worldEditor2D.dataOverlays.portals;
@@ -4349,6 +4950,18 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                     }}
                 >
                     Portals
+                </MenuItem>
+                <MenuItem
+                    type="checkbox"
+                    checked={props.dataStorageObject.worldEditor2D.dataOverlays.structureSpawningBoundingBoxes}
+                    onClick={(): void => {
+                        props.dataStorageObject.worldEditor2D.dataOverlays.structureSpawningBoundingBoxes =
+                            !props.dataStorageObject.worldEditor2D.dataOverlays.structureSpawningBoundingBoxes;
+                        engineRef.current?.render();
+                    }}
+                    hidden
+                >
+                    Structure Spawning Bounding Boxes
                 </MenuItem>
                 {/* TODO: Add a set defaults submenu here. */}
             </ControlledMenu>
@@ -5104,6 +5717,53 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         }
 
         function MenuForItem({ metaItem: { itemIndex, meta } }: { metaItem: { itemIndex: number; meta: WorldEditor2DMapImageItem["meta"] } }): JSX.Element {
+            function ItemNavigation(): JSX.Element {
+                return (
+                    <>
+                        {(targetImageDetails?.hitTestResults.length ?? 0) > 1 && (
+                            <>
+                                <MenuDivider />
+                                <MenuItem
+                                    title="Switches to the details of the previous item at the clicked location"
+                                    onClick={(): void => {
+                                        if (!targetImageDetails) return;
+                                        let newItemIndex: number = Math.max(0, itemIndex - 1);
+                                        if (newItemIndex === itemIndex) return;
+                                        while (!targetImageDetails.hitTestResults[newItemIndex]) if (newItemIndex-- < 0) return;
+                                        if (!targetImageDetails.hitTestResults[newItemIndex]) return;
+                                        setCurrentMetaItem({
+                                            itemIndex: newItemIndex,
+                                            meta: targetImageDetails.hitTestResults[newItemIndex]!.item.meta,
+                                        });
+                                        queueMicrotask((): void => void worldEditor2DMapOverlayImageContextMenu_setOpen(true));
+                                    }}
+                                    disabled={itemIndex <= 0}
+                                >
+                                    Previous Item
+                                </MenuItem>
+                                <MenuItem
+                                    title="Switches to the details of the next item at the clicked location"
+                                    onClick={(): void => {
+                                        if (!targetImageDetails) return;
+                                        const resultsLength: number = targetImageDetails.hitTestResults.length;
+                                        let newItemIndex: number = Math.min(resultsLength - 1, itemIndex + 1);
+                                        if (newItemIndex === itemIndex) return;
+                                        while (!targetImageDetails.hitTestResults[newItemIndex]) if (newItemIndex++ >= resultsLength) return;
+                                        setCurrentMetaItem({
+                                            itemIndex: newItemIndex,
+                                            meta: targetImageDetails.hitTestResults[newItemIndex]!.item.meta,
+                                        });
+                                        queueMicrotask((): void => void worldEditor2DMapOverlayImageContextMenu_setOpen(true));
+                                    }}
+                                    disabled={itemIndex >= (targetImageDetails?.hitTestResults.length ?? 0) - 1}
+                                >
+                                    Next Item
+                                </MenuItem>
+                            </>
+                        )}
+                    </>
+                );
+            }
             switch (meta.type) {
                 case "portal":
                     return (
@@ -5147,44 +5807,1145 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             {/* IDEA: Add a thing to use the same algorithms Minecraft uses to resolve what portals are linked to this one. */}
                             {/* IDEA: Add a delete portal entry button. */}
 
-                            {(targetImageDetails?.hitTestResults.length ?? 0) > 1 && (
-                                <>
-                                    <MenuDivider />
-                                    <MenuItem
-                                        title="Switches to the details of the previous item at the clicked location"
-                                        onClick={(): void => {
-                                            if (!targetImageDetails) return;
-                                            let newItemIndex: number = Math.max(0, itemIndex - 1);
-                                            if (newItemIndex === itemIndex) return;
-                                            while (!targetImageDetails.hitTestResults[newItemIndex]) if (newItemIndex-- < 0) return;
-                                            if (!targetImageDetails.hitTestResults[newItemIndex]) return;
-                                            setCurrentMetaItem({ itemIndex: newItemIndex, meta: targetImageDetails.hitTestResults[newItemIndex]!.item.meta });
-                                            queueMicrotask((): void => void worldEditor2DMapOverlayImageContextMenu_setOpen(true));
-                                        }}
-                                        disabled={itemIndex <= 0}
-                                    >
-                                        Previous Item
-                                    </MenuItem>
-                                    <MenuItem
-                                        title="Switches to the details of the next item at the clicked location"
-                                        onClick={(): void => {
-                                            if (!targetImageDetails) return;
-                                            const resultsLength: number = targetImageDetails.hitTestResults.length;
-                                            let newItemIndex: number = Math.min(resultsLength - 1, itemIndex + 1);
-                                            if (newItemIndex === itemIndex) return;
-                                            while (!targetImageDetails.hitTestResults[newItemIndex]) if (newItemIndex++ >= resultsLength) return;
-                                            setCurrentMetaItem({ itemIndex: newItemIndex, meta: targetImageDetails.hitTestResults[newItemIndex]!.item.meta });
-                                            queueMicrotask((): void => void worldEditor2DMapOverlayImageContextMenu_setOpen(true));
-                                        }}
-                                        disabled={itemIndex >= (targetImageDetails?.hitTestResults.length ?? 0) - 1}
-                                    >
-                                        Next Item
-                                    </MenuItem>
-                                </>
-                            )}
+                            <ItemNavigation />
                         </ControlledMenu>
                     );
                 case "player":
+                    switch (meta.playerType) {
+                        case "PlayerDat":
+                            return (
+                                <ControlledMenu
+                                    anchorPoint={worldEditor2DMapOverlayImageContextMenu_anchorPoint}
+                                    state={worldEditor2DMapOverlayImageContextMenu_isOpen ? "open" : "closed"}
+                                    direction="right"
+                                    onClose={(): void => void worldEditor2DMapOverlayImageContextMenu_setOpen(false)}
+                                >
+                                    <MenuHeader>
+                                        Player<span style={{ textTransform: "none" }}> (player.dat)</span>
+                                    </MenuHeader>
+                                    {meta.newerDataAvailableForPlayer && (
+                                        <MenuItem inert>
+                                            <span style={{ color: "color-mix(in lab, var(--text-color) 35%, rgba(255, 128, 0, 1))" }}>
+                                                Newer data is available for this player
+                                            </span>
+                                        </MenuItem>
+                                    )}
+                                    {typeof meta.name === "string" && (
+                                        <MenuItem
+                                            title="Copy player name to clipboard"
+                                            onClick={(): void => {
+                                                if (typeof meta.name !== "string") throw new Error("meta.name is not a string.");
+                                                clipboard.writeText(meta.name);
+                                            }}
+                                        >
+                                            {meta.name}
+                                        </MenuItem>
+                                    )}
+                                    <MenuItem inert>Host</MenuItem> {/* TEMP: This is just until an always present field is added here. */}
+                                    <MenuDivider />
+                                    <MenuItem
+                                        title="Copy location to clipboard"
+                                        onClick={(): void => {
+                                            if (meta.serverValue.value.Pos?.type !== "list" || meta.serverValue.value.Pos.value.type !== "float") return;
+                                            clipboard.writeText(
+                                                `${meta.serverValue.value.Pos.value.value[0] ?? NaN} ${meta.serverValue.value.Pos.value.value[1] ?? NaN} ${meta.serverValue.value.Pos.value.value[2] ?? NaN}`
+                                            );
+                                        }}
+                                    >
+                                        {meta.serverValue.value.Pos?.type !== "list" || meta.serverValue.value.Pos.value.type !== "float" ?
+                                            "X: N/A Y: N/A Z: N/A"
+                                        :   <>
+                                                X: {formatter.format(meta.serverValue.value.Pos.value.value[0] ?? NaN)} Y:{" "}
+                                                {formatter.format(meta.serverValue.value.Pos.value.value[1] ?? NaN)} Z:{" "}
+                                                {formatter.format(meta.serverValue.value.Pos.value.value[2] ?? NaN)}
+                                            </>
+                                        }
+                                        {/* <img
+                        src="resource://images/ui/glyphs/Copy_16x.png"
+                        style={{ width: "16px", imageRendering: "pixelated", marginLeft: 2 }}
+                        aria-hidden="true"
+                    /> */}
+                                    </MenuItem>
+                                    {/* IDEA: Add two copy TP command buttons, one that is a regular TP command to the coordinates (and rotation), and another that is the same as the previous one except it also uses /execute to teleport you to the correct dimension as well. */}
+                                    {/* IDEA: Add player name tag (not name, name tag). */}
+                                    {/* TODO: Add a chunk indices button. */}
+                                    {/* TODO: Add permissions, game mode, permission level, player permission level, and spawn point. */}
+                                    {/* TODO: Add more fields here. */}
+                                    <MenuDivider />
+                                    <MenuItem
+                                        title="Opens the file for this player."
+                                        onClick={(): void => {
+                                            props.tab.openTab({
+                                                contentType: "PlayerDat",
+                                                icon: "auto",
+                                                name: "player.dat",
+                                                parentTab: props.tab,
+                                                target: { type: "File", path: "player.dat" },
+                                            });
+                                        }}
+                                    >
+                                        Open file
+                                    </MenuItem>
+                                    {/* <MenuDivider /> */}
+                                    {/* IDEA: Add a delete player button. */}
+                                    <ItemNavigation />
+                                </ControlledMenu>
+                            );
+                        case "LANPlayerDat":
+                            return (
+                                <ControlledMenu
+                                    anchorPoint={worldEditor2DMapOverlayImageContextMenu_anchorPoint}
+                                    state={worldEditor2DMapOverlayImageContextMenu_isOpen ? "open" : "closed"}
+                                    direction="right"
+                                    onClose={(): void => void worldEditor2DMapOverlayImageContextMenu_setOpen(false)}
+                                >
+                                    <MenuHeader>
+                                        Player<span style={{ textTransform: "none" }}> (players/&lt;PlayerID&gt;.dat)</span>
+                                    </MenuHeader>
+                                    {meta.newerDataAvailableForPlayer && (
+                                        <MenuItem inert>
+                                            <span style={{ color: "color-mix(in lab, var(--text-color) 35%, rgba(255, 128, 0, 1))" }}>
+                                                Newer data is available for this player
+                                            </span>
+                                        </MenuItem>
+                                    )}
+                                    {typeof meta.name === "string" && (
+                                        <MenuItem
+                                            title="Copy player name to clipboard"
+                                            onClick={(): void => {
+                                                if (typeof meta.name !== "string") throw new Error("meta.name is not a string.");
+                                                clipboard.writeText(meta.name);
+                                            }}
+                                        >
+                                            {meta.name}
+                                        </MenuItem>
+                                    )}
+                                    <MenuItem
+                                        title="Copy player RakNet ID to clipboard"
+                                        onClick={(): void => {
+                                            if (typeof meta.rakNetId !== "bigint") throw new Error("meta.name is not a bigint.");
+                                            clipboard.writeText(String(meta.rakNetId));
+                                        }}
+                                    >
+                                        RakNet ID: {meta.rakNetId}
+                                    </MenuItem>
+                                    <MenuDivider />
+                                    <MenuItem
+                                        title="Copy location to clipboard"
+                                        onClick={(): void => {
+                                            if (meta.serverValue.value.Pos?.type !== "list" || meta.serverValue.value.Pos.value.type !== "float") return;
+                                            clipboard.writeText(
+                                                `${meta.serverValue.value.Pos.value.value[0] ?? NaN} ${meta.serverValue.value.Pos.value.value[1] ?? NaN} ${meta.serverValue.value.Pos.value.value[2] ?? NaN}`
+                                            );
+                                        }}
+                                    >
+                                        {meta.serverValue.value.Pos?.type !== "list" || meta.serverValue.value.Pos.value.type !== "float" ?
+                                            "X: N/A Y: N/A Z: N/A"
+                                        :   <>
+                                                X: {formatter.format(meta.serverValue.value.Pos.value.value[0] ?? NaN)} Y:{" "}
+                                                {formatter.format(meta.serverValue.value.Pos.value.value[1] ?? NaN)} Z:{" "}
+                                                {formatter.format(meta.serverValue.value.Pos.value.value[2] ?? NaN)}
+                                            </>
+                                        }
+                                        {/* <img
+                        src="resource://images/ui/glyphs/Copy_16x.png"
+                        style={{ width: "16px", imageRendering: "pixelated", marginLeft: 2 }}
+                        aria-hidden="true"
+                    /> */}
+                                    </MenuItem>
+                                    {/* IDEA: Add two copy TP command buttons, one that is a regular TP command to the coordinates (and rotation), and another that is the same as the previous one except it also uses /execute to teleport you to the correct dimension as well. */}
+                                    {/* IDEA: Add player name tag (not name, name tag). */}
+                                    {/* TODO: Add a chunk indices button. */}
+                                    {/* TODO: Add permissions, game mode, permission level, player permission level, and spawn point. */}
+                                    {/* TODO: Add more fields here. */}
+                                    <MenuDivider />
+                                    <MenuItem
+                                        title="Opens the file for this player."
+                                        onClick={(): void => {
+                                            props.tab.openTab({
+                                                contentType: "LANPlayerDat",
+                                                icon: "auto",
+                                                name: `players/${meta.rakNetId}.dat`,
+                                                parentTab: props.tab,
+                                                target: { type: "File", path: `players/${meta.rakNetId}.dat` },
+                                            });
+                                        }}
+                                    >
+                                        Open file
+                                    </MenuItem>
+                                    {/* <MenuDivider /> */}
+                                    {/* IDEA: Add a delete player button. */}
+                                    <ItemNavigation />
+                                </ControlledMenu>
+                            );
+                        case "LevelDatPlayer":
+                            return (
+                                <ControlledMenu
+                                    anchorPoint={worldEditor2DMapOverlayImageContextMenu_anchorPoint}
+                                    state={worldEditor2DMapOverlayImageContextMenu_isOpen ? "open" : "closed"}
+                                    direction="right"
+                                    onClose={(): void => void worldEditor2DMapOverlayImageContextMenu_setOpen(false)}
+                                >
+                                    <MenuHeader>
+                                        Player<span style={{ textTransform: "none" }}> (level.dat)</span>
+                                    </MenuHeader>
+                                    {meta.newerDataAvailableForPlayer && (
+                                        <MenuItem inert>
+                                            <span style={{ color: "color-mix(in lab, var(--text-color) 35%, rgba(255, 128, 0, 1))" }}>
+                                                Newer data is available for this player
+                                            </span>
+                                        </MenuItem>
+                                    )}
+                                    {typeof meta.name === "string" && (
+                                        <MenuItem
+                                            title="Copy player name to clipboard"
+                                            onClick={(): void => {
+                                                if (typeof meta.name !== "string") throw new Error("meta.name is not a string.");
+                                                clipboard.writeText(meta.name);
+                                            }}
+                                        >
+                                            {meta.name}
+                                        </MenuItem>
+                                    )}
+                                    <MenuItem inert>Host</MenuItem> {/* TEMP: This is just until an always present field is added here. */}
+                                    <MenuDivider />
+                                    <MenuItem
+                                        title="Copy location to clipboard"
+                                        onClick={(): void => {
+                                            if (meta.serverValue.value.Pos?.type !== "list" || meta.serverValue.value.Pos.value.type !== "float") return;
+                                            clipboard.writeText(
+                                                `${meta.serverValue.value.Pos.value.value[0] ?? NaN} ${meta.serverValue.value.Pos.value.value[1] ?? NaN} ${meta.serverValue.value.Pos.value.value[2] ?? NaN}`
+                                            );
+                                        }}
+                                    >
+                                        {meta.serverValue.value.Pos?.type !== "list" || meta.serverValue.value.Pos.value.type !== "float" ?
+                                            "X: N/A Y: N/A Z: N/A"
+                                        :   <>
+                                                X: {formatter.format(meta.serverValue.value.Pos.value.value[0] ?? NaN)} Y:{" "}
+                                                {formatter.format(meta.serverValue.value.Pos.value.value[1] ?? NaN)} Z:{" "}
+                                                {formatter.format(meta.serverValue.value.Pos.value.value[2] ?? NaN)}
+                                            </>
+                                        }
+                                        {/* <img
+                        src="resource://images/ui/glyphs/Copy_16x.png"
+                        style={{ width: "16px", imageRendering: "pixelated", marginLeft: 2 }}
+                        aria-hidden="true"
+                    /> */}
+                                    </MenuItem>
+                                    {/* IDEA: Add two copy TP command buttons, one that is a regular TP command to the coordinates (and rotation), and another that is the same as the previous one except it also uses /execute to teleport you to the correct dimension as well. */}
+                                    {/* IDEA: Add player name tag (not name, name tag). */}
+                                    {/* TODO: Add a chunk indices button. */}
+                                    {/* TODO: Add permissions, game mode, permission level, player permission level, and spawn point. */}
+                                    {/* TODO: Add more fields here. */}
+                                    <MenuDivider />
+                                    <MenuItem
+                                        title="Opens the file for this player."
+                                        onClick={(): void => {
+                                            props.tab.openTab({
+                                                contentType: "LevelDat",
+                                                icon: "auto",
+                                                name: "level.dat",
+                                                parentTab: props.tab,
+                                                specialTabID: "world-settings",
+                                                target: { type: "File", path: "level.dat" },
+                                            });
+                                        }}
+                                    >
+                                        Open file
+                                    </MenuItem>
+                                    {/* <MenuDivider /> */}
+                                    {/* IDEA: Add a delete player button. */}
+                                    <ItemNavigation />
+                                </ControlledMenu>
+                            );
+                        case "LegacyConsolePlayer":
+                            return (
+                                <ControlledMenu
+                                    anchorPoint={worldEditor2DMapOverlayImageContextMenu_anchorPoint}
+                                    state={worldEditor2DMapOverlayImageContextMenu_isOpen ? "open" : "closed"}
+                                    direction="right"
+                                    onClose={(): void => void worldEditor2DMapOverlayImageContextMenu_setOpen(false)}
+                                >
+                                    <MenuHeader>
+                                        Player<span style={{ textTransform: "none" }}> (Legacy Console)</span>
+                                    </MenuHeader>
+                                    {meta.newerDataAvailableForPlayer && (
+                                        <MenuItem inert>
+                                            <span style={{ color: "color-mix(in lab, var(--text-color) 35%, rgba(255, 128, 0, 1))" }}>
+                                                Newer data is available for this player
+                                            </span>
+                                        </MenuItem>
+                                    )}
+                                    {typeof meta.name === "string" && (
+                                        <MenuItem
+                                            title="Copy player name to clipboard"
+                                            onClick={(): void => {
+                                                if (typeof meta.name !== "string") throw new Error("meta.name is not a string.");
+                                                clipboard.writeText(meta.name);
+                                            }}
+                                        >
+                                            {meta.name}
+                                        </MenuItem>
+                                    )}
+                                    <MenuItem
+                                        title="Copy player UUID to clipboard"
+                                        onClick={(): void => {
+                                            if (meta.serverValue.value.UniqueID?.type !== "long") {
+                                                // TEMP
+                                                throw new Error("meta.serverValue.value.UniqueID is not a long.");
+                                            }
+                                            clipboard.writeText(String(toLong(meta.serverValue.value.UniqueID.value)));
+                                        }}
+                                    >
+                                        UUID:{" "}
+                                        {meta.serverValue.value.UniqueID?.type === "long" ?
+                                            toLong(meta.serverValue.value.UniqueID.value)
+                                        :   <span style={{ color: "red" }}>N/A</span>}
+                                    </MenuItem>
+                                    <MenuDivider />
+                                    <MenuItem
+                                        title="Copy location to clipboard"
+                                        onClick={(): void => {
+                                            if (meta.serverValue.value.Pos?.type !== "list" || meta.serverValue.value.Pos.value.type !== "float") return;
+                                            clipboard.writeText(
+                                                `${(meta.serverValue.value.Pos.value.value as number[]) /* TEMP */[0] ?? NaN} ${(meta.serverValue.value.Pos.value.value as number[]) /* TEMP */[1] ?? NaN} ${(meta.serverValue.value.Pos.value.value as number[]) /* TEMP */[2] ?? NaN}`
+                                            );
+                                        }}
+                                    >
+                                        {meta.serverValue.value.Pos?.type !== "list" || meta.serverValue.value.Pos.value.type !== "float" ?
+                                            "X: N/A Y: N/A Z: N/A"
+                                        :   <>
+                                                X: {formatter.format((meta.serverValue.value.Pos.value.value as number[]) /* TEMP */[0] ?? NaN)} Y:{" "}
+                                                {formatter.format((meta.serverValue.value.Pos.value.value as number[]) /* TEMP */[1] ?? NaN)} Z:{" "}
+                                                {formatter.format((meta.serverValue.value.Pos.value.value as number[]) /* TEMP */[2] ?? NaN)}
+                                            </>
+                                        }
+                                        {/* <img
+                        src="resource://images/ui/glyphs/Copy_16x.png"
+                        style={{ width: "16px", imageRendering: "pixelated", marginLeft: 2 }}
+                        aria-hidden="true"
+                    /> */}
+                                    </MenuItem>
+                                    {/* IDEA: Add two copy TP command buttons, one that is a regular TP command to the coordinates (and rotation), and another that is the same as the previous one except it also uses /execute to teleport you to the correct dimension as well. */}
+                                    {/* IDEA: Add player name tag (not name, name tag). */}
+                                    {/* TODO: Add a chunk indices button. */}
+                                    {/* TODO: Add permissions, game mode, permission level, player permission level, and spawn point. */}
+                                    {/* TODO: Add more fields here. */}
+                                    <MenuDivider />
+                                    <MenuItem
+                                        title="Opens the LevelDB entry for this player."
+                                        onClick={(): void => {
+                                            props.tab.openTab({
+                                                contentType: "LegacyConsolePlayer",
+                                                icon: "auto",
+                                                name: getKeyDisplayName(meta.serverKey),
+                                                parentTab: props.tab,
+                                                target: {
+                                                    type: "LevelDBEntry",
+                                                    key: meta.serverKey,
+                                                },
+                                            });
+                                        }}
+                                    >
+                                        {/* IDEA: Maybe make this a submenu which shows both the server key and the client keys, or add a separate dedicated submenu for opening client keys. */}
+                                        Open LevelDB entry
+                                    </MenuItem>
+
+                                    {/* TODO: See if LegacyConsolePlayer keys had corresponding ClientPlayer keys. */}
+                                    {/* {meta.clientValues?.length && (
+                                        <>
+                                            <MenuDivider />
+                                            <MenuHeader>Client ({meta.clientValues.length})</MenuHeader>
+                                            {meta.clientValues.every(
+                                                (v: NBTSchemas.NBTSchemaTypes.PlayerClient): boolean => Object.keys(v.value).length === 1
+                                            ) && <span style={{ color: "red" }}>Empty client data</span>}
+                                            {meta.clientValues.some(
+                                                (v: NBTSchemas.NBTSchemaTypes.PlayerClient): boolean => typeof v.value.MsaId?.value === "string"
+                                            ) &&
+                                                ((): JSX.Element => {
+                                                    const values: string[] = [
+                                                        ...new Set(
+                                                            meta.clientValues
+                                                                .map((v: NBTSchemas.NBTSchemaTypes.PlayerClient): string | undefined => v.value.MsaId?.value)
+                                                                .filter((v: string | undefined): v is string => typeof v === "string")
+                                                        ),
+                                                    ];
+                                                    if (values.length === 1) {
+                                                        return (
+                                                            <MenuItem
+                                                                title="Copy player Microsoft account ID to clipboard"
+                                                                onClick={(): void => {
+                                                                    clipboard.writeText(values[0]!);
+                                                                }}
+                                                            >
+                                                                Microsoft account ID: {values[0]}
+                                                            </MenuItem>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <MenuItem
+                                                            title="Copy player Microsoft account IDs to clipboard"
+                                                            onClick={(): void => {
+                                                                clipboard.writeText(JSON.stringify(values));
+                                                            }}
+                                                        >
+                                                            Microsoft account IDs: {values.join(", ")}
+                                                        </MenuItem>
+                                                    );
+                                                })()}
+                                            {meta.clientValues.some(
+                                                (v: NBTSchemas.NBTSchemaTypes.PlayerClient): boolean => typeof v.value.PlatformOfflineId?.value === "string"
+                                            ) &&
+                                                ((): JSX.Element => {
+                                                    const values: string[] = [
+                                                        ...new Set(
+                                                            meta.clientValues
+                                                                .map(
+                                                                    (v: NBTSchemas.NBTSchemaTypes.PlayerClient): string | undefined =>
+                                                                        v.value.PlatformOfflineId?.value
+                                                                )
+                                                                .filter((v: string | undefined): v is string => typeof v === "string")
+                                                        ),
+                                                    ];
+                                                    if (values.length === 1) {
+                                                        return (
+                                                            <MenuItem
+                                                                title="Copy player platform offline ID to clipboard"
+                                                                onClick={(): void => {
+                                                                    clipboard.writeText(values[0]!);
+                                                                }}
+                                                            >
+                                                                Platform offline ID: {values[0]}
+                                                            </MenuItem>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <MenuItem
+                                                            title="Copy player platform offline IDs to clipboard"
+                                                            onClick={(): void => {
+                                                                clipboard.writeText(JSON.stringify(values));
+                                                            }}
+                                                        >
+                                                            Platform offline IDs: {values.join(", ")}
+                                                        </MenuItem>
+                                                    );
+                                                })()}
+                                            {meta.clientValues.some(
+                                                (v: NBTSchemas.NBTSchemaTypes.PlayerClient): boolean => typeof v.value.PlatformOnlineId?.value === "string"
+                                            ) &&
+                                                ((): JSX.Element => {
+                                                    const values: string[] = [
+                                                        ...new Set(
+                                                            meta.clientValues
+                                                                .map(
+                                                                    (v: NBTSchemas.NBTSchemaTypes.PlayerClient): string | undefined =>
+                                                                        v.value.PlatformOnlineId?.value
+                                                                )
+                                                                .filter((v: string | undefined): v is string => typeof v === "string")
+                                                        ),
+                                                    ];
+                                                    if (values.length === 1) {
+                                                        return (
+                                                            <MenuItem
+                                                                title="Copy player platform online ID to clipboard"
+                                                                onClick={(): void => {
+                                                                    clipboard.writeText(values[0]!);
+                                                                }}
+                                                            >
+                                                                Platform online ID: {values[0]}
+                                                            </MenuItem>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <MenuItem
+                                                            title="Copy player platform online IDs to clipboard"
+                                                            onClick={(): void => {
+                                                                clipboard.writeText(JSON.stringify(values));
+                                                            }}
+                                                        >
+                                                            Platform online IDs: {values.join(", ")}
+                                                        </MenuItem>
+                                                    );
+                                                })()}
+                                            {meta.clientValues.some(
+                                                (v: NBTSchemas.NBTSchemaTypes.PlayerClient): boolean => typeof v.value.NeteaseUUID?.value === "string"
+                                            ) &&
+                                                ((): JSX.Element => {
+                                                    const values: string[] = [
+                                                        ...new Set(
+                                                            meta.clientValues
+                                                                .map(
+                                                                    (v: NBTSchemas.NBTSchemaTypes.PlayerClient): string | undefined =>
+                                                                        v.value.NeteaseUUID?.value
+                                                                )
+                                                                .filter((v: string | undefined): v is string => typeof v === "string")
+                                                        ),
+                                                    ];
+                                                    if (values.length === 1) {
+                                                        return (
+                                                            <MenuItem
+                                                                title="Copy player Netease UUID to clipboard"
+                                                                onClick={(): void => {
+                                                                    clipboard.writeText(values[0]!);
+                                                                }}
+                                                            >
+                                                                Netease UUID: {values[0]}
+                                                            </MenuItem>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <MenuItem
+                                                            title="Copy player Netease UUIDs to clipboard"
+                                                            onClick={(): void => {
+                                                                clipboard.writeText(JSON.stringify(values));
+                                                            }}
+                                                        >
+                                                            Netease UUIDs: {values.join(", ")}
+                                                        </MenuItem>
+                                                    );
+                                                })()}
+                                            {meta.clientValues.some(
+                                                (v: NBTSchemas.NBTSchemaTypes.PlayerClient): boolean => typeof v.value.SelfSignedId?.value === "string"
+                                            ) &&
+                                                ((): JSX.Element => {
+                                                    const values: string[] = [
+                                                        ...new Set(
+                                                            meta.clientValues
+                                                                .map(
+                                                                    (v: NBTSchemas.NBTSchemaTypes.PlayerClient): string | undefined =>
+                                                                        v.value.SelfSignedId?.value
+                                                                )
+                                                                .filter((v: string | undefined): v is string => typeof v === "string")
+                                                        ),
+                                                    ];
+                                                    if (values.length === 1) {
+                                                        return (
+                                                            <MenuItem
+                                                                title="Copy player self-signed ID to clipboard"
+                                                                onClick={(): void => {
+                                                                    clipboard.writeText(values[0]!);
+                                                                }}
+                                                            >
+                                                                Self-signed ID: {values[0]}
+                                                            </MenuItem>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <MenuItem
+                                                            title="Copy player self-signed IDs to clipboard"
+                                                            onClick={(): void => {
+                                                                clipboard.writeText(JSON.stringify(values));
+                                                            }}
+                                                        >
+                                                            Self-signed IDs: {values.join(", ")}
+                                                        </MenuItem>
+                                                    );
+                                                })()}
+                                        </>
+                                    )} */}
+
+                                    {/* <MenuDivider /> */}
+
+                                    {/* IDEA: Add a delete player button (implement the client key detection first). */}
+
+                                    <ItemNavigation />
+                                </ControlledMenu>
+                            );
+                        case "LegacyPlayer":
+                            return (
+                                <ControlledMenu
+                                    anchorPoint={worldEditor2DMapOverlayImageContextMenu_anchorPoint}
+                                    state={worldEditor2DMapOverlayImageContextMenu_isOpen ? "open" : "closed"}
+                                    direction="right"
+                                    onClose={(): void => void worldEditor2DMapOverlayImageContextMenu_setOpen(false)}
+                                >
+                                    <MenuHeader>
+                                        Player<span style={{ textTransform: "none" }}> (Legacy)</span>
+                                    </MenuHeader>
+                                    {meta.newerDataAvailableForPlayer && (
+                                        <MenuItem inert>
+                                            <span style={{ color: "color-mix(in lab, var(--text-color) 35%, rgba(255, 128, 0, 1))" }}>
+                                                Newer data is available for this player
+                                            </span>
+                                        </MenuItem>
+                                    )}
+                                    {typeof meta.name === "string" && (
+                                        <MenuItem
+                                            title="Copy player name to clipboard"
+                                            onClick={(): void => {
+                                                if (typeof meta.name !== "string") throw new Error("meta.name is not a string.");
+                                                clipboard.writeText(meta.name);
+                                            }}
+                                        >
+                                            {meta.name}
+                                        </MenuItem>
+                                    )}
+                                    <MenuItem
+                                        title="Copy player UUID to clipboard"
+                                        onClick={(): void => {
+                                            if (meta.serverValue.value.UniqueID?.type !== "long") {
+                                                // TEMP
+                                                throw new Error("meta.serverValue.value.UniqueID is not a long.");
+                                            }
+                                            clipboard.writeText(String(toLong(meta.serverValue.value.UniqueID.value)));
+                                        }}
+                                    >
+                                        UUID:{" "}
+                                        {meta.serverValue.value.UniqueID?.type === "long" ?
+                                            toLong(meta.serverValue.value.UniqueID.value)
+                                        :   <span style={{ color: "red" }}>N/A</span>}
+                                    </MenuItem>
+                                    <MenuDivider />
+                                    <MenuItem
+                                        title="Copy location to clipboard"
+                                        onClick={(): void => {
+                                            if (meta.serverValue.value.Pos?.type !== "list" || meta.serverValue.value.Pos.value.type !== "float") return;
+                                            clipboard.writeText(
+                                                `${(meta.serverValue.value.Pos.value.value as number[]) /* TEMP */[0] ?? NaN} ${(meta.serverValue.value.Pos.value.value as number[]) /* TEMP */[1] ?? NaN} ${(meta.serverValue.value.Pos.value.value as number[]) /* TEMP */[2] ?? NaN}`
+                                            );
+                                        }}
+                                    >
+                                        {meta.serverValue.value.Pos?.type !== "list" || meta.serverValue.value.Pos.value.type !== "float" ?
+                                            "X: N/A Y: N/A Z: N/A"
+                                        :   <>
+                                                X: {formatter.format((meta.serverValue.value.Pos.value.value as number[]) /* TEMP */[0] ?? NaN)} Y:{" "}
+                                                {formatter.format((meta.serverValue.value.Pos.value.value as number[]) /* TEMP */[1] ?? NaN)} Z:{" "}
+                                                {formatter.format((meta.serverValue.value.Pos.value.value as number[]) /* TEMP */[2] ?? NaN)}
+                                            </>
+                                        }
+                                        {/* <img
+                        src="resource://images/ui/glyphs/Copy_16x.png"
+                        style={{ width: "16px", imageRendering: "pixelated", marginLeft: 2 }}
+                        aria-hidden="true"
+                    /> */}
+                                    </MenuItem>
+                                    {/* IDEA: Add two copy TP command buttons, one that is a regular TP command to the coordinates (and rotation), and another that is the same as the previous one except it also uses /execute to teleport you to the correct dimension as well. */}
+                                    {/* IDEA: Add player name tag (not name, name tag). */}
+                                    {/* TODO: Add a chunk indices button. */}
+                                    {/* TODO: Add permissions, game mode, permission level, player permission level, and spawn point. */}
+                                    {/* TODO: Add more fields here. */}
+                                    <MenuDivider />
+                                    <MenuItem
+                                        title="Opens the LevelDB entry for this player."
+                                        onClick={(): void => {
+                                            props.tab.openTab({
+                                                contentType: "Player", // FIXME: Fix this once the LegacyPlayer content type is added.
+                                                icon: "auto",
+                                                name: getKeyDisplayName(meta.serverKey),
+                                                parentTab: props.tab,
+                                                target: {
+                                                    type: "LevelDBEntry",
+                                                    key: meta.serverKey,
+                                                },
+                                            });
+                                        }}
+                                    >
+                                        {/* IDEA: Maybe make this a submenu which shows both the server key and the client keys, or add a separate dedicated submenu for opening client keys. */}
+                                        Open LevelDB entry
+                                    </MenuItem>
+
+                                    {/* TODO: See if LegacyPlayer keys had corresponding ClientPlayer keys. */}
+                                    {/* {meta.clientValues?.length && (
+                                        <>
+                                            <MenuDivider />
+                                            <MenuHeader>Client ({meta.clientValues.length})</MenuHeader>
+                                            {meta.clientValues.every(
+                                                (v: NBTSchemas.NBTSchemaTypes.PlayerClient): boolean => Object.keys(v.value).length === 1
+                                            ) && <span style={{ color: "red" }}>Empty client data</span>}
+                                            {meta.clientValues.some(
+                                                (v: NBTSchemas.NBTSchemaTypes.PlayerClient): boolean => typeof v.value.MsaId?.value === "string"
+                                            ) &&
+                                                ((): JSX.Element => {
+                                                    const values: string[] = [
+                                                        ...new Set(
+                                                            meta.clientValues
+                                                                .map((v: NBTSchemas.NBTSchemaTypes.PlayerClient): string | undefined => v.value.MsaId?.value)
+                                                                .filter((v: string | undefined): v is string => typeof v === "string")
+                                                        ),
+                                                    ];
+                                                    if (values.length === 1) {
+                                                        return (
+                                                            <MenuItem
+                                                                title="Copy player Microsoft account ID to clipboard"
+                                                                onClick={(): void => {
+                                                                    clipboard.writeText(values[0]!);
+                                                                }}
+                                                            >
+                                                                Microsoft account ID: {values[0]}
+                                                            </MenuItem>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <MenuItem
+                                                            title="Copy player Microsoft account IDs to clipboard"
+                                                            onClick={(): void => {
+                                                                clipboard.writeText(JSON.stringify(values));
+                                                            }}
+                                                        >
+                                                            Microsoft account IDs: {values.join(", ")}
+                                                        </MenuItem>
+                                                    );
+                                                })()}
+                                            {meta.clientValues.some(
+                                                (v: NBTSchemas.NBTSchemaTypes.PlayerClient): boolean => typeof v.value.PlatformOfflineId?.value === "string"
+                                            ) &&
+                                                ((): JSX.Element => {
+                                                    const values: string[] = [
+                                                        ...new Set(
+                                                            meta.clientValues
+                                                                .map(
+                                                                    (v: NBTSchemas.NBTSchemaTypes.PlayerClient): string | undefined =>
+                                                                        v.value.PlatformOfflineId?.value
+                                                                )
+                                                                .filter((v: string | undefined): v is string => typeof v === "string")
+                                                        ),
+                                                    ];
+                                                    if (values.length === 1) {
+                                                        return (
+                                                            <MenuItem
+                                                                title="Copy player platform offline ID to clipboard"
+                                                                onClick={(): void => {
+                                                                    clipboard.writeText(values[0]!);
+                                                                }}
+                                                            >
+                                                                Platform offline ID: {values[0]}
+                                                            </MenuItem>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <MenuItem
+                                                            title="Copy player platform offline IDs to clipboard"
+                                                            onClick={(): void => {
+                                                                clipboard.writeText(JSON.stringify(values));
+                                                            }}
+                                                        >
+                                                            Platform offline IDs: {values.join(", ")}
+                                                        </MenuItem>
+                                                    );
+                                                })()}
+                                            {meta.clientValues.some(
+                                                (v: NBTSchemas.NBTSchemaTypes.PlayerClient): boolean => typeof v.value.PlatformOnlineId?.value === "string"
+                                            ) &&
+                                                ((): JSX.Element => {
+                                                    const values: string[] = [
+                                                        ...new Set(
+                                                            meta.clientValues
+                                                                .map(
+                                                                    (v: NBTSchemas.NBTSchemaTypes.PlayerClient): string | undefined =>
+                                                                        v.value.PlatformOnlineId?.value
+                                                                )
+                                                                .filter((v: string | undefined): v is string => typeof v === "string")
+                                                        ),
+                                                    ];
+                                                    if (values.length === 1) {
+                                                        return (
+                                                            <MenuItem
+                                                                title="Copy player platform online ID to clipboard"
+                                                                onClick={(): void => {
+                                                                    clipboard.writeText(values[0]!);
+                                                                }}
+                                                            >
+                                                                Platform online ID: {values[0]}
+                                                            </MenuItem>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <MenuItem
+                                                            title="Copy player platform online IDs to clipboard"
+                                                            onClick={(): void => {
+                                                                clipboard.writeText(JSON.stringify(values));
+                                                            }}
+                                                        >
+                                                            Platform online IDs: {values.join(", ")}
+                                                        </MenuItem>
+                                                    );
+                                                })()}
+                                            {meta.clientValues.some(
+                                                (v: NBTSchemas.NBTSchemaTypes.PlayerClient): boolean => typeof v.value.NeteaseUUID?.value === "string"
+                                            ) &&
+                                                ((): JSX.Element => {
+                                                    const values: string[] = [
+                                                        ...new Set(
+                                                            meta.clientValues
+                                                                .map(
+                                                                    (v: NBTSchemas.NBTSchemaTypes.PlayerClient): string | undefined =>
+                                                                        v.value.NeteaseUUID?.value
+                                                                )
+                                                                .filter((v: string | undefined): v is string => typeof v === "string")
+                                                        ),
+                                                    ];
+                                                    if (values.length === 1) {
+                                                        return (
+                                                            <MenuItem
+                                                                title="Copy player Netease UUID to clipboard"
+                                                                onClick={(): void => {
+                                                                    clipboard.writeText(values[0]!);
+                                                                }}
+                                                            >
+                                                                Netease UUID: {values[0]}
+                                                            </MenuItem>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <MenuItem
+                                                            title="Copy player Netease UUIDs to clipboard"
+                                                            onClick={(): void => {
+                                                                clipboard.writeText(JSON.stringify(values));
+                                                            }}
+                                                        >
+                                                            Netease UUIDs: {values.join(", ")}
+                                                        </MenuItem>
+                                                    );
+                                                })()}
+                                            {meta.clientValues.some(
+                                                (v: NBTSchemas.NBTSchemaTypes.PlayerClient): boolean => typeof v.value.SelfSignedId?.value === "string"
+                                            ) &&
+                                                ((): JSX.Element => {
+                                                    const values: string[] = [
+                                                        ...new Set(
+                                                            meta.clientValues
+                                                                .map(
+                                                                    (v: NBTSchemas.NBTSchemaTypes.PlayerClient): string | undefined =>
+                                                                        v.value.SelfSignedId?.value
+                                                                )
+                                                                .filter((v: string | undefined): v is string => typeof v === "string")
+                                                        ),
+                                                    ];
+                                                    if (values.length === 1) {
+                                                        return (
+                                                            <MenuItem
+                                                                title="Copy player self-signed ID to clipboard"
+                                                                onClick={(): void => {
+                                                                    clipboard.writeText(values[0]!);
+                                                                }}
+                                                            >
+                                                                Self-signed ID: {values[0]}
+                                                            </MenuItem>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <MenuItem
+                                                            title="Copy player self-signed IDs to clipboard"
+                                                            onClick={(): void => {
+                                                                clipboard.writeText(JSON.stringify(values));
+                                                            }}
+                                                        >
+                                                            Self-signed IDs: {values.join(", ")}
+                                                        </MenuItem>
+                                                    );
+                                                })()}
+                                        </>
+                                    )} */}
+
+                                    {/* <MenuDivider /> */}
+
+                                    {/* IDEA: Add a delete player button (implement the client key detection first). */}
+
+                                    <ItemNavigation />
+                                </ControlledMenu>
+                            );
+                        case "PlayerServer":
+                            return (
+                                <ControlledMenu
+                                    anchorPoint={worldEditor2DMapOverlayImageContextMenu_anchorPoint}
+                                    state={worldEditor2DMapOverlayImageContextMenu_isOpen ? "open" : "closed"}
+                                    direction="right"
+                                    onClose={(): void => void worldEditor2DMapOverlayImageContextMenu_setOpen(false)}
+                                >
+                                    <MenuHeader>
+                                        Player{meta.specialPlayerKeyType && <span style={{ textTransform: "none" }}>{` (${meta.specialPlayerKeyType})`}</span>}
+                                    </MenuHeader>
+                                    {meta.newerDataAvailableForPlayer && (
+                                        <MenuItem inert>
+                                            <span style={{ color: "color-mix(in lab, var(--text-color) 35%, rgba(255, 128, 0, 1))" }}>
+                                                Newer data is available for this player
+                                            </span>
+                                        </MenuItem>
+                                    )}
+                                    {typeof meta.name === "string" && (
+                                        <MenuItem
+                                            title="Copy player name to clipboard"
+                                            onClick={(): void => {
+                                                if (typeof meta.name !== "string") throw new Error("meta.name is not a string.");
+                                                clipboard.writeText(meta.name);
+                                            }}
+                                        >
+                                            {meta.name}
+                                        </MenuItem>
+                                    )}
+                                    <MenuItem
+                                        title="Copy player UUID to clipboard"
+                                        onClick={(): void => {
+                                            clipboard.writeText(String(toLong(meta.serverValue.value.UniqueID.value)));
+                                        }}
+                                    >
+                                        UUID:{" "}
+                                        {meta.serverValue.value.UniqueID?.type === "long" ?
+                                            toLong(meta.serverValue.value.UniqueID.value)
+                                        :   <span style={{ color: "red" }}>N/A</span>}
+                                    </MenuItem>
+                                    <MenuDivider />
+                                    <MenuItem
+                                        title="Copy location to clipboard"
+                                        onClick={(): void => {
+                                            if (meta.serverValue.value.Pos?.type !== "list" || meta.serverValue.value.Pos.value.type !== "float") return;
+                                            clipboard.writeText(
+                                                `${meta.serverValue.value.Pos.value.value[0] ?? NaN} ${meta.serverValue.value.Pos.value.value[1] ?? NaN} ${meta.serverValue.value.Pos.value.value[2] ?? NaN}`
+                                            );
+                                        }}
+                                    >
+                                        {meta.serverValue.value.Pos?.type !== "list" || meta.serverValue.value.Pos.value.type !== "float" ?
+                                            "X: N/A Y: N/A Z: N/A"
+                                        :   <>
+                                                X: {formatter.format(meta.serverValue.value.Pos.value.value[0] ?? NaN)} Y:{" "}
+                                                {formatter.format(meta.serverValue.value.Pos.value.value[1] ?? NaN)} Z:{" "}
+                                                {formatter.format(meta.serverValue.value.Pos.value.value[2] ?? NaN)}
+                                            </>
+                                        }
+                                        {/* <img
+                        src="resource://images/ui/glyphs/Copy_16x.png"
+                        style={{ width: "16px", imageRendering: "pixelated", marginLeft: 2 }}
+                        aria-hidden="true"
+                    /> */}
+                                    </MenuItem>
+                                    {/* IDEA: Add two copy TP command buttons, one that is a regular TP command to the coordinates (and rotation), and another that is the same as the previous one except it also uses /execute to teleport you to the correct dimension as well. */}
+                                    {/* IDEA: Add player name tag (not name, name tag). */}
+                                    {/* TODO: Add a chunk indices button. */}
+                                    {/* TODO: Add permissions, game mode, permission level, player permission level, and spawn point. */}
+                                    {/* TODO: Add more fields here. */}
+                                    <MenuDivider />
+                                    <MenuItem
+                                        title="Opens the LevelDB entry for this player."
+                                        onClick={(): void => {
+                                            props.tab.openTab({
+                                                contentType: "Player",
+                                                icon: "auto",
+                                                name: getKeyDisplayName(meta.serverKey),
+                                                parentTab: props.tab,
+                                                target: {
+                                                    type: "LevelDBEntry",
+                                                    key: meta.serverKey,
+                                                },
+                                            });
+                                        }}
+                                    >
+                                        {/* IDEA: Maybe make this a submenu which shows both the server key and the client keys, or add a separate dedicated submenu for opening client keys. */}
+                                        Open LevelDB entry
+                                    </MenuItem>
+
+                                    {meta.clientValues?.length && (
+                                        <>
+                                            <MenuDivider />
+                                            <MenuHeader>Client ({meta.clientValues.length})</MenuHeader>
+                                            {meta.clientValues.every(
+                                                (v: NBTSchemas.NBTSchemaTypes.PlayerClient): boolean => Object.keys(v.value).length === 1
+                                            ) && <span style={{ color: "red" }}>Empty client data</span>}
+                                            {meta.clientValues.some(
+                                                (v: NBTSchemas.NBTSchemaTypes.PlayerClient): boolean => typeof v.value.MsaId?.value === "string"
+                                            ) &&
+                                                ((): JSX.Element => {
+                                                    const values: string[] = [
+                                                        ...new Set(
+                                                            meta.clientValues
+                                                                .map((v: NBTSchemas.NBTSchemaTypes.PlayerClient): string | undefined => v.value.MsaId?.value)
+                                                                .filter((v: string | undefined): v is string => typeof v === "string")
+                                                        ),
+                                                    ];
+                                                    if (values.length === 1) {
+                                                        return (
+                                                            <MenuItem
+                                                                title="Copy player Microsoft account ID to clipboard"
+                                                                onClick={(): void => {
+                                                                    clipboard.writeText(values[0]!);
+                                                                }}
+                                                            >
+                                                                Microsoft account ID: {values[0]}
+                                                            </MenuItem>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <MenuItem
+                                                            title="Copy player Microsoft account IDs to clipboard"
+                                                            onClick={(): void => {
+                                                                clipboard.writeText(JSON.stringify(values));
+                                                            }}
+                                                        >
+                                                            Microsoft account IDs: {values.join(", ")}
+                                                        </MenuItem>
+                                                    );
+                                                })()}
+                                            {meta.clientValues.some(
+                                                (v: NBTSchemas.NBTSchemaTypes.PlayerClient): boolean => typeof v.value.PlatformOfflineId?.value === "string"
+                                            ) &&
+                                                ((): JSX.Element => {
+                                                    const values: string[] = [
+                                                        ...new Set(
+                                                            meta.clientValues
+                                                                .map(
+                                                                    (v: NBTSchemas.NBTSchemaTypes.PlayerClient): string | undefined =>
+                                                                        v.value.PlatformOfflineId?.value
+                                                                )
+                                                                .filter((v: string | undefined): v is string => typeof v === "string")
+                                                        ),
+                                                    ];
+                                                    if (values.length === 1) {
+                                                        return (
+                                                            <MenuItem
+                                                                title="Copy player platform offline ID to clipboard"
+                                                                onClick={(): void => {
+                                                                    clipboard.writeText(values[0]!);
+                                                                }}
+                                                            >
+                                                                Platform offline ID: {values[0]}
+                                                            </MenuItem>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <MenuItem
+                                                            title="Copy player platform offline IDs to clipboard"
+                                                            onClick={(): void => {
+                                                                clipboard.writeText(JSON.stringify(values));
+                                                            }}
+                                                        >
+                                                            Platform offline IDs: {values.join(", ")}
+                                                        </MenuItem>
+                                                    );
+                                                })()}
+                                            {meta.clientValues.some(
+                                                (v: NBTSchemas.NBTSchemaTypes.PlayerClient): boolean => typeof v.value.PlatformOnlineId?.value === "string"
+                                            ) &&
+                                                ((): JSX.Element => {
+                                                    const values: string[] = [
+                                                        ...new Set(
+                                                            meta.clientValues
+                                                                .map(
+                                                                    (v: NBTSchemas.NBTSchemaTypes.PlayerClient): string | undefined =>
+                                                                        v.value.PlatformOnlineId?.value
+                                                                )
+                                                                .filter((v: string | undefined): v is string => typeof v === "string")
+                                                        ),
+                                                    ];
+                                                    if (values.length === 1) {
+                                                        return (
+                                                            <MenuItem
+                                                                title="Copy player platform online ID to clipboard"
+                                                                onClick={(): void => {
+                                                                    clipboard.writeText(values[0]!);
+                                                                }}
+                                                            >
+                                                                Platform online ID: {values[0]}
+                                                            </MenuItem>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <MenuItem
+                                                            title="Copy player platform online IDs to clipboard"
+                                                            onClick={(): void => {
+                                                                clipboard.writeText(JSON.stringify(values));
+                                                            }}
+                                                        >
+                                                            Platform online IDs: {values.join(", ")}
+                                                        </MenuItem>
+                                                    );
+                                                })()}
+                                            {meta.clientValues.some(
+                                                (v: NBTSchemas.NBTSchemaTypes.PlayerClient): boolean => typeof v.value.NeteaseUUID?.value === "string"
+                                            ) &&
+                                                ((): JSX.Element => {
+                                                    const values: string[] = [
+                                                        ...new Set(
+                                                            meta.clientValues
+                                                                .map(
+                                                                    (v: NBTSchemas.NBTSchemaTypes.PlayerClient): string | undefined =>
+                                                                        v.value.NeteaseUUID?.value
+                                                                )
+                                                                .filter((v: string | undefined): v is string => typeof v === "string")
+                                                        ),
+                                                    ];
+                                                    if (values.length === 1) {
+                                                        return (
+                                                            <MenuItem
+                                                                title="Copy player Netease UUID to clipboard"
+                                                                onClick={(): void => {
+                                                                    clipboard.writeText(values[0]!);
+                                                                }}
+                                                            >
+                                                                Netease UUID: {values[0]}
+                                                            </MenuItem>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <MenuItem
+                                                            title="Copy player Netease UUIDs to clipboard"
+                                                            onClick={(): void => {
+                                                                clipboard.writeText(JSON.stringify(values));
+                                                            }}
+                                                        >
+                                                            Netease UUIDs: {values.join(", ")}
+                                                        </MenuItem>
+                                                    );
+                                                })()}
+                                            {meta.clientValues.some(
+                                                (v: NBTSchemas.NBTSchemaTypes.PlayerClient): boolean => typeof v.value.SelfSignedId?.value === "string"
+                                            ) &&
+                                                ((): JSX.Element => {
+                                                    const values: string[] = [
+                                                        ...new Set(
+                                                            meta.clientValues
+                                                                .map(
+                                                                    (v: NBTSchemas.NBTSchemaTypes.PlayerClient): string | undefined =>
+                                                                        v.value.SelfSignedId?.value
+                                                                )
+                                                                .filter((v: string | undefined): v is string => typeof v === "string")
+                                                        ),
+                                                    ];
+                                                    if (values.length === 1) {
+                                                        return (
+                                                            <MenuItem
+                                                                title="Copy player self-signed ID to clipboard"
+                                                                onClick={(): void => {
+                                                                    clipboard.writeText(values[0]!);
+                                                                }}
+                                                            >
+                                                                Self-signed ID: {values[0]}
+                                                            </MenuItem>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <MenuItem
+                                                            title="Copy player self-signed IDs to clipboard"
+                                                            onClick={(): void => {
+                                                                clipboard.writeText(JSON.stringify(values));
+                                                            }}
+                                                        >
+                                                            Self-signed IDs: {values.join(", ")}
+                                                        </MenuItem>
+                                                    );
+                                                })()}
+                                        </>
+                                    )}
+
+                                    {/* <MenuDivider /> */}
+
+                                    {/* IDEA: Add a delete player button. */}
+
+                                    <ItemNavigation />
+                                </ControlledMenu>
+                            );
+                        default:
+                            return (
+                                <ControlledMenu
+                                    anchorPoint={worldEditor2DMapOverlayImageContextMenu_anchorPoint}
+                                    state={worldEditor2DMapOverlayImageContextMenu_isOpen ? "open" : "closed"}
+                                    direction="right"
+                                    onClose={(): void => void worldEditor2DMapOverlayImageContextMenu_setOpen(false)}
+                                >
+                                    <MenuItem disabled>ERROR: Missing handler for player item type: {(meta as { playerType: string }).playerType}</MenuItem>
+
+                                    <ItemNavigation />
+                                </ControlledMenu>
+                            );
+                    }
                 case "entity":
                 default:
                     return (
@@ -5196,41 +6957,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                         >
                             <MenuItem disabled>ERROR: Missing handler for item type: {meta.type}</MenuItem>
 
-                            {(targetImageDetails?.hitTestResults.length ?? 0) > 1 && (
-                                <>
-                                    <MenuDivider />
-                                    <MenuItem
-                                        title="Switches to the details of the previous item at the clicked location"
-                                        onClick={(): void => {
-                                            if (!targetImageDetails) return;
-                                            let newItemIndex: number = Math.max(0, itemIndex - 1);
-                                            if (newItemIndex === itemIndex) return;
-                                            while (!targetImageDetails.hitTestResults[newItemIndex]) if (newItemIndex-- < 0) return;
-                                            if (!targetImageDetails.hitTestResults[newItemIndex]) return;
-                                            setCurrentMetaItem({ itemIndex: newItemIndex, meta: targetImageDetails.hitTestResults[newItemIndex]!.item.meta });
-                                            queueMicrotask((): void => void worldEditor2DMapOverlayImageContextMenu_setOpen(true));
-                                        }}
-                                        disabled={itemIndex <= 0}
-                                    >
-                                        Previous Item
-                                    </MenuItem>
-                                    <MenuItem
-                                        title="Switches to the details of the next item at the clicked location"
-                                        onClick={(): void => {
-                                            if (!targetImageDetails) return;
-                                            const resultsLength: number = targetImageDetails.hitTestResults.length;
-                                            let newItemIndex: number = Math.min(resultsLength - 1, itemIndex + 1);
-                                            if (newItemIndex === itemIndex) return;
-                                            while (!targetImageDetails.hitTestResults[newItemIndex]) if (newItemIndex++ >= resultsLength) return;
-                                            setCurrentMetaItem({ itemIndex: newItemIndex, meta: targetImageDetails.hitTestResults[newItemIndex]!.item.meta });
-                                            queueMicrotask((): void => void worldEditor2DMapOverlayImageContextMenu_setOpen(true));
-                                        }}
-                                        disabled={itemIndex >= (targetImageDetails?.hitTestResults.length ?? 0) - 1}
-                                    >
-                                        Next Item
-                                    </MenuItem>
-                                </>
-                            )}
+                            <ItemNavigation />
                         </ControlledMenu>
                     );
             }
@@ -5267,12 +6994,16 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         contentsInteractionRef.current = { rerenderContents };
 
         let portalsRendered: boolean = false;
+        let playersRendered: boolean = false;
 
         function onMapContentsReset(): void {
             mapReset = false;
             const successfullyRerenderedPortals: boolean = renderPortalsOnMap(engine.getScale(), !props.dataStorageObject.worldEditor2D.dataOverlays.portals);
             if (successfullyRerenderedPortals) portalsRendered = props.dataStorageObject.worldEditor2D.dataOverlays.portals;
             else portalsRendered = !props.dataStorageObject.worldEditor2D.dataOverlays.portals;
+            const successfullyRerenderedPlayers: boolean = renderPlayersOnMap(engine.getScale(), !props.dataStorageObject.worldEditor2D.dataOverlays.players);
+            if (successfullyRerenderedPlayers) playersRendered = props.dataStorageObject.worldEditor2D.dataOverlays.players;
+            else playersRendered = !props.dataStorageObject.worldEditor2D.dataOverlays.players;
         }
 
         let minScale: number = calculateMinScale();
@@ -5575,6 +7306,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             engine.drawGridLines(1, 1, "#1e293b", 1);
                         }
                         if (portalsRendered && props.dataStorageObject.worldEditor2D.dataOverlays.portals) portalsRendered = renderPortalsOnMap(scale);
+                        if (playersRendered && props.dataStorageObject.worldEditor2D.dataOverlays.players) playersRendered = renderPlayersOnMap(scale);
                     }}
                 >
                     <CanvasTileEngine.DrawFunction layer={0}>
@@ -5595,6 +7327,12 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             }
                             if (portalsRendered && !props.dataStorageObject.worldEditor2D.dataOverlays.portals) {
                                 portalsRendered = !renderPortalsOnMap(config.scale, true);
+                            }
+                            if (!playersRendered && props.dataStorageObject.worldEditor2D.dataOverlays.players) {
+                                playersRendered = renderPlayersOnMap(config.scale);
+                            }
+                            if (playersRendered && !props.dataStorageObject.worldEditor2D.dataOverlays.players) {
+                                playersRendered = !renderPlayersOnMap(config.scale, true);
                             }
                             const size = { width: ctx.canvas.width, height: ctx.canvas.height };
                             const scale = config.scale / (config.size.width / size.width);
