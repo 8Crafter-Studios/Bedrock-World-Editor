@@ -32,6 +32,7 @@
 -   Fixed a bug where in some cases the root object of the Node editor would not preserve its expansion state when switching tabs or modes.
 -   Fixed portal icons on the 2D world map sometimes being slightly blurry.
 -   Fixed a bug where the "Entities" left sidebar tab would show `Unknown Dimension` instead of `Dimension Unavailable` when the dimension cannot be displayed because the world is too large so it isn't checking it to improve performance.
+-   Fixed a bug where in some cases the Prismarine-NBT editor would use multiple separate schemas at once.
 
 # v1.0.0-beta.38
 

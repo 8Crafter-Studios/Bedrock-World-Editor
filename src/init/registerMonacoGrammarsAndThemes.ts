@@ -584,7 +584,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=LevelDat&*",
                         "**/JSONSchema/LevelDat",
                         "**/ContentType:LevelDat",
-                        "**/ContentType:LevelDat/**",
+                        "**/ContentType:LevelDat/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.LevelDat,
@@ -600,7 +600,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=Data3D&*",
                         "**/JSONSchema/Data3D",
                         "**/ContentType:Data3D",
-                        "**/ContentType:Data3D/**",
+                        "**/ContentType:Data3D/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.Data3D,
@@ -616,7 +616,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=Data2D&*",
                         "**/JSONSchema/Data2D",
                         "**/ContentType:Data2D",
-                        "**/ContentType:Data2D/**",
+                        "**/ContentType:Data2D/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.Data2D,
@@ -632,7 +632,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=Data2DLegacy&*",
                         "**/JSONSchema/Data2DLegacy",
                         "**/ContentType:Data2DLegacy",
-                        "**/ContentType:Data2DLegacy/**",
+                        "**/ContentType:Data2DLegacy/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.Data2DLegacy,
@@ -648,7 +648,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=SubChunkPrefix&*",
                         "**/JSONSchema/SubChunkPrefix",
                         "**/ContentType:SubChunkPrefix",
-                        "**/ContentType:SubChunkPrefix/**",
+                        "**/ContentType:SubChunkPrefix/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.SubChunkPrefix,
@@ -664,7 +664,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=LegacyTerrain&*",
                         "**/JSONSchema/LegacyTerrain",
                         "**/ContentType:LegacyTerrain",
-                        "**/ContentType:LegacyTerrain/**",
+                        "**/ContentType:LegacyTerrain/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.LegacyTerrain,
@@ -680,7 +680,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=BlockEntity&*",
                         "**/JSONSchema/BlockEntity",
                         "**/ContentType:BlockEntity",
-                        "**/ContentType:BlockEntity/**",
+                        "**/ContentType:BlockEntity/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         {
@@ -708,7 +708,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=Entity&*",
                         "**/JSONSchema/Entity",
                         "**/ContentType:Entity",
-                        "**/ContentType:Entity/**",
+                        "**/ContentType:Entity/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         {
@@ -736,7 +736,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=PendingTicks&*",
                         "**/JSONSchema/PendingTicks",
                         "**/ContentType:PendingTicks",
-                        "**/ContentType:PendingTicks/**",
+                        "**/ContentType:PendingTicks/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.PendingTicks,
@@ -752,7 +752,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=RandomTicks&*",
                         "**/JSONSchema/RandomTicks",
                         "**/ContentType:RandomTicks",
-                        "**/ContentType:RandomTicks/**",
+                        "**/ContentType:RandomTicks/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.RandomTicks,
@@ -769,7 +769,7 @@ async function main(_language: LanguageId): Promise<void> {
                 //         "**?contentType=MVillages&*",
                 //         "**/JSONSchema/MVillages",
                 //         "**/ContentType:MVillages",
-                //         "**/ContentType:MVillages/**",
+                //         "**/ContentType:MVillages/**$",
                 //     ],
                 //     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                 //         NBTSchemas.nbtSchemas.MVillages,
@@ -786,7 +786,7 @@ async function main(_language: LanguageId): Promise<void> {
                 //         "**?contentType=Villages&*",
                 //         "**/JSONSchema/Villages",
                 //         "**/ContentType:Villages",
-                //         "**/ContentType:Villages/**",
+                //         "**/ContentType:Villages/**$",
                 //     ],
                 //     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                 //         NBTSchemas.nbtSchemas.Villages,
@@ -802,7 +802,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=VillageDwellers&*",
                         "**/JSONSchema/VillageDwellers",
                         "**/ContentType:VillageDwellers",
-                        "**/ContentType:VillageDwellers/**",
+                        "**/ContentType:VillageDwellers/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.VillageDwellers,
@@ -818,7 +818,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=VillageInfo&*",
                         "**/JSONSchema/VillageInfo",
                         "**/ContentType:VillageInfo",
-                        "**/ContentType:VillageInfo/**",
+                        "**/ContentType:VillageInfo/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.VillageInfo,
@@ -834,7 +834,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=VillagePOI&*",
                         "**/JSONSchema/VillagePOI",
                         "**/ContentType:VillagePOI",
-                        "**/ContentType:VillagePOI/**",
+                        "**/ContentType:VillagePOI/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.VillagePOI,
@@ -850,7 +850,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=VillagePlayers&*",
                         "**/JSONSchema/VillagePlayers",
                         "**/ContentType:VillagePlayers",
-                        "**/ContentType:VillagePlayers/**",
+                        "**/ContentType:VillagePlayers/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.VillagePlayers,
@@ -866,7 +866,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=VillageRaid&*",
                         "**/JSONSchema/VillageRaid",
                         "**/ContentType:VillageRaid",
-                        "**/ContentType:VillageRaid/**",
+                        "**/ContentType:VillageRaid/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.VillageRaid,
@@ -882,7 +882,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=Player&*",
                         "**/JSONSchema/Player",
                         "**/ContentType:Player",
-                        "**/ContentType:Player/**",
+                        "**/ContentType:Player/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.Player,
@@ -898,7 +898,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=PlayerClient&*",
                         "**/JSONSchema/PlayerClient",
                         "**/ContentType:PlayerClient",
-                        "**/ContentType:PlayerClient/**",
+                        "**/ContentType:PlayerClient/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.PlayerClient,
@@ -914,7 +914,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=ActorPrefix&*",
                         "**/JSONSchema/ActorPrefix",
                         "**/ContentType:ActorPrefix",
-                        "**/ContentType:ActorPrefix/**",
+                        "**/ContentType:ActorPrefix/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.ActorPrefix,
@@ -930,7 +930,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=Digest&*",
                         "**/JSONSchema/Digest",
                         "**/ContentType:Digest",
-                        "**/ContentType:Digest/**",
+                        "**/ContentType:Digest/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.Digest,
@@ -956,7 +956,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=Portals&*",
                         "**/JSONSchema/Portals",
                         "**/ContentType:Portals",
-                        "**/ContentType:Portals/**",
+                        "**/ContentType:Portals/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.Portals,
@@ -972,7 +972,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=SchedulerWT&*",
                         "**/JSONSchema/SchedulerWT",
                         "**/ContentType:SchedulerWT",
-                        "**/ContentType:SchedulerWT/**",
+                        "**/ContentType:SchedulerWT/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.SchedulerWT,
@@ -988,7 +988,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=StructureTemplate&*",
                         "**/JSONSchema/StructureTemplate",
                         "**/ContentType:StructureTemplate",
-                        "**/ContentType:StructureTemplate/**",
+                        "**/ContentType:StructureTemplate/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.StructureTemplate,
@@ -1004,7 +1004,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=TickingArea&*",
                         "**/JSONSchema/TickingArea",
                         "**/ContentType:TickingArea",
-                        "**/ContentType:TickingArea/**",
+                        "**/ContentType:TickingArea/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.TickingArea,
@@ -1020,7 +1020,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=PositionTrackingDB&*",
                         "**/JSONSchema/PositionTrackingDB",
                         "**/ContentType:PositionTrackingDB",
-                        "**/ContentType:PositionTrackingDB/**",
+                        "**/ContentType:PositionTrackingDB/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.PositionTrackingDB,
@@ -1036,7 +1036,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=PositionTrackingLastId&*",
                         "**/JSONSchema/PositionTrackingLastId",
                         "**/ContentType:PositionTrackingLastId",
-                        "**/ContentType:PositionTrackingLastId/**",
+                        "**/ContentType:PositionTrackingLastId/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.PositionTrackingLastId,
@@ -1052,7 +1052,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=Scoreboard&*",
                         "**/JSONSchema/Scoreboard",
                         "**/ContentType:Scoreboard",
-                        "**/ContentType:Scoreboard/**",
+                        "**/ContentType:Scoreboard/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.Scoreboard,
@@ -1068,7 +1068,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=LegacyOverworldStructures&*",
                         "**/JSONSchema/LegacyOverworldStructures",
                         "**/ContentType:LegacyOverworldStructures",
-                        "**/ContentType:LegacyOverworldStructures/**",
+                        "**/ContentType:LegacyOverworldStructures/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.LegacyOverworldStructures,
@@ -1084,7 +1084,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=LegacyNetherStructures&*",
                         "**/JSONSchema/LegacyNetherStructures",
                         "**/ContentType:LegacyNetherStructures",
-                        "**/ContentType:LegacyNetherStructures/**",
+                        "**/ContentType:LegacyNetherStructures/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.LegacyNetherStructures,
@@ -1100,7 +1100,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=LegacyTheEndStructures&*",
                         "**/JSONSchema/LegacyTheEndStructures",
                         "**/ContentType:LegacyTheEndStructures",
-                        "**/ContentType:LegacyTheEndStructures/**",
+                        "**/ContentType:LegacyTheEndStructures/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.LegacyTheEndStructures,
@@ -1116,7 +1116,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=Overworld&*",
                         "**/JSONSchema/Overworld",
                         "**/ContentType:Overworld",
-                        "**/ContentType:Overworld/**",
+                        "**/ContentType:Overworld/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.Overworld,
@@ -1132,7 +1132,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=Nether&*",
                         "**/JSONSchema/Nether",
                         "**/ContentType:Nether",
-                        "**/ContentType:Nether/**",
+                        "**/ContentType:Nether/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.Nether,
@@ -1148,7 +1148,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=TheEnd&*",
                         "**/JSONSchema/TheEnd",
                         "**/ContentType:TheEnd",
-                        "**/ContentType:TheEnd/**",
+                        "**/ContentType:TheEnd/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.TheEnd,
@@ -1164,7 +1164,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=AutonomousEntities&*",
                         "**/JSONSchema/AutonomousEntities",
                         "**/ContentType:AutonomousEntities",
-                        "**/ContentType:AutonomousEntities/**",
+                        "**/ContentType:AutonomousEntities/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.AutonomousEntities,
@@ -1180,7 +1180,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=BiomeData&*",
                         "**/JSONSchema/BiomeData",
                         "**/ContentType:BiomeData",
-                        "**/ContentType:BiomeData/**",
+                        "**/ContentType:BiomeData/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.BiomeData,
@@ -1196,7 +1196,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=BiomeIdsTable&*",
                         "**/JSONSchema/BiomeIdsTable",
                         "**/ContentType:BiomeIdsTable",
-                        "**/ContentType:BiomeIdsTable/**",
+                        "**/ContentType:BiomeIdsTable/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.BiomeIdsTable,
@@ -1212,7 +1212,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=MobEvents&*",
                         "**/JSONSchema/MobEvents",
                         "**/ContentType:MobEvents",
-                        "**/ContentType:MobEvents/**",
+                        "**/ContentType:MobEvents/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.MobEvents,
@@ -1228,7 +1228,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=DynamicProperties&*",
                         "**/JSONSchema/DynamicProperties",
                         "**/ContentType:DynamicProperties",
-                        "**/ContentType:DynamicProperties/**",
+                        "**/ContentType:DynamicProperties/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.DynamicProperties,
@@ -1244,7 +1244,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=LevelChunkMetaDataDictionary&*",
                         "**/JSONSchema/LevelChunkMetaDataDictionary",
                         "**/ContentType:LevelChunkMetaDataDictionary",
-                        "**/ContentType:LevelChunkMetaDataDictionary/**",
+                        "**/ContentType:LevelChunkMetaDataDictionary/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.LevelChunkMetaDataDictionary,
@@ -1260,7 +1260,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=ChunkLoadedRequest&*",
                         "**/JSONSchema/ChunkLoadedRequest",
                         "**/ContentType:ChunkLoadedRequest",
-                        "**/ContentType:ChunkLoadedRequest/**",
+                        "**/ContentType:ChunkLoadedRequest/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.ChunkLoadedRequest,
@@ -1276,7 +1276,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=BorderBlocks&*",
                         "**/JSONSchema/BorderBlocks",
                         "**/ContentType:BorderBlocks",
-                        "**/ContentType:BorderBlocks/**",
+                        "**/ContentType:BorderBlocks/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.BorderBlocks,
@@ -1292,7 +1292,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=HardcodedSpawners&*",
                         "**/JSONSchema/HardcodedSpawners",
                         "**/ContentType:HardcodedSpawners",
-                        "**/ContentType:HardcodedSpawners/**",
+                        "**/ContentType:HardcodedSpawners/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.HardcodedSpawners,
@@ -1308,7 +1308,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=CustomDimension&*",
                         "**/JSONSchema/CustomDimension",
                         "**/ContentType:CustomDimension",
-                        "**/ContentType:CustomDimension/**",
+                        "**/ContentType:CustomDimension/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.CustomDimension,
@@ -1324,7 +1324,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=DimensionNameIdTable&*",
                         "**/JSONSchema/DimensionNameIdTable",
                         "**/ContentType:DimensionNameIdTable",
-                        "**/ContentType:DimensionNameIdTable/**",
+                        "**/ContentType:DimensionNameIdTable/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.DimensionNameIdTable,
@@ -1340,7 +1340,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=WorldClocks&*",
                         "**/JSONSchema/WorldClocks",
                         "**/ContentType:WorldClocks",
-                        "**/ContentType:WorldClocks/**",
+                        "**/ContentType:WorldClocks/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.WorldClocks,
@@ -1356,7 +1356,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=AABBVolumes&*",
                         "**/JSONSchema/AABBVolumes",
                         "**/ContentType:AABBVolumes",
-                        "**/ContentType:AABBVolumes/**",
+                        "**/ContentType:AABBVolumes/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.AABBVolumes,
@@ -1372,7 +1372,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=BiomeState&*",
                         "**/JSONSchema/BiomeState",
                         "**/ContentType:BiomeState",
-                        "**/ContentType:BiomeState/**",
+                        "**/ContentType:BiomeState/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.BiomeState,
@@ -1388,7 +1388,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=LegacyBlockExtraData&*",
                         "**/JSONSchema/LegacyBlockExtraData",
                         "**/ContentType:LegacyBlockExtraData",
-                        "**/ContentType:LegacyBlockExtraData/**",
+                        "**/ContentType:LegacyBlockExtraData/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.LegacyBlockExtraData,
@@ -1404,7 +1404,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=MCChinaDevDimension&*",
                         "**/JSONSchema/MCChinaDevDimension",
                         "**/ContentType:MCChinaDevDimension",
-                        "**/ContentType:MCChinaDevDimension/**",
+                        "**/ContentType:MCChinaDevDimension/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.MCChinaDevDimension,
@@ -1420,7 +1420,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=POITypes&*",
                         "**/JSONSchema/POITypes",
                         "**/ContentType:POITypes",
-                        "**/ContentType:POITypes/**",
+                        "**/ContentType:POITypes/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.POITypes,
@@ -1436,7 +1436,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=POIRegionRegistry&*",
                         "**/JSONSchema/POIRegionRegistry",
                         "**/ContentType:POIRegionRegistry",
-                        "**/ContentType:POIRegionRegistry/**",
+                        "**/ContentType:POIRegionRegistry/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.POIRegionRegistry,
@@ -1452,7 +1452,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=POIRegion&*",
                         "**/JSONSchema/POIRegion",
                         "**/ContentType:POIRegion",
-                        "**/ContentType:POIRegion/**",
+                        "**/ContentType:POIRegion/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.POIRegion,
@@ -1468,7 +1468,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=JigsawStructureBlueprint&*",
                         "**/JSONSchema/JigsawStructureBlueprint",
                         "**/ContentType:JigsawStructureBlueprint",
-                        "**/ContentType:JigsawStructureBlueprint/**",
+                        "**/ContentType:JigsawStructureBlueprint/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.JigsawStructureBlueprint,
@@ -1484,7 +1484,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=NeteaseData&*",
                         "**/JSONSchema/NeteaseData",
                         "**/ContentType:NeteaseData",
-                        "**/ContentType:NeteaseData/**",
+                        "**/ContentType:NeteaseData/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.NeteaseData,
@@ -1500,7 +1500,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=NeteaseScriptGid&*",
                         "**/JSONSchema/NeteaseScriptGid",
                         "**/ContentType:NeteaseScriptGid",
-                        "**/ContentType:NeteaseScriptGid/**",
+                        "**/ContentType:NeteaseScriptGid/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.NeteaseScriptGid,
@@ -1516,7 +1516,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=Villages&*",
                         "**/JSONSchema/Villages",
                         "**/ContentType:Villages",
-                        "**/ContentType:Villages/**",
+                        "**/ContentType:Villages/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.Villages,
@@ -1532,7 +1532,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=PlayerDat&*",
                         "**/JSONSchema/PlayerDat",
                         "**/ContentType:PlayerDat",
-                        "**/ContentType:PlayerDat/**",
+                        "**/ContentType:PlayerDat/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.PlayerDat,
@@ -1548,7 +1548,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=LANPlayerDat&*",
                         "**/JSONSchema/LANPlayerDat",
                         "**/ContentType:LANPlayerDat",
-                        "**/ContentType:LANPlayerDat/**",
+                        "**/ContentType:LANPlayerDat/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.LANPlayerDat,
@@ -1564,7 +1564,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=ChunksDat&*",
                         "**/JSONSchema/ChunksDat",
                         "**/ContentType:ChunksDat",
-                        "**/ContentType:ChunksDat/**",
+                        "**/ContentType:ChunksDat/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.ChunksDat,
@@ -1580,7 +1580,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=ImportedChunksDat&*",
                         "**/JSONSchema/ImportedChunksDat",
                         "**/ContentType:ImportedChunksDat",
-                        "**/ContentType:ImportedChunksDat/**",
+                        "**/ContentType:ImportedChunksDat/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.ImportedChunksDat,
@@ -1596,7 +1596,7 @@ async function main(_language: LanguageId): Promise<void> {
                         "**?contentType=ChunksDatEntry&*",
                         "**/JSONSchema/ChunksDatEntry",
                         "**/ContentType:ChunksDatEntry",
-                        "**/ContentType:ChunksDatEntry/**",
+                        "**/ContentType:ChunksDatEntry/**$",
                     ],
                     schema: NBTSchemas.Utils.Conversion.ToJSONSchema.nbtSchemaToJsonSchema(
                         NBTSchemas.nbtSchemas.ChunksDatChunk,
