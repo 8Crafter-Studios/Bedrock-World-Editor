@@ -38,6 +38,7 @@
 -   Fixed portal icons on the 2D world map sometimes being slightly blurry.
 -   Fixed a bug where the "Entities" left sidebar tab would show `Unknown Dimension` instead of `Dimension Unavailable` when the dimension cannot be displayed because the world is too large so it isn't checking it to improve performance.
 -   Fixed a bug where in some cases the Prismarine-NBT editor would use multiple separate schemas at once.
+-   The icons of some options in the "Open..." menu on the start screen are now displayed in black instead of white when in light mode, so that they are visible in light mode.
 
 # v1.0.0-beta.38
 

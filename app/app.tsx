@@ -1469,12 +1469,15 @@ export function StartScreenContents(): JSX.Element {
         icon: string;
         name: string;
         resolution: number;
+        invertOnLightTheme?: boolean | undefined;
+        invertOnDarkTheme?: boolean | undefined;
         onClick(this: void, event: TargetedMouseEvent<HTMLDivElement> | ClickEvent): Promise<void> | void;
     }
     const popupTabs: PopupTab[] = (
         [
             {
                 icon: "resource://images/ui/glyphs/Folder-Closed.png",
+                invertOnLightTheme: true,
                 name: "World Folder",
                 resolution: 12,
                 async onClick(_event: TargetedMouseEvent<HTMLDivElement> | ClickEvent): Promise<void> {
@@ -1613,6 +1616,7 @@ export function StartScreenContents(): JSX.Element {
             },
             {
                 icon: "resource://images/ui/glyphs/Data-Empty.png",
+                invertOnLightTheme: true,
                 name: "JSON File",
                 resolution: 12,
                 async onClick(_event: TargetedMouseEvent<HTMLDivElement> | ClickEvent): Promise<void> {
@@ -1642,6 +1646,7 @@ export function StartScreenContents(): JSX.Element {
             },
             {
                 icon: "resource://images/ui/glyphs/Data-Empty.png",
+                invertOnLightTheme: true,
                 name: "Raw File",
                 resolution: 12,
                 async onClick(_event: TargetedMouseEvent<HTMLDivElement> | ClickEvent): Promise<void> {
@@ -1805,7 +1810,7 @@ export function StartScreenContents(): JSX.Element {
                                     <img
                                         aria-hidden="true"
                                         src={tab.icon}
-                                        class="nsel ndrg piximg"
+                                        class={`nsel ndrg piximg${tab.invertOnLightTheme ? " invert_on_light_theme" : ""}${tab.invertOnDarkTheme ? " invert_on_dark_theme" : ""}`}
                                         style={`display: inline-block; width: auto; height: ${16 - (16 % tab.resolution)}px; margin: ${
                                             (16 % tab.resolution) / 2
                                         }px 0;`}
@@ -1853,7 +1858,10 @@ export interface LoadingScreenContentsProps {
 export function LoadingScreenContents(props: LoadingScreenContentsProps): JSX.Element {
     return (
         <>
-            <div class="loading-screen-contents" style="flex: 1; overflow: auto; min-width: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <div
+                class="loading-screen-contents"
+                style="flex: 1; overflow: auto; min-width: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center;"
+            >
                 <img
                     aria-hidden="true"
                     src="resource://images/ui/misc/loading_bar.gif"
