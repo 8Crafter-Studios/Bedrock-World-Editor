@@ -743,17 +743,13 @@ function getPacksDataEntries({
                         (entry: WorldXPackHistoryJSONSchema["packs"][number]): boolean =>
                             entry.uuid === pack.pack_id &&
                             !!entry.version &&
-                            semver
-                                .parse(typeof pack.version === "string" ? pack.version : pack.version!.join("."))
-                                ?.compareMain(typeof entry.version === "string" ? entry.version : entry.version.join(".")) === 0
+                            semver.parse(normalizePackVersion(pack.version!))?.compareMain(normalizePackVersion(entry.version)) === 0
                     ) ?? null);
             const matchingWorldPack: XPacksFolderPack | undefined = worldResourcePacksFolderPacks.find(
                 (v: XPacksFolderPack): boolean =>
                     v.manifest.header.uuid === pack.pack_id &&
                     !!pack.version &&
-                    semver
-                        .parse(typeof v.manifest.header.version === "string" ? v.manifest.header.version : v.manifest.header.version.join("."))
-                        ?.compareMain(typeof pack.version === "string" ? pack.version : pack.version.join(".")) === 0
+                    semver.parse(normalizePackVersion(v.manifest.header.version))?.compareMain(normalizePackVersion(pack.version)) === 0
             );
             const matchingDevelopmentPack: XPacksFolderPack | undefined =
                 matchingWorldPack ? undefined : (
@@ -761,9 +757,7 @@ function getPacksDataEntries({
                         (v: XPacksFolderPack): boolean =>
                             v.manifest.header.uuid === pack.pack_id &&
                             !!pack.version &&
-                            semver
-                                .parse(typeof v.manifest.header.version === "string" ? v.manifest.header.version : v.manifest.header.version.join("."))
-                                ?.compareMain(typeof pack.version === "string" ? pack.version : pack.version.join(".")) === 0
+                            semver.parse(normalizePackVersion(v.manifest.header.version))?.compareMain(normalizePackVersion(pack.version)) === 0
                     )
                 );
             const matchingLocalPack: XPacksFolderPack | undefined =
@@ -772,9 +766,7 @@ function getPacksDataEntries({
                         (v: XPacksFolderPack): boolean =>
                             v.manifest.header.uuid === pack.pack_id &&
                             !!pack.version &&
-                            semver
-                                .parse(typeof v.manifest.header.version === "string" ? v.manifest.header.version : v.manifest.header.version.join("."))
-                                ?.compareMain(typeof pack.version === "string" ? pack.version : pack.version.join(".")) === 0
+                            semver.parse(normalizePackVersion(v.manifest.header.version))?.compareMain(normalizePackVersion(pack.version)) === 0
                     )
                 );
 
@@ -844,17 +836,13 @@ function getPacksDataEntries({
                         (entry: WorldXPackHistoryJSONSchema["packs"][number]): boolean =>
                             entry.uuid === pack.pack_id &&
                             !!entry.version &&
-                            semver
-                                .parse(typeof pack.version === "string" ? pack.version : pack.version!.join("."))
-                                ?.compareMain(typeof entry.version === "string" ? entry.version : entry.version.join(".")) === 0
+                            semver.parse(normalizePackVersion(pack.version!))?.compareMain(normalizePackVersion(entry.version)) === 0
                     ) ?? null);
             const matchingWorldPack: XPacksFolderPack | undefined = worldBehaviorPacksFolderPacks.find(
                 (v: XPacksFolderPack): boolean =>
                     v.manifest.header.uuid === pack.pack_id &&
                     !!pack.version &&
-                    semver
-                        .parse(typeof v.manifest.header.version === "string" ? v.manifest.header.version : v.manifest.header.version.join("."))
-                        ?.compareMain(typeof pack.version === "string" ? pack.version : pack.version.join(".")) === 0
+                    semver.parse(normalizePackVersion(v.manifest.header.version))?.compareMain(normalizePackVersion(pack.version)) === 0
             );
             const matchingDevelopmentPack: XPacksFolderPack | undefined =
                 matchingWorldPack ? undefined : (
@@ -862,9 +850,7 @@ function getPacksDataEntries({
                         (v: XPacksFolderPack): boolean =>
                             v.manifest.header.uuid === pack.pack_id &&
                             !!pack.version &&
-                            semver
-                                .parse(typeof v.manifest.header.version === "string" ? v.manifest.header.version : v.manifest.header.version.join("."))
-                                ?.compareMain(typeof pack.version === "string" ? pack.version : pack.version.join(".")) === 0
+                            semver.parse(normalizePackVersion(v.manifest.header.version))?.compareMain(normalizePackVersion(pack.version)) === 0
                     )
                 );
             const matchingLocalPack: XPacksFolderPack | undefined =
@@ -873,9 +859,7 @@ function getPacksDataEntries({
                         (v: XPacksFolderPack): boolean =>
                             v.manifest.header.uuid === pack.pack_id &&
                             !!pack.version &&
-                            semver
-                                .parse(typeof v.manifest.header.version === "string" ? v.manifest.header.version : v.manifest.header.version.join("."))
-                                ?.compareMain(typeof pack.version === "string" ? pack.version : pack.version.join(".")) === 0
+                            semver.parse(normalizePackVersion(v.manifest.header.version))?.compareMain(normalizePackVersion(pack.version)) === 0
                     )
                 );
 
@@ -941,9 +925,7 @@ function getPacksDataEntries({
             .filter(
                 (v) =>
                     !worldResourcePacks?.some(
-                        (rp) =>
-                            rp.pack_id === v.uuid &&
-                            (typeof rp.version === "string" ? rp.version === v.version : rp.version?.every((vv, i) => vv === v.version?.[i]))
+                        (rp) => rp.pack_id === v.uuid && rp.version && v.version && normalizePackVersion(rp.version) === normalizePackVersion(v.version)
                     )
             )
             .map((pack: WorldXPackHistoryJSONSchema["packs"][number]): PackEntry => {
@@ -951,9 +933,7 @@ function getPacksDataEntries({
                     (v: XPacksFolderPack): boolean =>
                         v.manifest.header.uuid === pack.pack_id &&
                         !!pack.version &&
-                        semver
-                            .parse(typeof v.manifest.header.version === "string" ? v.manifest.header.version : v.manifest.header.version.join("."))
-                            ?.compareMain(typeof pack.version === "string" ? pack.version : pack.version.join(".")) === 0
+                        semver.parse(normalizePackVersion(v.manifest.header.version))?.compareMain(normalizePackVersion(pack.version)) === 0
                 );
                 const matchingDevelopmentPack: XPacksFolderPack | undefined =
                     matchingWorldPack ? undefined : (
@@ -961,9 +941,7 @@ function getPacksDataEntries({
                             (v: XPacksFolderPack): boolean =>
                                 v.manifest.header.uuid === pack.pack_id &&
                                 !!pack.version &&
-                                semver
-                                    .parse(typeof v.manifest.header.version === "string" ? v.manifest.header.version : v.manifest.header.version.join("."))
-                                    ?.compareMain(typeof pack.version === "string" ? pack.version : pack.version.join(".")) === 0
+                                semver.parse(normalizePackVersion(v.manifest.header.version))?.compareMain(normalizePackVersion(pack.version)) === 0
                         )
                     );
                 const matchingLocalPack: XPacksFolderPack | undefined =
@@ -972,9 +950,7 @@ function getPacksDataEntries({
                             (v: XPacksFolderPack): boolean =>
                                 v.manifest.header.uuid === pack.pack_id &&
                                 !!pack.version &&
-                                semver
-                                    .parse(typeof v.manifest.header.version === "string" ? v.manifest.header.version : v.manifest.header.version.join("."))
-                                    ?.compareMain(typeof pack.version === "string" ? pack.version : pack.version.join(".")) === 0
+                                semver.parse(normalizePackVersion(v.manifest.header.version))?.compareMain(normalizePackVersion(pack.version)) === 0
                         )
                     );
 
@@ -1041,17 +1017,13 @@ function getPacksDataEntries({
                         (rp) =>
                             rp.uuid === v.manifest.header.uuid &&
                             rp.version &&
-                            semver
-                                .parse(typeof v.manifest.header.version === "string" ? v.manifest.header.version : v.manifest.header.version.join("."))
-                                ?.compareMain(typeof rp.version === "string" ? rp.version : rp.version.join(".")) === 0
+                            semver.parse(normalizePackVersion(v.manifest.header.version))?.compareMain(normalizePackVersion(rp.version)) === 0
                     ) &&
                     !worldResourcePacks?.some(
                         (rp) =>
                             rp.pack_id === v.manifest.header.uuid &&
                             rp.version &&
-                            semver
-                                .parse(typeof v.manifest.header.version === "string" ? v.manifest.header.version : v.manifest.header.version.join("."))
-                                ?.compareMain(typeof rp.version === "string" ? rp.version : rp.version.join(".")) === 0
+                            semver.parse(normalizePackVersion(v.manifest.header.version))?.compareMain(normalizePackVersion(rp.version)) === 0
                     )
             )
             .map((pack: (typeof worldResourcePacksFolderPacks)[number]): PackEntry => {
@@ -1080,9 +1052,7 @@ function getPacksDataEntries({
             .filter(
                 (v) =>
                     !worldBehaviorPacks?.some(
-                        (rp) =>
-                            rp.pack_id === v.uuid &&
-                            (typeof rp.version === "string" ? rp.version === v.version : rp.version?.every((vv, i) => vv === v.version?.[i]))
+                        (rp) => rp.pack_id === v.uuid && rp.version && v.version && normalizePackVersion(rp.version) === normalizePackVersion(v.version)
                     )
             )
             .map((pack: WorldXPackHistoryJSONSchema["packs"][number]): PackEntry => {
@@ -1090,9 +1060,7 @@ function getPacksDataEntries({
                     (v: XPacksFolderPack): boolean =>
                         v.manifest.header.uuid === pack.pack_id &&
                         !!pack.version &&
-                        semver
-                            .parse(typeof v.manifest.header.version === "string" ? v.manifest.header.version : v.manifest.header.version.join("."))
-                            ?.compareMain(typeof pack.version === "string" ? pack.version : pack.version.join(".")) === 0
+                        semver.parse(normalizePackVersion(v.manifest.header.version))?.compareMain(normalizePackVersion(pack.version)) === 0
                 );
                 const matchingDevelopmentPack: XPacksFolderPack | undefined =
                     matchingWorldPack ? undefined : (
@@ -1100,9 +1068,7 @@ function getPacksDataEntries({
                             (v: XPacksFolderPack): boolean =>
                                 v.manifest.header.uuid === pack.pack_id &&
                                 !!pack.version &&
-                                semver
-                                    .parse(typeof v.manifest.header.version === "string" ? v.manifest.header.version : v.manifest.header.version.join("."))
-                                    ?.compareMain(typeof pack.version === "string" ? pack.version : pack.version.join(".")) === 0
+                                semver.parse(normalizePackVersion(v.manifest.header.version))?.compareMain(normalizePackVersion(pack.version)) === 0
                         )
                     );
                 const matchingLocalPack: XPacksFolderPack | undefined =
@@ -1111,9 +1077,7 @@ function getPacksDataEntries({
                             (v: XPacksFolderPack): boolean =>
                                 v.manifest.header.uuid === pack.pack_id &&
                                 !!pack.version &&
-                                semver
-                                    .parse(typeof v.manifest.header.version === "string" ? v.manifest.header.version : v.manifest.header.version.join("."))
-                                    ?.compareMain(typeof pack.version === "string" ? pack.version : pack.version.join(".")) === 0
+                                semver.parse(normalizePackVersion(v.manifest.header.version))?.compareMain(normalizePackVersion(pack.version)) === 0
                         )
                     );
 
@@ -1180,17 +1144,13 @@ function getPacksDataEntries({
                         (rp) =>
                             rp.uuid === v.manifest.header.uuid &&
                             rp.version &&
-                            semver
-                                .parse(typeof v.manifest.header.version === "string" ? v.manifest.header.version : v.manifest.header.version.join("."))
-                                ?.compareMain(typeof rp.version === "string" ? rp.version : rp.version.join(".")) === 0
+                            semver.parse(normalizePackVersion(v.manifest.header.version))?.compareMain(normalizePackVersion(rp.version)) === 0
                     ) &&
                     !worldBehaviorPacks?.some(
                         (rp) =>
                             rp.pack_id === v.manifest.header.uuid &&
                             rp.version &&
-                            semver
-                                .parse(typeof v.manifest.header.version === "string" ? v.manifest.header.version : v.manifest.header.version.join("."))
-                                ?.compareMain(typeof rp.version === "string" ? rp.version : rp.version.join(".")) === 0
+                            semver.parse(normalizePackVersion(v.manifest.header.version))?.compareMain(normalizePackVersion(rp.version)) === 0
                     )
             )
             .map((pack: (typeof worldBehaviorPacksFolderPacks)[number]): PackEntry => {
@@ -1347,9 +1307,9 @@ async function getPacksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                             !worldResourcePacks?.some(
                                                 (rp) =>
                                                     rp.pack_id === v.uuid &&
-                                                    (typeof rp.version === "string" ?
-                                                        rp.version === v.version
-                                                    :   rp.version?.every((vv, i) => vv === v.version?.[i]))
+                                                    rp.version &&
+                                                    v.version &&
+                                                    normalizePackVersion(rp.version) === normalizePackVersion(v.version)
                                             )
                                     ).length ?? 0);
                         case "behaviorPacks":
@@ -1360,9 +1320,9 @@ async function getPacksTabContents(tab: TabManagerTab, signal: AbortSignal): Pro
                                             !worldBehaviorPacks?.some(
                                                 (rp) =>
                                                     rp.pack_id === v.uuid &&
-                                                    (typeof rp.version === "string" ?
-                                                        rp.version === v.version
-                                                    :   rp.version?.every((vv, i) => vv === v.version?.[i]))
+                                                    rp.version &&
+                                                    v.version &&
+                                                    normalizePackVersion(rp.version) === normalizePackVersion(v.version)
                                             )
                                     ).length ?? 0);
                         default:
@@ -1706,6 +1666,13 @@ interface PackEntry {
     packNameLocales: Partial<Record<LooseAutocomplete<LocaleID>, string>> | undefined;
 }
 
+function normalizePackVersion(version: string | [major: number, minor: number, patch: number]): string {
+    if (version === undefined) return "undefined";
+    if (version instanceof Array) return version.join(".");
+    if (version.startsWith("[")) return (JSON.parse(version) as [major: number, minor: number, patch: number]).join(".");
+    return version;
+}
+
 // TODO: This should also show packs that are in the world files but not in the world_resource_packs.json, world_behavior_packs.json, world_resource_pack_history.json, or world_behavior_pack_history.json files.
 // IDEA: Add an option to open the folder of a resource or behavior pack in file explorer.
 
@@ -1741,8 +1708,8 @@ async function getPacksTabContentsRows(data: {
                     //                 entry.uuid === pack.pack_id &&
                     //                 !!entry.version &&
                     //                 semver.satisfies(
-                    //                     typeof pack.version === "string" ? pack.version : pack.version!.join("."),
-                    //                     typeof entry.version === "string" ? entry.version : entry.version.join("."),
+                    //                     normalizePackVersionString(pack.version!),
+                    //                     normalizePackVersion(entry.version),
                     //                     { includePrerelease: false }
                     //                 )
                     //         ) ?? null)
@@ -1764,8 +1731,8 @@ async function getPacksTabContentsRows(data: {
                     //                 if (manifest.header.uuid !== pack.pack_id) continue;
                     //                 if (
                     //                     !semver.satisfies(
-                    //                         typeof manifest.header.version === "string" ? manifest.header.version : manifest.header.version.join("."),
-                    //                         typeof pack.version === "string" ? pack.version : pack.version.join("."),
+                    //                         normalizePackVersion(manifest.header.version),
+                    //                         normalizePackVersion(pack.version),
                     //                         { includePrerelease: false }
                     //                     )
                     //                 ) {
@@ -1829,8 +1796,8 @@ async function getPacksTabContentsRows(data: {
                                                             entry.pack_id === pack.pack_id &&
                                                             !!entry.version &&
                                                             semver
-                                                                .parse(typeof pack.version === "string" ? pack.version : pack.version!.join("."))
-                                                                ?.compareMain(typeof entry.version === "string" ? entry.version : entry.version.join(".")) === 0
+                                                                .parse(normalizePackVersion(pack.version!))
+                                                                ?.compareMain(normalizePackVersion(entry.version)) === 0
                                                     );
                                                     if (packIndex === -1) {
                                                         void data.updateTablesContents?.(true);
@@ -1849,7 +1816,7 @@ async function getPacksTabContentsRows(data: {
                                                     void dialog.showMessageBox({
                                                         type: "error",
                                                         title: "Error",
-                                                        message: `An error occurred while deactivating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                        message: `An error occurred while deactivating the pack. (UUID: ${pack.pack_id}, Version: ${normalizePackVersion(pack.version!)})`,
                                                         detail: String(e),
                                                         buttons: ["OK"],
                                                         noLink: true,
@@ -1870,10 +1837,11 @@ async function getPacksTabContentsRows(data: {
                                                                 "utf-8"
                                                             )
                                                         );
-                                                        const packIndex: number = worldResourcePackHistoryJSON.packs.findIndex((entry) =>
-                                                            typeof pack.version === "string" ?
-                                                                pack.version === entry.version
-                                                            :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
+                                                        const packIndex: number = worldResourcePackHistoryJSON.packs.findIndex(
+                                                            (entry) =>
+                                                                pack.version &&
+                                                                entry.version &&
+                                                                normalizePackVersion(pack.version) === normalizePackVersion(entry.version)
                                                         );
                                                         if (packIndex === -1) {
                                                             void data.updateTablesContents?.(true);
@@ -1892,7 +1860,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occurred while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${normalizePackVersion(pack.version!)})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -1954,7 +1922,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occurred while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${normalizePackVersion(pack.version!)})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -1999,7 +1967,7 @@ async function getPacksTabContentsRows(data: {
                                         )}
                                     </ControlledMenu>
                                     <tr
-                                        data-key={`${pack.pack_id}@${typeof pack.version === "string" ? pack.version : pack.version?.join(".")}`}
+                                        data-key={`${pack.pack_id}@${normalizePackVersion(pack.version!)}`}
                                         onDblClick={onEntryRightClick}
                                         onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                                             // Treat Alt+Click as a middle click.
@@ -2042,7 +2010,7 @@ async function getPacksTabContentsRows(data: {
                                                             </td>
                                                         );
                                                     }
-                                                    const cellValue: string = typeof pack.version === "string" ? pack.version : pack.version.join(".");
+                                                    const cellValue: string = normalizePackVersion(pack.version);
                                                     return (
                                                         <td
                                                             data-copy-data={JSON.stringify({
@@ -2071,12 +2039,12 @@ async function getPacksTabContentsRows(data: {
                                                     const formattedDependenciesList: string = pack.packDetails.manifest.dependencies
                                                         .map((dependency) => {
                                                             if ("uuid" in dependency && dependency.uuid !== undefined) {
-                                                                return `${dependency.uuid}@${typeof dependency.version === "string" ? dependency.version : dependency.version?.join(".")}`;
+                                                                return `${dependency.uuid}@${normalizePackVersion(dependency.version!)}`;
                                                             }
                                                             if ("module_name" in dependency && dependency.module_name !== undefined) {
-                                                                return `${dependency.module_name}@${typeof dependency.version === "string" ? dependency.version : (dependency.version as number[] | undefined)?.join(".")}`;
+                                                                return `${dependency.module_name}@${normalizePackVersion(dependency.version!)}`;
                                                             }
-                                                            return `?@${typeof dependency.version === "string" ? dependency.version : dependency.version?.join(".")}`;
+                                                            return `?@${normalizePackVersion(dependency.version!)}`;
                                                         })
                                                         .join("\n");
                                                     return (
@@ -2252,7 +2220,7 @@ async function getPacksTabContentsRows(data: {
                                                                                                 buttonLabel: "Save",
                                                                                                 defaultPath: path.join(
                                                                                                     app.getPath("downloads"),
-                                                                                                    `pack_icon_${pack.pack_id}_${typeof pack.version === "string" ? pack.version : pack.version?.join(".")}.png`
+                                                                                                    `pack_icon_${pack.pack_id}_${normalizePackVersion(pack.version!)}.png`
                                                                                                 ),
                                                                                                 properties: [
                                                                                                     "showHiddenFiles",
@@ -2382,8 +2350,8 @@ async function getPacksTabContentsRows(data: {
                                                             entry.pack_id === pack.pack_id &&
                                                             !!entry.version &&
                                                             semver
-                                                                .parse(typeof pack.version === "string" ? pack.version : pack.version!.join("."))
-                                                                ?.compareMain(typeof entry.version === "string" ? entry.version : entry.version.join(".")) === 0
+                                                                .parse(normalizePackVersion(pack.version!))
+                                                                ?.compareMain(normalizePackVersion(entry.version)) === 0
                                                     );
                                                     if (packIndex === -1) {
                                                         void data.updateTablesContents?.(true);
@@ -2402,7 +2370,7 @@ async function getPacksTabContentsRows(data: {
                                                     void dialog.showMessageBox({
                                                         type: "error",
                                                         title: "Error",
-                                                        message: `An error occurred while deactivating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                        message: `An error occurred while deactivating the pack. (UUID: ${pack.pack_id}, Version: ${normalizePackVersion(pack.version!)})`,
                                                         detail: String(e),
                                                         buttons: ["OK"],
                                                         noLink: true,
@@ -2423,10 +2391,11 @@ async function getPacksTabContentsRows(data: {
                                                                 "utf-8"
                                                             )
                                                         );
-                                                        const packIndex: number = worldResourcePackHistoryJSON.packs.findIndex((entry) =>
-                                                            typeof pack.version === "string" ?
-                                                                pack.version === entry.version
-                                                            :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
+                                                        const packIndex: number = worldResourcePackHistoryJSON.packs.findIndex(
+                                                            (entry) =>
+                                                                pack.version &&
+                                                                entry.version &&
+                                                                normalizePackVersion(pack.version) === normalizePackVersion(entry.version)
                                                         );
                                                         if (packIndex === -1) {
                                                             void data.updateTablesContents?.(true);
@@ -2445,7 +2414,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occurred while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${normalizePackVersion(pack.version!)})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -2507,7 +2476,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occurred while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${normalizePackVersion(pack.version!)})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -2522,7 +2491,7 @@ async function getPacksTabContentsRows(data: {
                                         <MenuItem disabled>Copy Cell Value</MenuItem>
                                     </ControlledMenu>
                                     <tr
-                                        data-key={`${pack.pack_id}@${typeof pack.version === "string" ? pack.version : pack.version?.join(".")}`}
+                                        data-key={`${pack.pack_id}@${normalizePackVersion(pack.version!)}`}
                                         onDblClick={onEntryRightClick}
                                         onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                                             // Treat Alt+Click as a middle click.
@@ -2558,8 +2527,8 @@ async function getPacksTabContentsRows(data: {
                     //                 entry.uuid === pack.pack_id &&
                     //                 !!entry.version &&
                     //                 semver.satisfies(
-                    //                     typeof pack.version === "string" ? pack.version : pack.version!.join("."),
-                    //                     typeof entry.version === "string" ? entry.version : entry.version.join("."),
+                    //                     normalizePackVersionString(pack.version!),
+                    //                     normalizePackVersion(entry.version),
                     //                     { includePrerelease: false }
                     //                 )
                     //         ) ?? null)
@@ -2581,8 +2550,8 @@ async function getPacksTabContentsRows(data: {
                     //                 if (manifest.header.uuid !== pack.pack_id) continue;
                     //                 if (
                     //                     !semver.satisfies(
-                    //                         typeof manifest.header.version === "string" ? manifest.header.version : manifest.header.version.join("."),
-                    //                         typeof pack.version === "string" ? pack.version : pack.version.join("."),
+                    //                         normalizePackVersion(manifest.header.version),
+                    //                         normalizePackVersion(pack.version),
                     //                         { includePrerelease: false }
                     //                     )
                     //                 ) {
@@ -2646,8 +2615,8 @@ async function getPacksTabContentsRows(data: {
                                                             entry.pack_id === pack.pack_id &&
                                                             !!entry.version &&
                                                             semver
-                                                                .parse(typeof pack.version === "string" ? pack.version : pack.version!.join("."))
-                                                                ?.compareMain(typeof entry.version === "string" ? entry.version : entry.version.join(".")) === 0
+                                                                .parse(normalizePackVersion(pack.version!))
+                                                                ?.compareMain(normalizePackVersion(entry.version)) === 0
                                                     );
                                                     if (packIndex === -1) {
                                                         void data.updateTablesContents?.(true);
@@ -2666,7 +2635,7 @@ async function getPacksTabContentsRows(data: {
                                                     void dialog.showMessageBox({
                                                         type: "error",
                                                         title: "Error",
-                                                        message: `An error occurred while deactivating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                        message: `An error occurred while deactivating the pack. (UUID: ${pack.pack_id}, Version: ${normalizePackVersion(pack.version!)})`,
                                                         detail: String(e),
                                                         buttons: ["OK"],
                                                         noLink: true,
@@ -2687,10 +2656,11 @@ async function getPacksTabContentsRows(data: {
                                                                 "utf-8"
                                                             )
                                                         );
-                                                        const packIndex: number = worldBehaviorPackHistoryJSON.packs.findIndex((entry) =>
-                                                            typeof pack.version === "string" ?
-                                                                pack.version === entry.version
-                                                            :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
+                                                        const packIndex: number = worldBehaviorPackHistoryJSON.packs.findIndex(
+                                                            (entry) =>
+                                                                pack.version &&
+                                                                entry.version &&
+                                                                normalizePackVersion(pack.version) === normalizePackVersion(entry.version)
                                                         );
                                                         if (packIndex === -1) {
                                                             void data.updateTablesContents?.(true);
@@ -2709,7 +2679,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occurred while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${normalizePackVersion(pack.version!)})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -2771,7 +2741,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occurred while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${normalizePackVersion(pack.version!)})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -2816,7 +2786,7 @@ async function getPacksTabContentsRows(data: {
                                         )}
                                     </ControlledMenu>
                                     <tr
-                                        data-key={`${pack.pack_id}@${typeof pack.version === "string" ? pack.version : pack.version?.join(".")}`}
+                                        data-key={`${pack.pack_id}@${normalizePackVersion(pack.version!)}`}
                                         onDblClick={onEntryRightClick}
                                         onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                                             // Treat Alt+Click as a middle click.
@@ -2859,7 +2829,7 @@ async function getPacksTabContentsRows(data: {
                                                             </td>
                                                         );
                                                     }
-                                                    const cellValue: string = typeof pack.version === "string" ? pack.version : pack.version.join(".");
+                                                    const cellValue: string = normalizePackVersion(pack.version);
                                                     return (
                                                         <td
                                                             data-copy-data={JSON.stringify({
@@ -2888,12 +2858,12 @@ async function getPacksTabContentsRows(data: {
                                                     const formattedDependenciesList: string = pack.packDetails.manifest.dependencies
                                                         .map((dependency) => {
                                                             if ("uuid" in dependency && dependency.uuid !== undefined) {
-                                                                return `${dependency.uuid}@${typeof dependency.version === "string" ? dependency.version : dependency.version?.join(".")}`;
+                                                                return `${dependency.uuid}@${normalizePackVersion(dependency.version!)}`;
                                                             }
                                                             if ("module_name" in dependency && dependency.module_name !== undefined) {
-                                                                return `${dependency.module_name}@${typeof dependency.version === "string" ? dependency.version : (dependency.version as number[] | undefined)?.join(".")}`;
+                                                                return `${dependency.module_name}@${normalizePackVersion(dependency.version!)}`;
                                                             }
-                                                            return `?@${typeof dependency.version === "string" ? dependency.version : dependency.version?.join(".")}`;
+                                                            return `?@${normalizePackVersion(dependency.version!)}`;
                                                         })
                                                         .join("\n");
                                                     return (
@@ -3069,7 +3039,7 @@ async function getPacksTabContentsRows(data: {
                                                                                                 buttonLabel: "Save",
                                                                                                 defaultPath: path.join(
                                                                                                     app.getPath("downloads"),
-                                                                                                    `pack_icon_${pack.pack_id}_${typeof pack.version === "string" ? pack.version : pack.version?.join(".")}.png`
+                                                                                                    `pack_icon_${pack.pack_id}_${normalizePackVersion(pack.version!)}.png`
                                                                                                 ),
                                                                                                 properties: [
                                                                                                     "showHiddenFiles",
@@ -3199,8 +3169,8 @@ async function getPacksTabContentsRows(data: {
                                                             entry.pack_id === pack.pack_id &&
                                                             !!entry.version &&
                                                             semver
-                                                                .parse(typeof pack.version === "string" ? pack.version : pack.version!.join("."))
-                                                                ?.compareMain(typeof entry.version === "string" ? entry.version : entry.version.join(".")) === 0
+                                                                .parse(normalizePackVersion(pack.version!))
+                                                                ?.compareMain(normalizePackVersion(entry.version)) === 0
                                                     );
                                                     if (packIndex === -1) {
                                                         void data.updateTablesContents?.(true);
@@ -3219,7 +3189,7 @@ async function getPacksTabContentsRows(data: {
                                                     void dialog.showMessageBox({
                                                         type: "error",
                                                         title: "Error",
-                                                        message: `An error occurred while deactivating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                        message: `An error occurred while deactivating the pack. (UUID: ${pack.pack_id}, Version: ${normalizePackVersion(pack.version!)})`,
                                                         detail: String(e),
                                                         buttons: ["OK"],
                                                         noLink: true,
@@ -3240,10 +3210,11 @@ async function getPacksTabContentsRows(data: {
                                                                 "utf-8"
                                                             )
                                                         );
-                                                        const packIndex: number = worldBehaviorPackHistoryJSON.packs.findIndex((entry) =>
-                                                            typeof pack.version === "string" ?
-                                                                pack.version === entry.version
-                                                            :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
+                                                        const packIndex: number = worldBehaviorPackHistoryJSON.packs.findIndex(
+                                                            (entry) =>
+                                                                pack.version &&
+                                                                entry.version &&
+                                                                normalizePackVersion(pack.version) === normalizePackVersion(entry.version)
                                                         );
                                                         if (packIndex === -1) {
                                                             void data.updateTablesContents?.(true);
@@ -3262,7 +3233,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occurred while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${normalizePackVersion(pack.version!)})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -3324,7 +3295,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occurred while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${normalizePackVersion(pack.version!)})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -3339,7 +3310,7 @@ async function getPacksTabContentsRows(data: {
                                         <MenuItem disabled>Copy Cell Value</MenuItem>
                                     </ControlledMenu>
                                     <tr
-                                        data-key={`${pack.pack_id}@${typeof pack.version === "string" ? pack.version : pack.version?.join(".")}`}
+                                        data-key={`${pack.pack_id}@${normalizePackVersion(pack.version!)}`}
                                         onDblClick={onEntryRightClick}
                                         onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                                             // Treat Alt+Click as a middle click.
@@ -3375,8 +3346,8 @@ async function getPacksTabContentsRows(data: {
                     //                 entry.uuid === pack.pack_id &&
                     //                 !!entry.version &&
                     //                 semver.satisfies(
-                    //                     typeof pack.version === "string" ? pack.version : pack.version!.join("."),
-                    //                     typeof entry.version === "string" ? entry.version : entry.version.join("."),
+                    //                     normalizePackVersionString(pack.version!),
+                    //                     normalizePackVersion(entry.version),
                     //                     { includePrerelease: false }
                     //                 )
                     //         ) ?? null)
@@ -3398,8 +3369,8 @@ async function getPacksTabContentsRows(data: {
                     //                 if (manifest.header.uuid !== pack.pack_id) continue;
                     //                 if (
                     //                     !semver.satisfies(
-                    //                         typeof manifest.header.version === "string" ? manifest.header.version : manifest.header.version.join("."),
-                    //                         typeof pack.version === "string" ? pack.version : pack.version.join("."),
+                    //                         normalizePackVersion(manifest.header.version),
+                    //                         normalizePackVersion(pack.version),
                     //                         { includePrerelease: false }
                     //                     )
                     //                 ) {
@@ -3465,8 +3436,8 @@ async function getPacksTabContentsRows(data: {
                                                             entry.pack_id === pack.pack_id &&
                                                             !!entry.version &&
                                                             semver
-                                                                .parse(typeof pack.version === "string" ? pack.version : pack.version!.join("."))
-                                                                ?.compareMain(typeof entry.version === "string" ? entry.version : entry.version.join(".")) === 0
+                                                                .parse(normalizePackVersion(pack.version!))
+                                                                ?.compareMain(normalizePackVersion(entry.version)) === 0
                                                     );
                                                     if (packIndex !== -1) {
                                                         void data.updateTablesContents?.(true);
@@ -3488,7 +3459,7 @@ async function getPacksTabContentsRows(data: {
                                                     void dialog.showMessageBox({
                                                         type: "error",
                                                         title: "Error",
-                                                        message: `An error occurred while activating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                        message: `An error occurred while activating the pack. (UUID: ${pack.pack_id}, Version: ${normalizePackVersion(pack.version)})`,
                                                         detail: String(e),
                                                         buttons: ["OK"],
                                                         noLink: true,
@@ -3509,10 +3480,11 @@ async function getPacksTabContentsRows(data: {
                                                                 "utf-8"
                                                             )
                                                         );
-                                                        const packIndex: number = worldResourcePackHistoryJSON.packs.findIndex((entry) =>
-                                                            typeof pack.version === "string" ?
-                                                                pack.version === entry.version
-                                                            :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
+                                                        const packIndex: number = worldResourcePackHistoryJSON.packs.findIndex(
+                                                            (entry) =>
+                                                                pack.version &&
+                                                                entry.version &&
+                                                                normalizePackVersion(pack.version) === normalizePackVersion(entry.version)
                                                         );
                                                         if (packIndex === -1) {
                                                             void data.updateTablesContents?.(true);
@@ -3531,7 +3503,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occurred while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${normalizePackVersion(pack.version!)})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -3593,7 +3565,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occurred while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${normalizePackVersion(pack.version!)})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -3638,7 +3610,7 @@ async function getPacksTabContentsRows(data: {
                                         )}
                                     </ControlledMenu>
                                     <tr
-                                        data-key={`${pack.pack_id}@${typeof pack.version === "string" ? pack.version : pack.version?.join(".")}`}
+                                        data-key={`${pack.pack_id}@${normalizePackVersion(pack.version!)}`}
                                         onDblClick={onEntryRightClick}
                                         onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                                             // Treat Alt+Click as a middle click.
@@ -3681,7 +3653,7 @@ async function getPacksTabContentsRows(data: {
                                                             </td>
                                                         );
                                                     }
-                                                    const cellValue: string = typeof pack.version === "string" ? pack.version : pack.version.join(".");
+                                                    const cellValue: string = normalizePackVersion(pack.version);
                                                     return (
                                                         <td
                                                             data-copy-data={JSON.stringify({
@@ -3710,12 +3682,12 @@ async function getPacksTabContentsRows(data: {
                                                     const formattedDependenciesList: string = pack.packDetails.manifest.dependencies
                                                         .map((dependency) => {
                                                             if ("uuid" in dependency && dependency.uuid !== undefined) {
-                                                                return `${dependency.uuid}@${typeof dependency.version === "string" ? dependency.version : dependency.version?.join(".")}`;
+                                                                return `${dependency.uuid}@${normalizePackVersion(dependency.version!)}`;
                                                             }
                                                             if ("module_name" in dependency && dependency.module_name !== undefined) {
-                                                                return `${dependency.module_name}@${typeof dependency.version === "string" ? dependency.version : (dependency.version as number[] | undefined)?.join(".")}`;
+                                                                return `${dependency.module_name}@${normalizePackVersion(dependency.version!)}`;
                                                             }
-                                                            return `?@${typeof dependency.version === "string" ? dependency.version : dependency.version?.join(".")}`;
+                                                            return `?@${normalizePackVersion(dependency.version!)}`;
                                                         })
                                                         .join("\n");
                                                     return (
@@ -3896,7 +3868,7 @@ async function getPacksTabContentsRows(data: {
                                                                                                 buttonLabel: "Save",
                                                                                                 defaultPath: path.join(
                                                                                                     app.getPath("downloads"),
-                                                                                                    `pack_icon_${pack.pack_id}_${typeof pack.version === "string" ? pack.version : pack.version?.join(".")}.png`
+                                                                                                    `pack_icon_${pack.pack_id}_${normalizePackVersion(pack.version!)}.png`
                                                                                                 ),
                                                                                                 properties: [
                                                                                                     "showHiddenFiles",
@@ -4028,8 +4000,8 @@ async function getPacksTabContentsRows(data: {
                                                             entry.pack_id === pack.pack_id &&
                                                             !!entry.version &&
                                                             semver
-                                                                .parse(typeof pack.version === "string" ? pack.version : pack.version!.join("."))
-                                                                ?.compareMain(typeof entry.version === "string" ? entry.version : entry.version.join(".")) === 0
+                                                                .parse(normalizePackVersion(pack.version!))
+                                                                ?.compareMain(normalizePackVersion(entry.version)) === 0
                                                     );
                                                     if (packIndex !== -1) {
                                                         void data.updateTablesContents?.(true);
@@ -4051,7 +4023,7 @@ async function getPacksTabContentsRows(data: {
                                                     void dialog.showMessageBox({
                                                         type: "error",
                                                         title: "Error",
-                                                        message: `An error occurred while activating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                        message: `An error occurred while activating the pack. (UUID: ${pack.pack_id}, Version: ${normalizePackVersion(pack.version)})`,
                                                         detail: String(e),
                                                         buttons: ["OK"],
                                                         noLink: true,
@@ -4072,10 +4044,11 @@ async function getPacksTabContentsRows(data: {
                                                                 "utf-8"
                                                             )
                                                         );
-                                                        const packIndex: number = worldResourcePackHistoryJSON.packs.findIndex((entry) =>
-                                                            typeof pack.version === "string" ?
-                                                                pack.version === entry.version
-                                                            :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
+                                                        const packIndex: number = worldResourcePackHistoryJSON.packs.findIndex(
+                                                            (entry) =>
+                                                                pack.version &&
+                                                                entry.version &&
+                                                                normalizePackVersion(pack.version) === normalizePackVersion(entry.version)
                                                         );
                                                         if (packIndex === -1) {
                                                             void data.updateTablesContents?.(true);
@@ -4094,7 +4067,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occurred while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${normalizePackVersion(pack.version!)})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -4156,7 +4129,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occurred while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${normalizePackVersion(pack.version!)})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -4171,7 +4144,7 @@ async function getPacksTabContentsRows(data: {
                                         <MenuItem disabled>Copy Cell Value</MenuItem>
                                     </ControlledMenu>
                                     <tr
-                                        data-key={`${pack.pack_id}@${typeof pack.version === "string" ? pack.version : pack.version?.join(".")}`}
+                                        data-key={`${pack.pack_id}@${normalizePackVersion(pack.version!)}`}
                                         onDblClick={onEntryRightClick}
                                         onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                                             // Treat Alt+Click as a middle click.
@@ -4207,8 +4180,8 @@ async function getPacksTabContentsRows(data: {
                     //                 entry.uuid === pack.pack_id &&
                     //                 !!entry.version &&
                     //                 semver.satisfies(
-                    //                     typeof pack.version === "string" ? pack.version : pack.version!.join("."),
-                    //                     typeof entry.version === "string" ? entry.version : entry.version.join("."),
+                    //                     normalizePackVersionString(pack.version!),
+                    //                     normalizePackVersion(entry.version),
                     //                     { includePrerelease: false }
                     //                 )
                     //         ) ?? null)
@@ -4230,8 +4203,8 @@ async function getPacksTabContentsRows(data: {
                     //                 if (manifest.header.uuid !== pack.pack_id) continue;
                     //                 if (
                     //                     !semver.satisfies(
-                    //                         typeof manifest.header.version === "string" ? manifest.header.version : manifest.header.version.join("."),
-                    //                         typeof pack.version === "string" ? pack.version : pack.version.join("."),
+                    //                         normalizePackVersion(manifest.header.version),
+                    //                         normalizePackVersion(pack.version),
                     //                         { includePrerelease: false }
                     //                     )
                     //                 ) {
@@ -4297,8 +4270,8 @@ async function getPacksTabContentsRows(data: {
                                                             entry.pack_id === pack.pack_id &&
                                                             !!entry.version &&
                                                             semver
-                                                                .parse(typeof pack.version === "string" ? pack.version : pack.version!.join("."))
-                                                                ?.compareMain(typeof entry.version === "string" ? entry.version : entry.version.join(".")) === 0
+                                                                .parse(normalizePackVersion(pack.version!))
+                                                                ?.compareMain(normalizePackVersion(entry.version)) === 0
                                                     );
                                                     if (packIndex !== -1) {
                                                         void data.updateTablesContents?.(true);
@@ -4320,7 +4293,7 @@ async function getPacksTabContentsRows(data: {
                                                     void dialog.showMessageBox({
                                                         type: "error",
                                                         title: "Error",
-                                                        message: `An error occurred while activating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                        message: `An error occurred while activating the pack. (UUID: ${pack.pack_id}, Version: ${normalizePackVersion(pack.version)})`,
                                                         detail: String(e),
                                                         buttons: ["OK"],
                                                         noLink: true,
@@ -4341,10 +4314,11 @@ async function getPacksTabContentsRows(data: {
                                                                 "utf-8"
                                                             )
                                                         );
-                                                        const packIndex: number = worldBehaviorPackHistoryJSON.packs.findIndex((entry) =>
-                                                            typeof pack.version === "string" ?
-                                                                pack.version === entry.version
-                                                            :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
+                                                        const packIndex: number = worldBehaviorPackHistoryJSON.packs.findIndex(
+                                                            (entry) =>
+                                                                pack.version &&
+                                                                entry.version &&
+                                                                normalizePackVersion(pack.version) === normalizePackVersion(entry.version)
                                                         );
                                                         if (packIndex === -1) {
                                                             void data.updateTablesContents?.(true);
@@ -4363,7 +4337,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occurred while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${normalizePackVersion(pack.version!)})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -4425,7 +4399,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occurred while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${normalizePackVersion(pack.version!)})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -4470,7 +4444,7 @@ async function getPacksTabContentsRows(data: {
                                         )}
                                     </ControlledMenu>
                                     <tr
-                                        data-key={`${pack.pack_id}@${typeof pack.version === "string" ? pack.version : pack.version?.join(".")}`}
+                                        data-key={`${pack.pack_id}@${normalizePackVersion(pack.version!)}`}
                                         onDblClick={onEntryRightClick}
                                         onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                                             // Treat Alt+Click as a middle click.
@@ -4513,7 +4487,7 @@ async function getPacksTabContentsRows(data: {
                                                             </td>
                                                         );
                                                     }
-                                                    const cellValue: string = typeof pack.version === "string" ? pack.version : pack.version.join(".");
+                                                    const cellValue: string = normalizePackVersion(pack.version);
                                                     return (
                                                         <td
                                                             data-copy-data={JSON.stringify({
@@ -4542,12 +4516,12 @@ async function getPacksTabContentsRows(data: {
                                                     const formattedDependenciesList: string = pack.packDetails.manifest.dependencies
                                                         .map((dependency) => {
                                                             if ("uuid" in dependency && dependency.uuid !== undefined) {
-                                                                return `${dependency.uuid}@${typeof dependency.version === "string" ? dependency.version : dependency.version?.join(".")}`;
+                                                                return `${dependency.uuid}@${normalizePackVersion(dependency.version!)}`;
                                                             }
                                                             if ("module_name" in dependency && dependency.module_name !== undefined) {
-                                                                return `${dependency.module_name}@${typeof dependency.version === "string" ? dependency.version : (dependency.version as number[] | undefined)?.join(".")}`;
+                                                                return `${dependency.module_name}@${normalizePackVersion(dependency.version!)}`;
                                                             }
-                                                            return `?@${typeof dependency.version === "string" ? dependency.version : dependency.version?.join(".")}`;
+                                                            return `?@${normalizePackVersion(dependency.version!)}`;
                                                         })
                                                         .join("\n");
                                                     return (
@@ -4728,7 +4702,7 @@ async function getPacksTabContentsRows(data: {
                                                                                                 buttonLabel: "Save",
                                                                                                 defaultPath: path.join(
                                                                                                     app.getPath("downloads"),
-                                                                                                    `pack_icon_${pack.pack_id}_${typeof pack.version === "string" ? pack.version : pack.version?.join(".")}.png`
+                                                                                                    `pack_icon_${pack.pack_id}_${normalizePackVersion(pack.version!)}.png`
                                                                                                 ),
                                                                                                 properties: [
                                                                                                     "showHiddenFiles",
@@ -4860,8 +4834,8 @@ async function getPacksTabContentsRows(data: {
                                                             entry.pack_id === pack.pack_id &&
                                                             !!entry.version &&
                                                             semver
-                                                                .parse(typeof pack.version === "string" ? pack.version : pack.version!.join("."))
-                                                                ?.compareMain(typeof entry.version === "string" ? entry.version : entry.version.join(".")) === 0
+                                                                .parse(normalizePackVersion(pack.version!))
+                                                                ?.compareMain(normalizePackVersion(entry.version)) === 0
                                                     );
                                                     if (packIndex !== -1) {
                                                         void data.updateTablesContents?.(true);
@@ -4883,7 +4857,7 @@ async function getPacksTabContentsRows(data: {
                                                     void dialog.showMessageBox({
                                                         type: "error",
                                                         title: "Error",
-                                                        message: `An error occurred while activating the pack. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                        message: `An error occurred while activating the pack. (UUID: ${pack.pack_id}, Version: ${normalizePackVersion(pack.version)})`,
                                                         detail: String(e),
                                                         buttons: ["OK"],
                                                         noLink: true,
@@ -4904,10 +4878,11 @@ async function getPacksTabContentsRows(data: {
                                                                 "utf-8"
                                                             )
                                                         );
-                                                        const packIndex: number = worldBehaviorPackHistoryJSON.packs.findIndex((entry) =>
-                                                            typeof pack.version === "string" ?
-                                                                pack.version === entry.version
-                                                            :   !!pack.version?.every((vv, i) => vv === entry.version?.[i])
+                                                        const packIndex: number = worldBehaviorPackHistoryJSON.packs.findIndex(
+                                                            (entry) =>
+                                                                pack.version &&
+                                                                entry.version &&
+                                                                normalizePackVersion(pack.version) === normalizePackVersion(entry.version)
                                                         );
                                                         if (packIndex === -1) {
                                                             void data.updateTablesContents?.(true);
@@ -4926,7 +4901,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occurred while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from history. (UUID: ${pack.pack_id}, Version: ${normalizePackVersion(pack.version!)})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -4988,7 +4963,7 @@ async function getPacksTabContentsRows(data: {
                                                         void dialog.showMessageBox({
                                                             type: "error",
                                                             title: "Error",
-                                                            message: `An error occurred while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${typeof pack.version === "string" ? pack.version : pack.version?.join(".")})`,
+                                                            message: `An error occurred while deleting the pack from the world files. (UUID: ${pack.pack_id}, Version: ${normalizePackVersion(pack.version!)})`,
                                                             detail: String(e),
                                                             buttons: ["OK"],
                                                             noLink: true,
@@ -5003,7 +4978,7 @@ async function getPacksTabContentsRows(data: {
                                         <MenuItem disabled>Copy Cell Value</MenuItem>
                                     </ControlledMenu>
                                     <tr
-                                        data-key={`${pack.pack_id}@${typeof pack.version === "string" ? pack.version : pack.version?.join(".")}`}
+                                        data-key={`${pack.pack_id}@${normalizePackVersion(pack.version!)}`}
                                         onDblClick={onEntryRightClick}
                                         onClick={(event: TargetedMouseEvent<HTMLTableRowElement>): void => {
                                             // Treat Alt+Click as a middle click.
