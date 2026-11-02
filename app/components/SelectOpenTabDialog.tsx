@@ -106,7 +106,7 @@ export function SelectOpenTabDialog(props: SelectOpenTabDialogProps): JSX.Elemen
                             (await targetWindow.webContents.executeJavaScript(
                                 `tabManager.openTabs${
                                     props.tabTargetTypeFilter ? `.filter((tab) => ${JSON.stringify(props.tabTargetTypeFilter)}.includes(tab.type))` : ""
-                                }.map((tab) => ({ windowID: ${targetWindow.id}, windowDisplayNumber: ${openWindowsWithTabManager.indexOf(targetWindow) + 1} tabID: tab.id, name: tab.name }))`
+                                }.map((tab) => ({ windowID: ${targetWindow.id}, windowDisplayNumber: ${openWindowsWithTabManager.indexOf(targetWindow) + 1}, tabID: tab.id, name: tab.name }))`
                             )) as OpenTabDetails[]
                     )
                 )
