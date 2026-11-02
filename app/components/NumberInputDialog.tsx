@@ -101,7 +101,7 @@ export function NumberInputDialog(props: NumberInputDialogProps): JSX.Element {
                         type="number"
                         step={props.optionStep ?? 1}
                         id={`NumberInputDialogOptionList_optionItem_${dialogTimestamp}_0_chosenNumber`}
-                        class="NumberInputDialogOptionList_optionItem NumberInputDialogOptionList_textInputOptionItem"
+                        class="dialog-text-box NumberInputDialogOptionList_optionItem NumberInputDialogOptionList_textInputOptionItem"
                         data-optionid="chosenNumber"
                         data-optionvalue={props.optionDefaultValue ?? 0}
                         data-optionvaluetype="number"

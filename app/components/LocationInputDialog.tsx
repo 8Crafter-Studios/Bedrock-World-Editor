@@ -103,7 +103,7 @@ export function LocationInputDialog<O extends LocationInputPromptOptionItem>(pro
                                         type="number"
                                         step="1"
                                         id={optionElementId}
-                                        class="LocationInputDialogOptionList_optionItem LocationInputDialogOptionList_textInputOptionItem"
+                                        class="dialog-text-box LocationInputDialogOptionList_optionItem LocationInputDialogOptionList_textInputOptionItem"
                                         data-optionid="chunkX"
                                         data-optionvalue={0}
                                         data-optionvaluetype="number"
@@ -124,7 +124,7 @@ export function LocationInputDialog<O extends LocationInputPromptOptionItem>(pro
                                         type="number"
                                         step="1"
                                         id={optionElementId}
-                                        class="LocationInputDialogOptionList_optionItem LocationInputDialogOptionList_textInputOptionItem"
+                                        class="dialog-text-box LocationInputDialogOptionList_optionItem LocationInputDialogOptionList_textInputOptionItem"
                                         data-optionid="chunkZ"
                                         data-optionvalue={0}
                                         data-optionvaluetype="number"
@@ -145,7 +145,7 @@ export function LocationInputDialog<O extends LocationInputPromptOptionItem>(pro
                                         type="number"
                                         step="1"
                                         id={optionElementId}
-                                        class="LocationInputDialogOptionList_optionItem LocationInputDialogOptionList_textInputOptionItem"
+                                        class="dialog-text-box LocationInputDialogOptionList_optionItem LocationInputDialogOptionList_textInputOptionItem"
                                         data-optionid="subchunkIndex"
                                         data-optionvalue={0}
                                         data-optionvaluetype="number"
@@ -168,7 +168,7 @@ export function LocationInputDialog<O extends LocationInputPromptOptionItem>(pro
                                         type="number"
                                         step="1"
                                         id={optionElementId}
-                                        class="LocationInputDialogOptionList_optionItem LocationInputDialogOptionList_textInputOptionItem"
+                                        class="dialog-text-box LocationInputDialogOptionList_optionItem LocationInputDialogOptionList_textInputOptionItem"
                                         data-optionid="x"
                                         data-optionvalue={0}
                                         data-optionvaluetype="number"
@@ -189,7 +189,7 @@ export function LocationInputDialog<O extends LocationInputPromptOptionItem>(pro
                                         type="number"
                                         step="1"
                                         id={optionElementId}
-                                        class="LocationInputDialogOptionList_optionItem LocationInputDialogOptionList_textInputOptionItem"
+                                        class="dialog-text-box LocationInputDialogOptionList_optionItem LocationInputDialogOptionList_textInputOptionItem"
                                         data-optionid="y"
                                         data-optionvalue={0}
                                         data-optionvaluetype="number"
@@ -210,7 +210,7 @@ export function LocationInputDialog<O extends LocationInputPromptOptionItem>(pro
                                         type="number"
                                         step="1"
                                         id={optionElementId}
-                                        class="LocationInputDialogOptionList_optionItem LocationInputDialogOptionList_textInputOptionItem"
+                                        class="dialog-text-box LocationInputDialogOptionList_optionItem LocationInputDialogOptionList_textInputOptionItem"
                                         data-optionid="z"
                                         data-optionvalue={0}
                                         data-optionvaluetype="number"

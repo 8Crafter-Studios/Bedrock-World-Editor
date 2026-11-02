@@ -143,7 +143,7 @@ export function DBKeyCreationDialog<O extends DBKeyCreationPromptOptionItemType>
                                             type="number"
                                             step="1"
                                             id={optionElementId}
-                                            class="DBKeyCreationDialogOptionList_optionItem DBKeyCreationDialogOptionList_textInputOptionItem"
+                                            class="dialog-text-box DBKeyCreationDialogOptionList_optionItem DBKeyCreationDialogOptionList_textInputOptionItem"
                                             data-optionid="chunkX"
                                             data-optionvalue={0}
                                             data-optionvaluetype="number"
@@ -164,7 +164,7 @@ export function DBKeyCreationDialog<O extends DBKeyCreationPromptOptionItemType>
                                             type="number"
                                             step="1"
                                             id={optionElementId}
-                                            class="DBKeyCreationDialogOptionList_optionItem DBKeyCreationDialogOptionList_textInputOptionItem"
+                                            class="dialog-text-box DBKeyCreationDialogOptionList_optionItem DBKeyCreationDialogOptionList_textInputOptionItem"
                                             data-optionid="chunkZ"
                                             data-optionvalue={0}
                                             data-optionvaluetype="number"
@@ -185,7 +185,7 @@ export function DBKeyCreationDialog<O extends DBKeyCreationPromptOptionItemType>
                                             type="number"
                                             step="1"
                                             id={optionElementId}
-                                            class="DBKeyCreationDialogOptionList_optionItem DBKeyCreationDialogOptionList_textInputOptionItem"
+                                            class="dialog-text-box DBKeyCreationDialogOptionList_optionItem DBKeyCreationDialogOptionList_textInputOptionItem"
                                             data-optionid="subchunkIndex"
                                             data-optionvalue={0}
                                             data-optionvaluetype="number"

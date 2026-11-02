@@ -228,6 +228,9 @@ img {
     --generic-button-selected-hover-text-color: hsl(0, 0%, 100%);
     --generic-button-selected-pressed-bg-color: hsl(0, 0%, 60%);
     --generic-button-selected-pressed-text-color: hsl(0, 0%, 100%);
+    --text-box-1-bg-color: hsl(0, 0%, 13%);
+    --text-box-1-border-color: hsl(0, 0%, 25%);
+    --text-box-1-text-color: var(--text-color);
 }
 
 .light_theme {
@@ -280,6 +283,9 @@ img {
     --generic-button-selected-hover-text-color: hsl(0, 0%, 0%);
     --generic-button-selected-pressed-bg-color: hsl(0, 0%, 100%);
     --generic-button-selected-pressed-text-color: hsl(0, 0%, 0%);
+    --text-box-1-bg-color: hsl(0, 0%, 87%);
+    --text-box-1-border-color: hsl(0, 0%, 65%);
+    --text-box-1-text-color: var(--text-color);
 }
 
 only_visible_dark_theme {
@@ -1685,6 +1691,34 @@ select.search-mode-dropdown:open::picker-icon {
 .LocationInputDialogOptionList_optionItemGroup {
     display: flex;
     flex-direction: column;
+}
+
+.dialog-text-box {
+    background-color: var(--text-box-1-bg-color);
+    color: var(--text-box-1-text-color);
+    border: 1px solid var(--text-box-1-border-color);
+    border-radius: 5px;
+    padding: 5px;
+}
+
+.dialog-text-box:hover {
+    border: 1px solid hsl(152, 100%, 30%);
+}
+
+.dialog-text-box:focus {
+    border: 1px solid #0f8;
+}
+
+.dialog-text-box:focus:hover {
+    border: 1px solid hsl(152, 100%, 70%);
+}
+
+.dialog-text-box:active {
+    border: 1px solid hsl(152, 100%, 70%);
+}
+
+.dialog-text-box:active:hover {
+    border: 1px solid hsl(152, 100%, 80%);
 }
 
 .szh-menu-container {

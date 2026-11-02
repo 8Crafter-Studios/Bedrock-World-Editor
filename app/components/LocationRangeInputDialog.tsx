@@ -206,7 +206,7 @@ export function LocationRangeInputDialog<O extends LocationRangeInputPromptOptio
                                             type="number"
                                             step="1"
                                             id={optionElementId}
-                                            class="LocationRangeInputDialogOptionList_optionItem LocationRangeInputDialogOptionList_optionItem_from LocationRangeInputDialogOptionList_textInputOptionItem"
+                                            class="dialog-text-box LocationRangeInputDialogOptionList_optionItem LocationRangeInputDialogOptionList_optionItem_from LocationRangeInputDialogOptionList_textInputOptionItem"
                                             data-optionid="chunkX"
                                             data-optionvalue={0}
                                             data-optionvaluetype="number"
@@ -227,7 +227,7 @@ export function LocationRangeInputDialog<O extends LocationRangeInputPromptOptio
                                             type="number"
                                             step="1"
                                             id={optionElementId}
-                                            class="LocationRangeInputDialogOptionList_optionItem LocationRangeInputDialogOptionList_optionItem_from LocationRangeInputDialogOptionList_textInputOptionItem"
+                                            class="dialog-text-box LocationRangeInputDialogOptionList_optionItem LocationRangeInputDialogOptionList_optionItem_from LocationRangeInputDialogOptionList_textInputOptionItem"
                                             data-optionid="chunkZ"
                                             data-optionvalue={0}
                                             data-optionvaluetype="number"
@@ -248,7 +248,7 @@ export function LocationRangeInputDialog<O extends LocationRangeInputPromptOptio
                                             type="number"
                                             step="1"
                                             id={optionElementId}
-                                            class="LocationRangeInputDialogOptionList_optionItem LocationRangeInputDialogOptionList_optionItem_from LocationRangeInputDialogOptionList_textInputOptionItem"
+                                            class="dialog-text-box LocationRangeInputDialogOptionList_optionItem LocationRangeInputDialogOptionList_optionItem_from LocationRangeInputDialogOptionList_textInputOptionItem"
                                             data-optionid="subchunkIndex"
                                             data-optionvalue={0}
                                             data-optionvaluetype="number"
@@ -271,7 +271,7 @@ export function LocationRangeInputDialog<O extends LocationRangeInputPromptOptio
                                             type="number"
                                             step="1"
                                             id={optionElementId}
-                                            class="LocationRangeInputDialogOptionList_optionItem LocationRangeInputDialogOptionList_optionItem_from LocationRangeInputDialogOptionList_textInputOptionItem"
+                                            class="dialog-text-box LocationRangeInputDialogOptionList_optionItem LocationRangeInputDialogOptionList_optionItem_from LocationRangeInputDialogOptionList_textInputOptionItem"
                                             data-optionid="x"
                                             data-optionvalue={0}
                                             data-optionvaluetype="number"
@@ -292,7 +292,7 @@ export function LocationRangeInputDialog<O extends LocationRangeInputPromptOptio
                                             type="number"
                                             step="1"
                                             id={optionElementId}
-                                            class="LocationRangeInputDialogOptionList_optionItem LocationRangeInputDialogOptionList_optionItem_from LocationRangeInputDialogOptionList_textInputOptionItem"
+                                            class="dialog-text-box LocationRangeInputDialogOptionList_optionItem LocationRangeInputDialogOptionList_optionItem_from LocationRangeInputDialogOptionList_textInputOptionItem"
                                             data-optionid="y"
                                             data-optionvalue={0}
                                             data-optionvaluetype="number"
@@ -313,7 +313,7 @@ export function LocationRangeInputDialog<O extends LocationRangeInputPromptOptio
                                             type="number"
                                             step="1"
                                             id={optionElementId}
-                                            class="LocationRangeInputDialogOptionList_optionItem LocationRangeInputDialogOptionList_optionItem_from LocationRangeInputDialogOptionList_textInputOptionItem"
+                                            class="dialog-text-box LocationRangeInputDialogOptionList_optionItem LocationRangeInputDialogOptionList_optionItem_from LocationRangeInputDialogOptionList_textInputOptionItem"
                                             data-optionid="z"
                                             data-optionvalue={0}
                                             data-optionvaluetype="number"
@@ -349,7 +349,7 @@ export function LocationRangeInputDialog<O extends LocationRangeInputPromptOptio
                                             type="number"
                                             step="1"
                                             id={optionElementId}
-                                            class="LocationRangeInputDialogOptionList_optionItem LocationRangeInputDialogOptionList_optionItem_to LocationRangeInputDialogOptionList_textInputOptionItem"
+                                            class="dialog-text-box LocationRangeInputDialogOptionList_optionItem LocationRangeInputDialogOptionList_optionItem_to LocationRangeInputDialogOptionList_textInputOptionItem"
                                             data-optionid="chunkX"
                                             data-optionvalue={0}
                                             data-optionvaluetype="number"
@@ -370,7 +370,7 @@ export function LocationRangeInputDialog<O extends LocationRangeInputPromptOptio
                                             type="number"
                                             step="1"
                                             id={optionElementId}
-                                            class="LocationRangeInputDialogOptionList_optionItem LocationRangeInputDialogOptionList_optionItem_to LocationRangeInputDialogOptionList_textInputOptionItem"
+                                            class="dialog-text-box LocationRangeInputDialogOptionList_optionItem LocationRangeInputDialogOptionList_optionItem_to LocationRangeInputDialogOptionList_textInputOptionItem"
                                             data-optionid="chunkZ"
                                             data-optionvalue={0}
                                             data-optionvaluetype="number"
@@ -391,7 +391,7 @@ export function LocationRangeInputDialog<O extends LocationRangeInputPromptOptio
                                             type="number"
                                             step="1"
                                             id={optionElementId}
-                                            class="LocationRangeInputDialogOptionList_optionItem LocationRangeInputDialogOptionList_optionItem_to LocationRangeInputDialogOptionList_textInputOptionItem"
+                                            class="dialog-text-box LocationRangeInputDialogOptionList_optionItem LocationRangeInputDialogOptionList_optionItem_to LocationRangeInputDialogOptionList_textInputOptionItem"
                                             data-optionid="subchunkIndex"
                                             data-optionvalue={0}
                                             data-optionvaluetype="number"
@@ -414,7 +414,7 @@ export function LocationRangeInputDialog<O extends LocationRangeInputPromptOptio
                                             type="number"
                                             step="1"
                                             id={optionElementId}
-                                            class="LocationRangeInputDialogOptionList_optionItem LocationRangeInputDialogOptionList_optionItem_to LocationRangeInputDialogOptionList_textInputOptionItem"
+                                            class="dialog-text-box LocationRangeInputDialogOptionList_optionItem LocationRangeInputDialogOptionList_optionItem_to LocationRangeInputDialogOptionList_textInputOptionItem"
                                             data-optionid="x"
                                             data-optionvalue={0}
                                             data-optionvaluetype="number"
@@ -435,7 +435,7 @@ export function LocationRangeInputDialog<O extends LocationRangeInputPromptOptio
                                             type="number"
                                             step="1"
                                             id={optionElementId}
-                                            class="LocationRangeInputDialogOptionList_optionItem LocationRangeInputDialogOptionList_optionItem_to LocationRangeInputDialogOptionList_textInputOptionItem"
+                                            class="dialog-text-box LocationRangeInputDialogOptionList_optionItem LocationRangeInputDialogOptionList_optionItem_to LocationRangeInputDialogOptionList_textInputOptionItem"
                                             data-optionid="y"
                                             data-optionvalue={0}
                                             data-optionvaluetype="number"
@@ -456,7 +456,7 @@ export function LocationRangeInputDialog<O extends LocationRangeInputPromptOptio
                                             type="number"
                                             step="1"
                                             id={optionElementId}
-                                            class="LocationRangeInputDialogOptionList_optionItem LocationRangeInputDialogOptionList_optionItem_to LocationRangeInputDialogOptionList_textInputOptionItem"
+                                            class="dialog-text-box LocationRangeInputDialogOptionList_optionItem LocationRangeInputDialogOptionList_optionItem_to LocationRangeInputDialogOptionList_textInputOptionItem"
                                             data-optionid="z"
                                             data-optionvalue={0}
                                             data-optionvaluetype="number"
