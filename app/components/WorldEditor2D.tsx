@@ -971,6 +971,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     // }
 
     let levelDatLoaded: boolean | "loading" | "error" | "no_data" = false;
+    let levelDatLoadCompletedCallbackCalledWhileReady: boolean = false;
     let levelDatStorageVersion: number | null | undefined;
     let isOldWorld: boolean | null | undefined;
     let worldSpawn: DimensionLocation | null | undefined;
@@ -1117,10 +1118,22 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     }
     function onLevelDatDataChanged(): void {
         if (!engineRef.current?.isReady) return;
+        levelDatLoadCompletedCallbackCalledWhileReady = true;
         if (levelDatLoaded === true) {
             drawWorldBorder();
             // For versions prior to Pocket Edition v0.9.0 Alpha.
             if ((levelDatStorageVersion ?? NaN) <= 3 || existsSync(path.join(props.tab.tempPath ?? props.tab.path, "importedchunks.dat"))) {
+                if (chunksDat !== "loading") {
+                    chunksDat = "loading";
+                    void loadChunksDat();
+                }
+            } else chunksDat = false;
+        } else if (levelDatLoaded === "error" || levelDatLoaded === "no_data") {
+            // For versions prior to Pocket Edition v0.9.0 Alpha.
+            if (
+                existsSync(path.join(props.tab.tempPath ?? props.tab.path, "chunks.dat")) ||
+                existsSync(path.join(props.tab.tempPath ?? props.tab.path, "importedchunks.dat"))
+            ) {
                 if (chunksDat !== "loading") {
                     chunksDat = "loading";
                     void loadChunksDat();
@@ -1174,7 +1187,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     useEffect((): (() => void) => {
         const widgetID: string = `WorldEditor2D_${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
         if (engineRef.current?.isReady) {
-            // if (levelDatLoaded === true) onLevelDatDataChanged(); // REVIEW: Maybe this shouldn't have been commented out?
+            if (levelDatLoaded === true && !levelDatLoadCompletedCallbackCalledWhileReady) onLevelDatDataChanged();
             // updateMap();
             // stopCurrentInteraction = void function a(): void {};
             stopCurrentInteraction = void function stopCurrentInteractionCallback(): void {

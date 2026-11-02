@@ -39,6 +39,8 @@
 -   Fixed a bug where the "Entities" left sidebar tab would show `Unknown Dimension` instead of `Dimension Unavailable` when the dimension cannot be displayed because the world is too large so it isn't checking it to improve performance.
 -   Fixed a bug where in some cases the Prismarine-NBT editor would use multiple separate schemas at once.
 -   The icons of some options in the "Open..." menu on the start screen are now displayed in black instead of white when in light mode, so that they are visible in light mode.
+-   Chunks with no data no longer display as loading indefinitely on the 2D world map when the `level.dat` and `level.dat_old` files are both corrupted or missing.
+-   `chunks.dat` chunks no longer display as loading indefinitely on the 2D world map when the `level.dat` and `level.dat_old` files are both corrupted or missing.
 
 # v1.0.0-beta.38
 
