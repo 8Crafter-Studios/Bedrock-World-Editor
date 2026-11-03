@@ -4,6 +4,12 @@
 
 -   Windows builds are now code signed. -->
 
+# v1.0.0-beta.40
+
+## Critical Fixes
+
+-   Fixed a bug where the `Import Structures` and `Import Structure Folders` buttons in the "Structures" left sidebar tab were unable to import `format_version` `2` mcstructure files.
+
 # v1.0.0-beta.39
 
 ## Critical Fixes

@@ -893,7 +893,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                                 if (!structure) return false;
                                                 if (structure.type !== "compound") return false;
                                                 if (typeof structure.value !== "object") return false;
-                                                if (structure.value.format_version?.value !== 1) return false;
+                                                if (structure.value.format_version?.value !== 1 && structure.value.format_version?.value !== 2) return false;
                                                 if (structure.value.size?.type !== "list") return false;
                                                 if (structure.value.size.value.value?.length !== 3) return false;
                                                 if (!structure.value.structure?.value) return false;
@@ -1019,7 +1019,7 @@ async function getStructuresTabContents(tab: TabManagerTab, signal: AbortSignal)
                                                             if (!structure) return false;
                                                             if (structure.type !== "compound") return false;
                                                             if (typeof structure.value !== "object") return false;
-                                                            if (structure.value.format_version?.value !== 1) return false;
+                                                            if (structure.value.format_version?.value !== 1 && structure.value.format_version?.value !== 2) return false;
                                                             if (structure.value.size?.type !== "list") return false;
                                                             if (structure.value.size.value.value?.length !== 3) return false;
                                                             if (!structure.value.structure?.value) return false;
