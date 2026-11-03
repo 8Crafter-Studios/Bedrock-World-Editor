@@ -16,14 +16,14 @@ jobs:
                 # os: [ubuntu-latest, macos-latest, windows-latest]
                 # arch: [x64, ia32]
                 include:
-                    - os: ubuntu-latest
+                    - os: ubuntu-24.04
                       arch: x64
                     # TODO: Try this again, and try to fix it.
                     # - os: ubuntu-latest # BUG: This one doesn't work.
                     #   arch: ia32
-                    - os: ubuntu-latest
+                    - os: ubuntu-24.04
                       arch: arm64
-                    - os: ubuntu-latest
+                    - os: ubuntu-24.04
                       arch: armv7l
                     - os: macos-latest
                       arch: x64
