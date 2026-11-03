@@ -10,6 +10,11 @@
 
 -   Fixed a bug where the `Import Structures` and `Import Structure Folders` buttons in the "Structures" left sidebar tab were unable to import `format_version` `2` mcstructure files.
 
+## Fixes
+
+-   Fixed a bug where the `structure.palette.default` field of the `StructureTemplate` and `StructureTemplateRaw` NBT schemas was marked as required (it isn't present when saving blocks is disabled).
+-   Fixed the types of the items in the `intArray`s in the `structure.block_indices` list field of the `StructureTemplate` and `StructureTemplateRaw` NBT schemas when the schemas are converted to JSON schemas.
+
 # v1.0.0-beta.39
 
 ## Critical Fixes
