@@ -337,7 +337,8 @@ const biomeColorMap: Record<keyof (typeof BiomeData)["int_map"], `rgb(${number},
     "minecraft:dappled_forest": "rgb(154, 63, 53)",
     "minecraft:dripstone_caves": "rgb(193, 165, 143)",
     "minecraft:lush_caves": "rgb(223, 150, 52)",
-    "minecraft:deep_dark": "rgb(0, 0, 0)",
+    // "minecraft:deep_dark": "rgb(0, 0, 0)",
+    "minecraft:deep_dark": "rgb(5, 10, 10)",
     "minecraft:sulfur_caves": "rgb(200, 200, 40)",
     "minecraft:extreme_hills": "rgb(96, 96, 96)",
     "minecraft:extreme_hills_plus_trees": "rgb(34, 85, 28)",
@@ -3847,15 +3848,23 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
 
                                 // const a = (packedPixel & 0xff000000) >>> 24;
 
-                                let r: number = (src[si]! * shade) | 0;
+                                // if (globalThis.heightMapModeTest === 1) {
+                                const s0 = src[si]!;
+                                const s1 = src[si + 1]!;
+                                const s2 = src[si + 2]!;
+                                const maxVal = Math.max(s0, s1, s2);
+                                const n1 = shade - 1;
+                                const n2 = Math.abs(shade - 1);
+
+                                let r: number = (s0 + n1 * (s0 + n2 * (maxVal - s0))) | 0;
                                 if (r > 255) r = 255;
                                 else if (r < 0) r = 0;
 
-                                let g: number = (src[si + 1]! * shade) | 0;
+                                let g: number = (s1 + n1 * (s1 + n2 * (maxVal - s1))) | 0;
                                 if (g > 255) g = 255;
                                 else if (g < 0) g = 0;
 
-                                let b: number = (src[si + 2]! * shade) | 0;
+                                let b: number = (s2 + n1 * (s2 + n2 * (maxVal - s2))) | 0;
                                 if (b > 255) b = 255;
                                 else if (b < 0) b = 0;
 
@@ -3865,6 +3874,48 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 // else if (a < 0) a = 0;
 
                                 preShade32![sir] = (a << 24) | (b << 16) | (g << 8) | r;
+                                // } else if (globalThis.heightMapModeTest === 2) {
+                                //     let maxVal = Math.max(src[si]!, src[si + 1]!, src[si + 2]!);
+                                //     let minVal = Math.min(src[si]!, src[si + 1]!, src[si + 2]!);
+                                //     const modifier = (v: number): number => (shade * 128 - 128) * ((maxVal - 128) / 128 + 1);
+                                //     let r: number = (src[si]! + modifier(src[si]!)) | 0;
+                                //     if (r > 255) r = 255;
+                                //     else if (r < 0) r = 0;
+
+                                //     let g: number = (src[si + 1]! + modifier(src[si + 1]!)) | 0;
+                                //     if (g > 255) g = 255;
+                                //     else if (g < 0) g = 0;
+
+                                //     let b: number = (src[si + 2]! + modifier(src[si + 2]!)) | 0;
+                                //     if (b > 255) b = 255;
+                                //     else if (b < 0) b = 0;
+
+                                //     const a: number = src[si + 3]!;
+                                //     // let a: number = (src[si + 3]! * shade) | 0;
+                                //     // if (a > 255) a = 255;
+                                //     // else if (a < 0) a = 0;
+
+                                //     preShade32![sir] = (a << 24) | (b << 16) | (g << 8) | r;
+                                // } else {
+                                //     let r: number = (src[si]! * shade) | 0;
+                                //     if (r > 255) r = 255;
+                                //     else if (r < 0) r = 0;
+
+                                //     let g: number = (src[si + 1]! * shade) | 0;
+                                //     if (g > 255) g = 255;
+                                //     else if (g < 0) g = 0;
+
+                                //     let b: number = (src[si + 2]! * shade) | 0;
+                                //     if (b > 255) b = 255;
+                                //     else if (b < 0) b = 0;
+
+                                //     const a: number = src[si + 3]!;
+                                //     // let a: number = (src[si + 3]! * shade) | 0;
+                                //     // if (a > 255) a = 255;
+                                //     // else if (a < 0) a = 0;
+
+                                //     preShade32![sir] = (a << 24) | (b << 16) | (g << 8) | r;
+                                // }
                             }
                         } else if (src32) {
                             // TODO
@@ -3872,17 +3923,36 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             for (let sir = 0; sir < 256; sir++) {
                                 const shade = heightMapTintCache![sir]!;
 
-                                let r: number = (HEIGHTMAP_RENDER_TYPE_BASE_COLOR[0] * shade) | 0;
+                                const s0 = HEIGHTMAP_RENDER_TYPE_BASE_COLOR[0];
+                                const s1 = HEIGHTMAP_RENDER_TYPE_BASE_COLOR[1];
+                                const s2 = HEIGHTMAP_RENDER_TYPE_BASE_COLOR[2];
+                                const maxVal = Math.max(s0, s1, s2);
+                                const n1 = shade - 1;
+                                const n2 = Math.abs(shade - 1);
+
+                                let r: number = (s0 + n1 * (s0 + n2 * (maxVal - s0))) | 0;
                                 if (r > 255) r = 255;
                                 else if (r < 0) r = 0;
 
-                                let g: number = (HEIGHTMAP_RENDER_TYPE_BASE_COLOR[1] * shade) | 0;
+                                let g: number = (s1 + n1 * (s1 + n2 * (maxVal - s1))) | 0;
                                 if (g > 255) g = 255;
                                 else if (g < 0) g = 0;
 
-                                let b: number = (HEIGHTMAP_RENDER_TYPE_BASE_COLOR[2] * shade) | 0;
+                                let b: number = (s2 + n1 * (s2 + n2 * (maxVal - s2))) | 0;
                                 if (b > 255) b = 255;
                                 else if (b < 0) b = 0;
+
+                                // let r: number = (HEIGHTMAP_RENDER_TYPE_BASE_COLOR[0] * shade) | 0;
+                                // if (r > 255) r = 255;
+                                // else if (r < 0) r = 0;
+
+                                // let g: number = (HEIGHTMAP_RENDER_TYPE_BASE_COLOR[1] * shade) | 0;
+                                // if (g > 255) g = 255;
+                                // else if (g < 0) g = 0;
+
+                                // let b: number = (HEIGHTMAP_RENDER_TYPE_BASE_COLOR[2] * shade) | 0;
+                                // if (b > 255) b = 255;
+                                // else if (b < 0) b = 0;
 
                                 const a: number = HEIGHTMAP_RENDER_TYPE_BASE_COLOR[3];
                                 // let a: number = (src[si + 3]! * shade) | 0;
@@ -3915,17 +3985,36 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             } else if (heightMapEnabled) {
                                 const shade = heightMapEnabled ? heightMapTintCache![sir]! : 1;
 
-                                let r: number = (src![si]! * shade) | 0;
+                                const s0 = src![si]!;
+                                const s1 = src![si + 1]!;
+                                const s2 = src![si + 2]!;
+                                const maxVal = Math.max(s0, s1, s2);
+                                const n1 = shade - 1;
+                                const n2 = Math.abs(shade - 1);
+
+                                let r: number = (s0 + n1 * (s0 + n2 * (maxVal - s0))) | 0;
                                 if (r > 255) r = 255;
                                 else if (r < 0) r = 0;
 
-                                let g: number = (src![si + 1]! * shade) | 0;
+                                let g: number = (s1 + n1 * (s1 + n2 * (maxVal - s1))) | 0;
                                 if (g > 255) g = 255;
                                 else if (g < 0) g = 0;
 
-                                let b: number = (src![si + 2]! * shade) | 0;
+                                let b: number = (s2 + n1 * (s2 + n2 * (maxVal - s2))) | 0;
                                 if (b > 255) b = 255;
                                 else if (b < 0) b = 0;
+
+                                // let r: number = (src![si]! * shade) | 0;
+                                // if (r > 255) r = 255;
+                                // else if (r < 0) r = 0;
+
+                                // let g: number = (src![si + 1]! * shade) | 0;
+                                // if (g > 255) g = 255;
+                                // else if (g < 0) g = 0;
+
+                                // let b: number = (src![si + 2]! * shade) | 0;
+                                // if (b > 255) b = 255;
+                                // else if (b < 0) b = 0;
 
                                 const a: number = src![si + 3]!;
                                 // let a: number = (src[si + 3]! * shade) | 0;
@@ -5498,6 +5587,23 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                         <MenuDivider />
                     </>
                 :   null}
+
+                <>
+                    {/* TODO */}
+                    <SubMenu label="Utilities..." itemProps={{ hidden: true }}>
+                        <MenuItem
+                            title="Sets the entire chunk to a chosen biome"
+                            onClick={(): void => {
+                                // TODO
+                            }}
+                            hidden
+                        >
+                            Set biome for entire chunk
+                        </MenuItem>
+                        {/* IDEA: Maybe add a create chunk ban option, or maybe have that burried in a deeper submenu. */}
+                    </SubMenu>
+                    <MenuDivider hidden />
+                </>
 
                 <MenuItem
                     title="Reload the data for this chunk"

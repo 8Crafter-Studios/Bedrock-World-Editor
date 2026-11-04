@@ -1030,6 +1030,7 @@ async function getEntitiesTabContents(tab: TabManagerTab, signal: AbortSignal): 
     return <Contents />;
 }
 
+// OPTIMIZE: Maybe when in async mode have this use the entity's location to only need to check specific chunks in every dimension, and cache already discovered entity mappings.
 async function getEntityDimensionMappings(
     tab: TabManagerTab,
     dimensionNameIdTable?: NBTSchemas.NBTSchemaTypes.DimensionNameIdTable

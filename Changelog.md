@@ -10,6 +10,11 @@
 
 -   Fixed a bug where the `Import Structures` and `Import Structure Folders` buttons in the "Structures" left sidebar tab were unable to import `format_version` `2` mcstructure files.
 
+## Changes
+
+-   Major heightmap rendering improvements. One major benefit of this is that brightening tints on full brightness and saturation colors are now visible, for example on a river. These improvements should massively enhance heightmap visibility and consistency.
+-   Changed the color on the 2D world map for the deep dark biome from `rgb(0, 0, 0)` to `rgb(5, 10, 10)` to make the heightmap visible on it.
+
 ## Fixes
 
 -   Fixed a bug where the `structure.palette.default` field of the `StructureTemplate` and `StructureTemplateRaw` NBT schemas was marked as required (it isn't present when saving blocks is disabled).
