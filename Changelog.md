@@ -9,16 +9,35 @@
 ## Critical Fixes
 
 -   Fixed a bug where the `Import Structures` and `Import Structure Folders` buttons in the "Structures" left sidebar tab were unable to import `format_version` `2` mcstructure files.
+-   Fixed bugs where the SNBT editor could not parse single quoted strings or keys that had escaped single quotes or escaped double quotes, or parse double quoted strings or keys that had escaped single quotes or escaped double quotes.
+
+## Additions
+
+-   Added support for `NaN`, `Infinity`, and `-Infinity` for float and double values in the SNBT editor.
 
 ## Changes
 
 -   Major heightmap rendering improvements. One major benefit of this is that brightening tints on full brightness and saturation colors are now visible, for example on a river. These improvements should massively enhance heightmap visibility and consistency.
 -   Changed the color on the 2D world map for the deep dark biome from `rgb(0, 0, 0)` to `rgb(5, 10, 10)` to make the heightmap visible on it.
+-   The SNBT editor now quotes all string values.
+-   The string value quoting logic of the SNBT editor now matches the format specified on the [Minecraft Wiki](https://minecraft.wiki/w/NBT_format#Conversion_to_SNBT).
+-   The `Data3D` parser/serializer can now read data that only has empty subchunks, the previous check has been removed since the game will actually write all subchunks as empty subchunks to `Data3D` if the `Data3D` data was previously corrupted.
+-   The `0x` and `0b` number base prefixes are now case sensitive in the SNBT editor.
 
 ## Fixes
 
 -   Fixed a bug where the `structure.palette.default` field of the `StructureTemplate` and `StructureTemplateRaw` NBT schemas was marked as required (it isn't present when saving blocks is disabled).
 -   Fixed the types of the items in the `intArray`s in the `structure.block_indices` list field of the `StructureTemplate` and `StructureTemplateRaw` NBT schemas when the schemas are converted to JSON schemas.
+-   Fixed a bug where the `biomes.palette` field of the `Data3D` NBT schemas had the `minItems` and `maxItems` set to `4096` instead of being undefined.
+-   Fixed a bug where the SNBT editor would parse single quoted strings or keys that had an even number of unescaped single quotes in them as if they were escaped instead of throwing an error.
+-   The SNBT editor now allows `+` or `-` prefixes on binary base numbers (ex. `-0b1001`).
+-   The SNBT editor no longer allows decimal values in bytes, shorts, ints, and longs.
+-   The SNBT editor no longer allows exponential notation on bytes, shorts, ints, and longs.
+-   The SNBT editor no longer allows the `0x` and `0b` number base prefixes in floats and doubles.
+-   The SNBT editor no longer allows lone `+`, `-`, or `.` characters as numbers.
+-   The SNBT editor no longer allows lone `+.` or `-.` as numbers.
+-   The SNBT editor no longer allows exponential notation numbers that don't have any digits before the `e`.
+-   The SNBT editor no longer quotes keys with a name of `true` or `false`.
 
 # v1.0.0-beta.39
 

@@ -941,7 +941,13 @@ namespace exports {
      * The sub-paths of world folders that should never be copied.
      */
     // CAUTION: Currently some of the functions that use this only have handling for folder names here, not deeper paths.
-    const WORLD_FOLDER_SUBPATHS_TO_NEVER_COPY: readonly string[] = [".git", "behavior_packs", "resource_packs"];
+    const WORLD_FOLDER_SUBPATHS_TO_NEVER_COPY: readonly string[] = [
+        ".git",
+        "behavior_packs",
+        "resource_packs",
+        // The `lamium` folder contains data for the Lamium LeviMC mod for LeviLauncher, it can contain world map data which is spead across many files and can cause saving/copying to take a while.
+        "lamium",
+    ];
     const WORLD_FOLDER_SUBPATHS_TO_NEVER_COPY_APPLICABLE_MODES: readonly TabManagerTabMode[] = [TabManagerTabMode.CopyUntilSave];
 
     /**

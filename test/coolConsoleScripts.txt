@@ -76,3 +76,32 @@ for (let x = 0; x < 20; x++) {
     }
 }
 a;
+
+
+// TEMP
+
+const mcbe = require("mcbe-leveldb");
+for (const key of tabManager.selectedTab.cachedDBKeys.Data3D) {
+    try {
+    const rawData = await tabManager.selectedTab.db.get(key);
+    const data = await mcbe.entryContentTypeToFormatMap.Data3D.parse(rawData);
+    data.value.biomes.value.value = data.value.biomes.value.value.map(v=>(v.values.value.value.length === 0 ? v : {
+                    "values": {
+                        "type": "list",
+                        "value": {
+                            "type": "int",
+                            "value": new Array(4096).fill(0),
+                        },
+                    },
+        "palette": {
+                        "type": "list",
+                        "value": {
+                            "type": "int",
+                            "value": [
+                                8
+                            ]
+                        }
+                    }}));
+    await tabManager.selectedTab.db.put(key, await mcbe.entryContentTypeToFormatMap.Data3D.serialize(data));
+    }catch(e){reportError(e)}
+}
