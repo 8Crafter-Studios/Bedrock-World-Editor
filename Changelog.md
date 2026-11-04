@@ -10,6 +10,11 @@
 
 -   Fixed a bug where the `Import Structures` and `Import Structure Folders` buttons in the "Structures" left sidebar tab were unable to import `format_version` `2` mcstructure files.
 
+## Additions
+
+-   Added Windows ARM64 and ARMv7l builds.
+-   Added a Linux ia32 build.
+
 ## Changes
 
 -   Major heightmap rendering improvements. One major benefit of this is that brightening tints on full brightness and saturation colors are now visible, for example on a river. These improvements should massively enhance heightmap visibility and consistency.
