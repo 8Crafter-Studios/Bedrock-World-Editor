@@ -342,6 +342,8 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                         }
                         <MenuDivider />
                         <SubMenu label="Export As...">
+                            {/* TODO: Move this to a separate function that TabBar can also access in order to display export options for file tabs. */}
+                            {/* OPTIMIZE: Replace the writeFileSync calls with await writeFile calls. */}
                             <MenuItem
                                 onClick={async (): Promise<void> => {
                                     tabDataStorageObject = props.tab.currentState.options.dataStorageObject;
