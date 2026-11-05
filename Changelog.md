@@ -24,9 +24,11 @@
 -   The string value quoting logic of the SNBT editor now matches the format specified on the [Minecraft Wiki](https://minecraft.wiki/w/NBT_format#Conversion_to_SNBT).
 -   The `Data3D` parser/serializer can now read data that only has empty subchunks, the previous check has been removed since the game will actually write all subchunks as empty subchunks to `Data3D` if the `Data3D` data was previously corrupted.
 -   The `0x` and `0b` number base prefixes are now case sensitive in the SNBT editor.
+-   Parentheses are now treated as brackets in the SNBT editor.
 
 ## Fixes
 
+-   Major fixes to the SNBT TextMate grammar (syntax highlighting).
 -   Fixed a bug where the `biomes.palette` field of the `Data3D` NBT schemas had the `minItems` and `maxItems` set to `4096` instead of being undefined.
 -   Fixed a bug where the SNBT editor would parse single quoted strings or keys that had an even number of unescaped single quotes in them as if they were escaped instead of throwing an error.
 -   The SNBT editor now allows `+` prefixes on numbers in typed arrays.
