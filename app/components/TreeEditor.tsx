@@ -2199,7 +2199,7 @@ export default class TreeEditor extends React.Component<
                             break;
                         case "number":
                             newValue =
-                                rawNewValue.toLowerCase() === "infinity" ? Infinity
+                                rawNewValue.toLowerCase() === "infinity" || rawNewValue.toLowerCase() === "+infinity" ? Infinity
                                 : rawNewValue.toLowerCase() === "-infinity" ? -Infinity
                                 : Number(rawNewValue);
                             if (isNaN(newValue) && rawNewValue.toLowerCase() !== "nan") {
