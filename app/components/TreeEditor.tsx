@@ -2198,11 +2198,32 @@ export default class TreeEditor extends React.Component<
                             }
                             break;
                         case "number":
-                            newValue = Number(rawNewValue);
-                            if (isNaN(newValue)) {
+                            newValue =
+                                rawNewValue.toLowerCase() === "infinity" ? Infinity
+                                : rawNewValue.toLowerCase() === "-infinity" ? -Infinity
+                                : Number(rawNewValue);
+                            if (isNaN(newValue) && rawNewValue.toLowerCase() !== "nan") {
                                 setTextDisplayErrorState(valueTextDisplayRef, "error");
                                 // TODO: Add a popup warning that they entered invalid input.
                                 console.error("Invalid number input, result is NaN.");
+                                return;
+                            }
+                            if (isNaN(newValue) && rawNewValue.toLowerCase() === "nan" && type !== "float" && type !== "double" && type !== "number") {
+                                setTextDisplayErrorState(valueTextDisplayRef, "error");
+                                // TODO: Add a popup warning that they entered invalid input.
+                                console.error(`Invalid number input, NaN is not supported for type ${type}.`);
+                                return;
+                            }
+                            if (newValue === Infinity && type !== "float" && type !== "double" && type !== "number") {
+                                setTextDisplayErrorState(valueTextDisplayRef, "error");
+                                // TODO: Add a popup warning that they entered invalid input.
+                                console.error(`Invalid number input, Infinity is not supported for type ${type}.`);
+                                return;
+                            }
+                            if (newValue === -Infinity && type !== "float" && type !== "double" && type !== "number") {
+                                setTextDisplayErrorState(valueTextDisplayRef, "error");
+                                // TODO: Add a popup warning that they entered invalid input.
+                                console.error(`Invalid number input, -Infinity is not supported for type ${type}.`);
                                 return;
                             }
                             break;
@@ -2738,7 +2759,8 @@ export default class TreeEditor extends React.Component<
                 case "int":
                 case "float":
                 case "double": {
-                    displayValue = ((value as NBT.Byte | NBT.Short | NBT.Int | NBT.Float | NBT.Double).value ?? value).toString();
+                    const primitiveValue: number = (value as NBT.Byte | NBT.Short | NBT.Int | NBT.Float | NBT.Double).value ?? value;
+                    displayValue = Object.is(primitiveValue, -0) ? "-0" : primitiveValue.toString();
                     break;
                 }
                 case "long": {

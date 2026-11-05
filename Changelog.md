@@ -4,21 +4,21 @@
 
 -   Windows builds are now code signed. -->
 
-# v1.0.0-beta.40
+# v1.0.0-beta.41
 
 ## Critical Fixes
 
--   Fixed a bug where the `Import Structures` and `Import Structure Folders` buttons in the "Structures" left sidebar tab were unable to import `format_version` `2` mcstructure files.
 -   Fixed bugs where the SNBT editor could not parse single quoted strings or keys that had escaped single quotes or escaped double quotes, or parse double quoted strings or keys that had escaped single quotes or escaped double quotes.
 
 ## Additions
 
 -   Added support for `NaN`, `Infinity`, and `-Infinity` for float and double values in the SNBT editor.
+-   Added support for `NaN` for float and double values in the Node editor.
+-   The Node editor now allows you to input `Infinity` and `-Infinity` case-insensitively for float and double values.
+-   The Node editor now displays `-0` float and double values as `-0` instead of `0`.
 
 ## Changes
 
--   Major heightmap rendering improvements. One major benefit of this is that brightening tints on full brightness and saturation colors are now visible, for example on a river. These improvements should massively enhance heightmap visibility and consistency.
--   Changed the color on the 2D world map for the deep dark biome from `rgb(0, 0, 0)` to `rgb(5, 10, 10)` to make the heightmap visible on it.
 -   The SNBT editor now quotes all string values.
 -   The string value quoting logic of the SNBT editor now matches the format specified on the [Minecraft Wiki](https://minecraft.wiki/w/NBT_format#Conversion_to_SNBT).
 -   The `Data3D` parser/serializer can now read data that only has empty subchunks, the previous check has been removed since the game will actually write all subchunks as empty subchunks to `Data3D` if the `Data3D` data was previously corrupted.
@@ -26,8 +26,6 @@
 
 ## Fixes
 
--   Fixed a bug where the `structure.palette.default` field of the `StructureTemplate` and `StructureTemplateRaw` NBT schemas was marked as required (it isn't present when saving blocks is disabled).
--   Fixed the types of the items in the `intArray`s in the `structure.block_indices` list field of the `StructureTemplate` and `StructureTemplateRaw` NBT schemas when the schemas are converted to JSON schemas.
 -   Fixed a bug where the `biomes.palette` field of the `Data3D` NBT schemas had the `minItems` and `maxItems` set to `4096` instead of being undefined.
 -   Fixed a bug where the SNBT editor would parse single quoted strings or keys that had an even number of unescaped single quotes in them as if they were escaped instead of throwing an error.
 -   The SNBT editor now allows `+` or `-` prefixes on binary base numbers (ex. `-0b1001`).
@@ -38,6 +36,23 @@
 -   The SNBT editor no longer allows lone `+.` or `-.` as numbers.
 -   The SNBT editor no longer allows exponential notation numbers that don't have any digits before the `e`.
 -   The SNBT editor no longer quotes keys with a name of `true` or `false`.
+-   The Node editor no longer allows you to input `Infinity` or `-Infinity` for byte, short, int, and long values.
+
+# v1.0.0-beta.40
+
+## Critical Fixes
+
+-   Fixed a bug where the `Import Structures` and `Import Structure Folders` buttons in the "Structures" left sidebar tab were unable to import `format_version` `2` mcstructure files.
+
+## Changes
+
+-   Major heightmap rendering improvements. One major benefit of this is that brightening tints on full brightness and saturation colors are now visible, for example on a river. These improvements should massively enhance heightmap visibility and consistency.
+-   Changed the color on the 2D world map for the deep dark biome from `rgb(0, 0, 0)` to `rgb(5, 10, 10)` to make the heightmap visible on it.
+
+## Fixes
+
+-   Fixed a bug where the `structure.palette.default` field of the `StructureTemplate` and `StructureTemplateRaw` NBT schemas was marked as required (it isn't present when saving blocks is disabled).
+-   Fixed the types of the items in the `intArray`s in the `structure.block_indices` list field of the `StructureTemplate` and `StructureTemplateRaw` NBT schemas when the schemas are converted to JSON schemas.
 
 # v1.0.0-beta.39
 
@@ -45,7 +60,7 @@
 
 -   Fixed a bug where arrays nested directly inside of lists could crash the Node editor.
 -   The Prismarine-NBT and SNBT editors now display `-0` float and double values as `-0` instead of `0`, which means `-0` is now preserved.
--   The text editor now display `-0` values from JSON data as `-0` instead of `0`, which means `-0` is now preserved (this is not supported for JSONC data yet though).
+-   The text editor now displays `-0` values from JSON data as `-0` instead of `0`, which means `-0` is now preserved (this is not supported for JSONC data yet though).
 -   Fixed a bug where the select open tab dialog would throw an error while trying to load the list of open tabs.
 
 ## Additions
