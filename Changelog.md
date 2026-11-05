@@ -9,6 +9,7 @@
 ## Critical Fixes
 
 -   Fixed bugs where the SNBT editor could not parse single quoted strings or keys that had escaped single quotes or escaped double quotes, or parse double quoted strings or keys that had escaped single quotes or escaped double quotes.
+-   Fixed a bug where the SNBT editor would throw an error for the last item of a typed array if there was neither a trailing comma somewhere after it nor a closing bracket immediately after it.
 
 ## Additions
 
@@ -28,6 +29,7 @@
 
 -   Fixed a bug where the `biomes.palette` field of the `Data3D` NBT schemas had the `minItems` and `maxItems` set to `4096` instead of being undefined.
 -   Fixed a bug where the SNBT editor would parse single quoted strings or keys that had an even number of unescaped single quotes in them as if they were escaped instead of throwing an error.
+-   The SNBT editor now allows `+` prefixes on numbers in typed arrays.
 -   The SNBT editor now allows `+` or `-` prefixes on binary base numbers (ex. `-0b1001`).
 -   The SNBT editor no longer allows decimal values in bytes, shorts, ints, and longs.
 -   The SNBT editor no longer allows exponential notation on bytes, shorts, ints, and longs.
