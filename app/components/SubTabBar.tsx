@@ -3,7 +3,7 @@ import _React, { render, useEffect, useLayoutEffect, useRef, useState } from "pr
 import { checkIsURIOrPath } from "../../src/utils/pathUtils";
 const mime = require("mime-types") as typeof import("mime-types");
 import { readFileSync, writeFileSync } from "node:fs";
-import { prettyPrintSNBT, prismarineToSNBT, type Vector2 } from "mcbe-leveldb";
+import { prettyPrintSNBT, prismarineToSNBT, toJSONSafePrismarineNBT, type Vector2 } from "mcbe-leveldb";
 import { ControlledMenu, MenuDivider, MenuItem, SubMenu } from "@szhsin/react-menu";
 import { app, dialog } from "@electron/remote";
 import type { MessageBoxReturnValue, SaveDialogReturnValue } from "electron";
@@ -399,14 +399,41 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                                             title: "Export Prismarine-NBT JSON",
                                             message: "Select a location to export the data to.",
                                             filters: [{ name: "JSON", extensions: ["json", "jsonc"] }],
+                                            // IDEA: Add a json5 option that will use JSONB.stringify with NaN/Infinity/-Infinity stringifications on (instead of json5.stringify because JSONB.stringify supports -0 whwhile json5.stringify doesn't).
                                         });
                                         if (saveResult.canceled) return;
                                         switch (tabDataStorageObject.dataType) {
                                             case "NBT":
-                                                writeFileSync(saveResult.filePath, JSON.stringify(tabDataStorageObject.data.parsed, null, 0));
+                                                writeFileSync(
+                                                    saveResult.filePath,
+                                                    JSONB.stringify(toJSONSafePrismarineNBT(tabDataStorageObject.data.parsed), null, 0, {
+                                                        bigint: false,
+                                                        undefined: false,
+                                                        Infinity: false,
+                                                        NegativeInfinity: false,
+                                                        NaN: false,
+                                                        get: false,
+                                                        set: false,
+                                                        function: false,
+                                                        class: false,
+                                                    })
+                                                );
                                                 break;
                                             case "NBTCompound":
-                                                writeFileSync(saveResult.filePath, JSON.stringify(tabDataStorageObject.data, null, 0));
+                                                writeFileSync(
+                                                    saveResult.filePath,
+                                                    JSONB.stringify(toJSONSafePrismarineNBT(tabDataStorageObject.data), null, 0, {
+                                                        bigint: false,
+                                                        undefined: false,
+                                                        Infinity: false,
+                                                        NegativeInfinity: false,
+                                                        NaN: false,
+                                                        get: false,
+                                                        set: false,
+                                                        function: false,
+                                                        class: false,
+                                                    })
+                                                );
                                                 break;
                                             default:
                                                 throw new Error(`Unsupported data type: ${(tabDataStorageObject as GenericDataStorageObject).dataType}`);
@@ -453,7 +480,31 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                                         if (saveResult.canceled) return;
                                         switch (tabDataStorageObject.dataType) {
                                             case "NBT":
-                                                writeFileSync(saveResult.filePath, JSON.stringify(tabDataStorageObject.data, null, 0));
+                                                writeFileSync(
+                                                    saveResult.filePath,
+                                                    JSONB.stringify(
+                                                        {
+                                                            ...tabDataStorageObject.data,
+                                                            parsed:
+                                                                typeof tabDataStorageObject.data.parsed === "object" &&
+                                                                tabDataStorageObject.data.parsed &&
+                                                                toJSONSafePrismarineNBT(tabDataStorageObject.data.parsed),
+                                                        },
+                                                        null,
+                                                        0,
+                                                        {
+                                                            bigint: false,
+                                                            undefined: false,
+                                                            Infinity: false,
+                                                            NegativeInfinity: false,
+                                                            NaN: false,
+                                                            get: false,
+                                                            set: false,
+                                                            function: false,
+                                                            class: false,
+                                                        }
+                                                    )
+                                                );
                                                 break;
                                             default:
                                                 throw new Error(`Unsupported data type: ${(tabDataStorageObject as GenericDataStorageObject).dataType}`);
@@ -553,9 +604,23 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                                         if (saveResult.canceled) return;
                                         switch (tabDataStorageObject.dataType) {
                                             case "JSON":
-                                                writeFileSync(saveResult.filePath, JSON.stringify(tabDataStorageObject.data, null, 0));
+                                                writeFileSync(
+                                                    saveResult.filePath,
+                                                    JSONB.stringify(tabDataStorageObject.data, null, 0, {
+                                                        bigint: false,
+                                                        undefined: false,
+                                                        Infinity: false,
+                                                        NegativeInfinity: false,
+                                                        NaN: false,
+                                                        get: false,
+                                                        set: false,
+                                                        function: false,
+                                                        class: false,
+                                                    })
+                                                );
                                                 break;
                                             case "JSONC":
+                                                // BUG: This does not support writing -0.
                                                 writeFileSync(saveResult.filePath, commentJSON.stringify(tabDataStorageObject.data, null, 0));
                                                 break;
                                             default:

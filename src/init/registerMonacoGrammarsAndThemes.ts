@@ -286,9 +286,22 @@ class TokensProviderCache {
                 return INITIAL;
             },
 
+            // NOTE: This is required for "Developer: Inspect Tokens" to work.
+            tokenize(line: string, state: monaco.languages.IState): monaco.languages.ILineTokens {
+                const tokenizeLineResult2: ITokenizeLineResult = grammar.tokenizeLine(line, state as StateStack);
+                const { tokens, ruleStack: endState } = tokenizeLineResult2;
+                return { tokens: tokens.map((token: IToken) => ({ ...token, scopes: token.scopes.join(", ") })), endState };
+            },
+
             tokenizeEncoded(line: string, state: monaco.languages.IState): monaco.languages.IEncodedLineTokens {
                 const tokenizeLineResult2: ITokenizeLineResult2 = grammar.tokenizeLine2(line, state as StateStack);
                 const { tokens, ruleStack: endState } = tokenizeLineResult2;
+
+                // NOTE: This fixes the bracket detection, so that "Go to Bracket" and bracket colorization work.
+                for (let i = 1; i < tokens.length; i += 2) {
+                    tokens[i]! |= 1024;
+                }
+
                 return { tokens, endState };
             },
         };
@@ -1847,6 +1860,7 @@ async function main(_language: LanguageId): Promise<void> {
                     case tokenAtCursor.scopes.includes("punctuation.separator.dictionary.key-value.snbt"): {
                         return {
                             suggestions: [
+                                // TODO: Add other values like NaN, -0, -Infinity, and Infinity here.
                                 {
                                     insertText: "true",
                                     kind: monaco.languages.CompletionItemKind.Keyword,

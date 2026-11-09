@@ -1,5 +1,5 @@
 import { Editor, type Monaco } from "@monaco-editor/react";
-import { prismarineToSNBT, type MCEntryContentType } from "mcbe-leveldb";
+import { fromJSONSafePrismarineNBT, prismarineToSNBT, toJSONSafePrismarineNBT, type JSONSafePrismarineNBT, type MCEntryContentType } from "mcbe-leveldb";
 import * as monaco from "monaco-editor";
 import type { JSX } from "preact";
 import { LoadingScreenContents } from "../app";
@@ -129,13 +129,19 @@ export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JS
                 lastChangeTime = Date.now();
                 try {
                     if (props.dataStorageObject.dataType === "NBTCompound") {
-                        const v = JSON.parse(editorValue) as NBT.Compound["value"];
-                        prismarineToSNBT({ type: "compound", value: v });
-                        props.dataStorageObject.data.value = v;
+                        const v: NBT.Compound = fromJSONSafePrismarineNBT({
+                            type: "compound",
+                            value: JSON.parse(editorValue) as JSONSafePrismarineNBT.Compound["value"],
+                        });
+                        prismarineToSNBT(v);
+                        props.dataStorageObject.data.value = v.value;
                     } else if (props.dataStorageObject.dataType === "NBT") {
-                        const v = JSON.parse(editorValue) as NBT.NBT["value"];
-                        prismarineToSNBT({ type: "compound", value: v });
-                        props.dataStorageObject.data.parsed.value = v;
+                        const v: NBT.Compound = fromJSONSafePrismarineNBT({
+                            type: "compound",
+                            value: JSON.parse(editorValue) as JSONSafePrismarineNBT.NBT["value"],
+                        });
+                        prismarineToSNBT(v);
+                        props.dataStorageObject.data.parsed.value = v.value;
                     }
 
                     const model = currentEditor?.getModel();
@@ -154,13 +160,19 @@ export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JS
             lastChangeTime = currentChangeTime;
             try {
                 if (props.dataStorageObject.dataType === "NBTCompound") {
-                    const v = JSON.parse(editorValue) as NBT.Compound["value"];
-                    prismarineToSNBT({ type: "compound", value: v });
-                    props.dataStorageObject.data.value = v;
+                    const v: NBT.Compound = fromJSONSafePrismarineNBT({
+                        type: "compound",
+                        value: JSON.parse(editorValue) as JSONSafePrismarineNBT.Compound["value"],
+                    });
+                    prismarineToSNBT(v);
+                    props.dataStorageObject.data.value = v.value;
                 } else if (props.dataStorageObject.dataType === "NBT") {
-                    const v = JSON.parse(editorValue) as NBT.NBT["value"];
-                    prismarineToSNBT({ type: "compound", value: v });
-                    props.dataStorageObject.data.parsed.value = v;
+                    const v: NBT.Compound = fromJSONSafePrismarineNBT({
+                        type: "compound",
+                        value: JSON.parse(editorValue) as JSONSafePrismarineNBT.NBT["value"],
+                    });
+                    prismarineToSNBT(v);
+                    props.dataStorageObject.data.parsed.value = v.value;
                 }
 
                 const model = currentEditor?.getModel();
@@ -188,8 +200,8 @@ export default function PrismarineNBTEditor(props: PrismarineNBTEditorProps): JS
         dataLoaded ?
             // This is using JSONB.stringify instead of JSON.stringify in order to serialize -0 as -0 instead of 0.
             JSONB.stringify(
-                props.dataStorageObject.dataType === "NBTCompound" ? props.dataStorageObject.data.value
-                : props.dataStorageObject.dataType === "NBT" ? props.dataStorageObject.data.parsed.value
+                props.dataStorageObject.dataType === "NBTCompound" ? toJSONSafePrismarineNBT(props.dataStorageObject.data).value
+                : props.dataStorageObject.dataType === "NBT" ? toJSONSafePrismarineNBT(props.dataStorageObject.data.parsed).value
                 : props.dataStorageObject.data,
                 null,
                 4,

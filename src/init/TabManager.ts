@@ -11,6 +11,7 @@ import {
     parseSpecificIntType,
     prettyPrintSNBT,
     prismarineToSNBT,
+    toJSONSafePrismarineNBT,
     toLong,
     writeSpecificIntType,
     type EntryContentTypeFormatData,
@@ -2227,7 +2228,7 @@ namespace exports {
     }
 
     export interface GenericDataStorageObjectNBTCompound extends GenericDataStorageObjectBase {
-        data: NBT.Compound;
+        data: NBT.Compound | NBT.NBT;
         dataType: "NBTCompound";
         sourceType: EntryContentTypeFormatData;
     }
@@ -2904,11 +2905,26 @@ namespace exports {
                                     break;
                                 }
                                 case "JSON": {
-                                    rawData = Buffer.from(JSON.stringify(data), "binary");
+                                    rawData = Buffer.from(
+                                        JSONB.stringify(toJSONSafePrismarineNBT(data), null, 0, {
+                                            bigint: false,
+                                            undefined: false,
+                                            Infinity: false,
+                                            NegativeInfinity: false,
+                                            NaN: false,
+                                            get: false,
+                                            set: false,
+                                            function: false,
+                                            class: false,
+                                        }),
+                                        "binary"
+                                    );
                                     break;
                                 }
                                 case "JSONC": {
-                                    rawData = Buffer.from(commentJSON.stringify(data), "binary");
+                                    // BUG: This does not preserve -0.
+                                    // REVIEW (Possible Bug): Make sure toJSONSafePrismarineNBT preserves the commentJSON comment data.
+                                    rawData = Buffer.from(commentJSON.stringify(toJSONSafePrismarineNBT(data)), "binary");
                                     break;
                                 }
                                 case "ASCII": {
@@ -3038,11 +3054,26 @@ namespace exports {
                                     break;
                                 }
                                 case "JSON": {
-                                    rawData = Buffer.from(JSON.stringify(data), "binary");
+                                    rawData = Buffer.from(
+                                        JSONB.stringify({ ...data, parsed: toJSONSafePrismarineNBT(data.parsed) }, null, 0, {
+                                            bigint: false,
+                                            undefined: false,
+                                            Infinity: false,
+                                            NegativeInfinity: false,
+                                            NaN: false,
+                                            get: false,
+                                            set: false,
+                                            function: false,
+                                            class: false,
+                                        }),
+                                        "binary"
+                                    );
                                     break;
                                 }
                                 case "JSONC": {
-                                    rawData = Buffer.from(commentJSON.stringify(data), "binary");
+                                    // BUG: This does not preserve -0.
+                                    // REVIEW (Possible Bug): Make sure toJSONSafePrismarineNBT preserves the commentJSON comment data.
+                                    rawData = Buffer.from(commentJSON.stringify({ ...data, parsed: toJSONSafePrismarineNBT(data.parsed) }), "binary");
                                     break;
                                 }
                                 case "ASCII": {
@@ -3152,10 +3183,24 @@ namespace exports {
                         }
                         case "JSON": {
                             const data = this.currentState.options.dataStorageObject.data;
-                            return Buffer.from(JSON.stringify(data), "binary");
+                            return Buffer.from(
+                                JSONB.stringify(data, null, 0, {
+                                    bigint: false,
+                                    undefined: false,
+                                    Infinity: false,
+                                    NegativeInfinity: false,
+                                    NaN: false,
+                                    get: false,
+                                    set: false,
+                                    function: false,
+                                    class: false,
+                                }),
+                                "binary"
+                            );
                         }
                         case "JSONC": {
                             const data = this.currentState.options.dataStorageObject.data;
+                            // BUG: This does not preserve -0.
                             return Buffer.from(commentJSON.stringify(data), "binary");
                         }
                         case "ASCII": {
@@ -3236,11 +3281,26 @@ namespace exports {
                                     break;
                                 }
                                 case "JSON": {
-                                    rawData = Buffer.from(JSON.stringify(data), "binary");
+                                    rawData = Buffer.from(
+                                        JSONB.stringify(toJSONSafePrismarineNBT(data), null, 0, {
+                                            bigint: false,
+                                            undefined: false,
+                                            Infinity: false,
+                                            NegativeInfinity: false,
+                                            NaN: false,
+                                            get: false,
+                                            set: false,
+                                            function: false,
+                                            class: false,
+                                        }),
+                                        "binary"
+                                    );
                                     break;
                                 }
                                 case "JSONC": {
-                                    rawData = Buffer.from(commentJSON.stringify(data), "binary");
+                                    // BUG: This does not preserve -0.
+                                    // REVIEW (Possible Bug): Make sure toJSONSafePrismarineNBT preserves the commentJSON comment data.
+                                    rawData = Buffer.from(commentJSON.stringify(toJSONSafePrismarineNBT(data)), "binary");
                                     break;
                                 }
                                 case "ASCII": {
@@ -3370,11 +3430,26 @@ namespace exports {
                                     break;
                                 }
                                 case "JSON": {
-                                    rawData = Buffer.from(JSON.stringify(data), "binary");
+                                    rawData = Buffer.from(
+                                        JSONB.stringify({ ...data, parsed: toJSONSafePrismarineNBT(data.parsed) }, null, 0, {
+                                            bigint: false,
+                                            undefined: false,
+                                            Infinity: false,
+                                            NegativeInfinity: false,
+                                            NaN: false,
+                                            get: false,
+                                            set: false,
+                                            function: false,
+                                            class: false,
+                                        }),
+                                        "binary"
+                                    );
                                     break;
                                 }
                                 case "JSONC": {
-                                    rawData = Buffer.from(commentJSON.stringify(data), "binary");
+                                    // BUG: This does not preserve -0.
+                                    // REVIEW (Possible Bug): Make sure toJSONSafePrismarineNBT preserves the commentJSON comment data.
+                                    rawData = Buffer.from(commentJSON.stringify({ ...data, parsed: toJSONSafePrismarineNBT(data.parsed) }), "binary");
                                     break;
                                 }
                                 case "ASCII": {
@@ -3484,10 +3559,24 @@ namespace exports {
                         }
                         case "JSON": {
                             const data = this.currentState.options.dataStorageObject.data;
-                            return Buffer.from(JSON.stringify(data), "binary");
+                            return Buffer.from(
+                                JSONB.stringify(data, null, 0, {
+                                    bigint: false,
+                                    undefined: false,
+                                    Infinity: false,
+                                    NegativeInfinity: false,
+                                    NaN: false,
+                                    get: false,
+                                    set: false,
+                                    function: false,
+                                    class: false,
+                                }),
+                                "binary"
+                            );
                         }
                         case "JSONC": {
                             const data = this.currentState.options.dataStorageObject.data;
+                            // BUG: This does not preserve -0.
                             return Buffer.from(commentJSON.stringify(data), "binary");
                         }
                         case "ASCII": {

@@ -14,10 +14,14 @@
 ## Additions
 
 -   The SNBT editor now supports `_` numeric separators in numbers.
+-   The Prismarine-NBT editor now supports `"NaN"`, `"Infinity"`, and `"-Infinity"` for float and double values.
 -   Added support for `NaN`, `Infinity`, and `-Infinity` for float and double values in the SNBT editor.
 -   Added support for `NaN` for float and double values in the Node editor.
 -   The Node editor now allows you to input `Infinity` and `-Infinity` case-insensitively for float and double values.
 -   The Node editor now displays `-0` float and double values as `-0` instead of `0`.
+-   Exporting the contents of a sub-tab as `Prismarine-NBT JSON` or `Prismarine-NBT JSON (+Metadata)` now preserves `"NaN"`, `"Infinity"`, and `"-Infinity"` for float and double values.
+-   Exporting the contents of a sub-tab as `Prismarine-NBT JSON` or `Prismarine-NBT JSON (+Metadata)` now preserves `-0` values.
+-   Exporting the contents of a sub-tab as `JSON` now preserves `-0` values (this is not supported for JSONC data yet though).
 
 ## Changes
 
@@ -30,6 +34,7 @@
 ## Fixes
 
 -   Major fixes to the SNBT TextMate grammar (syntax highlighting).
+-   Fixed bracket colorization, "Go to Bracket", and "Developer: Inspect Tokens" in the SNBT editor.
 -   Fixed a bug where the `biomes.palette` field of the `Data3D` NBT schemas had the `minItems` and `maxItems` set to `4096` instead of being undefined.
 -   Fixed a bug where the SNBT editor would parse single quoted strings or keys that had an even number of unescaped single quotes in them as if they were escaped instead of throwing an error.
 -   The SNBT editor now allows `+` prefixes on numbers in typed arrays.
