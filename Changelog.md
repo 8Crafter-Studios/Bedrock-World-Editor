@@ -13,6 +13,7 @@
 
 ## Additions
 
+-   The SNBT editor now supports `_` numeric separators in numbers.
 -   Added support for `NaN`, `Infinity`, and `-Infinity` for float and double values in the SNBT editor.
 -   Added support for `NaN` for float and double values in the Node editor.
 -   The Node editor now allows you to input `Infinity` and `-Infinity` case-insensitively for float and double values.
@@ -41,6 +42,7 @@
 -   The SNBT editor no longer allows exponential notation numbers that don't have any digits before the `e`.
 -   The SNBT editor no longer quotes keys with a name of `true` or `false`.
 -   The Node editor no longer allows you to input `Infinity` or `-Infinity` for byte, short, int, and long values.
+-   Fixed a bug where `true` or `false` values in longArrays in the SNBT editor would make the data unparseable.
 
 # v1.0.0-beta.40
 
