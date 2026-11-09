@@ -232,7 +232,17 @@
         "compound": {
             "name": "meta.structure.dictionary.snbt",
             "begin": "\\{",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.definition.compound.begin.snbt"
+                }
+            },
             "end": "\\}",
+            "endCaptures": {
+                "0": {
+                    "name": "punctuation.definition.compound.end.snbt"
+                }
+            },
             "patterns": [
                 {
                     "include": "#compoundkey"
