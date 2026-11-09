@@ -19,8 +19,8 @@ jobs:
                     - os: ubuntu-24.04
                       arch: x64
                     # TODO: Try this again, and try to fix it.
-                    - os: ubuntu-24.04 # BUG: This one doesn't work.
-                      arch: ia32
+                    # - os: ubuntu-24.04 # BUG: This one doesn't work.
+                    #   arch: ia32
                     - os: ubuntu-24.04
                       arch: arm64
                     - os: ubuntu-24.04
