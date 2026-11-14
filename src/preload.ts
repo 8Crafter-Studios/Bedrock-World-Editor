@@ -333,6 +333,7 @@ const menu = Menu.buildFromTemplate([
                             url: string;
                         };
                         let trimmedChangelog: string | undefined =
+                            // REVIEW: This may need to be shorter, or add a way to add a summary specifically for this.
                             releaseInfo.notes ? releaseInfo.notes.split("\n").slice(0, 10).join("\n").slice(0, 2000) : undefined;
                         if (trimmedChangelog) {
                             if (trimmedChangelog !== releaseInfo.notes) {
@@ -355,13 +356,18 @@ const menu = Menu.buildFromTemplate([
                         autoUpdater.setFeedURL({
                             url: feedURL,
                         });
-                        function notifyOfUpdateReady(): void {
-                            autoUpdater.off("update-downloaded", notifyOfUpdateReady);
+                        function notifyOfUpdateReady(
+                            _event: Electron.Event,
+                            _releaseNotes: string,
+                            releaseName: string,
+                            _releaseDate: Date,
+                            _updateURL: string
+                        ): void {
                             void dialog
                                 .showMessageBox({
                                     type: "info",
                                     title: "Application Update",
-                                    message: releaseInfo.name,
+                                    message: releaseName,
                                     detail: "A new version has been downloaded. Restart the application to apply the updates.",
                                     buttons: ["Restart", "Later"],
                                     noLink: true,
@@ -372,7 +378,30 @@ const menu = Menu.buildFromTemplate([
                                     }
                                 });
                         }
-                        autoUpdater.on("update-downloaded", notifyOfUpdateReady);
+                        function onUpdateError(error: Error): void {
+                            autoUpdater.off("error", onUpdateError);
+                            void dialog.showMessageBox({
+                                type: "error",
+                                title: "Error While Updating",
+                                message: "There was an error while updating.",
+                                detail: stringifyError(error),
+                                buttons: ["OK"],
+                                noLink: true,
+                            });
+                        }
+                        function onUpdateNotAvailable(): void {
+                            autoUpdater.off("update-not-available", onUpdateNotAvailable);
+                            void dialog.showMessageBox({
+                                type: "error",
+                                title: "Error While Downloading Update",
+                                message: "The update is unavailable.",
+                                buttons: ["OK"],
+                                noLink: true,
+                            });
+                        }
+                        autoUpdater.once("update-downloaded", notifyOfUpdateReady);
+                        autoUpdater.once("error", onUpdateError);
+                        autoUpdater.once("update-not-available", onUpdateNotAvailable);
                         autoUpdater.checkForUpdates();
                     } catch (e) {
                         void dialog.showMessageBox({

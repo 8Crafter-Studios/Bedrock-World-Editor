@@ -1311,6 +1311,8 @@ if (!startup && !started) {
                 );
             }
         }
+        // FIXME: This does not have handling for if an update does not support the current platform.
+        // IDEA: Maybe make this check the update.electronjs.org feed URL instead.
         if (!config.autoUpdateEnabled) {
             new Octokit().repos.listReleases({ owner: "8Crafter-Studios", repo: "Bedrock-World-Editor" }).then(
                 (releases): void => {
