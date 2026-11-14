@@ -330,6 +330,7 @@ export interface MinecraftWorldDisplayDetails {
     storageVersion: number | null;
     lastPlayed: Date | null;
     favorited: boolean;
+    hidden: boolean;
     /**
      * The size of the world folder in bytes.
      *
@@ -527,6 +528,37 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
                 return null;
             })()
         :   null;
+    /**
+     * An array of file paths of favorited worlds normalized using {@link normalizePath}.
+     */
+    const hiddenWorldsData: readonly string[] | null =
+        existsSync(path.join(APP_DATA_FOLDER_PATH, "hidden_worlds.json")) ?
+            await (async (): Promise<string[] | null> => {
+                try {
+                    const hiddenWorldsData = JSON.parse(await readFile(path.join(APP_DATA_FOLDER_PATH, "hidden_worlds.json"), "utf-8")) as string[];
+                    // Verify that the data is an array.
+                    if (!(hiddenWorldsData instanceof Array)) {
+                        throw new TypeError(`The hidden_worlds.json file is not an array. path: ${path.join(APP_DATA_FOLDER_PATH, "hidden_worlds.json")}`, {
+                            cause: { path: path.join(APP_DATA_FOLDER_PATH, "hidden_worlds.json"), data: hiddenWorldsData },
+                        });
+                    }
+                    // Verify that the array contains only strings.
+                    const nonStringIndex: number = hiddenWorldsData.findIndex((path: string): boolean => typeof path !== "string");
+                    if (nonStringIndex !== -1) {
+                        throw new TypeError(
+                            `The hidden_worlds.json file contains non-string values. path: ${path.join(APP_DATA_FOLDER_PATH, "hidden_worlds.json")} index: ${nonStringIndex}`,
+                            {
+                                cause: { path: path.join(APP_DATA_FOLDER_PATH, "hidden_worlds.json"), data: hiddenWorldsData, badIndex: nonStringIndex },
+                            }
+                        );
+                    }
+                    return hiddenWorldsData.map(normalizePath);
+                } catch (e) {
+                    console.error("Error reading hidden_worlds.json:", e);
+                }
+                return null;
+            })()
+        :   null;
     interface FolderPathIsolationDetails {
         folderPath: string;
         isolated: boolean;
@@ -710,6 +742,7 @@ export async function getMinecraftWorlds(all: boolean = false, getSizes: boolean
                                 : levelDat.value.LegacyLastPlayed ? new Date(levelDat.value.LegacyLastPlayed.value * 1000)
                                 : null,
                             favorited: favoritedWorldsData?.includes(normalizePath(folderPath)) ?? false,
+                            hidden: hiddenWorldsData?.includes(normalizePath(folderPath)) ?? false,
                             size,
                             startCount: 0xffffffffn - toLong(levelDat.value.worldStartCount?.value ?? [0, -1]),
                             playTime:
@@ -809,6 +842,12 @@ export const preloadedIcons = {
  */
 export interface WorldSelectorProps {
     forceTriggerUpdateRef?: RefObject<() => Promise<void>>;
+    /**
+     * Whether to show hidden worlds instead of non-hidden worlds.
+     *
+     * @default false
+     */
+    hiddenMode?: boolean | undefined;
 }
 
 /**
@@ -818,6 +857,8 @@ export interface WorldSelectorProps {
  * @returns The JSX element for the component.
  */
 export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"div"> {
+    const mcAppName: string = app.getApplicationNameForProtocol("minecraft:");
+    const mcPreviewAppName: string = app.getApplicationNameForProtocol("minecraft-preview:");
     const renderWorldsContainerRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     const viewMode: "compact" | "detailed" | "grid" = "detailed";
     const [data, updateData] = useState<MinecraftWorldDisplayDetails[]>([]);
@@ -894,9 +935,8 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
         return <span style="color: red;">null</span>;
     }
     function RenderWorlds(): JSX.SpecificElement<"div">[] {
-        const mcAppName: string = app.getApplicationNameForProtocol("minecraft:");
-        const mcPreviewAppName: string = app.getApplicationNameForProtocol("minecraft-preview:");
         return data
+            .filter((world: MinecraftWorldDisplayDetails): boolean => !world.hidden === !props.hiddenMode)
             .toSorted((a: MinecraftWorldDisplayDetails, b: MinecraftWorldDisplayDetails): number =>
                 a.favorited && !b.favorited ? -1
                 : b.favorited && !a.favorited ? 1
@@ -1392,6 +1432,50 @@ export function WorldSelector(props: WorldSelectorProps): JSX.SpecificElement<"d
                                         }}
                                     >
                                         Favorite
+                                    </MenuItem>
+                                }
+                                {world.hidden ?
+                                    <MenuItem
+                                        onClick={(): void => {
+                                            if (!existsSync(path.join(APP_DATA_FOLDER_PATH, "hidden_worlds.json"))) return;
+                                            try {
+                                                const hiddenWorldsData = JSON.parse(
+                                                    readFileSync(path.join(APP_DATA_FOLDER_PATH, "hidden_worlds.json"), "utf-8")
+                                                ) as string[];
+                                                if (hiddenWorldsData.includes(world.path)) {
+                                                    hiddenWorldsData.splice(hiddenWorldsData.indexOf(world.path), 1);
+                                                    writeFileSync(path.join(APP_DATA_FOLDER_PATH, "hidden_worlds.json"), JSON.stringify(hiddenWorldsData));
+                                                    world.hidden = false;
+                                                }
+                                            } catch (e) {
+                                                console.error(e);
+                                            }
+                                        }}
+                                    >
+                                        Unhide
+                                    </MenuItem>
+                                :   <MenuItem
+                                        onClick={(): void => {
+                                            try {
+                                                // TODO: There should be a dialog here the first time that explains it can be unhidden through settings.
+                                                // TODO: There should be a confirmation prompt here.
+                                                let hiddenWorldsData: string[] = [];
+                                                if (existsSync(path.join(APP_DATA_FOLDER_PATH, "hidden_worlds.json"))) {
+                                                    hiddenWorldsData = JSON.parse(
+                                                        readFileSync(path.join(APP_DATA_FOLDER_PATH, "hidden_worlds.json"), "utf-8")
+                                                    ) as string[];
+                                                }
+                                                if (!hiddenWorldsData.includes(world.path)) {
+                                                    hiddenWorldsData.push(world.path);
+                                                    writeFileSync(path.join(APP_DATA_FOLDER_PATH, "hidden_worlds.json"), JSON.stringify(hiddenWorldsData));
+                                                    world.hidden = true;
+                                                }
+                                            } catch (e) {
+                                                console.error(e);
+                                            }
+                                        }}
+                                    >
+                                        Hide
                                     </MenuItem>
                                 }
                             </ControlledMenu>

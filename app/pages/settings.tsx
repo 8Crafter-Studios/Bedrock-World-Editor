@@ -8,11 +8,15 @@ import { dialog } from "@electron/remote";
 import CollapsibleSection from "../components/CollapsibleSection";
 import { existsSync, readdirSync, statSync, type Dirent } from "node:fs";
 import path from "node:path";
+import { LoadingScreenContents, WorldSelector } from "../app";
+import { APP_DATA_FOLDER_PATH } from "../../src/utils/URLs";
+import { readFile } from "node:fs/promises";
+import { normalizePath } from "../../src/utils/pathUtils";
 
 /**
  * A settings tab for the {@link SettingsPage | settings page}.
  */
-type SettingsTab = "general" | "video" | "audio" | "integrations" | "advanced" | "debug";
+type SettingsTab = "general" | "video" | "audio" | "hidden_worlds" | "integrations" | "advanced" | "debug";
 
 let settingsLeftSidebarVisible: boolean = true;
 
@@ -83,7 +87,10 @@ function SettingsTabRenderer(props: SettingsTabRendererProps): JSX.Element {
     switch (props.selectedTab) {
         case "general":
             return (
-                <div style="width: -webkit-fill-available; height: -webkit-fill-available; padding: 10px; display: flex; flex-direction: column; overflow: auto;">
+                <div
+                    class="fix-scroll-lag"
+                    style="width: -webkit-fill-available; height: -webkit-fill-available; padding: 10px; display: flex; flex-direction: column; overflow: auto;"
+                >
                     {(process.platform === "darwin" || process.platform === "win32") && (
                         <>
                             <label
@@ -423,7 +430,10 @@ This may slow down the loading of the world selector list and increase disk usag
             );
         case "video":
             return (
-                <div style="width: -webkit-fill-available; height: -webkit-fill-available; padding: 10px; display: flex; flex-direction: column; overflow: auto;">
+                <div
+                    class="fix-scroll-lag"
+                    style="width: -webkit-fill-available; height: -webkit-fill-available; padding: 10px; display: flex; flex-direction: column; overflow: auto;"
+                >
                     <label for="settings_video_theme" class="nsel ndrg">
                         Theme
                     </label>
@@ -456,6 +466,88 @@ This may slow down the loading of the world selector list and increase disk usag
                     image="generic_empty"
                 />
             );
+        case "hidden_worlds": {
+            const worldSelectorContainerRef: RefObject<HTMLDivElement> = useRef(null);
+            useEffect((): (() => void) => {
+                const abortController: AbortController = new AbortController();
+                const signal: AbortSignal = abortController.signal;
+                void (async (): Promise<void> => {
+                    if (signal.aborted) return;
+                    /**
+                     * An array of file paths of favorited worlds normalized using {@link normalizePath}.
+                     */
+                    const hiddenWorldsData: readonly string[] | null =
+                        existsSync(path.join(APP_DATA_FOLDER_PATH, "hidden_worlds.json")) ?
+                            await (async (): Promise<string[] | null> => {
+                                try {
+                                    const hiddenWorldsData = JSON.parse(
+                                        await readFile(path.join(APP_DATA_FOLDER_PATH, "hidden_worlds.json"), { encoding: "utf-8", signal })
+                                    ) as string[];
+                                    if (signal.aborted) return null;
+                                    // Verify that the data is an array.
+                                    if (!(hiddenWorldsData instanceof Array)) {
+                                        throw new TypeError(
+                                            `The hidden_worlds.json file is not an array. path: ${path.join(APP_DATA_FOLDER_PATH, "hidden_worlds.json")}`,
+                                            {
+                                                cause: { path: path.join(APP_DATA_FOLDER_PATH, "hidden_worlds.json"), data: hiddenWorldsData },
+                                            }
+                                        );
+                                    }
+                                    // Verify that the array contains only strings.
+                                    const nonStringIndex: number = hiddenWorldsData.findIndex((path: string): boolean => typeof path !== "string");
+                                    if (nonStringIndex !== -1) {
+                                        throw new TypeError(
+                                            `The hidden_worlds.json file contains non-string values. path: ${path.join(APP_DATA_FOLDER_PATH, "hidden_worlds.json")} index: ${nonStringIndex}`,
+                                            {
+                                                cause: {
+                                                    path: path.join(APP_DATA_FOLDER_PATH, "hidden_worlds.json"),
+                                                    data: hiddenWorldsData,
+                                                    badIndex: nonStringIndex,
+                                                },
+                                            }
+                                        );
+                                    }
+                                    return hiddenWorldsData.map(normalizePath);
+                                } catch (e) {
+                                    if (signal.aborted) return null;
+                                    console.error("Error reading hidden_worlds.json:", e);
+                                }
+                                return null;
+                            })()
+                        :   null;
+                    if (signal.aborted || !worldSelectorContainerRef.current) return;
+                    if (hiddenWorldsData?.length) {
+                        // OPTIMIZE: Make this only check the actual known hidden worlds paths.
+                        // TODO: Make it so that wen the user unhides the last hidden world in this menu, it automatically replaces the list with the No Hidden Worlds notice.
+                        render(<WorldSelector hiddenMode />, worldSelectorContainerRef.current);
+                        return;
+                    }
+                    render(
+                        <Notice
+                            title="No Hidden Worlds"
+                            subtitle={null}
+                            detail='You haven&apos;t hidden any worlds yet. You can hide a world by right-clicking it in the world selector, and selecting "Hide".'
+                            image="no_worlds_yet"
+                            style={{ height: "auto" }}
+                        />,
+                        worldSelectorContainerRef.current
+                    );
+                })();
+                return (): void => {
+                    abortController.abort();
+                    if (worldSelectorContainerRef.current) render(null, worldSelectorContainerRef.current);
+                };
+            });
+            return (
+                <div
+                    class="fix-scroll-lag"
+                    style="width: -webkit-fill-available; height: -webkit-fill-available; padding: 10px; display: flex; flex-direction: column; overflow: auto;"
+                    ref={worldSelectorContainerRef}
+                >
+                    <LoadingScreenContents message="Loading hidden worlds..." />
+                </div>
+            );
+        }
         case "integrations":
             return (
                 <UnderConstruction
@@ -465,7 +557,10 @@ This may slow down the loading of the world selector list and increase disk usag
             );
         case "advanced":
             return (
-                <div style="width: -webkit-fill-available; height: -webkit-fill-available; padding: 10px; display: flex; flex-direction: column; overflow: auto;">
+                <div
+                    class="fix-scroll-lag"
+                    style="width: -webkit-fill-available; height: -webkit-fill-available; padding: 10px; display: flex; flex-direction: column; overflow: auto;"
+                >
                     <label
                         for="settings_advanced_useAsyncModeInEntryViews"
                         class="nsel ndrg"
@@ -1072,7 +1167,10 @@ On larger worlds, each chunk causes more lag to load than it would on a smaller 
             );
         case "debug":
             return (
-                <div style="width: -webkit-fill-available; height: -webkit-fill-available; padding: 10px; display: flex; flex-direction: column; overflow: auto;">
+                <div
+                    class="fix-scroll-lag"
+                    style="width: -webkit-fill-available; height: -webkit-fill-available; padding: 10px; display: flex; flex-direction: column; overflow: auto;"
+                >
                     <label for="settings_debug_showNativeFpsCounter" class="nsel ndrg" title="Whether or not to show the native FPS counter.">
                         <input
                             id="settings_debug_showNativeFpsCounter"
@@ -1221,6 +1319,12 @@ function SettingsLeftSidebar(props: SettingsLeftSidebarProps): JSX.SpecificEleme
                 id: "audio",
                 name: "Audio",
                 resolution: [15, 12],
+            },
+            {
+                icon: "resource://images/ui/glyphs/hidden_worlds_icon.png",
+                id: "hidden_worlds",
+                name: "Hidden Worlds",
+                resolution: [16, 17],
             },
             {
                 icon: "resource://images/ui/glyphs/Source.png",

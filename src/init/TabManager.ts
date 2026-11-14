@@ -1264,6 +1264,7 @@ namespace exports {
         public get hasLeftSidebar(): boolean {
             return this.type === "world" || this.type === "leveldb";
         }
+        // OPTIMIZE: Maybe make a separate class to handle this, and have a file watcher on the file to automatically update this when it updates, maybe fire an event on the tab and class too.
         /**
          * Whether the tab is favorited.
          */
