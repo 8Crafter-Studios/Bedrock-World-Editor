@@ -726,7 +726,7 @@ namespace exports {
                     this.views.maps.modeSettings.simple.columns = currentMapsSimpleModeColumns;
                 }
             }
-            if (semver.compareBuild(currentConfigVersion, "1.0.0-beta.49+BUILD.2") < 0) {
+            if (semver.compareBuild(currentConfigVersion, "1.0.0-beta.43+BUILD.2") < 0) {
                 {
                     const currentMinecraftDataFolders: string[] = this.minecraftDataFolders;
                     const originalLength: number = currentMinecraftDataFolders.length;
