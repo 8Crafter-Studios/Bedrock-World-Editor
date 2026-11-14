@@ -27,6 +27,10 @@ import showSelectOpenTabDialog from "../components/SelectOpenTabDialog";
 import type { LevelDB } from "@8crafter/leveldb-zlib";
 import Notice from "../components/Notice";
 import { stringifyError } from "../../src/utils/miscUtils";
+import type { WorldXPackHistoryJSONSchema, WorldXPacksJSONSchema } from "../tabs/packs";
+import json5 from "json5";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 
 type LegacyScoreboardSetBiomeData = [
     `wedit:biome,minecraft:${Dimension},${number}_${number}_${number}`,
@@ -643,6 +647,7 @@ async function action_export_structures_getStructures(tab: TabManagerTab, signal
  * @throws {ReferenceError} If the LevelChunkMetaDataDictionary did not contain mapping for the meta data hash.
  * @throws {unknown} If an error occurs.
  */
+// TODO: Maybe move this to the mcbe-leveldb module.
 export async function getLevelChunkMetaDataForChunk(
     db: LevelDB,
     chunk: DimensionVectorXZ,
@@ -1422,10 +1427,12 @@ const thisIntegration = {
         },
     ] as const,
     async checkIfDetected(tab: TabManagerTab): Promise<boolean> {
+        // TODO: Maybe add handling for when the LevelDB is corrupted.
         if (tab.type !== "world" && tab.type !== "leveldb") return false;
         if (!tab.db) return false;
         await tab.awaitDBOpen;
         if (!tab.db?.isOpen()) throw new Error("Database is not open.");
+        const UUIDs = ["3cdb2ddf-662e-4f8f-a0a1-1293b91ccb2f"] as const;
         dynamicPropertiesUUIDCheck: {
             const data = await tab.db.get("DynamicProperties");
             if (!data) break dynamicPropertiesUUIDCheck;
@@ -1440,7 +1447,6 @@ const thisIntegration = {
                 break dynamicPropertiesUUIDCheck;
             }
             const dynamicProperties: NBTSchemas.NBTSchemaTypes.DynamicProperties = parsedData.parsed as NBTSchemas.NBTSchemaTypes.DynamicProperties;
-            const UUIDs = ["3cdb2ddf-662e-4f8f-a0a1-1293b91ccb2f"] as const;
             for (const UUID of UUIDs) {
                 if (UUID in dynamicProperties.value) {
                     return true;
@@ -1448,10 +1454,38 @@ const thisIntegration = {
             }
         }
         worldBehaviorPacksUUIDCheck: {
-            break worldBehaviorPacksUUIDCheck; // TEMP
+            try {
+                const worldBehaviorPacksJSON: WorldXPacksJSONSchema = json5.parse(
+                    await readFile(path.join(tab.tempPath ?? tab.path, "world_behavior_packs.json"), "utf-8")
+                );
+                const matchingPack = worldBehaviorPacksJSON.find((pack) => UUIDs.some((uuid) => pack.pack_id === uuid));
+                if (!matchingPack) break worldBehaviorPacksUUIDCheck;
+                // IDEA: Maybe add a version check.
+                return true;
+            } catch (e) {
+                console.error(
+                    "[integration::WorldEdit_Bedrock::checkIfDetected::worldBehaviorPacksUUIDCheck] An error occurred while checking world_behavior_packs.json for the add-on's UUID. error:",
+                    e
+                );
+                break worldBehaviorPacksUUIDCheck;
+            }
         }
-        worldBehaviorPacksHistoryUUIDCheck: {
-            break worldBehaviorPacksHistoryUUIDCheck; // TEMP
+        worldBehaviorPackHistoryUUIDCheck: {
+            try {
+                const worldBehaviorPackHistoryJSON: WorldXPackHistoryJSONSchema = json5.parse(
+                    await readFile(path.join(tab.tempPath ?? tab.path, "world_behavior_pack_history.json"), "utf-8")
+                );
+                const matchingPack = worldBehaviorPackHistoryJSON.packs.find((pack) => UUIDs.some((uuid) => pack.uuid === uuid));
+                if (!matchingPack) break worldBehaviorPackHistoryUUIDCheck;
+                // IDEA: Maybe add a version check.
+                return true;
+            } catch (e) {
+                console.error(
+                    "[integration::WorldEdit_Bedrock::checkIfDetected::worldBehaviorPackHistoryUUIDCheck] An error occurred while checking world_behavior_pack_history.json for the add-on's UUID. error:",
+                    e
+                );
+                break worldBehaviorPackHistoryUUIDCheck;
+            }
         }
         scoreboardCheck: {
             break scoreboardCheck; // TEMP

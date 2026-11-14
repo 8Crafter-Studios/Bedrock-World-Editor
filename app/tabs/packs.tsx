@@ -77,7 +77,7 @@ export default function PacksTab(props: PacksTabProps): JSX.SpecificElement<"div
 /**
  * The schema for the `world_resource_packs.json` and `world_behavior_packs.json` files.
  */
-type WorldXPacksJSONSchema = {
+export type WorldXPacksJSONSchema = {
     /**
      * The UUID of the pack to include.
      */
@@ -98,7 +98,7 @@ type WorldXPacksJSONSchema = {
 /**
  * The schema for the `world_resource_pack_history.json` and `world_behavior_pack_history.json` files.
  */
-interface WorldXPackHistoryJSONSchema {
+export interface WorldXPackHistoryJSONSchema {
     /**
      * The list of packs in the history.
      */

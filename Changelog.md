@@ -4,6 +4,22 @@
 
 -   Windows builds are now code signed. -->
 
+# v1.0.0-beta.42
+
+## Additions
+
+-   Added an integration with the [Better on Bedrock](https://wiki.foxystar.net/docs/maps/better-on-bedrock/) add-on.
+-   Added an additinoal message to the "Detected" mode of the "Integrations" left sidebar tab for when no integrations are detected and all integrations have finished loading that says `Click "Undetected" at the top to see a list of supported integrations.`.
+-   Added support for the Editor Edition of [8Crafter's Server Utilities & Debug Sticks](https://wiki.8crafter.com/andexdb/) add-on for detecting player's names.
+
+## Changes
+
+-   Integrations in the "Integrations" left sidebar tab are now always shown in their default order instead of in the order of when they finished loading.
+
+## Fixes
+
+-   The WorldEdit Bedrock integration can now be detected even when no dynamic properties from the add-on are present, as long as the pack is on the world or in the world's pack history.
+
 # v1.0.0-beta.41
 
 ## Critical Fixes

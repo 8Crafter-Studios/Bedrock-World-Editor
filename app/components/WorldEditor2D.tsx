@@ -49,6 +49,12 @@ import showNumberInputDialog, { type ShowNumberInputDialogResult } from "./Numbe
 import showLocationInputDialog, { type ShowLocationInputDialogResult } from "./LocationInputDialog";
 import showLocationRangeInputDialog, { type ShowLocationRangeInputDialogResult } from "./LocationRangeInputDialog";
 import { stringifyError } from "../../src/utils/miscUtils";
+import type {
+    IntegrationWorldEditor2DOverlay,
+    IntegrationWorldEditor2DOverlayConstructor,
+    IntegrationWorldEditor2DOverlayLoadState,
+} from "../integrations/integrationUtils";
+import { integrations, type Integration, type IntegrationWithOverlays } from "../integrations";
 // import { currentFpsRaw } from "./DebugOverlay";
 // const mime = require("mime-types") as typeof import("mime-types");
 
@@ -59,6 +65,38 @@ import { stringifyError } from "../../src/utils/miscUtils";
 // IDEA: Add a water color render type, and make it able to read that color from resource packs too for custom biomes.
 
 // IDEA: Add a screenshot button that takes a screenshot of the currently-in-view map without any of the overlays. It should maybe create a new canvas and render the map to it and then export it as an image.
+
+/**
+ * The layer registry for the {@link WorldEditor2D}.
+ *
+ * This is for registering layers for overlays from integrations.
+ */
+export class WorldEditor2DLayerRegistry {
+    /**
+     * The next index to use for a layer.
+     */
+    static #nextIndex: number = 1000;
+    /**
+     * The internal layer registry.
+     */
+    static readonly #registry: Map<`integration_${string}:${string}`, number> = new Map<`integration_${string}:${string}`, number>();
+    /**
+     * The layer registry.
+     */
+    public static readonly registry: ReadonlyMap<`integration_${string}:${string}`, number> = this.#registry;
+    /**
+     * Registers a layer.
+     *
+     * @param id The ID of the layer.
+     * @returns The index of the layer.
+     */
+    public static register(id: `integration_${string}:${string}`): number {
+        if (this.#registry.has(id)) return this.#registry.get(id)!;
+        const index: number = this.#nextIndex++;
+        this.#registry.set(id, index);
+        return index;
+    }
+}
 
 /**
  * The data storage object for the {@link WorldEditor2D}.
@@ -149,6 +187,7 @@ export interface WorldEditor2DDataStorageObject {
             // IDEA: Add POI data here.
             // IDEA: Add maps here.
             // IDEA: Add block entities here.
+            integrationOverlays: Map<`integration_${string}:${string}`, boolean> | boolean;
         };
     };
 }
@@ -179,6 +218,7 @@ export function initWorldEditor2DDataStorageObjectProps<T extends object>(dataSt
                 entities: false,
                 structureSpawningBoundingBoxes: false,
                 portals: true,
+                integrationOverlays: true,
             },
         },
     } satisfies WorldEditor2DDataStorageObject);
@@ -654,6 +694,11 @@ async function getHeightRangeForChunk(
 export interface WorldEditor2DMapImageItem extends Omit<import("@canvas-tile-engine/react").ImageItem, never> {
     meta:
         | {
+              type: `integration_${string}:${string}`;
+              overlay: IntegrationWorldEditor2DOverlay;
+              [key: PropertyKey]: unknown;
+          }
+        | {
               type: "portal";
               // TEMP: The NonNullable is temporary until the NBT schema is fixed.
               value: NonNullable<NonNullable<NBTSchemas.NBTSchemaTypes.Portals["value"]["data"]>["value"]["PortalRecords"]>["value"]["value"][number];
@@ -711,6 +756,18 @@ export interface WorldEditor2DMapImageItem extends Omit<import("@canvas-tile-eng
                */
               type: `${string}:${string}`;
           };
+}
+
+/**
+ * An image item from an integration for the 2D world editor.
+ */
+export interface WorldEditor2DIntegrationMapImageItem<
+    Overlay extends IntegrationWorldEditor2DOverlay = IntegrationWorldEditor2DOverlay<object, { type: `integration_${string}:${string}` }>,
+> extends Omit<import("@canvas-tile-engine/react").ImageItem, never> {
+    meta: {
+        type: `integration_${string}:${string}`;
+        overlay: Overlay;
+    };
 }
 
 /**
@@ -2218,6 +2275,8 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     // IDEA: Maybe make this render players as they are loaded, since it can take a while to display the players. Or maybe make it display player key types as they are loaded.
     // OPTIMIZE: Maybe cache these in a way where they persist across tab switches. Maybe portal records too.
     // OPTIMIZE: Add handling to do this in a way like how async mode works on many left sidebar tabs, where it only loads the needed data and then discards the rest, so that if there are A LOT of players, it won't use up much memory.
+    // OPTIMIZE (Add AbortSignal): Add an AbortSignal here.
+    // FIXME: This does not run when on a LevelDB tab instead of a world tab.
     async function loadPlayerDataEntries(): Promise<void> {
         if (playerDataEntries === "loading") return;
         playerDataEntries = "loading";
@@ -2532,6 +2591,82 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
     void loadDimensionNameIdTable();
     void loadBiomeIdsTable();
     void loadPortalRecords();
+    const integrationsWithOverlays: readonly IntegrationWithOverlays[] = Object.values(integrations as Record<string, Integration>).filter(
+        (integration: Integration): integration is IntegrationWithOverlays => !!integration.worldEditor2D?.overlays?.length
+    );
+    const detectedIntegrationsWithOverlays = new Map<string, IntegrationWithOverlays | "loading" | "no_data" | "error" | "not_loading">();
+    let integrationDetectionStatus: "loaded" | "loading" | "error" | "not_loading" = "not_loading";
+    const integrationOverlays: ReadonlyMap<IntegrationWorldEditor2DOverlayConstructor, IntegrationWorldEditor2DOverlay> = new Map<
+        IntegrationWorldEditor2DOverlayConstructor,
+        IntegrationWorldEditor2DOverlay
+    >(
+        integrationsWithOverlays.flatMap(
+            (integration: IntegrationWithOverlays): [key: IntegrationWorldEditor2DOverlayConstructor, value: IntegrationWorldEditor2DOverlay][] =>
+                integration.worldEditor2D.overlays.map(
+                    (
+                        overlay: IntegrationWorldEditor2DOverlayConstructor
+                    ): [key: IntegrationWorldEditor2DOverlayConstructor, value: IntegrationWorldEditor2DOverlay] => [overlay, new overlay(props.tab)]
+                )
+        )
+    );
+    for (const integration of integrationsWithOverlays) {
+        detectedIntegrationsWithOverlays.set(integration.id, "not_loading");
+    }
+    // OPTIMIZE: If there are a lot of integration with overlays, this could cause a lag spike due to it trying to detect all of them at once.
+    async function detectIntegrations(): Promise<void> {
+        if (integrationDetectionStatus === "loading") return;
+        integrationDetectionStatus = "loading";
+        await Promise.all(
+            integrationsWithOverlays.map(async (integration: IntegrationWithOverlays): Promise<void> => {
+                if (integrationDetectionStatus !== "loading") return;
+                if (detectedIntegrationsWithOverlays.get(integration.id) === "loading") return;
+                detectedIntegrationsWithOverlays.set(integration.id, "loading");
+                try {
+                    const result: boolean = await integration.checkIfDetected(props.tab);
+                    if (integrationDetectionStatus !== "loading") return;
+                    detectedIntegrationsWithOverlays.set(integration.id, result ? integration : "no_data");
+                } catch (e) {
+                    if (integrationDetectionStatus !== "loading") return;
+                    detectedIntegrationsWithOverlays.set(integration.id, "error");
+                    console.error("Error while checking if integration is detected:", integration, "error:", e);
+                }
+            })
+        );
+        if (integrationDetectionStatus !== "loading") return;
+        integrationDetectionStatus = "loaded";
+    }
+    // OPTIMIZE: If there are a lot of integration overlays, this could cause a lag spike due to it trying to load all of them at once.
+    async function loadIntegrationOverlays(): Promise<void> {
+        if (integrationDetectionStatus !== "loaded") return;
+        await Promise.all(
+            integrationOverlays.values().map(async (overlay: IntegrationWorldEditor2DOverlay): Promise<void> => {
+                if (detectedIntegrationsWithOverlays.get(overlay.integration.id) !== overlay.integration) return;
+                try {
+                    await overlay.loadData();
+                } catch (e) {
+                    console.error("Error while loading integration overlay:", overlay, "error:", e);
+                }
+            })
+        );
+    }
+    function unloadIntegrations(): void {
+        for (const integration of integrationsWithOverlays) {
+            detectedIntegrationsWithOverlays.set(integration.id, "not_loading");
+        }
+        integrationDetectionStatus = "not_loading";
+        for (const integration of integrationsWithOverlays) {
+            for (const overlay of integration.worldEditor2D.overlays) {
+                integrationOverlays.get(overlay)?.unloadData();
+            }
+        }
+    }
+    async function reloadIntegrations(): Promise<void> {
+        unloadIntegrations();
+        await detectIntegrations();
+        await loadIntegrationOverlays();
+    }
+    void reloadIntegrations();
+
     function cullCachedOutOfBoundsChunks(bounds: { min: Vector2; max: Vector2 }): void {
         const min: Vector2 = { x: Math.floor(bounds.min.x), y: Math.floor(bounds.min.y) };
         const max: Vector2 = { x: Math.ceil(bounds.max.x), y: Math.ceil(bounds.max.y) };
@@ -3624,6 +3759,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         const noDataTile: Uint32Array<ArrayBuffer> | null =
             typeof NO_DATA_CHUNK_IMAGE === "object" ? NO_DATA_CHUNK_IMAGE.getUint32Array(placeholderTileSize, now) : null;
 
+        // FIXME: The error image tile is broken, it does not properly adjust to the scale.
         const errorImageData: ImageData = fallbackErrorChunkImageData ?? generateErrorImageData();
         const errorTile: Uint8ClampedArray = scaleNearest(errorImageData.data, errorImageData.width, errorImageData.height, tileSizePx).data;
 
@@ -3633,7 +3769,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         const maxChunkY: number = Math.ceil(bounds.max.y);
 
         const RENDER_TYPE = props.dataStorageObject.worldEditor2D.renderType;
-        // TODO (Important): Add a config option for this. Maybe have it be stored as a CSS color string and use color-rgba to convert it whenever it changes and cache it to a variable, or maybe just use the Spectrum color picker and store it as a single number.
+        // TODO (Config - Important): Add a config option for this. Maybe have it be stored as a CSS color string and use color-rgba to convert it whenever it changes and cache it to a variable, or maybe just use the Spectrum color picker and store it as a single number.
         const HEIGHTMAP_RENDER_TYPE_BASE_COLOR: readonly [r: number, g: number, b: number, a: number] = [128, 128, 128, 255];
         const HEIGHTMAP_RENDER_TYPE_BASE_COLOR_NUM: number =
             (HEIGHTMAP_RENDER_TYPE_BASE_COLOR[3] << 24) |
@@ -4573,6 +4709,60 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         engineRef.current.drawImage(playerImages, MAP_LAYERS.playersOverlay);
         return true;
     }
+    function renderIntegrationOverlayOnMap(integrationOverlay: IntegrationWorldEditor2DOverlay, currentScale: number, unrender = false): boolean {
+        if (!engineRef.current) return false;
+        if (!engineRef.current.images) return false;
+        if (!engineRef.current.isReady) return false;
+        const layer: number | undefined = WorldEditor2DLayerRegistry.registry.get(integrationOverlay.typeId);
+        if (layer === undefined) throw new Error(`Unregistered integration overlay type: ${integrationOverlay.typeId}`);
+        engineRef.current.clearLayer(layer);
+        if (unrender) return true;
+        if (!integrationOverlay.assetsLoaded) return false;
+        const loadState: IntegrationWorldEditor2DOverlayLoadState = integrationOverlay.loadState.get();
+        if (loadState === "no_data" || loadState === "N/A" || loadState === "error") return true; // REVIEW: Maybe error shouldn't return true.
+        if (loadState !== "loaded") return false;
+        const currentDimension: number = dimensionVectorDimensionToInt(props.dataStorageObject.worldEditor2D.dimension);
+        const overlayImages: WorldEditor2DIntegrationMapImageItem[] = integrationOverlay.renderItems({ currentScale, dimension: currentDimension });
+        if (overlayImages.length === 0) return true;
+        engineRef.current.drawImage(overlayImages, layer);
+        return true;
+    }
+    function renderIntegrationOverlaysOnMap(
+        currentScale: number,
+        renderState: Map<IntegrationWorldEditor2DOverlay, boolean> | boolean | null,
+        render: ReadonlyMap<`integration_${string}:${string}`, boolean> | boolean
+    ): Map<IntegrationWorldEditor2DOverlay, boolean> | boolean {
+        if (!engineRef.current) return false;
+        if (!engineRef.current.images) return false;
+        if (!engineRef.current.isReady) return false;
+        if (renderState === true && render === true) return true;
+        if (renderState === false && render === false) return false;
+        const result: Map<IntegrationWorldEditor2DOverlay, boolean> =
+            typeof renderState === "object" && renderState ? renderState : new Map<IntegrationWorldEditor2DOverlay, boolean>();
+        let unifiedResult: boolean | null | undefined;
+        for (const integrationOverlay of integrationOverlays.values()) {
+            const renderOverlay: boolean =
+                typeof render === "boolean" ? render : (
+                    (render.get(integrationOverlay.typeId) ?? false) /* REVIEW: Figure out if this should be true or false. */
+                );
+            if (typeof renderState === "object" && renderState?.get(integrationOverlay) === renderOverlay) {
+                if (unifiedResult === undefined) unifiedResult = renderOverlay;
+                else if (unifiedResult !== null && unifiedResult !== renderOverlay) unifiedResult = null;
+                continue;
+            }
+            if (typeof renderState === "boolean" && renderState === renderOverlay) {
+                if (unifiedResult === undefined) unifiedResult = renderOverlay;
+                else if (unifiedResult !== null && unifiedResult !== renderOverlay) unifiedResult = null;
+                continue;
+            }
+            const renderResult: boolean = renderIntegrationOverlayOnMap(integrationOverlay, currentScale, !renderOverlay);
+            if (unifiedResult === undefined) unifiedResult = renderResult ? renderOverlay : !renderOverlay;
+            else if (unifiedResult !== null && unifiedResult !== (renderResult ? renderOverlay : !renderOverlay)) unifiedResult = null;
+            result.set(integrationOverlay, renderResult ? renderOverlay : !renderOverlay);
+        }
+        if (typeof unifiedResult === "boolean") return unifiedResult;
+        return result;
+    }
     interface BaseContextMenuInteraction {
         openContextMenu(anchorPoint: Vector2): void;
         setOpen(isOpen: boolean): void;
@@ -5065,6 +5255,361 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 >
                     Structure Spawning Bounding Boxes
                 </MenuItem>
+                <SubMenu label="Integrations...">
+                    {integrationsWithOverlays.map((integration: IntegrationWithOverlays): JSX.Element => {
+                        // IDEA: Make this automatically refresh when the state updates if the detectionStatus is `"loading"`, `"not_loading"`, or `undefined`.
+                        const detectionStatus = detectedIntegrationsWithOverlays.get(integration.id);
+                        switch (detectionStatus) {
+                            case integration:
+                                return (
+                                    <SubMenu label={integration.name}>
+                                        {integration.worldEditor2D.overlays.map(
+                                            (overlayConstructor: IntegrationWorldEditor2DOverlayConstructor): JSX.Element => {
+                                                const overlay: IntegrationWorldEditor2DOverlay | undefined = integrationOverlays.get(overlayConstructor);
+                                                if (!overlay) {
+                                                    return (
+                                                        <SubMenu
+                                                            label={
+                                                                <>
+                                                                    <div
+                                                                        class="nsel ndrg"
+                                                                        style="display: inline-block; vertical-align: middle; width: 16px; height: 17px; position: absolute; left: 5px; top: 6px; text-align: center;"
+                                                                    >
+                                                                        <span style={{ color: "yellow" }}>?</span>
+                                                                    </div>
+                                                                    {overlayConstructor.typeId} (<span style={{ color: "red" }}>MISSING</span>)
+                                                                </>
+                                                            }
+                                                            itemProps={{
+                                                                title: "This integration overlay is not in the integrationOverlays map, this is a bug, please report this as a bug.",
+                                                            }}
+                                                        >
+                                                            <MenuItem
+                                                                onClick={(): void => {
+                                                                    clipboard.writeText("2D_WORLD_MAP_INTEGRATION_OVERLAY_MISSING_FROM_MAP");
+                                                                }}
+                                                            >
+                                                                <span style={{ color: "red" }}>2D_WORLD_MAP_INTEGRATION_OVERLAY_MISSING_FROM_MAP</span>&nbsp;
+                                                                <span style={{ color: "gray" }}>(Click to copy error)</span>
+                                                            </MenuItem>
+                                                        </SubMenu>
+                                                    );
+                                                }
+                                                const isEnabled: boolean =
+                                                    typeof props.dataStorageObject.worldEditor2D.dataOverlays.integrationOverlays === "boolean" ?
+                                                        props.dataStorageObject.worldEditor2D.dataOverlays.integrationOverlays
+                                                    :   (props.dataStorageObject.worldEditor2D.dataOverlays.integrationOverlays.get(overlay.typeId) ?? false);
+                                                const loadState: IntegrationWorldEditor2DOverlayLoadState = overlay.loadState.get();
+                                                const onOverlayCheckboxClick: () => void = (): void => {
+                                                    if (props.dataStorageObject.worldEditor2D.dataOverlays.integrationOverlays === true) {
+                                                        if (integrationOverlays.size === 1) {
+                                                            props.dataStorageObject.worldEditor2D.dataOverlays.integrationOverlays = false;
+                                                            // overlay.unloadData();
+                                                            engineRef.current?.render();
+                                                            return;
+                                                        }
+                                                        const enabledMap = new Map<`integration_${string}:${string}`, boolean>();
+                                                        for (const value of integrationOverlays.values()) {
+                                                            enabledMap.set(value.typeId, value !== overlay);
+                                                        }
+                                                        props.dataStorageObject.worldEditor2D.dataOverlays.integrationOverlays = enabledMap;
+                                                        // overlay.unloadData();
+                                                        engineRef.current?.render();
+                                                        return;
+                                                    }
+                                                    if (props.dataStorageObject.worldEditor2D.dataOverlays.integrationOverlays === false) {
+                                                        if (integrationOverlays.size === 1) {
+                                                            props.dataStorageObject.worldEditor2D.dataOverlays.integrationOverlays = true;
+                                                            // void overlay.loadData();
+                                                            engineRef.current?.render();
+                                                            return;
+                                                        }
+                                                        const enabledMap = new Map<`integration_${string}:${string}`, boolean>();
+                                                        for (const value of integrationOverlays.values()) {
+                                                            enabledMap.set(value.typeId, value === overlay);
+                                                        }
+                                                        props.dataStorageObject.worldEditor2D.dataOverlays.integrationOverlays = enabledMap;
+                                                        // void overlay.loadData();
+                                                        engineRef.current?.render();
+                                                        return;
+                                                    }
+                                                    if (integrationOverlays.size === 1) {
+                                                        props.dataStorageObject.worldEditor2D.dataOverlays.integrationOverlays =
+                                                            !props.dataStorageObject.worldEditor2D.dataOverlays.integrationOverlays.get(overlay.typeId);
+                                                        // if (props.dataStorageObject.worldEditor2D.dataOverlays.integrationOverlays) void overlay.loadData();
+                                                        // else overlay.unloadData();
+                                                        engineRef.current?.render();
+                                                        return;
+                                                    }
+                                                    const newEnabledState: boolean =
+                                                        !props.dataStorageObject.worldEditor2D.dataOverlays.integrationOverlays.get(overlay.typeId);
+                                                    props.dataStorageObject.worldEditor2D.dataOverlays.integrationOverlays.set(overlay.typeId, newEnabledState);
+                                                    switchFromMapToBooleanCheck: {
+                                                        for (const value of props.dataStorageObject.worldEditor2D.dataOverlays.integrationOverlays.values()) {
+                                                            if (value !== newEnabledState) break switchFromMapToBooleanCheck;
+                                                        }
+                                                        props.dataStorageObject.worldEditor2D.dataOverlays.integrationOverlays = newEnabledState;
+                                                    }
+                                                    // if (newEnabledState) void overlay.loadData();
+                                                    // else overlay.unloadData();
+                                                    engineRef.current?.render();
+                                                };
+                                                switch (isEnabled && loadState) {
+                                                    case "loaded":
+                                                    case false:
+                                                        return (
+                                                            <MenuItem type="checkbox" checked={isEnabled} onClick={onOverlayCheckboxClick}>
+                                                                {overlay.label}
+                                                            </MenuItem>
+                                                        );
+                                                    case "loading":
+                                                        return (
+                                                            <MenuItem
+                                                                type="checkbox"
+                                                                title="This overlay is currently loading. You will need to close and reopen the overlays menu in order to refresh this."
+                                                                checked={isEnabled}
+                                                                onClick={onOverlayCheckboxClick}
+                                                            >
+                                                                <div style="display: inline-block; vertical-align: middle; width: 16px; height: 16px; position: relative; top: -1px;">
+                                                                    <img
+                                                                        src="resource://images/ui/misc/loading_spinner.gif"
+                                                                        class="nsel ndrg piximg"
+                                                                        style={{ display: "inline-block", width: "14px", height: "14px", margin: "1px" }}
+                                                                        aria-hidden="true"
+                                                                    />
+                                                                </div>
+                                                                &nbsp;
+                                                                {overlay.label}
+                                                            </MenuItem>
+                                                        );
+                                                    case "error":
+                                                        return (
+                                                            <MenuItem
+                                                                type="checkbox"
+                                                                title="An error occurred while trying to load this overlay."
+                                                                checked={isEnabled}
+                                                                onClick={onOverlayCheckboxClick}
+                                                            >
+                                                                <div style="display: inline-block; vertical-align: middle; width: 16px; height: 17px; position: relative; top: 1px; text-align: center;">
+                                                                    <span style={{ color: "red" }}>!</span>
+                                                                </div>
+                                                                &nbsp;
+                                                                {overlay.label}
+                                                            </MenuItem>
+                                                        );
+                                                    case "no_data":
+                                                        return (
+                                                            <MenuItem
+                                                                type="checkbox"
+                                                                title="This overlay has no data."
+                                                                checked={isEnabled}
+                                                                onClick={onOverlayCheckboxClick}
+                                                            >
+                                                                {overlay.label}&nbsp;<span style={{ color: "gray" }}>(No data)</span>
+                                                            </MenuItem>
+                                                        );
+                                                    case "not_loading":
+                                                        return (
+                                                            <MenuItem
+                                                                type="checkbox"
+                                                                title="This overlay has not been requested to start loading yet, if this state persists for a while, please report this as a bug. You will need to close and reopen the overlays menu in order to refresh this."
+                                                                checked={isEnabled}
+                                                                onClick={onOverlayCheckboxClick}
+                                                            >
+                                                                <div style="display: inline-block; vertical-align: middle; width: 16px; height: 16px; position: relative; top: -1px;">
+                                                                    <img
+                                                                        // IDEA: Make this a GIF.
+                                                                        src="resource://images/ui/glyphs/hourglass.png"
+                                                                        class="nsel ndrg piximg"
+                                                                        style={{ display: "inline-block", width: "8px", height: "12px", margin: "2px 4px" }}
+                                                                        aria-hidden="true"
+                                                                    />
+                                                                </div>
+                                                                &nbsp;
+                                                                {overlay.label}
+                                                            </MenuItem>
+                                                        );
+                                                    case "N/A":
+                                                        return (
+                                                            <MenuItem
+                                                                type="checkbox"
+                                                                title="This overlay is not available for this tab."
+                                                                checked={isEnabled}
+                                                                onClick={onOverlayCheckboxClick}
+                                                                disabled
+                                                            >
+                                                                {/* IDEA: Make the N/A a separate color. */}
+                                                                {overlay.label} (N/A)
+                                                            </MenuItem>
+                                                        );
+                                                    default:
+                                                        return (
+                                                            <SubMenu
+                                                                label={
+                                                                    <>
+                                                                        <div
+                                                                            class="nsel ndrg"
+                                                                            style="display: inline-block; vertical-align: middle; width: 16px; height: 17px; position: absolute; left: 5px; top: 6px; text-align: center;"
+                                                                        >
+                                                                            <span style={{ color: "orange" }}>!?</span>
+                                                                        </div>
+                                                                        {overlay.label} (<span style={{ color: "red" }}>BUG DETECTED</span>)
+                                                                    </>
+                                                                }
+                                                                itemProps={{
+                                                                    title: "This overlay's load state is not a recognized value, this is a bug, please report this as a bug.",
+                                                                }}
+                                                            >
+                                                                <MenuItem
+                                                                    onClick={(): void => {
+                                                                        clipboard.writeText(
+                                                                            `UNRECOGNIZED_2D_WORLD_MAP_INTEGRATION_OVERLAY_LOAD_STATE: ${loadState}`
+                                                                        );
+                                                                    }}
+                                                                >
+                                                                    <span style={{ color: "red" }}>
+                                                                        UNRECOGNIZED_2D_WORLD_MAP_INTEGRATION_OVERLAY_LOAD_STATE:{` ${loadState}`}
+                                                                    </span>
+                                                                    &nbsp;
+                                                                    <span style={{ color: "gray" }}>(Click to copy error)</span>
+                                                                </MenuItem>
+                                                            </SubMenu>
+                                                        );
+                                                }
+                                            }
+                                        )}
+                                    </SubMenu>
+                                );
+                            case "loading":
+                                return (
+                                    <SubMenu
+                                        label={
+                                            <>
+                                                <div style="display: inline-block; vertical-align: middle; width: 16px; height: 16px; position: absolute; left: 5px; top: 5px;">
+                                                    <img
+                                                        src="resource://images/ui/misc/loading_spinner.gif"
+                                                        class="nsel ndrg piximg"
+                                                        style={{ display: "inline-block", width: "14px", height: "14px", margin: "1px" }}
+                                                        aria-hidden="true"
+                                                    />
+                                                </div>
+                                                {integration.name}
+                                            </>
+                                        }
+                                        itemProps={{
+                                            title: "This integration is currently being detected. You will need to close and reopen the overlays menu in order to refresh this.",
+                                        }}
+                                        disabled
+                                    />
+                                );
+                            case "no_data":
+                                return (
+                                    <SubMenu label={<>{integration.name}</>} itemProps={{ title: "This integration was not detected on this tab." }} disabled />
+                                );
+                            case "error":
+                                return (
+                                    <SubMenu
+                                        label={
+                                            <>
+                                                <div
+                                                    class="nsel ndrg"
+                                                    style="display: inline-block; vertical-align: middle; width: 16px; height: 17px; position: absolute; left: 5px; top: 6px; text-align: center;"
+                                                >
+                                                    <span style={{ color: "red" }}>!</span>
+                                                </div>
+                                                {integration.name}
+                                            </>
+                                        }
+                                        itemProps={{ title: "An error occurred while trying to detect this integration." }}
+                                        disabled
+                                    />
+                                );
+                            case "not_loading":
+                                return (
+                                    <SubMenu
+                                        // IDEA: Add something to detect if this has been waiting for too long.
+                                        label={
+                                            <>
+                                                <div style="display: inline-block; vertical-align: middle; width: 16px; height: 16px; position: absolute; left: 5px; top: 5px;">
+                                                    <img
+                                                        // IDEA: Make this a GIF.
+                                                        src="resource://images/ui/glyphs/hourglass.png"
+                                                        class="nsel ndrg piximg"
+                                                        style={{ display: "inline-block", width: "8px", height: "12px", margin: "2px 4px" }}
+                                                        aria-hidden="true"
+                                                    />
+                                                </div>
+                                                {integration.name}
+                                            </>
+                                        }
+                                        itemProps={{
+                                            title: "This integration has not been requested to start being detected yet, if this state persists for a while, please report this as a bug. You will need to close and reopen the overlays menu in order to refresh this.",
+                                        }}
+                                        disabled
+                                    />
+                                );
+                            case undefined:
+                                return (
+                                    <SubMenu
+                                        label={
+                                            <>
+                                                <div
+                                                    class="nsel ndrg"
+                                                    style="display: inline-block; vertical-align: middle; width: 16px; height: 17px; position: absolute; left: 5px; top: 6px; text-align: center;"
+                                                >
+                                                    <span style={{ color: "yellow" }}>?</span>
+                                                </div>
+                                                {integration.name} (<span style={{ color: "red" }}>BUG DETECTED</span>)
+                                            </>
+                                        }
+                                        itemProps={{ title: "This integration's detection state is undefined, this is a bug, please report this as a bug." }}
+                                    >
+                                        <MenuItem
+                                            onClick={(): void => {
+                                                clipboard.writeText("UNDEFINED_2D_WORLD_MAP_INTEGRATION_DETECTION_STATE");
+                                            }}
+                                        >
+                                            <span style={{ color: "red" }}>UNDEFINED_2D_WORLD_MAP_INTEGRATION_DETECTION_STATE</span>&nbsp;
+                                            <span style={{ color: "gray" }}>(Click to copy error)</span>
+                                        </MenuItem>
+                                    </SubMenu>
+                                );
+                            default:
+                                return (
+                                    <SubMenu
+                                        label={
+                                            <>
+                                                <div
+                                                    class="nsel ndrg"
+                                                    style="display: inline-block; vertical-align: middle; width: 16px; height: 17px; position: absolute; left: 5px; top: 6px; text-align: center;"
+                                                >
+                                                    <span style={{ color: "orange" }}>!?</span>
+                                                </div>
+                                                {integration.name} (<span style={{ color: "red" }}>BUG DETECTED</span>)
+                                            </>
+                                        }
+                                        itemProps={{
+                                            title: "This integration's detection state is not a recognized value, this is a bug, please report this as a bug.",
+                                        }}
+                                    >
+                                        <MenuItem
+                                            onClick={(): void => {
+                                                clipboard.writeText(
+                                                    `UNRECOGNIZED_2D_WORLD_MAP_INTEGRATION_DETECTION_STATE: ${detectionStatus as unknown as string}`
+                                                );
+                                            }}
+                                        >
+                                            <span style={{ color: "red" }}>
+                                                UNRECOGNIZED_2D_WORLD_MAP_INTEGRATION_DETECTION_STATE:{` ${detectionStatus as unknown as string}`}
+                                            </span>
+                                            &nbsp;
+                                            <span style={{ color: "gray" }}>(Click to copy error)</span>
+                                        </MenuItem>
+                                    </SubMenu>
+                                );
+                        }
+                    })}
+                </SubMenu>
                 {/* TODO: Add a set defaults submenu here. */}
             </ControlledMenu>
         );
@@ -7066,7 +7611,24 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             );
                     }
                 case "entity":
-                default:
+                default: {
+                    function isIntegrationOverlayItem(value: WorldEditor2DMapImageItem["meta"]): value is WorldEditor2DIntegrationMapImageItem["meta"] {
+                        return typeof meta.type === "string" && meta.type.startsWith("integration_") && meta.type.includes(":");
+                    }
+                    if (isIntegrationOverlayItem(meta)) {
+                        return (
+                            <ControlledMenu
+                                anchorPoint={worldEditor2DMapOverlayImageContextMenu_anchorPoint}
+                                state={worldEditor2DMapOverlayImageContextMenu_isOpen ? "open" : "closed"}
+                                direction="right"
+                                onClose={(): void => void worldEditor2DMapOverlayImageContextMenu_setOpen(false)}
+                            >
+                                <meta.overlay.contextMenuContents meta={meta} />
+
+                                <ItemNavigation />
+                            </ControlledMenu>
+                        );
+                    }
                     return (
                         <ControlledMenu
                             anchorPoint={worldEditor2DMapOverlayImageContextMenu_anchorPoint}
@@ -7079,6 +7641,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             <ItemNavigation />
                         </ControlledMenu>
                     );
+                }
             }
         }
 
@@ -7114,15 +7677,19 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
 
         let portalsRendered: boolean = false;
         let playersRendered: boolean = false;
+        let integrationOverlayRenderState: Map<IntegrationWorldEditor2DOverlay, boolean> | boolean = false;
 
         function onMapContentsReset(): void {
             mapReset = false;
-            const successfullyRerenderedPortals: boolean = renderPortalsOnMap(engine.getScale(), !props.dataStorageObject.worldEditor2D.dataOverlays.portals);
+            const scale: number = engine.getScale();
+            const successfullyRerenderedPortals: boolean = renderPortalsOnMap(scale, !props.dataStorageObject.worldEditor2D.dataOverlays.portals);
             if (successfullyRerenderedPortals) portalsRendered = props.dataStorageObject.worldEditor2D.dataOverlays.portals;
             else portalsRendered = !props.dataStorageObject.worldEditor2D.dataOverlays.portals;
-            const successfullyRerenderedPlayers: boolean = renderPlayersOnMap(engine.getScale(), !props.dataStorageObject.worldEditor2D.dataOverlays.players);
+            const successfullyRerenderedPlayers: boolean = renderPlayersOnMap(scale, !props.dataStorageObject.worldEditor2D.dataOverlays.players);
             if (successfullyRerenderedPlayers) playersRendered = props.dataStorageObject.worldEditor2D.dataOverlays.players;
             else playersRendered = !props.dataStorageObject.worldEditor2D.dataOverlays.players;
+            // REVIEW: See if this null should be swapped out for a false.
+            integrationOverlayRenderState = renderIntegrationOverlaysOnMap(scale, null, props.dataStorageObject.worldEditor2D.dataOverlays.integrationOverlays);
         }
 
         let minScale: number = calculateMinScale();
@@ -7426,6 +7993,13 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                         }
                         if (portalsRendered && props.dataStorageObject.worldEditor2D.dataOverlays.portals) portalsRendered = renderPortalsOnMap(scale);
                         if (playersRendered && props.dataStorageObject.worldEditor2D.dataOverlays.players) playersRendered = renderPlayersOnMap(scale);
+                        if (integrationOverlayRenderState !== false && props.dataStorageObject.worldEditor2D.dataOverlays.integrationOverlays !== false) {
+                            integrationOverlayRenderState = renderIntegrationOverlaysOnMap(
+                                scale,
+                                false,
+                                props.dataStorageObject.worldEditor2D.dataOverlays.integrationOverlays
+                            );
+                        }
                     }}
                 >
                     <CanvasTileEngine.DrawFunction layer={0}>
@@ -7443,15 +8017,34 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             if (mapReset) onMapContentsReset();
                             if (!portalsRendered && props.dataStorageObject.worldEditor2D.dataOverlays.portals) {
                                 portalsRendered = renderPortalsOnMap(config.scale);
-                            }
-                            if (portalsRendered && !props.dataStorageObject.worldEditor2D.dataOverlays.portals) {
+                            } else if (portalsRendered && !props.dataStorageObject.worldEditor2D.dataOverlays.portals) {
                                 portalsRendered = !renderPortalsOnMap(config.scale, true);
                             }
                             if (!playersRendered && props.dataStorageObject.worldEditor2D.dataOverlays.players) {
                                 playersRendered = renderPlayersOnMap(config.scale);
-                            }
-                            if (playersRendered && !props.dataStorageObject.worldEditor2D.dataOverlays.players) {
+                            } else if (playersRendered && !props.dataStorageObject.worldEditor2D.dataOverlays.players) {
                                 playersRendered = !renderPlayersOnMap(config.scale, true);
+                            }
+                            // OPTIMIZE: This is comparing many properties every frame and needs to be optimized. The else if returns true every frame if all of the overlays are not set to the same enabled state.
+                            if (
+                                integrationOverlayRenderState !== props.dataStorageObject.worldEditor2D.dataOverlays.integrationOverlays &&
+                                (typeof integrationOverlayRenderState === "boolean" ||
+                                    typeof props.dataStorageObject.worldEditor2D.dataOverlays.integrationOverlays === "boolean")
+                            ) {
+                                integrationOverlayRenderState = renderIntegrationOverlaysOnMap(
+                                    config.scale,
+                                    integrationOverlayRenderState,
+                                    props.dataStorageObject.worldEditor2D.dataOverlays.integrationOverlays
+                                );
+                            } else if (
+                                typeof integrationOverlayRenderState !== "boolean" ||
+                                typeof props.dataStorageObject.worldEditor2D.dataOverlays.integrationOverlays !== "boolean"
+                            ) {
+                                integrationOverlayRenderState = renderIntegrationOverlaysOnMap(
+                                    config.scale,
+                                    integrationOverlayRenderState,
+                                    props.dataStorageObject.worldEditor2D.dataOverlays.integrationOverlays
+                                );
                             }
                             const size = { width: ctx.canvas.width, height: ctx.canvas.height };
                             const scale = config.scale / (config.size.width / size.width);

@@ -66,6 +66,23 @@ export interface Observable<T> {
 }
 
 /**
+ * An read-only observable value.
+ */
+export interface ReadonlyObservable<T> {
+    /**
+     * Gets the current value of the observable.
+     */
+    get(): T;
+    /**
+     * Observes the value of the observable.
+     *
+     * @param fn The function to call when the value of the observable changes.
+     * @returns A function that can be called to stop observing the value of the observable, returning `true` if the observer was removed, or `false` if the observer was already removed.
+     */
+    observe(fn: (value: T) => void): () => boolean;
+}
+
+/**
  * Creates an observable value.
  *
  * @param initialValue The initial value of the observable.

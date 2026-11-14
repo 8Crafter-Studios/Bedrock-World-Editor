@@ -31,7 +31,8 @@
         "checkJs": true,
         "allowJs": true,
         "esModuleInterop": true,
-        "exactOptionalPropertyTypes": true
+        "exactOptionalPropertyTypes": true,
+        "noImplicitOverride": true
     },
     "include": ["src", "./app/renderer.tsx", "app", "./node_modules/vite/client.d.ts"],
     "exclude": ["deprecated/*", "*.asar"]

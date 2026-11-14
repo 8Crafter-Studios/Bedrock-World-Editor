@@ -1,10 +1,9 @@
 import type { JSX } from "preact";
 import WorldEdit_Bedrock from "./WorldEdit_Bedrock";
 import LilyMoney from "./LilyMoney";
-
-
-
-
+import Better_on_Bedrock from "./Better_on_Bedrock";
+import { WorldEditor2DLayerRegistry } from "../components/WorldEditor2D";
+import type { IntegrationWorldEditor2DOverlayConstructor } from "./integrationUtils";
 
 /**
  * An integration.
@@ -74,6 +73,19 @@ export interface Integration {
      */
     readonly autoApplyActions?: IntegrationAutoApplyAction[];
     /**
+     * World Editor 2D integrations for this integration.
+     *
+     * @default {}
+     */
+    readonly worldEditor2D?: {
+        /**
+         * Overlays for this integration.
+         *
+         * @default []
+         */
+        readonly overlays?: IntegrationWorldEditor2DOverlayConstructor[];
+    };
+    /**
      * Checks if this integration should show in the "Detected" section of the "Integrations" sidebar tab of the provided tab.
      *
      * @param tab The tab to check.
@@ -90,6 +102,11 @@ export interface Integration {
      */
     integrationMenu(props: IntegrationMenuProps): JSX.Element;
 }
+
+/**
+ * An integration that has overlays for the 2D world map.
+ */
+export type IntegrationWithOverlays = Integration & { readonly worldEditor2D: { readonly overlays: NonNullable<unknown> } };
 
 /**
  * An auto-apply action for an integration.
@@ -159,9 +176,24 @@ export interface IntegrationMenuProps {
  * All integrations.
  */
 export const integrations = {
+    // NOTE: The order these are in affects their position in the integrations left sidebar tab. Items above are displayed above in the integrations left sidebar tab.
+    // IDEA (Config): Make this order able to be changed.
     WorldEdit_Bedrock,
     LilyMoney,
-} as const satisfies Record<string, Integration>;
+    Better_on_Bedrock,
+} as const satisfies Record<string, Integration> satisfies Record<string, (typeof worldMap2DIntegrationZOrder)[number]>;
+
+/**
+ * The Z-order of integrations on the 2D world map, items at a higher index are displayed above items at a lower index.
+ */
+// IDEA (Config): Make this order able to be changed.
+const worldMap2DIntegrationZOrder = [LilyMoney, WorldEdit_Bedrock, Better_on_Bedrock] as const;
+worldMap2DIntegrationZOrder.forEach((integration: Integration): void => {
+    if (!integration.worldEditor2D?.overlays?.length) return;
+    for (const overlay of integration.worldEditor2D.overlays) {
+        WorldEditor2DLayerRegistry.register(overlay.typeId);
+    }
+});
 
 /**
  * A list of URI protocols that are allowed to be opened by clicking on an integration link button without prompting the user.

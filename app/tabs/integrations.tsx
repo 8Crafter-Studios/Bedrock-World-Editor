@@ -17,6 +17,7 @@ export interface IntegrationsTabProps {
  * @param props The props for the component.
  * @returns The JSX element.
  */
+// IDEA: Add a menu that shows all integrations available for the current world's Minecraft version (if available), or make the undetected tab show "(Unavailable)" or "(Not Supported)" on integrations that the current world does not support.
 export default function IntegrationsTab(props: IntegrationsTabProps): JSX.Element {
     const mainIntegrationsScreenRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
     const currentIntegrationMenuRef: RefObject<HTMLDivElement> = useRef<HTMLDivElement>(null);
@@ -43,7 +44,8 @@ export default function IntegrationsTab(props: IntegrationsTabProps): JSX.Elemen
         render(null, tablesContainerRef.current);
         render(<TablesContents />, tablesContainerRef.current);
     }
-    Object.values(integrations).forEach((integration: Integration): void => {
+    const integrationsList = Object.values(integrations);
+    integrationsList.forEach((integration: Integration): void => {
         try {
             const result: boolean | Promise<boolean> = integration.checkIfDetected(props.tab);
             if (typeof result === "boolean") return void detectedAndUndetectedIntegrations[result ? "detected" : "undetected"].push(integration);
@@ -88,7 +90,9 @@ export default function IntegrationsTab(props: IntegrationsTabProps): JSX.Elemen
         }
     });
     function TablesContents(): JSX.SpecificElement<"div"> {
-        const displayIntegrations: Integration[] = detectedAndUndetectedIntegrations[mode];
+        const displayIntegrations: Integration[] = detectedAndUndetectedIntegrations[mode].toSorted(
+            (a: Integration, b: Integration): number => (integrationsList as Integration[]).indexOf(a) - (integrationsList as Integration[]).indexOf(b)
+        );
         return (
             <div style={{ display: "grid" }}>
                 {...displayIntegrations.map((integration: Integration): JSX.Element => {
@@ -121,6 +125,9 @@ export default function IntegrationsTab(props: IntegrationsTabProps): JSX.Elemen
                         : detectedAndUndetectedIntegrations.loading.length ?
                             <h2>Loading integrations...</h2>
                         :   <h2>No {mode === "detected" ? "detected" : "undetected"} integrations.</h2>}
+                        {!detectedAndUndetectedIntegrations.loading.length && mode === "detected" && (
+                            <p>Click "Undetected" at the top to see a list of supported integrations.</p>
+                        )}
                     </center>
                 )}
             </div>

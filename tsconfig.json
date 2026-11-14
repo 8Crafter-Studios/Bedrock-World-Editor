@@ -15,6 +15,7 @@
         "strict": true,
         "exactOptionalPropertyTypes": true,
         "allowSyntheticDefaultImports": true,
+        "noImplicitOverride": true,
         "checkJs": true
     },
     "files": [],
