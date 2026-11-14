@@ -726,6 +726,38 @@ namespace exports {
                     this.views.maps.modeSettings.simple.columns = currentMapsSimpleModeColumns;
                 }
             }
+            if (semver.compareBuild(currentConfigVersion, "1.0.0-beta.49+BUILD.2") < 0) {
+                {
+                    const currentMinecraftDataFolders: string[] = this.minecraftDataFolders;
+                    const originalLength: number = currentMinecraftDataFolders.length;
+                    for (const path of [
+                        "%localappdata%/LeviLauncher/Instances/*/Minecraft Bedrock/Users/*/games/com.mojang",
+                        "%localappdata%/LeviLauncher/Instances/*/Minecraft Bedrock Preview/Users/*/games/com.mojang",
+                        "%localappdata%/LeviLauncher/Instances/*/Minecraft Bedrock/games/com.mojang",
+                        "%localappdata%/LeviLauncher/Instances/*/Minecraft Bedrock Preview/games/com.mojang",
+                    ]) {
+                        if (!currentMinecraftDataFolders.includes(path)) currentMinecraftDataFolders.push(path);
+                    }
+                    if (currentMinecraftDataFolders.length !== originalLength) this.minecraftDataFolders = currentMinecraftDataFolders;
+                }
+                {
+                    const currentExtraMinecraftDataFolders: string[] = this.extraMinecraftDataFolders;
+                    const originalLength: number = currentExtraMinecraftDataFolders.length;
+                    for (const path of [
+                        "/Volumes/*/Users/*/AppData/Local/LeviLauncher/Instances/*/Minecraft Bedrock/Users/*/games/com.mojang",
+                        "/Volumes/*/Users/*/AppData/Local/LeviLauncher/Instances/*/Minecraft Bedrock Preview/Users/*/games/com.mojang",
+                        "/Volumes/*/Users/*/AppData/Local/LeviLauncher/Instances/*/Minecraft Bedrock/games/com.mojang",
+                        "/Volumes/*/Users/*/AppData/Local/LeviLauncher/Instances/*/Minecraft Bedrock Preview/games/com.mojang",
+                        "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Local/LeviLauncher/Instances/*/Minecraft Bedrock/Users/*/games/com.mojang",
+                        "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Local/LeviLauncher/Instances/*/Minecraft Bedrock Preview/Users/*/games/com.mojang",
+                        "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Local/LeviLauncher/Instances/*/Minecraft Bedrock/games/com.mojang",
+                        "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Local/LeviLauncher/Instances/*/Minecraft Bedrock Preview/games/com.mojang",
+                    ]) {
+                        if (!currentExtraMinecraftDataFolders.includes(path)) currentExtraMinecraftDataFolders.push(path);
+                    }
+                    if (currentExtraMinecraftDataFolders.length !== originalLength) this.extraMinecraftDataFolders = currentExtraMinecraftDataFolders;
+                }
+            }
             // TODO: Uncomment this at add the correct version number when grouped search mode for the raw players tab mode is implemented.
             // if (semver.satisfies(currentConfigVersion, "< 1.0.0-beta.?", { includePrerelease: true })) {
             //     this.views.players.modeSettings.raw.searchMode = "grouped";
