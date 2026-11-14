@@ -6,10 +6,15 @@
 
 # v1.0.0-beta.42
 
+> [!IMPORTANT]
+> This update was not released for macOS devices due to an ongoing Apple Developer account transfer.
+>
+> Once macOS updates resume at the end of November, the built-in auto-updater in older versions of the app will stop working on macOS and you will need to download the update manually from GitHub for automatic updates to work again.
+
 ## Additions
 
 -   Added an integration with the [Better on Bedrock](https://wiki.foxystar.net/docs/maps/better-on-bedrock/) add-on.
--   Added an additinoal message to the "Detected" mode of the "Integrations" left sidebar tab for when no integrations are detected and all integrations have finished loading that says `Click "Undetected" at the top to see a list of supported integrations.`.
+-   Added an additional message to the "Detected" mode of the "Integrations" left sidebar tab for when no integrations are detected and all integrations have finished loading that says `Click "Undetected" at the top to see a list of supported integrations.`.
 -   Added support for the Editor Edition of [8Crafter's Server Utilities & Debug Sticks](https://wiki.8crafter.com/andexdb/) add-on for detecting player's names.
 
 ## Changes

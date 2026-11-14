@@ -1,5 +1,10 @@
 # 8Crafter's Bedrock World Editor
 
+> [!IMPORTANT]
+> Due to an ongoing Apple Developer account transfer, macOS updates are paused until the end of November.
+>
+> Once macOS starts receiving updates again, the built-in auto-updater in versions of the app prior to v1.0.0-beta.42 will stop working on macOS and you will need to download the update manually from GitHub for automatic updates to work again.
+
 An NBT and LevelDB editor for Minecraft Bedrock Edition.
 
 This app is still in beta, so please report any issues you find [here](https://github.com/8Crafter-Studios/Bedrock-World-Editor/issues).
