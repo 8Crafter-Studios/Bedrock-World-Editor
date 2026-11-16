@@ -13,6 +13,10 @@
 -   Added the ability to hide worlds. If you right click a world in the world selection menu and select "Hide", the world will no longer show up in the world selection menu. You can see all hidden worlds in the "Hidden Worlds" settings section, where you can open them like you would in the world selection menu, or unhide them by right clicking and selecting "Unhide".
 -   Added the "Hidden Worlds" settings section.
 
+## Fixes
+
+-   When using the `Help > Check for Updates...` menu bar item, it can now show an error dialog instead of failing silently when something goes wrong while downloading the update.
+
 ## Performance Improvements
 
 -   Fixed severe lag spikes while scrolling in settings sections in some cases.
