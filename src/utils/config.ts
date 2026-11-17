@@ -244,9 +244,19 @@ namespace exports {
                 "%appdata%/levilauncher.exe/versions/*/Minecraft Bedrock Preview/Users/*/games/com.mojang",
                 "%appdata%/levilauncher.exe/versions/*/Minecraft Bedrock/games/com.mojang",
                 "%appdata%/levilauncher.exe/versions/*/Minecraft Bedrock Preview/games/com.mojang",
+                "%localappdata%/LeviLauncher/Instances/*/Minecraft Bedrock/Users/*/games/com.mojang",
+                "%localappdata%/LeviLauncher/Instances/*/Minecraft Bedrock Preview/Users/*/games/com.mojang",
+                "%localappdata%/LeviLauncher/Instances/*/Minecraft Bedrock/games/com.mojang",
+                "%localappdata%/LeviLauncher/Instances/*/Minecraft Bedrock Preview/games/com.mojang",
                 // PlayCover (macOS)
                 "Home/Library/Containers/com.mojang.minecraftpe/Data/Documents/games/com.mojang",
                 "Home/Library/Containers/com.mojang.minecraftpreview/Data/Documents/games/com.mojang",
+                // BedrockOnLinux (Linux/macOS)
+                // REVIEW: Make sure macOS doesn't have this in a different path.
+                "Home/.local/share/bedrock-on-linux/compatdata/pfx/drive_c/users/steamuser/AppData/Roaming/Minecraft Bedrock/Users/*/games/com.mojang",
+                "Home/.local/share/bedrock-on-linux/compatdata/pfx/drive_c/users/steamuser/AppData/Roaming/Minecraft Bedrock/games/com.mojang",
+                "Home/.local/share/bedrock-on-linux/compatdata/pfx/drive_c/users/steamuser/AppData/Roaming/Minecraft Bedrock Preview/Users/*/games/com.mojang",
+                "Home/.local/share/bedrock-on-linux/compatdata/pfx/drive_c/users/steamuser/AppData/Roaming/Minecraft Bedrock Preview/games/com.mojang",
             ],
             isolatedMinecraftWorldsFolders: [],
             extraMinecraftDataFolders: [
@@ -311,6 +321,14 @@ namespace exports {
                 "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/levilauncher.exe/versions/*/Minecraft Bedrock Preview/Users/*/games/com.mojang",
                 "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/levilauncher.exe/versions/*/Minecraft Bedrock/games/com.mojang",
                 "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Roaming/levilauncher.exe/versions/*/Minecraft Bedrock Preview/games/com.mojang",
+                "/Volumes/*/Users/*/AppData/Local/LeviLauncher/Instances/*/Minecraft Bedrock/Users/*/games/com.mojang",
+                "/Volumes/*/Users/*/AppData/Local/LeviLauncher/Instances/*/Minecraft Bedrock Preview/Users/*/games/com.mojang",
+                "/Volumes/*/Users/*/AppData/Local/LeviLauncher/Instances/*/Minecraft Bedrock/games/com.mojang",
+                "/Volumes/*/Users/*/AppData/Local/LeviLauncher/Instances/*/Minecraft Bedrock Preview/games/com.mojang",
+                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Local/LeviLauncher/Instances/*/Minecraft Bedrock/Users/*/games/com.mojang",
+                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Local/LeviLauncher/Instances/*/Minecraft Bedrock Preview/Users/*/games/com.mojang",
+                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Local/LeviLauncher/Instances/*/Minecraft Bedrock/games/com.mojang",
+                "%APP_DATA_FOLDER_PATH%/mounted_volumes/*/Users/*/AppData/Local/LeviLauncher/Instances/*/Minecraft Bedrock Preview/games/com.mojang",
             ],
             extraIsolatedMinecraftWorldsFolders: [],
             enabledAutoApplyIntegrations: [],
@@ -726,7 +744,7 @@ namespace exports {
                     this.views.maps.modeSettings.simple.columns = currentMapsSimpleModeColumns;
                 }
             }
-            if (semver.compareBuild(currentConfigVersion, "1.0.0-beta.43+BUILD.2") < 0) {
+            if (semver.compareBuild(currentConfigVersion, "1.0.0-beta.43+BUILD.3") < 0) {
                 {
                     const currentMinecraftDataFolders: string[] = this.minecraftDataFolders;
                     const originalLength: number = currentMinecraftDataFolders.length;
@@ -735,6 +753,10 @@ namespace exports {
                         "%localappdata%/LeviLauncher/Instances/*/Minecraft Bedrock Preview/Users/*/games/com.mojang",
                         "%localappdata%/LeviLauncher/Instances/*/Minecraft Bedrock/games/com.mojang",
                         "%localappdata%/LeviLauncher/Instances/*/Minecraft Bedrock Preview/games/com.mojang",
+                        "Home/.local/share/bedrock-on-linux/compatdata/pfx/drive_c/users/steamuser/AppData/Roaming/Minecraft Bedrock/Users/*/games/com.mojang",
+                        "Home/.local/share/bedrock-on-linux/compatdata/pfx/drive_c/users/steamuser/AppData/Roaming/Minecraft Bedrock/games/com.mojang",
+                        "Home/.local/share/bedrock-on-linux/compatdata/pfx/drive_c/users/steamuser/AppData/Roaming/Minecraft Bedrock Preview/Users/*/games/com.mojang",
+                        "Home/.local/share/bedrock-on-linux/compatdata/pfx/drive_c/users/steamuser/AppData/Roaming/Minecraft Bedrock Preview/games/com.mojang",
                     ]) {
                         if (!currentMinecraftDataFolders.includes(path)) currentMinecraftDataFolders.push(path);
                     }

@@ -10,6 +10,7 @@
 
 -   Added paths to the world folder locations for the new LeviLauncher path.
 -   Added paths to the extra world folder locations for the new LeviLauncher path inside of mounted Windows volumes.
+-   Added paths to the world folder locations for BedrockOnLinux.
 -   Added the ability to hide worlds. If you right click a world in the world selection menu and select "Hide", the world will no longer show up in the world selection menu. You can see all hidden worlds in the "Hidden Worlds" settings section, where you can open them like you would in the world selection menu, or unhide them by right clicking and selecting "Unhide".
 -   Added the "Hidden Worlds" settings section.
 
