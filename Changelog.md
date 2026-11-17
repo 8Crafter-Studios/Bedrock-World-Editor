@@ -6,6 +6,11 @@
 
 # v1.0.0-beta.43
 
+> [!IMPORTANT]
+> This update was not released for macOS devices due to an ongoing Apple Developer account transfer.
+>
+> Once macOS updates resume at the end of November, the built-in auto-updater in older versions of the app will stop working on macOS and you will need to download the update manually from GitHub for automatic updates to work again.
+
 ## Additions
 
 -   Added paths to the world folder locations for the new LeviLauncher path.
