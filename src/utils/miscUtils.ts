@@ -6,6 +6,9 @@
  * @supports Main, Preload, Renderer
  */
 /** */
+
+import type { NBTFormat } from "prismarine-nbt";
+
 /**
  * Tests whether all properties and their values in the `base` object
  * are present in the `objectToTest` object.
@@ -275,3 +278,11 @@ export async function allPromisesSettledUnhandled(promises: Promise<unknown>[] |
         promises.map(async (p: Promise<unknown>): Promise<void> => void (await new Promise<void>((resolve: () => void): void => void p.finally(resolve))))
     );
 }
+
+/**
+ * Maps NBT formats to labels.
+ */
+export const nbtFormatLabels = {
+    short: { big: "BE", little: "LE", littleVarint: "LEV" },
+    long: { big: "Big Endian", little: "Little Endian", littleVarint: "Little Endian Varint" },
+} as const satisfies Record<"short" | "long", Record<NBTFormat, string>>;

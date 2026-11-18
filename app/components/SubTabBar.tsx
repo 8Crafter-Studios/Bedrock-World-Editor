@@ -3,12 +3,21 @@ import _React, { render, useEffect, useLayoutEffect, useRef, useState } from "pr
 import { checkIsURIOrPath } from "../../src/utils/pathUtils";
 const mime = require("mime-types") as typeof import("mime-types");
 import { readFileSync, writeFileSync } from "node:fs";
-import { prettyPrintSNBT, prismarineToSNBT, toJSONSafePrismarineNBT, type Vector2 } from "mcbe-leveldb";
+import {
+    entryContentTypeToFormatMap,
+    prettyPrintSNBT,
+    prismarineToSNBT,
+    toJSONSafePrismarineNBT,
+    type EntryContentTypeFormatData,
+    type Vector2,
+} from "mcbe-leveldb";
 import { ControlledMenu, MenuDivider, MenuItem, SubMenu } from "@szhsin/react-menu";
 import { app, dialog } from "@electron/remote";
 import type { MessageBoxReturnValue, SaveDialogReturnValue } from "electron";
 import path from "node:path";
 import commentJSON from "comment-json";
+import { nbtFormatLabels } from "../../src/utils/miscUtils";
+import NBT, { type NBTFormat } from "prismarine-nbt";
 
 /**
  * Props for the {@link SubTabBar} component.
@@ -341,22 +350,41 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                             </>
                         }
                         <MenuDivider />
+                        {/* IDEA: Add a "Convert To..." or "Reopen as..."" submenu. */}
                         <SubMenu label="Export As...">
                             {/* TODO: Move this to a separate function that TabBar can also access in order to display export options for file tabs. */}
-                            {/* OPTIMIZE: Replace the writeFileSync calls with await writeFile calls. */}
+                            {/* OPTIMIZE: Replace the writeFileSync calls with await writeFile calls. (make sure to add a thing to make the window wait to close until it is complete if the user tries to close the window) */}
+                            {/* IDEA: Add a separate NBT binary export option for when it isn't actually stored as NBT when converted to binary, but the parsed data is of type NBT or NBTCompound. */}
                             <MenuItem
                                 onClick={async (): Promise<void> => {
                                     tabDataStorageObject = props.tab.currentState.options.dataStorageObject;
-                                    const supportsNBTBinary: boolean =
-                                        !!tabDataStorageObject && (tabDataStorageObject.dataType === "NBT" || tabDataStorageObject.dataType === "NBTCompound");
+                                    const isNBTBinary: boolean = tabDataStorageObject?.sourceType.type === "NBT";
+                                    const rawFileExtension: string | undefined = (
+                                        tabDataStorageObject?.sourceType ??
+                                        props.tab.formatData ??
+                                        (entryContentTypeToFormatMap[props.tab.currentState.options.type] as EntryContentTypeFormatData)
+                                    ).rawFileExtension;
+                                    // TODO (Important): Make this put the content type in the file name (if applicable).
                                     const saveResult: SaveDialogReturnValue = await dialog.showSaveDialog({
                                         buttonLabel: "Export",
-                                        defaultPath: path.join(app.getPath("downloads"), `${props.tab.name}.${supportsNBTBinary ? "dat" : "bin"}`),
+                                        defaultPath: path.join(
+                                            app.getPath("downloads"),
+                                            // FIXME (Important): The tab name (props.tab.name) needs to be sanitized to be a valid file name.
+                                            `${props.tab.name}.${rawFileExtension ?? (isNBTBinary ? "nbt" : "bin")}`
+                                        ),
                                         properties: ["showHiddenFiles", "showOverwriteConfirmation", "treatPackageAsDirectory"],
                                         title: "Export Binary",
                                         message: "Select a location to export the data to.",
                                         filters: [
-                                            ...(supportsNBTBinary ? [{ name: "NBT Binary", extensions: ["dat"] }] : []),
+                                            ...(rawFileExtension !== undefined ?
+                                                [
+                                                    {
+                                                        name: `${rawFileExtension.toUpperCase()} File${props.tab.contentType !== "Unknown" ? ` (${props.tab.contentType})` : ""}`,
+                                                        extensions: [rawFileExtension],
+                                                    },
+                                                ]
+                                            :   []),
+                                            ...(isNBTBinary ? [{ name: "NBT Binary", extensions: ["nbt"] }] : []),
                                             { name: "Binary", extensions: ["bin"] },
                                         ],
                                     });
@@ -364,8 +392,88 @@ export default function SubTabBar(props: SubTabBarProps): JSX.Element {
                                     writeFileSync(saveResult.filePath, await props.tab.exportRawData(true));
                                 }}
                             >
-                                Binary
+                                {(): string | JSX.Element => {
+                                    const format: EntryContentTypeFormatData | undefined =
+                                        tabDataStorageObject?.sourceType ??
+                                        props.tab.formatData ??
+                                        (entryContentTypeToFormatMap[props.tab.currentState.options.type] as EntryContentTypeFormatData);
+                                    if (!format) {
+                                        return (
+                                            <span style={{ color: "red" }}>
+                                                Binary (MISSING FORMAT DATA FOR CURRENT TYPE: {String(props.tab.currentState.options.type)})
+                                            </span>
+                                        );
+                                    }
+                                    const rawFileExtension: string | undefined = format.rawFileExtension;
+                                    if (!rawFileExtension) return "Binary";
+                                    return `${rawFileExtension.toUpperCase()} File / Binary`;
+                                }}
                             </MenuItem>
+                            {tabDataStorageObject && (tabDataStorageObject.dataType === "NBT" || tabDataStorageObject.dataType === "NBTCompound") && (
+                                <SubMenu label="NBT...">
+                                    {(["big", "little", "littleVarint"] as const satisfies NBTFormat[]).map((nbtFormat): JSX.Element => {
+                                        undefined as unknown as NBTFormat satisfies typeof nbtFormat; // Ensures no formats are missing.
+                                        return (
+                                            <MenuItem
+                                                onClick={async (): Promise<void> => {
+                                                    tabDataStorageObject = props.tab.currentState.options.dataStorageObject;
+                                                    if (!tabDataStorageObject) {
+                                                        dialog.showMessageBoxSync({
+                                                            type: "error",
+                                                            title: "No Data",
+                                                            message: `Unable to export the data of the sub-tab "${props.tab.name}" as ${nbtFormatLabels.long[nbtFormat]} NBT.`,
+                                                            detail: "There is no loaded data to export.",
+                                                            buttons: ["OK"],
+                                                            noLink: true,
+                                                        });
+                                                        return;
+                                                    }
+                                                    if (tabDataStorageObject.dataType !== "NBT" && tabDataStorageObject.dataType !== "NBTCompound") {
+                                                        dialog.showMessageBoxSync({
+                                                            type: "error",
+                                                            title: "Invalid Data Type",
+                                                            message: `Unable to export the data of the sub-tab "${props.tab.name}" as ${nbtFormatLabels.long[nbtFormat]} NBT.`,
+                                                            detail: `The data type of the loaded data is not supported for this export type: "${tabDataStorageObject.dataType}".`,
+                                                            buttons: ["OK"],
+                                                            noLink: true,
+                                                        });
+                                                        return;
+                                                    }
+                                                    // TODO (Important): Make this put the content type in the file name (if applicable), make sure it won't try to parse it as the proper format though, maybe have it has `**.<contentType>_nbt.*` to specify that it should just use the schema of it.
+                                                    const saveResult: SaveDialogReturnValue = await dialog.showSaveDialog({
+                                                        buttonLabel: "Export",
+                                                        defaultPath: path.join(
+                                                            app.getPath("downloads"),
+                                                            // FIXME (Important): The tab name (props.tab.name) needs to be sanitized to be a valid file name.
+                                                            `${props.tab.name}.nbt`
+                                                        ),
+                                                        properties: ["showHiddenFiles", "showOverwriteConfirmation", "treatPackageAsDirectory"],
+                                                        title: `Export ${nbtFormatLabels.long[nbtFormat]} NBT Binary`,
+                                                        message: "Select a location to export the data to.",
+                                                        filters: [
+                                                            { name: "NBT Binary", extensions: ["nbt"] },
+                                                            { name: "Binary", extensions: ["bin"] },
+                                                        ],
+                                                    });
+                                                    if (saveResult.canceled) return;
+                                                    writeFileSync(
+                                                        saveResult.filePath,
+                                                        NBT.writeUncompressed(
+                                                            tabDataStorageObject.dataType === "NBT" ?
+                                                                tabDataStorageObject.data.parsed
+                                                            :   { name: "", ...tabDataStorageObject.data },
+                                                            nbtFormat
+                                                        )
+                                                    );
+                                                }}
+                                            >
+                                                {nbtFormatLabels.long[nbtFormat]}
+                                                {tabDataStorageObject?.dataType === "NBT" && tabDataStorageObject.data.type === nbtFormat ? " (Current)" : ""}
+                                            </MenuItem>
+                                        );
+                                    })}
+                                </SubMenu>
+                            )}
                             {tabDataStorageObject && (tabDataStorageObject.dataType === "NBT" || tabDataStorageObject.dataType === "NBTCompound") && (
                                 <MenuItem
                                     onClick={async (): Promise<void> => {

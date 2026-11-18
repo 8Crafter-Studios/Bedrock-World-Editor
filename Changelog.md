@@ -4,6 +4,19 @@
 
 -   Windows builds are now code signed. -->
 
+# v1.0.0-beta.44
+
+## Additions
+
+-   Added the "NBT..." submenu to the "Export As..." submenu of the context menu of sub-tabs, this submenu allows for exporting the data in the chosen NBT format.
+
+## Changes
+
+-   When using the `Export As... > Binary` context menu option of sub-tabs, it now will default to using the correct file extension for the content type being exported (when applicable), and have a separate type option for it in the save dialog.
+-   When using the `Export As... > Binary` context menu option of sub-tabs, the "NBT Binary" type now uses the `.nbt` file extension instead of `.dat`.
+-   When using the `Export As... > Binary` context menu option of sub-tabs, the "NBT Binary" type no longer shows up for data that isn't actually stored as NBT data when converted to binary.
+-   The `Export As... > Binary` context menu option of sub-tabs now displays the file type in the option name in addition to "Binary" (when applicable) (ex. `Export As... > MCSTRUCTURE File/Binary`), or when the format data is unavailable, the option will display an error in the name and be displayed in red.
+
 # v1.0.0-beta.43
 
 > [!IMPORTANT]

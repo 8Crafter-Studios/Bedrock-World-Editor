@@ -431,6 +431,7 @@ namespace exports {
             return tab;
         }
         // TODO: Maybe move this to the main process (and have a copy inside of here that will be used for mobile in the future, as async file system operations are fine to have there without worrying about other windows, since mobile can only have 1 window (unless I add multi-window support in the future for some devices)).
+        // TODO: Actually, maybe use a SharedWorker instead to sync it. Maybe have like a request system, where it sends a request to the worker to start the action, and the response specifies whether it can or not. Or have the worker perform the updates.
         private addRecentItem(props: Parameters<this["openTab"]>[0], tab: TabManagerTab): void {
             // await allPromisesSettledUnhandled(this._requiredOperationPromises.setJumpListData.values());
             try {
