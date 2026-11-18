@@ -1529,13 +1529,15 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                     ) {
                                         return;
                                     }
+                                    const hadCachedDBKeys: boolean = !!props.tab.cachedDBKeys;
+                                    const hadChunksDat: boolean = typeof chunksDat === "object";
                                     // IDEA: Add a progress bar to the button, or maybe somewhere else.
                                     // IDEA: Add an option to make it so that the button isn't disabled while the chunks are being deleted.
                                     const elem: HTMLButtonElement = event.currentTarget;
                                     elem.disabled = true;
                                     let totalChunksDatEntriesDeleted = 0;
                                     try {
-                                        const t1: number = performance.now();
+                                        // TODO: Add a new performance metric here.
                                         const chunksInDimension = new Set<`${number},${number}`>();
                                         const currentDimension =
                                             typeof props.dataStorageObject.worldEditor2D.dimension === "number" ?
@@ -1581,6 +1583,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                                 submitButtonText: "Delete Chunks",
                                             });
                                         if (locationRangeDialogResult.canceled) return;
+                                        const t1: number = performance.now();
                                         // locationRangeDialogResult.data.from.chunkX
                                         // const chunkPromises: Promise<undefined[]>[] = [];
                                         const activeChunkDeletions: Promise<undefined[]>[] = [];
@@ -1591,11 +1594,21 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                             const [x, z] = currentChunk.split(",").map(Number) as [x: number, z: number];
                                             if (x < locationRangeDialogResult.data.from.chunkX || x > locationRangeDialogResult.data.to.chunkX) continue;
                                             if (z < locationRangeDialogResult.data.from.chunkZ || z > locationRangeDialogResult.data.to.chunkZ) continue;
-                                            if (!props.tab.cachedDBKeys || typeof chunksDat !== "object") {
+                                            if (hadCachedDBKeys && !props.tab.cachedDBKeys) {
                                                 void dialog.showMessageBox({
                                                     type: "error",
                                                     title: "Error",
-                                                    message: `The DB keys cache or chunks.dat was reloaded while trying to delete chunks.`,
+                                                    message: `The DB keys cache ${hadChunksDat && typeof chunksDat !== "object" ? "and chunks.dat were" : "was"} reloaded while trying to delete chunks.`,
+                                                    buttons: ["OK"],
+                                                    noLink: true,
+                                                });
+                                                return;
+                                            }
+                                            if (hadChunksDat && typeof chunksDat !== "object") {
+                                                void dialog.showMessageBox({
+                                                    type: "error",
+                                                    title: "Error",
+                                                    message: "chunks.dat was reloaded while trying to delete chunks.",
                                                     buttons: ["OK"],
                                                     noLink: true,
                                                 });
@@ -1735,6 +1748,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                                 );
                                             }
                                             wipeChunkFromChunksDat: {
+                                                if (!hadChunksDat || typeof chunksDat !== "object") break wipeChunkFromChunksDat;
                                                 const chunkData = chunksDat.value.chunks.value.value[x]?.value[z];
                                                 if (chunkData?.update_map.value.value.length !== 256) {
                                                     break wipeChunkFromChunksDat;

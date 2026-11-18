@@ -17,6 +17,11 @@
 -   When using the `Export As... > Binary` context menu option of sub-tabs, the "NBT Binary" type no longer shows up for data that isn't actually stored as NBT data when converted to binary.
 -   The `Export As... > Binary` context menu option of sub-tabs now displays the file type in the option name in addition to "Binary" (when applicable) (ex. `Export As... > MCSTRUCTURE File/Binary`), or when the format data is unavailable, the option will display an error in the name and be displayed in red.
 
+## Fixes
+
+-   Fixed a bug where the "Delete Chunks in Range" button on the 2D world map would throw an error before deleting chunks unless both a LevelDB and the `chunks.dat` file were present in the world.
+-   Fixed incorrect duration measurement in the dialog after deleting chunks in range on the 2D world map.
+
 # v1.0.0-beta.43
 
 > [!IMPORTANT]
