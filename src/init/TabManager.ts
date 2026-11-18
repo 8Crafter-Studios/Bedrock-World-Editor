@@ -3039,9 +3039,10 @@ namespace exports {
                                 case "NBT": {
                                     if (format.format && data.type !== ({ LE: "little", BE: "big", LEV: "littleVarint" }[format.format] ?? format.format)) {
                                         console.warn(
-                                            `NBT endianness mismatch. Data endianness is ${
+                                            `NBT format mismatch. Data format is ${
                                                 this.currentState.options.dataStorageObject.data.type
-                                            }, but format endianness is ${{ LE: "little", BE: "big", LEV: "littleVarint" }[format.format] ?? format.format}`,
+                                                // REVIEW: "format format" is intentional but there may be a better way to phrase this.
+                                            }, but format format is ${{ LE: "little", BE: "big", LEV: "littleVarint" }[format.format] ?? format.format}`,
                                             this.target.key,
                                             format,
                                             this.currentState.options.dataStorageObject,
@@ -3415,9 +3416,10 @@ namespace exports {
                                 case "NBT": {
                                     if (format.format && data.type !== ({ LE: "little", BE: "big", LEV: "littleVarint" }[format.format] ?? format.format)) {
                                         console.warn(
-                                            `NBT endianness mismatch. Data endianness is ${
+                                            `NBT format mismatch. Data format is ${
                                                 this.currentState.options.dataStorageObject.data.type
-                                            }, but format endianness is ${{ LE: "little", BE: "big", LEV: "littleVarint" }[format.format] ?? format.format}`,
+                                                // REVIEW: "format format" is intentional but there may be a better way to phrase this.
+                                            }, but format format is ${{ LE: "little", BE: "big", LEV: "littleVarint" }[format.format] ?? format.format}`,
                                             this.target.path,
                                             format,
                                             this.currentState.options.dataStorageObject,
