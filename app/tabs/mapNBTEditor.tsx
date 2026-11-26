@@ -329,6 +329,7 @@ export default function MapEditorTab(props: MapEditorTabProps): JSX.SpecificElem
                     <MapEditor
                         dataStorageObject={props.props.tab.currentState.options.dataStorageObject! as never}
                         tab={props.props.tab}
+                        readonly={props.props.tab.readonly}
                         overlayBarRegistry={widgetRegistryRef.current ?? undefined}
                     />
                 );

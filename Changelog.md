@@ -24,6 +24,7 @@
 -   Fixed incorrect duration measurement in the dialog after deleting chunks in range on the 2D world map.
 -   The "Delete Chunks in Range" button on the 2D world map is now hidden in read-only mode.
 -   The `Delete chunk` context menu item on the 2D world map is now hidden in read-only mode.
+-   The map image replacement context menu options in the map editor are now hidden in read-only mode.
 
 # v1.0.0-beta.43
 
