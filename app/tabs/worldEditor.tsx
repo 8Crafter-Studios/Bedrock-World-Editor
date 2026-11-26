@@ -156,7 +156,14 @@ export default function WorldEditorTab(props: WorldEditorTabProps): JSX.Specific
     function Contents(props: { props: WorldEditorTabProps; options: WorldEditorDataStorageObject }): JSX.Element {
         switch (props.options.viewMode) {
             case "2D":
-                return <WorldEditor2D dataStorageObject={props.options} tab={props.props.tab} overlayBarRegistry={widgetRegistryRef.current ?? undefined} />;
+                return (
+                    <WorldEditor2D
+                        dataStorageObject={props.options}
+                        tab={props.props.tab}
+                        readonly={props.props.tab.readonly}
+                        overlayBarRegistry={widgetRegistryRef.current ?? undefined}
+                    />
+                );
             case "3D":
             case "block":
             case "search":

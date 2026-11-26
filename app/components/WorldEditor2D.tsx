@@ -1252,7 +1252,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                 // TODO
                 stopCurrentInteraction = undefined;
             };
-            if (props.overlayBarRegistry && !props.readonly) {
+            if (props.overlayBarRegistry) {
                 props.overlayBarRegistry.registerWidget(
                     <>
                         <div class="widget-overlay tabbed-selector float-right" style={{ float: "right" }}>
@@ -1516,7 +1516,11 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                                 <img src="resource://images/ui/glyphs/zoom_in.png" style={{ width: "16px", imageRendering: "pixelated" }} aria-hidden="true" />
                             </button>
                         </div>
-                        <div class="widget-overlay tabbed-selector float-right" style={{ float: "right" }}>
+                        <div
+                            class="widget-overlay tabbed-selector float-right"
+                            style={{ float: "right" }}
+                            hidden={props.readonly} // CAUTION: If another button in added here that isn't removed in read-only mode, this needs to be moved to the individual buttons.
+                        >
                             <button
                                 type="button"
                                 title="Delete Chunks in Range"
@@ -2083,7 +2087,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
         return (): void => {
             stopCurrentInteraction?.();
             clearInterval(chunkLoadInterval);
-            if (props.overlayBarRegistry && !props.readonly) {
+            if (props.overlayBarRegistry) {
                 props.overlayBarRegistry.unregisterWidget(widgetID);
             }
         };
@@ -6312,6 +6316,7 @@ export function WorldEditor2D(props: WorldEditor2DRendererProps): JSX.Element {
                             targetChunkDetails.chunk.z >= 32 ||
                             ![0, "overworld"].includes(targetChunkDetails.dimension))
                     }
+                    hidden={props.readonly}
                 >
                     Delete chunk
                 </MenuItem>
