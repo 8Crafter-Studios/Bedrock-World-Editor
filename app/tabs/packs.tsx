@@ -2060,7 +2060,8 @@ async function getPacksTabContentsRows(data: {
                                                                 title={formattedDependenciesList}
                                                                 style="color: color-mix(in lab, var(--text-color) 50%, var(--table-bg-color)); cursor: help;"
                                                             >
-                                                                {pack.packDetails.manifest.dependencies.length} dependencies
+                                                                {pack.packDetails.manifest.dependencies.length} dependenc
+                                                                {pack.packDetails.manifest.dependencies.length === 1 ? "y" : "ies"}
                                                             </span>
                                                         </td>
                                                     );
@@ -2879,7 +2880,8 @@ async function getPacksTabContentsRows(data: {
                                                                 title={formattedDependenciesList}
                                                                 style="color: color-mix(in lab, var(--text-color) 50%, var(--table-bg-color)); cursor: help;"
                                                             >
-                                                                {pack.packDetails.manifest.dependencies.length} dependencies
+                                                                {pack.packDetails.manifest.dependencies.length} dependenc
+                                                                {pack.packDetails.manifest.dependencies.length === 1 ? "y" : "ies"}
                                                             </span>
                                                         </td>
                                                     );
@@ -3703,7 +3705,8 @@ async function getPacksTabContentsRows(data: {
                                                                 title={formattedDependenciesList}
                                                                 style="color: color-mix(in lab, var(--text-color) 50%, var(--table-bg-color)); cursor: help;"
                                                             >
-                                                                {pack.packDetails.manifest.dependencies.length} dependencies
+                                                                {pack.packDetails.manifest.dependencies.length} dependenc
+                                                                {pack.packDetails.manifest.dependencies.length === 1 ? "y" : "ies"}
                                                             </span>
                                                         </td>
                                                     );
@@ -4537,7 +4540,8 @@ async function getPacksTabContentsRows(data: {
                                                                 title={formattedDependenciesList}
                                                                 style="color: color-mix(in lab, var(--text-color) 50%, var(--table-bg-color)); cursor: help;"
                                                             >
-                                                                {pack.packDetails.manifest.dependencies.length} dependencies
+                                                                {pack.packDetails.manifest.dependencies.length} dependenc
+                                                                {pack.packDetails.manifest.dependencies.length === 1 ? "y" : "ies"}
                                                             </span>
                                                         </td>
                                                     );

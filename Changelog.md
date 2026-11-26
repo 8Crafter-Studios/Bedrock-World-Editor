@@ -16,6 +16,7 @@
 -   When using the `Export As... > Binary` context menu option of sub-tabs, the "NBT Binary" type now uses the `.nbt` file extension instead of `.dat`.
 -   When using the `Export As... > Binary` context menu option of sub-tabs, the "NBT Binary" type no longer shows up for data that isn't actually stored as NBT data when converted to binary.
 -   The `Export As... > Binary` context menu option of sub-tabs now displays the file type in the option name in addition to "Binary" (when applicable) (ex. `Export As... > MCSTRUCTURE File/Binary`), or when the format data is unavailable, the option will display an error in the name and be displayed in red.
+-   The "Dependencies" column of the packs tab now says "1 dependency" instead of "1 dependencies" when there is only 1 dependency.
 
 ## Fixes
 
