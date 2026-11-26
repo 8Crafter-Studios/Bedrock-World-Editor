@@ -162,6 +162,8 @@ type JSONTreeNodeValue = { [key: string | number]: JSONTreeNodeValue } | string 
 
 // TODO: When creating a non-primitive tag, the created tag should be automatically selected (it should clear the previous selection too).
 
+// TODO (Important): Add the ability to copy the name and value of a in a read-only editor, and to copy the name/value when just the name/value is read-only.
+
 /**
  * @warning Make sure to manually `render(null, ...)` on the parent element of this on cleanup.
  *
@@ -234,7 +236,7 @@ export default class TreeEditor extends React.Component<
             const widgetId: string = `TreeEditor_${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
             if (this.props.overlayBarRegistry) {
                 this.props.overlayBarRegistry.registerWidget(
-                    <div class="widget-overlay tabbed-selector float-right" style={{ float: "right" }}>
+                    <div class="widget-overlay tabbed-selector float-right" style={{ float: "right" }} hidden={this.props.readonly}>
                         <button
                             type="button"
                             title="Delete"

@@ -24,7 +24,9 @@
 -   Fixed incorrect duration measurement in the dialog after deleting chunks in range on the 2D world map.
 -   The "Delete Chunks in Range" button on the 2D world map is now hidden in read-only mode.
 -   The `Delete chunk` context menu item on the 2D world map is now hidden in read-only mode.
--   The map image replacement context menu options in the map editor are now hidden in read-only mode.
+-   The map image replacement context menu options in the Map editor are now hidden in read-only mode.
+-   The delete tag and add tag buttons in the Node editor are now hidden in read-only mode.
+-   The Node editor no longer renders all nodes as if they are hovered when the editor is in read-only mode.
 
 # v1.0.0-beta.43
 

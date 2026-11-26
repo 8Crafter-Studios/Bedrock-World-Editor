@@ -35,14 +35,14 @@
 .treeEditorTreeNodeHeader:hover:not(:has(input:hover)):not(:has(.treeEditorTreeNodeHeaderName:not(.readonlyTreeEditorTreeNodeHeaderName):hover)):not(
         :has(.treeEditorTreeNodeHeaderValue:not(.readonlyTreeEditorTreeNodeHeaderValue):hover)
     ):not(:has(.treeEditorTreeNodeHeaderNameTextBox.visible)):not(:has(.treeEditorTreeNodeHeaderValueTextBox.visible)),
-.treeEditorOuterContainer.treeEditorReadonly .treeEditorTreeNodeHeader {
+.treeEditorOuterContainer.treeEditorReadonly .treeEditorTreeNodeHeader:hover {
     background-color: var(--alternating-bg-hover-color);
 }
 
 .treeEditorTreeNodeHeader.selected:hover:not(:has(input:hover)):not(:has(.treeEditorTreeNodeHeaderName:not(.readonlyTreeEditorTreeNodeHeaderName):hover)):not(
         :has(.treeEditorTreeNodeHeaderValue:not(.readonlyTreeEditorTreeNodeHeaderValue):hover)
     ):not(:has(.treeEditorTreeNodeHeaderNameTextBox.visible)):not(:has(.treeEditorTreeNodeHeaderValueTextBox.visible)),
-.treeEditorOuterContainer.treeEditorReadonly .treeEditorTreeNodeHeader.selected {
+.treeEditorOuterContainer.treeEditorReadonly .treeEditorTreeNodeHeader.selected:hover {
     background-color: var(--alternating-bg-selected-hover-color);
 }
 
