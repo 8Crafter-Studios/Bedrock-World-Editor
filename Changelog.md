@@ -20,6 +20,7 @@
 
 ## Fixes
 
+-   The app no longer copies the world folders that are supposed to be excluded from the copy when opening the world in read-only mode. This fixes the issue where worlds could take much longer to open when opening them in read-only mode than in copy until save mode.
 -   Fixed a bug where the "Delete Chunks in Range" button on the 2D world map would throw an error before deleting chunks unless both a LevelDB and the `chunks.dat` file were present in the world.
 -   Fixed incorrect duration measurement in the dialog after deleting chunks in range on the 2D world map.
 -   The "Delete Chunks in Range" button on the 2D world map is now hidden in read-only mode.
@@ -94,6 +95,7 @@
 
 ## Changes
 
+-   The app no longer copies the `lamium` folder of worlds when they are opened, and when saving it does not delete item (before it would delete item to replace item with the copied version from the temp folder). This will fix an issue where world with lots of [Lamium](https://github.com/amatouhake/Lamium) data would take a very long time to open or save.
 -   The SNBT editor now quotes all string values.
 -   The string value quoting logic of the SNBT editor now matches the format specified on the [Minecraft Wiki](https://minecraft.wiki/w/NBT_format#Conversion_to_SNBT).
 -   The `Data3D` parser/serializer can now read data that only has empty subchunks, the previous check has been removed since the game will actually write all subchunks as empty subchunks to `Data3D` if the `Data3D` data was previously corrupted.

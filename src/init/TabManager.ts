@@ -950,7 +950,7 @@ namespace exports {
         // The `lamium` folder contains data for the Lamium LeviMC mod for LeviLauncher, it can contain world map data which is spead across many files and can cause saving/copying to take a while.
         "lamium",
     ];
-    const WORLD_FOLDER_SUBPATHS_TO_NEVER_COPY_APPLICABLE_MODES: readonly TabManagerTabMode[] = [TabManagerTabMode.CopyUntilSave];
+    const WORLD_FOLDER_SUBPATHS_TO_NEVER_COPY_APPLICABLE_MODES: readonly TabManagerTabMode[] = [TabManagerTabMode.Readonly, TabManagerTabMode.CopyUntilSave];
 
     /**
      * Represents a tab in the tab manager.
