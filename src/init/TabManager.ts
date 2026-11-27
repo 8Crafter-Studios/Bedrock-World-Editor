@@ -24,8 +24,8 @@ import NBT from "prismarine-nbt";
 import type { TreeEditorDataStorageObjectInput } from "../../app/components/TreeEditor";
 import { LevelDB } from "@8crafter/leveldb-zlib";
 import path from "node:path";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { copyFile, cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { createReadStream, createWriteStream, existsSync, readFileSync, writeFileSync, type Dirent } from "node:fs";
+import { copyFile, cp, mkdir, mkdtemp, readdir, readFile, rename, rm, stat, utimes, writeFile } from "node:fs/promises";
 import { APP_DATA_FOLDER_PATH } from "../utils/URLs";
 import type { MapEditorDataStorageObject } from "../../app/components/MapEditor";
 import { app, dialog, Menu } from "@electron/remote";
@@ -38,6 +38,8 @@ import type { WorldEditorDataStorageObject } from "../../app/tabs/worldEditor";
 import { allPromisesSettledUnhandled, stringifyError } from "../utils/miscUtils";
 import type { CommentJSONValue } from "comment-json";
 import commentJSON from "comment-json";
+import { randomUUID } from "node:crypto";
+import { pipeline } from "node:stream/promises";
 
 namespace exports {
     // type DefaultEventMap = [never];
@@ -1797,12 +1799,13 @@ namespace exports {
          * Saves the tab.
          *
          * @param ignoreFailedTabSaves Allows the function to continue even when an error occurs while saving a sub-tab.
+         * // FIXME: Fix this JSDoc.
          * @param unsafeMode Disables the protections that delete existing world files before saving, a side effect is that if a world is opened while this tab is open, data from before and after the save may be merged randomly.
          * @returns A promise that resolves when the tab has been saved.
          */
         // TODO: Maybe this shouldn't copy folders and files that are not necessary to copy, so that is there is a 60 GB development-related folder that isn't explicitly marked as never copy in WORLD_FOLDER_SUBPATHS_TO_NEVER_COPY, then it won't try to copy 60 GB of data.
         // TODO: Add a way to abort saving.
-        public async save(ignoreFailedTabSaves: boolean = false, unsafeMode: boolean = false): Promise<void> {
+        public async save(ignoreFailedTabSaves: boolean = false, mode: "normal" | "semi_unsafe" | "unsafe" | "extra_unsafe" = "normal"): Promise<void> {
             if (this.isSaving || this.readonly || !this.saveEnabled || !this.tempPath || !this.tempFilePath) return;
             if (!this.fragileLevelDBAlreadyShattered) {
                 switch (this.hasFragileLevelDB) {
@@ -1865,7 +1868,7 @@ namespace exports {
                     case undefined:
                         await this.awaitFragilityCheck;
                         if (this.hasFragileLevelDB === undefined) throw new TypeError("hasFragileLevelDB is still undefined after awaitFragilityCheck");
-                        return void (await this.save(ignoreFailedTabSaves, unsafeMode));
+                        return void (await this.save(ignoreFailedTabSaves, mode));
                     case "unknown":
                     // TODO: Maybe add a warning here?
                     case false:
@@ -1907,7 +1910,60 @@ namespace exports {
                 if (this.type === "world" || this.type === "leveldb") {
                     console.log(`Copying modified files from ${this.tempPath} to ${this.path}...`);
                     // await this.db?.close();
-                    if (!unsafeMode && existsSync(this.path)) {
+                    if ((mode === "normal" || mode === "semi_unsafe") && existsSync(this.path)) {
+                        async function verifyCanDeleteFile(filePath: string): Promise<void> {
+                            const tempPath = `${filePath}.${randomUUID()}.deletecheck`;
+
+                            await rename(filePath, tempPath);
+                            await rename(tempPath, filePath);
+                        }
+                        // IDEA (Config): Add a setting to disable this check (as in always run in semi_unsafe mode).
+                        const verifyWorldCanBeDeleted: (root: string) => Promise<void> = async (root: string): Promise<void> => {
+                            if (this.type === "world" && WORLD_FOLDER_SUBPATHS_TO_NEVER_COPY_APPLICABLE_MODES.includes(this.mode)) {
+                                for (const dirent of await readdir(root, { withFileTypes: true })) {
+                                    if (dirent.isDirectory() && WORLD_FOLDER_SUBPATHS_TO_NEVER_COPY.includes(dirent.name)) continue;
+                                    if (dirent.isDirectory()) {
+                                        const entries: Dirent<string>[] = await readdir(path.join(root, dirent.name), { recursive: true, withFileTypes: true });
+
+                                        for (const entry of entries) {
+                                            if (!entry.isFile()) continue;
+
+                                            const filePath: string = path.join(entry.parentPath, entry.name);
+
+                                            try {
+                                                await verifyCanDeleteFile(filePath);
+                                            } catch (e) {
+                                                throw new Error(`File is in use: ${filePath}`, { cause: e });
+                                            }
+                                        }
+                                    } else if (dirent.isFile()) {
+                                        const filePath: string = path.join(dirent.parentPath, dirent.name);
+
+                                        try {
+                                            await verifyCanDeleteFile(filePath);
+                                        } catch (e) {
+                                            throw new Error(`File is in use: ${filePath}`, { cause: e });
+                                        }
+                                    }
+                                    // REVIEW: Maybe there should be handling for other dirent types.
+                                }
+                            } else {
+                                const entries: Dirent<string>[] = await readdir(root, { recursive: true, withFileTypes: true });
+
+                                for (const entry of entries) {
+                                    if (!entry.isFile()) continue;
+
+                                    const filePath: string = path.join(entry.parentPath, entry.name);
+
+                                    try {
+                                        await verifyCanDeleteFile(filePath);
+                                    } catch (e) {
+                                        throw new Error(`File is in use: ${filePath}`, { cause: e });
+                                    }
+                                }
+                            }
+                        };
+                        if (mode === "normal") await verifyWorldCanBeDeleted(this.path);
                         if (this.type === "world" && WORLD_FOLDER_SUBPATHS_TO_NEVER_COPY_APPLICABLE_MODES.includes(this.mode)) {
                             for (const dirent of await readdir(this.path, { withFileTypes: true })) {
                                 if (dirent.isDirectory() && WORLD_FOLDER_SUBPATHS_TO_NEVER_COPY.includes(dirent.name)) continue;
@@ -1917,20 +1973,59 @@ namespace exports {
                     }
                     let fileNumber: number = 0;
                     const tempPath: string = this.tempPath;
-                    await cp(this.tempPath, this.path, {
-                        recursive: true,
-                        force: true,
-                        preserveTimestamps: true,
-                        filter: (source: string, _destination: string): true => {
-                            // this._abortSignal.throwIfAborted(); // TODO: This should be a separate abortSignal for aborting the save.
+                    if (mode === "extra_unsafe") {
+                        const unsafeCopyRecursive = async (source: string, destination: string): Promise<void> => {
+                            const sourceStat = await stat(source);
+
+                            if (sourceStat.isDirectory()) {
+                                await mkdir(destination, { recursive: true });
+
+                                for (const dirent of await readdir(source, {
+                                    withFileTypes: true,
+                                })) {
+                                    await unsafeCopyRecursive(path.join(source, dirent.name), path.join(destination, dirent.name));
+                                }
+
+                                return;
+                            }
+
                             progressBar.detail = `Copying modified files to ${
                                 this.type === "world" ? "world"
                                 : this.type === "leveldb" ? "LevelDB"
                                 : "source"
                             }...\n\rFile ${++fileNumber}: ${path.relative(tempPath, source)}`;
-                            return true;
-                        },
-                    });
+
+                            await mkdir(path.dirname(destination), {
+                                recursive: true,
+                            });
+
+                            // 'w' truncates and overwrites without deleting first
+                            await pipeline(
+                                createReadStream(source),
+                                createWriteStream(destination, {
+                                    flags: "w",
+                                })
+                            );
+
+                            await utimes(destination, sourceStat.atime, sourceStat.mtime);
+                        };
+                        await unsafeCopyRecursive(this.tempPath, this.path);
+                    } else {
+                        await cp(this.tempPath, this.path, {
+                            recursive: true,
+                            force: true,
+                            preserveTimestamps: true,
+                            filter: (source: string, _destination: string): true => {
+                                // this._abortSignal.throwIfAborted(); // TODO: This should be a separate abortSignal for aborting the save.
+                                progressBar.detail = `Copying modified files to ${
+                                    this.type === "world" ? "world"
+                                    : this.type === "leveldb" ? "LevelDB"
+                                    : "source"
+                                }...\n\rFile ${++fileNumber}: ${path.relative(tempPath, source)}`;
+                                return true;
+                            },
+                        });
+                    }
                     if (this.type === "world" && WORLD_FOLDER_SUBPATHS_TO_NEVER_COPY_APPLICABLE_MODES.includes(this.mode)) {
                         let fileNumber: number = 0;
                         for (const pathToRemove of this.pathsToRemoveOnSave) {

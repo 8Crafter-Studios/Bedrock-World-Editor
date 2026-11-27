@@ -505,8 +505,11 @@ export default function TabBar(): JSX.Element {
                     anchorPoint={tabContextMenu_anchorPoint}
                     state={tabContextMenu_isOpen ? "open" : "closed"}
                     direction="right"
+                    onClick={(event: TargetedMouseEvent<HTMLElement>): void => (event.preventDefault(), void event.stopPropagation())} // Prevent parent element from receiving click events.
                     onClose={(): void => void tabContextMenu_setOpen(false)}
                 >
+                    // TODO (Important): When the user holds shift (or maybe ctrl or alt) while right-clicking, this should always show save options, and show
+                    additional debug options.
                     <MenuItem
                         onClick={async (): Promise<void> => {
                             if (props.tab.isModified()) {
@@ -561,17 +564,33 @@ export default function TabBar(): JSX.Element {
                     {props.tab.isModified() ?
                         <>
                             <MenuItem
-                                title="Save Tab (Alt to save in unsafe mode)"
+                                title="Save Tab (Alt to save in extra unsafe mode, Shift for semi-unsafe mode, and Alt+Shift for unsafe mode)"
                                 onClick={async (event: ClickEvent): Promise<void> => {
-                                    await props.tab.save(false, event.syntheticEvent.altKey);
+                                    await props.tab.save(
+                                        false,
+                                        event.syntheticEvent.altKey ?
+                                            event.syntheticEvent.shiftKey ?
+                                                "unsafe"
+                                            :   "extra_unsafe"
+                                        : event.syntheticEvent.shiftKey ? "semi_unsafe"
+                                        : "normal"
+                                    );
                                 }}
                             >
                                 Save Tab
                             </MenuItem>
                             <MenuItem
-                                title="Save & Close Tab (Alt to save in unsafe mode)"
+                                title="Save & Close Tab (Alt to save in extra unsafe mode, Shift for semi-unsafe mode, and Alt+Shift for unsafe mode)"
                                 onClick={async (event: ClickEvent): Promise<void> => {
-                                    await props.tab.save(false, event.syntheticEvent.altKey);
+                                    await props.tab.save(
+                                        false,
+                                        event.syntheticEvent.altKey ?
+                                            event.syntheticEvent.shiftKey ?
+                                                "unsafe"
+                                            :   "extra_unsafe"
+                                        : event.syntheticEvent.shiftKey ? "semi_unsafe"
+                                        : "normal"
+                                    );
                                     await props.tab.close();
                                 }}
                             >
@@ -594,11 +613,19 @@ export default function TabBar(): JSX.Element {
                         </MenuItem>
                     }
                     <MenuItem
-                        title="Save & Close Others (Alt to save in unsafe mode)"
+                        title="Save & Close Others (Alt to save in extra unsafe mode, Shift for semi-unsafe mode, and Alt+Shift for unsafe mode)"
                         onClick={(event: ClickEvent): void => {
                             [...tabManager.openTabs].forEach(async (tab: TabManagerTab): Promise<void> => {
                                 if (tab !== props.tab) {
-                                    await tab.save(false, event.syntheticEvent.altKey);
+                                    await tab.save(
+                                        false,
+                                        event.syntheticEvent.altKey ?
+                                            event.syntheticEvent.shiftKey ?
+                                                "unsafe"
+                                            :   "extra_unsafe"
+                                        : event.syntheticEvent.shiftKey ? "semi_unsafe"
+                                        : "normal"
+                                    );
                                     await tab.close();
                                 }
                             });

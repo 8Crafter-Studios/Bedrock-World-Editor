@@ -2658,7 +2658,16 @@ window.addEventListener("keydown", (event: KeyboardEvent): void => {
             const currentTab = tabManager.selectedTab;
             if (currentTab instanceof TabManagerTab) {
                 if (!currentTab.isSaving) {
-                    void currentTab.save(false, event.altKey);
+                    void currentTab.save(
+                        false,
+                        // FIXME: Shift cannot be used here.
+                        event.altKey ?
+                            event.shiftKey ?
+                                "unsafe"
+                            :   "extra_unsafe"
+                        : event.shiftKey ? "semi_unsafe"
+                        : "normal"
+                    );
                 }
             }
             break;

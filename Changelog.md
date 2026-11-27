@@ -9,6 +9,10 @@
 ## Additions
 
 -   Added the "NBT..." submenu to the "Export As..." submenu of the context menu of sub-tabs, this submenu allows for exporting the data in the chosen NBT format.
+-   Added a check to ensure no files are locked before deleting the existing files from the world when saving the world.
+-   Added 2 new save modes: semi-unsafe mode and extra unsafe mode
+    -   Semi-unsafe mode skips the new locked check, other than that it is like normal mode.
+    -   Extra unsafe mode is like unsafe mode but is able to write to locked files.
 
 ## Changes
 
@@ -17,6 +21,7 @@
 -   When using the `Export As... > Binary` context menu option of sub-tabs, the "NBT Binary" type no longer shows up for data that isn't actually stored as NBT data when converted to binary.
 -   The `Export As... > Binary` context menu option of sub-tabs now displays the file type in the option name in addition to "Binary" (when applicable) (ex. `Export As... > MCSTRUCTURE File/Binary`), or when the format data is unavailable, the option will display an error in the name and be displayed in red.
 -   The "Dependencies" column of the packs tab now says "1 dependency" instead of "1 dependencies" when there is only 1 dependency.
+-   Holding ALT while saving now saves in extra unsafe mode instead of unsafe mode, unsafe mode can be used via ALT+SHIFT, and semi-unsafe mode can be used via SHIFT (unsafe mode and semi-unsafe mode currently cannot be used via CTRL+S, but can be done via the "Save Tab" option in the context menu of tabs).
 
 ## Fixes
 
